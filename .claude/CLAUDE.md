@@ -14,7 +14,7 @@ Volg `project-standards/core/`.
 - Hosting: Vercel
 
 ## Doel & richting (zie ../Frederiks Bedrijfskleding/01-onderzoek-en-strategie.md)
-- Positionering: **persoonlijk advies + ontzorging + lokale aanwezigheid**
+- Positionering: **persoonlijk advies, passen op locatie en lokale aanwezigheid**
   (niet concurreren op webshop/voorraad).
 - Conversiekern: één heldere "vraag advies/offerte aan"-flow.
 - SEO/AEO-motor: branchepagina's (`/branches/[slug]`) + lokale pagina's

@@ -30,7 +30,9 @@ export const metadata: Metadata = {
     type: 'website', locale: 'nl_NL', url: site.url, siteName: site.name,
     title: 'Bedrijfskleding in de Achterhoek | Frederiks Bedrijfskleding',
     description: site.description,
+    images: ['/Frederiks-bedrijfskleding-hengelo-.jpg'],
   },
+  twitter: { card: 'summary_large_image', images: ['/Frederiks-bedrijfskleding-hengelo-.jpg'] },
   robots: { index: true, follow: true },
   icons: { icon: '/favicon.svg' },
 };

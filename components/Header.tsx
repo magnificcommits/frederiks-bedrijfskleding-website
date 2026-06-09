@@ -9,6 +9,7 @@ const mainNav = [
   { href: '/werkkleding', label: 'Werkkleding' },
   { href: '/werkschoenen', label: 'Werkschoenen' },
   { href: '/bedrukken-borduren', label: 'Bedrukken' },
+  { href: '/kennisbank', label: 'Kennisbank' },
   { href: '/referenties', label: 'Referenties' },
   { href: '/over-ons', label: 'Over ons' },
   { href: '/contact', label: 'Contact' },
@@ -22,7 +23,7 @@ export function Header() {
         <Logo />
         <nav className="hidden min-w-0 items-center xl:flex" aria-label="Hoofdnavigatie">
           <div className="group relative">
-            <button className="whitespace-nowrap rounded-md px-2.5 py-2.5 text-[15px] font-semibold text-ink-800 hover:bg-mist" aria-haspopup="true">
+            <button className="whitespace-nowrap rounded-md px-2 py-2.5 text-[15px] font-semibold text-ink-800 hover:bg-mist" aria-haspopup="true">
               Branches
             </button>
             <div className="invisible absolute left-0 top-full w-64 rounded-lg border border-line bg-white p-2 opacity-0 shadow-card transition group-hover:visible group-hover:opacity-100">
@@ -34,7 +35,7 @@ export function Header() {
             </div>
           </div>
           {mainNav.map((i) => (
-            <Link key={i.href} href={i.href} className="whitespace-nowrap rounded-md px-2.5 py-2.5 text-[15px] font-semibold text-ink-800 hover:bg-mist">{i.label}</Link>
+            <Link key={i.href} href={i.href} className="whitespace-nowrap rounded-md px-2 py-2.5 text-[15px] font-semibold text-ink-800 hover:bg-mist">{i.label}</Link>
           ))}
         </nav>
         <div className="hidden shrink-0 items-center gap-3 xl:flex">

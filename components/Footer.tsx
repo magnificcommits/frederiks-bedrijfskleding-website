@@ -42,6 +42,7 @@ export function Footer() {
             <li><Link href="/werkkleding" className="text-ink-200 hover:text-white">Werkkleding</Link></li>
             <li><Link href="/werkschoenen" className="text-ink-200 hover:text-white">Werkschoenen</Link></li>
             <li><Link href="/bedrukken-borduren" className="text-ink-200 hover:text-white">Bedrukken & borduren</Link></li>
+            <li><Link href="/kennisbank" className="text-ink-200 hover:text-white">Kennisbank</Link></li>
             <li><Link href="/over-ons" className="text-ink-200 hover:text-white">Over ons</Link></li>
             <li><Link href="/offerte" className="text-ink-200 hover:text-white">Advies aanvragen</Link></li>
             <li><Link href="/privacy" className="text-ink-200 hover:text-white">Privacy</Link></li>

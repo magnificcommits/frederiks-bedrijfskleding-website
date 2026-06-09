@@ -79,3 +79,18 @@ export function breadcrumbJsonLd(items: Array<{ name: string; url: string }>) {
     })),
   };
 }
+
+/** Article schema voor een kennisbankartikel (SEO + E-E-A-T). */
+export function articleJsonLd(a: { slug: string; title: string; metaDescription: string; date: string }) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: a.title,
+    description: a.metaDescription,
+    datePublished: a.date,
+    dateModified: a.date,
+    author: { '@type': 'Person', name: site.owner },
+    publisher: { '@type': 'Organization', name: site.name, '@id': `${site.url}/#bedrijf` },
+    mainEntityOfPage: `${site.url}/kennisbank/${a.slug}`,
+  };
+}

@@ -1,23 +1,14 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { site } from '@/content/site';
+import { logoDataUri } from '@/content/logoData';
 
 /**
- * Het echte logo via next/image (zelfde route als de werkende herofoto).
- * Header: direct op de witte balk. Footer (light): op een wit chip-vlak,
- * omdat het JPEG een witte achtergrond heeft.
+ * Logo als ingebakken data-URI (rendert altijd). Header: direct op de witte balk.
+ * Footer (light): op een wit chip-vlak, omdat het logo een witte achtergrond heeft.
  */
 export function Logo({ light = false }: { light?: boolean }) {
-  const img = (
-    <Image
-      src="/Frederiks-bedrijfskleding-logo.jpg"
-      alt={site.name}
-      width={300}
-      height={62}
-      priority
-      className={light ? 'h-8 w-auto' : 'h-11 w-auto sm:h-12'}
-    />
-  );
+  /* eslint-disable-next-line @next/next/no-img-element */
+  const img = <img src={logoDataUri} alt={site.name} className={light ? 'h-8 w-auto' : 'h-11 w-auto sm:h-12'} />;
   if (light) {
     return (
       <Link href="/" className="inline-flex" aria-label={`${site.name} naar home`}>

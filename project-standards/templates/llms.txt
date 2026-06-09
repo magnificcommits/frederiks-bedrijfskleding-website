@@ -1,0 +1,32 @@
+# [Sitenaam]
+
+> [Eén of twee zinnen die kernachtig zeggen wat deze site/dit product is en voor wie. Dit is de
+> samenvatting die een LLM als eerste leest.]
+
+[Optioneel: een korte alinea context — geen heading — met wat een AI moet weten om de site goed te
+gebruiken of te citeren: kernfeiten, scope, belangrijkste termen.]
+
+## Belangrijkste pagina's
+
+- [Homepage](https://voorbeeld.nl/): waar het overzicht staat
+- [Over ons](https://voorbeeld.nl/over): wie erachter zit, expertise, contact (E-E-A-T)
+- [Product/Dienst X](https://voorbeeld.nl/x): wat het is, voor wie, prijs
+- [Documentatie](https://voorbeeld.nl/docs): technische uitleg
+
+## Bronnen & content
+
+- [Blog/Kennisbank](https://voorbeeld.nl/blog): artikelen met eigen data en ervaring
+- [Veelgestelde vragen](https://voorbeeld.nl/faq): directe antwoorden (goed citeerbaar)
+
+## Optional
+
+- [Changelog](https://voorbeeld.nl/changelog): mag worden overgeslagen bij korte context
+- [Privacybeleid](https://voorbeeld.nl/privacy)
+
+<!--
+  Plaats dit bestand op https://jouwdomein.nl/llms.txt
+  Spec: llmstxt.org. Alleen de H1 bovenaan is verplicht.
+  Realiteitscheck: zoek-/antwoord-crawlers (Google, ChatGPT-search) negeren dit grotendeels;
+  developer-/agent-tooling (Cursor, Claude Code, MCP) gebruikt het wel. Goedkoop, geen ranking-winst.
+  Genereer dit bij build uit je Sanity-content zodat het automatisch up-to-date blijft.
+-->

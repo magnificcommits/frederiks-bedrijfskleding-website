@@ -1,0 +1,67 @@
+# Kopieer naar .github/workflows/security-scan.yml
+# Draait bij elke PR naar main EN wekelijks (maandag 06:00 UTC).
+# Dekt: secret-scan (gitleaks), SAST (Semgrep), dependency/CVE (npm audit).
+name: Security scan
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # elke maandag 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  security-events: write # voor SARIF-upload naar het Security-tabblad
+
+# LET OP: deze scanners zijn REPORT-ONLY (continue-on-error). De blokkerende
+# poortwachters zijn Aikido (secrets + SAST), de Vercel-build en de CI-verify
+# (typecheck + lint + test). Reden: gitleaks scant met fetch-depth:0 de volledige
+# historie (waar reeds geroteerde/dode secrets nog in staan) en Dependabot-PR's
+# krijgen geen secret-/security-events-rechten -> die zouden permanent rood staan.
+# Permanent-rode CI leer je te negeren; dat is gevaarlijker dan geen CI.
+jobs:
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # volledige historie scannen
+      - uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true # report-only; Aikido is de gate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITLEAKS_LICENSE alleen nodig voor org-accounts; voor persoonlijke repos niet.
+
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - run: semgrep ci --sarif --output=semgrep.sarif || true
+        continue-on-error: true # report-only; Aikido is de gate
+        env:
+          # Optioneel: koppel aan Semgrep AppSec Platform (gratis tot 10 devs) voor Pro-regels.
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        continue-on-error: true # upload faalt op Dependabot-PR's (geen rechten); niet blokkeren
+        with:
+          sarif_file: semgrep.sarif
+
+  deps:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci --no-audit --no-fund
+      - name: npm audit (high+)
+        run: npm audit --audit-level=high
+        continue-on-error: true # informatief; zet op false als je hard wilt blokkeren

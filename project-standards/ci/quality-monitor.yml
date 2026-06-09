@@ -1,0 +1,30 @@
+# Kopieer naar .github/workflows/quality-monitor.yml
+# Wekelijkse kwaliteitsmeting met Lighthouse CI: performance, SEO, accessibility,
+# best-practices. Meet tegen je STAGING/preview-URL (zet die als repo-secret STAGING_URL).
+# Let op: Lighthouse is LAB-data (debugging). De échte ranking-signalen komen uit
+# veld-data (CrUX/Search Console). Gebruik dit als vroege waarschuwing, niet als waarheid.
+name: Quality monitor
+
+on:
+  schedule:
+    - cron: "0 7 * * 1" # elke maandag 07:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  lighthouse:
+    name: Lighthouse CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            ${{ secrets.STAGING_URL }}
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          # Drempels (waarschuwen, niet hard falen). Verlaag/verhoog per project.
+          # Pas dit pad-loos toe; voor strengere gates: voeg een lighthouserc.json toe.

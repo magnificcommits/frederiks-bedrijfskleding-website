@@ -1,0 +1,26 @@
+# Kopieer naar .github/workflows/loadtest-smoke.yml
+# Lichte k6-rooktest tegen STAGING (nooit productie). Handmatig + wekelijks.
+# Voor een ZWARE loadtest: draai k6 lokaal/Grafana Cloud — zie LOADTEST_GUIDE.md.
+name: Loadtest smoke
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 8 * * 1" # elke maandag 08:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  k6:
+    name: k6 smoke (staging)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - name: Run k6 smoke test
+        uses: grafana/run-k6-action@v1
+        env:
+          TARGET_URL: ${{ secrets.STAGING_URL }}
+        with:
+          path: ./loadtests/smoke.js

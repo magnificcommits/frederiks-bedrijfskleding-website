@@ -1,0 +1,42 @@
+# Kopieer dit bestand naar .github/dependabot.yml in je project.
+# Wekelijkse dependency-updates + security-PR's. Pas exclude/ignore aan per project.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      security-updates:
+        applies-to: security-updates
+        patterns: ["*"]
+        # Houd framework-breaking majors buiten de security-groep, anders
+        # smokkelt Dependabot ze mee onder "security" en breekt de build.
+        exclude-patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "sanity"
+          - "vite"
+          - "typescript"
+          - "tailwindcss"
+      minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

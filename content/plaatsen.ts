@@ -46,15 +46,16 @@ export const plaatsen: Plaats[] = [
     intro:
       'Doetinchem is de grootste stad van de Achterhoek en een belangrijke thuisbasis voor onze klanten in bouw, techniek, transport en horeca.',
     body: [
-      'Rond Doetinchem zit veel bedrijvigheid, van de terreinen bij Wijnbergen en Verheulsweide tot het A18 Bedrijvenpark. Daar werken bedrijven die hun team herkenbaar en veilig willen kleden, zonder zelf een webshop uit te hoeven pluizen. Wij komen langs, passen en stellen samen een pakket samen.',
-      'Voor werk langs de weg of op de bouw leveren we hi-vis in de juiste klasse en S3-schoenen. Voor de buitendienst en het klantcontact een verzorgde, representatieve lijn. En voor de horeca in het centrum koksbuizen, schorten en bediening die de hele dienst netjes blijven.',
-      'We bedienen ook de kernen rondom, zoals Gaanderen, Wehl en Doetinchem-Wijnbergen. Het logo brengen we in eigen huis aan, en je kledinglijn leggen we vast zodat nabestellen voor een nieuwe kracht een belletje is.',
+      'Doetinchem trekt de bedrijvigheid van een halve regio aan. Verheulsweide is met zo’n 165 hectare het grootste bedrijventerrein van de Achterhoek, met een bonte mix van productiehallen, autodemontage, perifere detailhandel en kantoren. Op Wijnbergen, ingeklemd tussen de A18 en de Oude IJssel, zitten ruim tweehonderd bedrijven, van kleine specialisten tot internationale namen. En aan de rand bij de afslag Wehl ligt het A18 Bedrijvenpark, waar ook zwaardere industrie mag. Op al die terreinen lopen mensen rond die hun team herkenbaar en veilig willen kleden zonder zelf een webshop uit te pluizen.',
+      'Voor werk langs de weg of op de bouw leveren we hi-vis in de juiste klasse en S3-schoenen. Voor de buitendienst en het klantcontact een verzorgde, representatieve lijn. En voor de horeca in de binnenstad en rond de Simonsplein koksbuizen, schorten en bediening die de hele dienst netjes blijven. We komen langs, passen en stellen samen een pakket samen dat per functie klopt.',
+      'We bedienen ook de kernen rondom, zoals Gaanderen, Wehl en Langerak. Het logo brengen we in eigen huis aan, en je kledinglijn leggen we vast zodat nabestellen voor een nieuwe kracht een belletje is. Doetinchem ligt op een kwartier van onze showroom, dus we zijn snel bij je om te passen of een set af te leveren.',
     ],
-    gebieden: ['Wijnbergen', 'Verheulsweide', 'A18 Bedrijvenpark', 'Gaanderen', 'Wehl'],
+    gebieden: ['Wijnbergen', 'Verheulsweide', 'A18 Bedrijvenpark', 'Gaanderen', 'Wehl', 'Langerak'],
     populair: ['bouw-en-infra', 'industrie-en-transport', 'horeca-en-hospitality'],
     faq: [
       { q: 'Leveren jullie ook hi-vis voor wegwerkzaamheden in Doetinchem?', a: 'Ja. Voor werk langs de weg leveren we zichtbaarheidskleding volgens EN ISO 20471 in de juiste klasse. We bepalen samen welke klasse bij je werk hoort.' },
       { q: 'Hoe snel kunnen jullie in Doetinchem leveren?', a: 'Doetinchem ligt op ongeveer een kwartier van onze showroom, dus we zijn snel bij je om te passen. Ligt je kledinglijn vast, dan regelen we nabestellingen meestal binnen een paar werkdagen.' },
+      { q: 'Werken jullie ook voor bedrijven op Wijnbergen en Verheulsweide?', a: 'Ja, veel van onze klanten zitten op die terreinen. We komen langs op de zaak om te passen en stellen per functie een lijn samen, van magazijn tot buitendienst.' },
     ],
     afstand: 'Ongeveer 15 minuten vanaf Hengelo',
   },
@@ -67,9 +68,9 @@ export const plaatsen: Plaats[] = [
     intro:
       'Voor bedrijven in Zutphen en omgeving leveren we werkkleding met persoonlijke aandacht. Eén aanspreekpunt, advies op maat en snelle nalevering.',
     body: [
-      'Zutphen combineert een sterke maakindustrie op De Mars met een levendige Hanzestad vol horeca en winkels. Die twee werelden vragen elk om andere kleding: stevig en veilig waar het moet, verzorgd en representatief waar dat telt. Wij stemmen het per bedrijf af.',
-      'We komen naar je toe om te passen, ook in grotere maten, en kijken samen welke merken en modellen bij je werk passen. Het logo brengen we slijtvast aan, bedrukt of geborduurd, zodat je team er maanden later nog net zo verzorgd uitziet.',
-      'Naast Zutphen zelf bedienen we de omliggende kernen zoals Warnsveld en Eefde. Van industrie en bouw tot zorg en horeca: we kleden uiteenlopende bedrijven en houden je lijn consistent.',
+      'Zutphen heeft twee gezichten. Op industrieterrein De Mars, tussen de IJssel en het spoor, zit een stevige maakindustrie en logistiek die om robuuste kleding vraagt. En in de oude Hanzestad daarbinnen vind je een binnenstad vol horeca, winkels en zorg, waar het juist om uitstraling draait. Die twee werelden vragen elk om andere kleding: stevig en veilig waar het moet, verzorgd en representatief waar dat telt. Wij stemmen het per bedrijf af.',
+      'We komen naar je toe om te passen, ook in grotere maten, en kijken samen welke merken en modellen bij je werk passen. Voor de metaal en machinebouw op De Mars leveren we slijtvaste werkbroeken, jassen en de juiste veiligheidsschoenen. Het logo brengen we slijtvast aan, bedrukt of geborduurd, zodat je team er maanden later nog net zo verzorgd uitziet.',
+      'Naast Zutphen zelf bedienen we de omliggende kernen zoals Warnsveld en Eefde. Van industrie en bouw tot zorg en horeca: we kleden uiteenlopende bedrijven en houden je lijn consistent. Zutphen ligt op een klein half uur, dus persoonlijk langskomen blijft gewoon mogelijk.',
     ],
     gebieden: ['Industrieterrein De Mars', 'Binnenstad', 'Warnsveld', 'Eefde', 'Revelhorst'],
     populair: ['industrie-en-transport', 'bouw-en-infra', 'horeca-en-hospitality'],
@@ -193,15 +194,16 @@ export const plaatsen: Plaats[] = [
     intro:
       'Voor de Oost-Achterhoek rond Lichtenvoorde leveren we werkkleding voor bouw, techniek, agri en horeca, inclusief bedrukken in eigen huis.',
     body: [
-      'Lichtenvoorde heeft een actieve ondernemersgemeenschap en veel maakbedrijven, met bedrijvigheid op De Kamp. We kiezen kleding die lang meegaat en comfortabel blijft over een hele werkdag, met de veiligheidsnormen die bij het werk horen.',
-      'Het logo brengen we slijtvast aan en we leggen de kledinglijn per bedrijf vast. Een nieuwe medewerker of nabestelling is daarna binnen een paar dagen geregeld, zonder gedoe.',
-      'We werken in heel Lichtenvoorde en de kernen eromheen, zoals Vragender, Lievelde en Harreveld. Van bouw en techniek tot de horeca en het bloeiende verenigingsleven.',
+      'Lichtenvoorde heeft een actieve ondernemersgemeenschap en een opvallend brede maakindustrie voor zijn omvang. Aan de oostkant ligt het regionale bedrijventerrein De Kamp, met ruim vijftig bedrijven die van productie tot opslag van alles doen. We kiezen kleding die lang meegaat en comfortabel blijft over een hele werkdag, met de veiligheidsnormen die bij het werk horen.',
+      'Het logo brengen we slijtvast aan en we leggen de kledinglijn per bedrijf vast. Een nieuwe medewerker of nabestelling is daarna binnen een paar dagen geregeld, zonder gedoe. Voor bouw en techniek leveren we werkbroeken, jassen en hi-vis, voor de agrarische bedrijven eromheen weerbestendige overalls en laarzen.',
+      'Lichtenvoorde staat ook bekend om zijn bloemencorso en een bruisend verenigingsleven. Naast bedrijfskleding verzorgen we daarom sport- en promotiekleding voor clubs, teams en evenementen. We werken in heel Lichtenvoorde en de kernen eromheen, zoals Vragender, Lievelde en Harreveld.',
     ],
     gebieden: ['Bedrijventerrein De Kamp', 'Centrum', 'Vragender', 'Lievelde', 'Harreveld'],
     populair: ['bouw-en-infra', 'agri-en-milieu', 'sport-en-promotie'],
     faq: [
       { q: 'Leveren jullie ook sport- en promotiekleding in Lichtenvoorde?', a: 'Ja. Naast bedrijfskleding verzorgen we sport- en promotiekleding voor clubs, teams en evenementen, bedrukt of geborduurd met logo of sponsor.' },
       { q: 'Hoe snel leveren jullie na een akkoord?', a: 'Zodra je lijn bij ons vastligt, regelen we nabestellingen meestal binnen een paar werkdagen, inclusief logo.' },
+      { q: 'Werken jullie ook voor bedrijven op De Kamp?', a: 'Zeker. Voor de productie- en handelsbedrijven op De Kamp leveren we functionele werkkleding, hi-vis en veiligheidsschoenen, en komen we langs om te passen.' },
     ],
     afstand: 'Ongeveer 25 minuten vanaf Hengelo',
   },
@@ -214,9 +216,9 @@ export const plaatsen: Plaats[] = [
     intro:
       'In Groenlo en omgeving leveren we werkkleding met persoonlijke aandacht, van de bouw tot de horeca en de maakindustrie.',
     body: [
-      'Groenlo is een vestingstad met een sterke industrie en een levendig verenigingsleven. Op het regionale bedrijvenpark Laarberg en daarbuiten zit veel maakindustrie en logistiek, die om functionele, slijtvaste kleding vraagt.',
-      'Naast bedrijfskleding verzorgen we daarom ook sport- en promotiekleding voor de vele clubs en evenementen, bedrukt of geborduurd met logo of sponsor. Voor bedrijven stellen we een vaste lijn samen en passen we op locatie.',
-      'Het bedrukken doen we zelf, dus je ziet vooraf het resultaat en we schakelen snel. We werken in heel Groenlo en de kernen eromheen, zoals Beltrum en Zwolle (Gld).',
+      'Groenlo is een vestingstad met een sterke industrie en een levendig verenigingsleven. Ten noorden van de stad, langs de N18, ligt het regionale bedrijvenpark Laarberg, opgezet voor grotere en zwaardere industrie die in een gewone kern niet past. Er zit onder meer een bio-based transitiepark waar bedrijven met reststromen en duurzame productie werken. Die maakindustrie en logistiek vraagt om functionele, slijtvaste kleding.',
+      'Naast bedrijfskleding verzorgen we ook sport- en promotiekleding voor de vele clubs en evenementen, bedrukt of geborduurd met logo of sponsor. Denk aan de Zwarte Cross in de buurt en het bruisende verenigingsleven in en rond de vesting. Voor bedrijven stellen we een vaste lijn samen en passen we op locatie.',
+      'Het bedrukken doen we zelf, dus je ziet vooraf het resultaat en we schakelen snel. We werken in heel Groenlo en de kernen eromheen, zoals Beltrum en Zwolle (Gld). Voor de brouwerij- en horecabedrijven in de vesting leveren we daarnaast verzorgde bedienings- en keukenkleding.',
     ],
     gebieden: ['Bedrijvenpark Laarberg', 'Centrum en vesting', 'Beltrum', 'Zwolle (Gld)'],
     populair: ['industrie-en-transport', 'sport-en-promotie', 'horeca-en-hospitality'],
@@ -235,9 +237,9 @@ export const plaatsen: Plaats[] = [
     intro:
       'Ook in Aalten en omgeving zijn we actief. We komen langs, passen op locatie en stellen een kledingpakket samen dat past bij je branche.',
     body: [
-      'Aalten heeft een rijke textielhistorie en veel familiebedrijven in de bouw, techniek en agrarische sector. Die waarderen een leverancier die meedenkt en ze kent, niet een anonieme webshop. Daar zijn we op gebouwd.',
-      'We leveren stevige, veilige werkkleding en schoenen in de juiste normklasse, brengen het logo in eigen huis aan en leggen de maten vast voor een snelle nalevering. Passen doen we bij je op de zaak.',
-      'We bedienen heel Aalten en de kernen rondom, zoals Bredevoort, Dinxperlo en IJzerlo. Van een akkerbouwer tot een installatiebedrijf, we stemmen de kleding af op het werk.',
+      'Aalten heeft een rijke textielhistorie. Op bedrijventerrein ’t Broek staat onder meer een weverij voor technisch textiel, tent- en vlaggendoek, en eromheen zit een dichte concentratie familiebedrijven in de bouw, techniek en agrarische sector. Die waarderen een leverancier die meedenkt en ze kent, niet een anonieme webshop. Daar zijn we op gebouwd.',
+      'We leveren stevige, veilige werkkleding en schoenen in de juiste normklasse, brengen het logo in eigen huis aan en leggen de maten vast voor een snelle nalevering. Passen doen we bij je op de zaak. Voor de maakbedrijven op ’t Broek slijtvaste broeken en jassen, voor de akkerbouwers en loonbedrijven eromheen weerbestendige kleding en laarzen.',
+      'We bedienen heel Aalten en de kernen rondom, zoals Bredevoort, Dinxperlo en IJzerlo. Dinxperlo ligt tegen de Duitse grens, waar veel bedrijven aan beide kanten werken. Van een akkerbouwer tot een installatiebedrijf, we stemmen de kleding af op het werk.',
     ],
     gebieden: ["Bedrijventerrein 't Broek", 'Centrum', 'Bredevoort', 'Dinxperlo', 'IJzerlo'],
     populair: ['bouw-en-infra', 'agri-en-milieu', 'industrie-en-transport'],
@@ -256,11 +258,11 @@ export const plaatsen: Plaats[] = [
     intro:
       'Ook in Winterswijk en omgeving zijn we actief. We stellen samen een kledinglijn samen die past bij je branche en uitstraling, en we komen langs om te passen.',
     body: [
-      'Winterswijk ligt in de oosthoek van de Achterhoek en heeft een eigen, sterke economie met industrie, bouw, zorg en toerisme. Op de bedrijventerreinen rond de stad zit veel maakindustrie, terwijl het centrum bruist van horeca en winkels.',
-      'Voor al die sectoren leveren we passende kleding, van werkbroek en hi-vis tot tuniek, koksbuis en een verzorgde horeca-outfit. We kiezen merken en modellen die bij het werk passen en gaan voor kwaliteit die lang meegaat.',
-      'Ondanks de afstand houden we het persoonlijk: we komen langs om te passen en zorgen dat nabestellingen snel je kant op komen. We werken ook in de kernen rondom, zoals Meddo, Kotten en Henxel.',
+      'Winterswijk ligt in de oosthoek van de Achterhoek, tegen de Duitse grens, en heeft een eigen, sterke economie met industrie, bouw, zorg en toerisme. De maakindustrie zit vooral op de oudere terreinen rond de Misterweg aan de westkant, terwijl het centrum bruist van horeca en winkels. Het Streekziekenhuis Koningin Beatrix is een grote werkgever in de zorg. Voor al die sectoren leveren we passende kleding.',
+      'Van werkbroek en hi-vis tot tuniek, koksbuis en een verzorgde horeca-outfit: we kiezen merken en modellen die bij het werk passen en gaan voor kwaliteit die lang meegaat. Voor de zorg en de salons in Winterswijk leveren we comfortabele, makkelijk wasbare tunieken en jassen. Winterswijk is ook een toeristische trekpleister, dus de horeca en de winkels willen er verzorgd uitzien.',
+      'Ondanks de afstand houden we het persoonlijk: we komen langs om te passen en zorgen dat nabestellingen snel je kant op komen. We werken ook in de kernen rondom, zoals Meddo, Kotten, Henxel en Miste.',
     ],
-    gebieden: ['Bedrijventerrein Misterweg', 'Arrisveld', 'Centrum', 'Meddo', 'Kotten'],
+    gebieden: ['Bedrijventerrein Misterweg', 'Centrum', 'Meddo', 'Kotten', 'Henxel'],
     populair: ['industrie-en-transport', 'zorg-en-beauty', 'horeca-en-hospitality'],
     faq: [
       { q: 'Leveren jullie ook zorgkleding in Winterswijk?', a: 'Ja. Voor zorg, salons en beauty leveren we comfortabele, makkelijk wasbare tunieken, polo’s en jassen die er verzorgd uitzien.' },
@@ -371,14 +373,16 @@ export const plaatsen: Plaats[] = [
       'Bedrijfskleding en werkkleding in Varsseveld met persoonlijk advies. Passen op locatie en logo in eigen huis.',
     intro: 'Varsseveld in de Oude IJsselstreek bedienen we met persoonlijk advies en snelle nalevering.',
     body: [
-      'Varsseveld kent veel maakindustrie en logistiek op de bedrijventerreinen langs de A18, plus bouw en agrarisch werk. We leveren functionele, slijtvaste kleding en hi-vis in de juiste klasse.',
-      'Passen doen we bij je op de zaak, het logo brengen we in eigen huis aan. We werken ook in Westendorp en Heelweg.',
+      'Varsseveld ligt aan het begin van de A18 en heeft daardoor een snelle verbinding met de rest van het land en het Duitse achterland. Op bedrijventerrein Hofskamp Oost, met inmiddels meer dan honderd bedrijven, zit een opvallend sterke cluster innovatieve maakindustrie. Smart industry groeit hier hard. Die bedrijven vragen om functionele, slijtvaste kleding en hi-vis in de juiste klasse.',
+      'Passen doen we bij je op de zaak, het logo brengen we in eigen huis aan en je kledinglijn leggen we vast. Voor de machinebouw en metaal de stevige broeken en jassen, voor de logistiek en het terreinwerk de juiste zichtbaarheidskleding. Een nieuwe medewerker is daarna binnen een paar werkdagen aangekleed.',
+      'We werken ook in de kernen eromheen, zoals Westendorp en Heelweg. Naast de industrie kennen we hier ook bouw- en agrarische bedrijven, en voor elk daarvan stellen we een lijn samen die bij het werk past.',
     ],
-    gebieden: ['Bedrijventerrein langs de A18', 'Centrum', 'Westendorp', 'Heelweg'],
+    gebieden: ['Bedrijventerrein Hofskamp Oost', 'Centrum', 'Westendorp', 'Heelweg'],
     populair: ['industrie-en-transport', 'bouw-en-infra', 'agri-en-milieu'],
     faq: [
       { q: 'Leveren jullie hi-vis voor werk langs de A18?', a: 'Ja, we leveren zichtbaarheidskleding volgens EN ISO 20471 in de juiste klasse voor werk langs de weg.' },
       { q: 'Komen jullie naar Varsseveld toe?', a: 'Ja, we komen langs om te passen en zorgen voor een snelle levering.' },
+      { q: 'Werken jullie ook voor de maakindustrie op Hofskamp Oost?', a: 'Zeker. Voor de machinebouw, metaal en logistiek op Hofskamp Oost leveren we slijtvaste werkkleding, hi-vis en veiligheidsschoenen, en komen we langs om te passen.' },
     ],
     afstand: 'Ongeveer 25 minuten vanaf Hengelo',
   },
@@ -409,10 +413,11 @@ export const plaatsen: Plaats[] = [
       'Bedrijfskleding en werkkleding in Ulft met persoonlijk advies. Passen op locatie en eigen bedrukkerij.',
     intro: 'Ulft in de Oude IJsselstreek heeft een sterke industriële traditie. Voor die bedrijven leveren we functionele werkkleding met persoonlijke aandacht.',
     body: [
-      'Ulft staat bekend om zijn ijzer- en maakindustrie, met het DRU-erfgoed als symbool. Op de bedrijventerreinen zit veel industrie en techniek die om stevige, veilige kleding vraagt.',
-      'We leveren werkkleding, hi-vis en veiligheidsschoenen in de juiste normklasse, brengen het logo in eigen huis aan en komen langs om te passen. Ook in Gendringen en Etten zijn we actief.',
+      'Ulft is meer dan twee eeuwen het hart van de Nederlandse ijzerindustrie geweest. De ijzergieterij DRU (Diepenbrock en Reigers Ulft) leverde kachels, pannen en badkuipen aan klanten over de hele wereld. Het oude fabrieksterrein is nu het DRU Industriepark, met daarin een innovatiecentrum en cultuurfabriek. Die maaktraditie leeft door: aan de rand van Ulft, op de bedrijventerreinen De Rieze, zitten grotere bedrijven in metaal, techniek en productie.',
+      'Voor die bedrijven leveren we werkkleding, hi-vis en veiligheidsschoenen in de juiste normklasse, brengen het logo in eigen huis aan en komen langs om te passen. Stevige broeken en jassen voor de werkvloer, de juiste schoenen voor wie de hele dag staat en tilt. Een nieuwe kracht regelen we snel, omdat je lijn bij ons vastligt.',
+      'Ook in Gendringen, Etten en Silvolde zijn we actief. De hele Oude IJsselstreek heeft die mix van maakindustrie en familiebedrijven, en wij stemmen de kleding af op wat het werk vraagt.',
     ],
-    gebieden: ['Bedrijventerrein De Rieze', 'Centrum', 'Gendringen', 'Etten'],
+    gebieden: ['Bedrijventerrein De Rieze', 'DRU Industriepark', 'Centrum', 'Gendringen', 'Etten'],
     populair: ['industrie-en-transport', 'bouw-en-infra', 'representatief'],
     faq: [
       { q: 'Werken jullie voor de industrie in Ulft?', a: 'Ja. Voor de maakindustrie en techniek leveren we functionele, slijtvaste werkkleding en de juiste veiligheidsschoenen.' },

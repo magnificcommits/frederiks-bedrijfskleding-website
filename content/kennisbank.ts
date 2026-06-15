@@ -370,6 +370,165 @@ export const artikelen: Artikel[] = [
     ],
     relatedBranche: 'representatief',
   },
+  {
+    slug: 'industrieel-wassen-werkkleding',
+    title: 'Industrieel wassen van werkkleding: wat betekent dat voor de norm?',
+    category: 'Onderhoud',
+    metaTitle: 'Industrieel wassen werkkleding (EN ISO 15797)',
+    metaDescription:
+      'Gaat je werkkleding naar een industriële wasserij? EN ISO 15797 test of kleding daartegen kan. We leggen uit wat het PRO-label betekent en wanneer je hierop moet letten.',
+    date: '2026-06-16',
+    intro:
+      'Laat je werkkleding door een wasserij reinigen, dan moet de stof tegen hoge temperaturen, sterke wasmiddelen en machinaal drogen kunnen. EN ISO 15797 is de testmethode die laat zien hoe goed kleding daartegen bestand is. Kleding met het PRO-label is hierop getest.',
+    sections: [
+      { h: 'Waarom industrieel wassen anders is', p: [
+        'Een industriële wasserij wast heter, langer en met agressievere middelen dan een wasmachine thuis. Dat is nodig om olie, vet en hardnekkig vuil eruit te krijgen, maar gewone kleding houdt dat niet lang vol. Naden laten los, kleuren verschieten en de pasvorm verandert. Kleding die je via een wasserij of een leasecontract reinigt, moet daar bewust op gemaakt zijn.',
+      ]},
+      { h: 'Wat EN ISO 15797 doet', p: [
+        'EN ISO 15797 is een testnorm, geen eisenpakket. De norm beschrijft was- en droogprocedures, genummerd 1 tot en met 8, waarmee fabrikanten hun kleding kunnen laten beoordelen op geschiktheid voor industrieel wassen. Het zegt dus niet dat kleding "geslaagd" of "gezakt" is, maar geeft een vergelijkbare indicatie van hoe de stof, kleur en vorm zich houden.',
+        'Veel merken gebruiken hiervoor een eigen aanduiding. Mascot werkt bijvoorbeeld met een PRO-label en ProWash, dat aangeeft dat het kledingstuk volgens EN ISO 15797 getest is. Zie je zo’n label, dan weet je dat de kleding voor een wasserij geschikt is.',
+      ]},
+      { h: 'Het effect op beschermende kleding', p: [
+        'Bij hi-vis en andere beschermende kleding is dit extra belangrijk. Industrieel wassen kan de fluorescentie en de reflectie sneller laten teruglopen. Een kledingstuk dat volgens EN ISO 20471 voldoet als het nieuw is, doet dat na te veel of te harde wasbeurten niet meer. Staat er geen maximum op het etiket, dan is de kleding standaard tot vijf keer wassen getest. Check dat voordat je een wascontract afsluit.',
+      ]},
+      { h: 'Ons advies', p: [
+        'Ga je met een wasserij of een leasepartij werken, kies dan vanaf het begin kleding die voor industrieel wassen geschikt is. Dat scheelt je het verschil tussen kleding die na een half jaar versleten is en kleding die jaren meegaat. We vertellen je per model of het een industrieel-was-label heeft en wat dat voor jouw situatie betekent.',
+      ]},
+    ],
+    relatedBranche: 'industrie-en-transport',
+  },
+  {
+    slug: 'esd-antistatische-werkkleding',
+    title: 'ESD- en antistatische werkkleding: wanneer heb je het nodig?',
+    category: 'Veiligheid en normen',
+    metaTitle: 'ESD-werkkleding en EN 61340-5-1 uitgelegd',
+    metaDescription:
+      'Wanneer is ESD- of antistatische werkkleding nodig en welke norm geldt? We leggen IEC/EN 61340-5-1 uit en het verschil tussen antistatisch en ESD.',
+    date: '2026-06-17',
+    intro:
+      'ESD-kleding is nodig waar je met gevoelige elektronica werkt en statische ontlading schade kan veroorzaken. De norm die daarover gaat is IEC 61340-5-1 (in Europa als EN-versie). Let op: antistatisch en ESD zijn niet hetzelfde.',
+    sections: [
+      { h: 'Het verschil tussen antistatisch en ESD', p: [
+        'Antistatische kleding voorkomt dat zich een grote lading opbouwt, bijvoorbeeld om vonken in een explosiegevaarlijke omgeving te vermijden. ESD-kleding gaat een stap verder: die leidt statische lading gecontroleerd af zodat gevoelige elektronische onderdelen niet beschadigen. De stof bevat daarvoor geleidende vezels, vaak in een ruitpatroon ingeweven. De twee worden vaak door elkaar gehaald, maar het zijn echt verschillende toepassingen.',
+      ]},
+      { h: 'Wat EN 61340-5-1 regelt', p: [
+        'IEC 61340-5-1 heet voluit "bescherming van elektronische componenten tegen elektrostatische verschijnselen". De norm beschrijft hoe je een ESD-beheersprogramma opzet en onderhoudt. Kleding is daarin maar een onderdeel: het gaat ook om vloeren, polsbanden, werkplekken en aarding. De meest recente uitgave is IEC 61340-5-1:2024.',
+        'De norm geldt voor organisaties die werken met onderdelen die gevoelig zijn vanaf 100 volt (human body model). Denk aan elektronicaproductie, reparatie en assemblage. Een losse ESD-jas maakt je werkplek dus nog niet veilig. Het hele systeem moet kloppen.',
+      ]},
+      { h: 'Wanneer dit voor jou speelt', p: [
+        'Werk je in de elektronica, bij printplaatassemblage, in cleanrooms of bij bepaalde precisie-industrie, dan is ESD-kleding vaak verplicht gesteld door de opdrachtgever of in het kwaliteitssysteem. Buiten die omgevingen heb je het meestal niet nodig. Op veiligheidsschoenen zie je trouwens ook de letters ESD, wat aangeeft dat de schoen statische lading afvoert.',
+      ]},
+      { h: 'Hoe wij helpen', p: [
+        'We leveren ESD-gecertificeerde polo’s, jassen en schoenen die passen binnen een ESD-omgeving. Wat we niet doen, is je ESD-programma inrichten of meten, daar is een gespecialiseerde partij voor. Wel zorgen we dat de kleding die je bij ons koopt de juiste certificering heeft en aansluit bij wat je opdrachtgever vraagt.',
+      ]},
+    ],
+    relatedBranche: 'industrie-en-transport',
+  },
+  {
+    slug: 'werkkostenregeling-werkkleding',
+    title: 'Werkkleding en de werkkostenregeling: hoe houd je het onbelast?',
+    category: 'Praktisch en zakelijk',
+    metaTitle: 'Werkkleding en werkkostenregeling (WKR) uitgelegd',
+    metaDescription:
+      'Hoe houd je werkkleding onbelast onder de werkkostenregeling? De drie routes: arbeidsmiddel, logo van 70 cm2 of kleding die op de werkplek blijft.',
+    date: '2026-06-18',
+    intro:
+      'Werkkleding kun je onbelast verstrekken als die onder een gerichte vrijstelling of nihilwaardering valt. Dat lukt op drie manieren: kleding die alleen geschikt is voor het werk, kleding met een logo van minimaal 70 cm2, of kleding die aantoonbaar op de werkplek blijft. Anders gaat het ten koste van je vrije ruimte.',
+    sections: [
+      { h: 'Verstrekken, niet schenken', p: [
+        'Het begint met een onderscheid. Geef je kleding in eigendom (schenken), dan is het al snel loon. Stel je het ter beschikking (verstrekken), waarbij het in feite van het bedrijf blijft, dan kan een nihilwaardering gelden. Dat verschil bepaalt vaak of er belasting over betaald moet worden. Veel werkgevers regelen het daarom als terbeschikkingstelling.',
+      ]},
+      { h: 'De drie routes naar onbelast', p: [
+        'Route een: de kleding is uitsluitend of nagenoeg uitsluitend geschikt voor het werk, zoals een overall of een uniform. Route twee: er zit een of meer logo’s op met samen minimaal 70 vierkante centimeter per kledingstuk, gemeten met een denkbeeldige rechthoek om de uiterste punten van het logo. Route drie: de kleding blijft aantoonbaar achter op de werkplek en gaat niet mee naar huis.',
+        'Voldoe je aan een van deze routes, dan hoeft de waarde niet in de vrije ruimte van de werkkostenregeling. Dat is de ruimte waarbinnen je onbelast vergoedingen en verstrekkingen mag geven. Vul je die ruimte met werkkleding, dan houd je minder over voor andere dingen.',
+      ]},
+      { h: 'Waarom de logo-eis zo handig is', p: [
+        'De logo-route is in de praktijk de makkelijkste. Een polo of jas is op zichzelf prima privé te dragen, maar met een logo van 70 cm2 of meer telt het als werkkleding. Dat is bijvoorbeeld een borduring van ongeveer 10 bij 7 centimeter, of meerdere kleinere logo’s op borst, rug en mouw die samen aan de eis komen. Wij zorgen dat het logo groot en duidelijk genoeg is.',
+      ]},
+      { h: 'Even kort over de grens', p: [
+        'De regels rond de werkkostenregeling en de exacte percentages van de vrije ruimte veranderen geregeld. Voor de fiscale beoordeling van jouw situatie is je boekhouder of de Belastingdienst leidend. Wij regelen de kant die wij kennen: kleding met een logo dat aan de 70 cm2-eis voldoet, zodat die route in elk geval openstaat.',
+      ]},
+    ],
+    relatedBranche: 'representatief',
+  },
+  {
+    slug: 'oeko-tex-grs-keurmerken-werkkleding',
+    title: 'OEKO-TEX en GRS: wat zeggen deze keurmerken op werkkleding?',
+    category: 'Praktisch en zakelijk',
+    metaTitle: 'OEKO-TEX en GRS keurmerken werkkleding uitgelegd',
+    metaDescription:
+      'OEKO-TEX Standard 100 en het Global Recycled Standard (GRS): wat betekenen ze echt? Het verschil tussen veilig getest op stoffen en aantoonbaar gerecycled.',
+    date: '2026-06-19',
+    intro:
+      'OEKO-TEX Standard 100 zegt dat een kledingstuk getest is op schadelijke stoffen. GRS (Global Recycled Standard) zegt iets heel anders: dat het gerecyclede materiaal bevat en dat dit door de keten heen is gecontroleerd. Het ene gaat over gezondheid, het andere over recycling.',
+    sections: [
+      { h: 'OEKO-TEX Standard 100', p: [
+        'Dit keurmerk test het eindproduct op schadelijke stoffen, op alle niveaus van de productie. Een kledingstuk met OEKO-TEX Standard 100 voldoet aan grenswaarden voor stoffen die slecht voor de gezondheid kunnen zijn. Belangrijk om te weten: het is een gezondheidskeurmerk, geen duurzaamheidskeurmerk. Het zegt niets over of de kleding milieuvriendelijk of gerecycled is.',
+      ]},
+      { h: 'GRS: Global Recycled Standard', p: [
+        'GRS draait om gerecycled materiaal. Het legt vast welk percentage van een product uit gerecyclede grondstof bestaat en volgt dat door de hele productieketen, zodat de claim controleerbaar is. Daarnaast stelt GRS eisen aan milieubeheer en aan sociale omstandigheden in de fabriek. Wat GRS niet doet, is uitgebreid testen op schadelijke stoffen zoals OEKO-TEX dat wel doet.',
+      ]},
+      { h: 'Waarom je beide kunt tegenkomen', p: [
+        'De twee keurmerken vullen elkaar aan. Een kledingstuk kan zowel OEKO-TEX Standard 100 als GRS hebben: het is dan getest op schadelijke stoffen én bevat aantoonbaar gerecycled materiaal. Zie je maar een van de twee, weet dan wat het wel en niet zegt. Een "gerecycled" label zonder GRS of vergelijkbare controle is lastiger te vertrouwen.',
+      ]},
+      { h: 'Waar je in de praktijk op let', p: [
+        'Wil je voor je team duurzamere keuzes maken, kijk dan naar deze keurmerken in plaats van naar losse marketingteksten als "eco" of "groen", want die zijn niet beschermd. Vraag ons gerust welke modellen OEKO-TEX of GRS hebben. We zijn er eerlijk over: niet alles is gecertificeerd, en soms is een stevig kledingstuk dat tien jaar meegaat duurzamer dan een gerecycled stuk dat snel slijt.',
+      ]},
+    ],
+    relatedBranche: 'representatief',
+  },
+  {
+    slug: 'werkhandschoenen-en-388',
+    title: 'Werkhandschoenen kiezen: de norm EN 388 uitgelegd',
+    category: 'Veiligheid en normen',
+    metaTitle: 'Werkhandschoenen norm EN 388:2016 uitgelegd',
+    metaDescription:
+      'Wat betekenen de cijfers en letters op werkhandschoenen? We leggen EN 388:2016 uit: schuren, snijden, scheuren, perforatie en de ISO 13997-snijtest.',
+    date: '2026-06-20',
+    intro:
+      'De cijfers en letters onder het hamertje-pictogram op een werkhandschoen komen uit EN 388. Ze geven aan hoe goed de handschoen beschermt tegen schuren, snijden, scheuren en perforatie. Sinds de versie van 2016 is er een betrouwbaardere snijtest bijgekomen, aangeduid met een letter A tot F.',
+    sections: [
+      { h: 'Wat de cijfers betekenen', p: [
+        'Onder het pictogram staan eerst vier cijfers. Het eerste is de schuurweerstand (1 tot 4), het tweede de snijweerstand volgens de oude coup-test (1 tot 5), het derde de scheurweerstand (1 tot 4) en het vierde de perforatieweerstand (1 tot 4). Hoe hoger het cijfer, hoe beter de bescherming op dat punt. Een X betekent dat er niet op getest is.',
+      ]},
+      { h: 'De letters: snijtest en impact', p: [
+        'Na de cijfers kan een letter staan voor de snijweerstand volgens de TDM-test (EN ISO 13997). Die loopt van A tot F, waarbij F het hoogst is. Deze test is in 2016 toegevoegd omdat de oude coup-test onbetrouwbaar kon zijn: het mesje werd bot tijdens het testen van sterke materialen, wat de uitkomst vertekende. Staat er daarna nog een P, dan is de handschoen ook getest op impactbescherming op de knokkels.',
+      ]},
+      { h: 'Welke handschoen bij welk werk', p: [
+        'Voor algemeen montagewerk volstaat vaak een handschoen met een redelijke schuur- en snijweerstand. Werk je met plaatmateriaal, glas of scherpe randen, dan let je op een hoge snijweerstand, dus een hoge letter in de ISO 13997-test. In de bouw bij sloop of zwaar werk telt impactbescherming mee. Een handschoen die te zwaar is voor het werk zit onhandig en wordt minder gedragen, dus overdrijf het niet.',
+      ]},
+      { h: 'Pasvorm en gebruik', p: [
+        'Een handschoen die niet past, beschermt minder en wordt sneller uitgetrokken. Let op de maat en op grip, zeker bij nat of vettig werk. EN 388 zegt iets over de mechanische bescherming, maar niet over chemicaliën of warmte, daar gelden weer andere normen voor. We helpen je de juiste handschoen bij je werk te kiezen.',
+      ]},
+    ],
+    relatedBranche: 'bouw-en-infra',
+  },
+  {
+    slug: 'overgang-en-iso-20345-2022-veiligheidsschoenen',
+    title: 'EN ISO 20345:2022: wat verandert er aan veiligheidsschoenen?',
+    category: 'Veiligheid en normen',
+    metaTitle: 'EN ISO 20345:2022: oude vs nieuwe schoennorm',
+    metaDescription:
+      'De norm voor veiligheidsschoenen is vernieuwd. Wat verandert er, wat betekenen de nieuwe codes en tot wanneer mag de oude norm nog gelden? Een praktische uitleg.',
+    date: '2026-06-21',
+    intro:
+      'De norm EN ISO 20345:2022 verving de versie uit 2011. De grootste wijzigingen: nieuwe klassen S6 en S7 voor waterdichte schoenen, een preciezere aanduiding van de doorstapbescherming (P, PL, PS) en een strengere antisliptest. Oude en nieuwe norm mogen tijdens een overgangsperiode naast elkaar bestaan.',
+    sections: [
+      { h: 'Nieuwe klassen S6 en S7', p: [
+        'De bekende klassen S1, S2 en S3 blijven bestaan. Daar zijn S6 en S7 bijgekomen voor volledig waterdichte schoenen. S6 is in feite een S2 met een waterdichte uitvoering, S7 is een S3 met diezelfde waterdichtheid. Deze schoenen zijn standaard voorzien van een membraan dat de schoen minimaal een bepaalde tijd waterdicht houdt. Voor wie de hele dag in nat werk staat, is dat een duidelijke aanvulling.',
+      ]},
+      { h: 'Preciezere doorstapbescherming', p: [
+        'In de oude norm zag je een losse P voor doorstapbescherming. Nu wordt aangegeven waar die van gemaakt is. P staat voor een metalen tussenzool, getest tegen een pen van 4,5 mm. PL en PS staan voor metaalvrije, textiele tussenzolen: PL is getest met een pen van 4,5 mm, PS met een dunnere pen van 3 mm. Metaalvrije zolen zijn lichter en geleiden geen kou, maar bescherming tegen heel dunne spijkers vraagt aandacht.',
+      ]},
+      { h: 'Andere wijzigingen', p: [
+        'De antisliptest is aangepast en strenger geworden, en de eisen rond grip op laddersporten zijn toegevoegd. Voor de meeste gebruikers verandert er in de praktijk weinig aan hoe een schoen aanvoelt, maar de markering op de schoen is preciezer geworden.',
+      ]},
+      { h: 'Oude en nieuwe norm naast elkaar', p: [
+        'Er geldt een overgangsperiode tot eind 2027, waarin schoenen volgens zowel de oude als de nieuwe norm verkocht mogen worden. Zie je dus nog een S3 zonder de nieuwe codes, dan is dat gewoon goed gekeurd. Twijfel je wat de markering op een specifieke schoen betekent voor jouw werk, dan leggen we het per model uit. Zie ook ons artikel over het kiezen van de juiste veiligheidsklasse.',
+      ]},
+    ],
+    relatedBranche: 'bouw-en-infra',
+  },
 ];
 
 export const artikelenBySlug = Object.fromEntries(artikelen.map((a) => [a.slug, a]));

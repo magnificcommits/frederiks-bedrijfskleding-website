@@ -45,6 +45,52 @@ export function positiesVoor(type: string): readonly { id: string; label: string
   return type === 'werkbroek' ? broekposities : logoposities;
 }
 
+/**
+ * Voorbeeldpakketten per branche. Sleutel = de navLabel van de branche.
+ * kleur = index in `kleuren`, positie = id uit logoposities of broekposities.
+ * Bedoeld als startpunt: de bezoeker kan daarna aanpassen, toevoegen of weghalen.
+ */
+export const starterpakketten: Record<string, { type: string; kleur: number; positie: string; aantal: string }[]> = {
+  'Bouw & infra': [
+    { type: 'softshell', kleur: 1, positie: 'rug', aantal: '5' },
+    { type: 'sweater', kleur: 0, positie: 'borst-links', aantal: '10' },
+    { type: 'werkbroek', kleur: 1, positie: 'dijbeen-rechts', aantal: '10' },
+    { type: 'tshirt', kleur: 6, positie: 'borst-links', aantal: '15' },
+  ],
+  'Industrie & transport': [
+    { type: 'softshell', kleur: 2, positie: 'rug', aantal: '8' },
+    { type: 'polo', kleur: 1, positie: 'borst-links', aantal: '15' },
+    { type: 'werkbroek', kleur: 0, positie: 'dijbeen-rechts', aantal: '12' },
+    { type: 'bodywarmer', kleur: 7, positie: 'borst-rechts', aantal: '8' },
+  ],
+  'Horeca & hospitality': [
+    { type: 'polo', kleur: 0, positie: 'borst-links', aantal: '12' },
+    { type: 'sweater', kleur: 2, positie: 'borst-links', aantal: '6' },
+    { type: 'tshirt', kleur: 4, positie: 'borst-links', aantal: '10' },
+  ],
+  'Zorg & beauty': [
+    { type: 'polo', kleur: 4, positie: 'borst-links', aantal: '10' },
+    { type: 'tshirt', kleur: 3, positie: 'borst-links', aantal: '10' },
+    { type: 'softshell', kleur: 2, positie: 'borst-rechts', aantal: '4' },
+  ],
+  'Agri & milieu': [
+    { type: 'winterjas', kleur: 5, positie: 'rug', aantal: '4' },
+    { type: 'bodywarmer', kleur: 5, positie: 'borst-rechts', aantal: '6' },
+    { type: 'werkbroek', kleur: 2, positie: 'dijbeen-links', aantal: '8' },
+    { type: 'tshirt', kleur: 5, positie: 'borst-links', aantal: '12' },
+  ],
+  'Representatief': [
+    { type: 'polo', kleur: 1, positie: 'borst-links', aantal: '10' },
+    { type: 'softshell', kleur: 0, positie: 'borst-links', aantal: '10' },
+    { type: 'bodywarmer', kleur: 1, positie: 'borst-rechts', aantal: '6' },
+  ],
+  'Sport & promotie': [
+    { type: 'tshirt', kleur: 6, positie: 'borst-links', aantal: '20' },
+    { type: 'sweater', kleur: 0, positie: 'rug', aantal: '15' },
+    { type: 'polo', kleur: 1, positie: 'borst-links', aantal: '12' },
+  ],
+};
+
 /** Teamgrootte als vaste keuzes: makkelijker invullen, beter uit te lezen, kwalificeert de lead. */
 export const teamgroottes = [
   'tot 5 medewerkers',

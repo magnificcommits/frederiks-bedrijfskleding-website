@@ -1,6 +1,6 @@
 'use client';
-import { useRef, useState } from 'react';
-import { kleuren, kledingtypes, logoposities, broekposities, positiesVoor, teamgroottes } from '@/content/configurator';
+import { useEffect, useRef, useState } from 'react';
+import { kleuren, kledingtypes, logoposities, broekposities, positiesVoor, teamgroottes, starterpakketten } from '@/content/configurator';
 import { branches } from '@/content/branches';
 import { Garment } from '@/components/Garments';
 import { getHerkomst } from '@/lib/herkomst';
@@ -16,6 +16,14 @@ const totaalStappen = 4;
 const chip = 'cursor-pointer rounded-md border-2 px-4 py-2.5 text-sm font-semibold transition select-none';
 const swatch = 'h-9 w-9 rounded-full border-2 transition';
 const field = 'mt-1 w-full rounded-md border border-line bg-white px-4 py-3 text-sm text-ink-900 shadow-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+
+/** UTF-8-veilig base64 coderen en decoderen, zodat accenten en speciale tekens heel blijven. */
+function encodeState(obj: unknown): string {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+}
+function decodeState(s: string): unknown {
+  return JSON.parse(decodeURIComponent(escape(atob(s))));
+}
 
 function Preview({ type, kleur, logo, positie, techniek }: { type: string; kleur: number; logo: string | null; positie: string; techniek: string }) {
   const k = kleuren[kleur];
@@ -41,11 +49,42 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
   const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
+  const [gedeeld, setGedeeld] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const allePosities = [...logoposities, ...broekposities];
   const typeLabel = (id: string) => kledingtypes.find((t) => t.id === id)?.label ?? id;
   const posLabel = (id: string) => allePosities.find((p) => p.id === id)?.label ?? id;
+  const starter = starterpakketten[branche];
+
+  // Hydrateren uit een gedeelde link (?p=...). Kapotte param negeren we stil.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const p = params.get('p');
+      if (!p) return;
+      const data = decodeState(p) as Partial<{
+        branche: string; team: string; techniek: 'borduren' | 'bedrukken';
+        defPositie: string; items: Item[]; extras: Record<string, { on: boolean; aantal: string }>;
+      }>;
+      if (typeof data.branche === 'string') setBranche(data.branche);
+      if (typeof data.team === 'string') setTeam(data.team);
+      if (data.techniek === 'borduren' || data.techniek === 'bedrukken') setTechniek(data.techniek);
+      if (typeof data.defPositie === 'string') setDefPositie(data.defPositie);
+      if (Array.isArray(data.items)) {
+        setItems(data.items.map((i, n) => ({
+          id: Date.now() + n,
+          type: String(i.type),
+          kleur: Number(i.kleur) || 0,
+          positie: String(i.positie),
+          aantal: String(i.aantal ?? ''),
+        })));
+      }
+      if (data.extras && typeof data.extras === 'object') setExtras(data.extras);
+    } catch {
+      /* kapotte of verouderde link: gewoon leeg starten */
+    }
+  }, []);
 
   function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -70,6 +109,25 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
   }
   function removeItem(id: number) { setItems((p) => p.filter((i) => i.id !== id)); }
   function toggleExtra(id: string) { setExtras((p) => ({ ...p, [id]: { on: !p[id]?.on, aantal: p[id]?.aantal ?? '' } })); }
+
+  function vulMetStarter() {
+    if (!starter) return;
+    const basis = Date.now();
+    setItems(starter.map((s, n) => ({ id: basis + n, type: s.type, kleur: s.kleur, positie: s.positie, aantal: s.aantal })));
+    setLastAdded(null);
+  }
+
+  async function kopieerLink() {
+    const payload = { branche, team, techniek, defPositie, items, extras };
+    const url = `${window.location.origin}${window.location.pathname}?p=${encodeURIComponent(encodeState(payload))}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setGedeeld(true);
+      setTimeout(() => setGedeeld(false), 2500);
+    } catch {
+      setError('Kopiëren lukte niet. Kopieer de link handmatig uit de adresbalk.');
+    }
+  }
 
   async function submit() {
     if (!contact.name || !contact.email || !consent) { setError('Vul je naam en e-mailadres in en geef toestemming.'); return; }
@@ -113,8 +171,16 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
 
   return (
     <div className="mx-auto max-w-4xl">
+      {/* Printstijl: bij printen tonen we alleen de samenvatting en verbergen we de rest. */}
+      <style>{`@media print {
+        body * { visibility: hidden; }
+        #pakket-print, #pakket-print * { visibility: visible; }
+        #pakket-print { position: absolute; left: 0; top: 0; width: 100%; padding: 24px; }
+        .no-print { display: none !important; }
+      }`}</style>
+
       {/* Voortgang */}
-      <div className="flex items-center gap-2">
+      <div className="no-print flex items-center gap-2">
         {Array.from({ length: totaalStappen }).map((_, i) => (
           <div key={i} className="flex-1">
             <div className={`h-1.5 rounded-full ${i <= step ? 'bg-amber-500' : 'bg-line'}`} />
@@ -125,7 +191,7 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
 
       <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-soft sm:p-8">
         {step === 0 && (
-          <div>
+          <div className="no-print">
             <h3 className="text-xl font-extrabold text-ink-900">Voor wie is de kleding?</h3>
             <p className="mt-1 text-sm text-warm">Zo stemmen we de modellen en het advies af op jouw werk.</p>
             <p className="mt-5 text-sm font-semibold text-ink-800">Branche</p>
@@ -145,7 +211,7 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
         )}
 
         {step === 1 && (
-          <div className="grid gap-8 lg:grid-cols-2">
+          <div className="no-print grid gap-8 lg:grid-cols-2">
             <div>
               <h3 className="text-xl font-extrabold text-ink-900">Je logo en afwerking</h3>
               <p className="mt-1 text-sm text-warm">Upload je logo, dan zie je het zo op de kleding. Geen logo bij de hand? Sla over, je kunt het later aanleveren.</p>
@@ -176,7 +242,7 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
         )}
 
         {step === 2 && (
-          <div className="grid gap-8 lg:grid-cols-2">
+          <div className="no-print grid gap-8 lg:grid-cols-2">
             <div>
               <h3 className="text-xl font-extrabold text-ink-900">Stel je kleding samen</h3>
               <ol className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-warm">
@@ -222,6 +288,12 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
 
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Jouw pakket ({items.length})</p>
+              {starter && items.length === 0 && (
+                <button type="button" onClick={vulMetStarter} className="mt-3 w-full rounded-lg border-2 border-dashed border-amber-400 bg-amber-50 px-4 py-3 text-left text-sm font-semibold text-amber-800 transition hover:bg-amber-100">
+                  Begin met een voorbeeldpakket voor {branche}
+                  <span className="mt-0.5 block text-xs font-normal text-amber-700">Een paar veelgekozen stukken als startpunt. Je past het daarna naar wens aan.</span>
+                </button>
+              )}
               {items.length === 0 && (
                 <div className="mt-3 rounded-lg border border-dashed border-line bg-mist p-4 text-sm text-warm">
                   Nog leeg. Stel links een kledingstuk samen en klik op <span className="font-semibold text-ink-700">Voeg toe aan je pakket</span>. Je kunt zoveel verschillende stukken toevoegen als je wilt.
@@ -258,20 +330,26 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
 
         {step === 3 && (
           <div className="grid gap-8 lg:grid-cols-2">
-            <div className="rounded-2xl bg-ink-900 p-6 text-white">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-400">Jouw pakket</p>
-              <ul className="mt-4 space-y-1 text-sm text-ink-100">
-                <li><span className="text-ink-300">Branche:</span> {branche || 'niet opgegeven'}</li>
-                <li><span className="text-ink-300">Team:</span> {team || 'niet opgegeven'}</li>
-                <li><span className="text-ink-300">Logo:</span> {logo ? `aangeleverd, ${techniek}` : 'volgt later'}</li>
+            <div id="pakket-print" className="rounded-2xl bg-ink-900 p-6 text-white print:bg-white print:text-ink-900">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-400 print:text-amber-700">Jouw pakket</p>
+              <ul className="mt-4 space-y-1 text-sm text-ink-100 print:text-ink-800">
+                <li><span className="text-ink-300 print:text-warm">Branche:</span> {branche || 'niet opgegeven'}</li>
+                <li><span className="text-ink-300 print:text-warm">Team:</span> {team || 'niet opgegeven'}</li>
+                <li><span className="text-ink-300 print:text-warm">Logo:</span> {logo ? `aangeleverd, ${techniek}` : 'volgt later'}</li>
               </ul>
-              <p className="mt-4 text-xs font-bold uppercase tracking-wide text-ink-300">Kledingstukken</p>
-              <ul className="mt-2 space-y-1 text-sm text-ink-100">
-                {items.length ? items.map((i) => <li key={i.id}>{typeLabel(i.type)}, {kleuren[i.kleur].name}{i.aantal ? `, ${i.aantal}x` : ''}</li>) : <li className="text-ink-400">Geen kledingstukken gekozen</li>}
+              <p className="mt-4 text-xs font-bold uppercase tracking-wide text-ink-300 print:text-warm">Kledingstukken</p>
+              <ul className="mt-2 space-y-1 text-sm text-ink-100 print:text-ink-800">
+                {items.length ? items.map((i) => <li key={i.id}>{typeLabel(i.type)}, {kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}{i.aantal ? `, ${i.aantal}x` : ''}</li>) : <li className="text-ink-400">Geen kledingstukken gekozen</li>}
                 {extrasOpties.filter((e) => extras[e.id]?.on).map((e) => <li key={e.id}>{e.label}{extras[e.id].aantal ? `, ${extras[e.id].aantal}x` : ''}</li>)}
               </ul>
+              <div className="mt-5 hidden border-t border-ink-700 pt-3 text-xs text-warm print:block">
+                <p>Frederiks Bedrijfskleding. Samenvatting van je samengestelde pakket.</p>
+                {(contact.name || contact.company || contact.email || contact.phone) && (
+                  <p className="mt-1">Contact: {[contact.name, contact.company, contact.email, contact.phone].filter(Boolean).join(' · ')}</p>
+                )}
+              </div>
             </div>
-            <div className="rounded-2xl border-2 border-amber-500 bg-white p-6 shadow-card">
+            <div className="no-print rounded-2xl border-2 border-amber-500 bg-white p-6 shadow-card">
               <h3 className="text-lg font-extrabold text-ink-900">Vraag je pakket als offerte aan</h3>
               <p className="mt-1 text-sm text-warm">We bellen je binnen een werkdag terug en denken vrijblijvend mee.</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -286,13 +364,18 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
               </label>
               {error && <p className="mt-3 text-sm font-medium text-amber-700" role="alert">{error}</p>}
               <button type="button" onClick={submit} disabled={status === 'sending'} className="btn-primary mt-4 w-full">{status === 'sending' ? 'Versturen' : 'Verstuur mijn pakket'}</button>
+              <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
+                <button type="button" onClick={kopieerLink} className="btn-outline px-4 py-2 text-[13px]">{gedeeld ? 'Gekopieerd' : 'Kopieer deelbare link'}</button>
+                <button type="button" onClick={() => window.print()} className="btn-outline px-4 py-2 text-[13px]">Download samenvatting (PDF)</button>
+              </div>
+              <p className="mt-2 text-xs text-warm">Bewaar je samenstelling of stuur de link naar een collega. De PDF maak je via je printervenster (kies daar &ldquo;Opslaan als PDF&rdquo;).</p>
             </div>
           </div>
         )}
 
-        {error && step !== 3 && <p className="mt-4 text-sm font-medium text-amber-700" role="alert">{error}</p>}
+        {error && step !== 3 && <p className="no-print mt-4 text-sm font-medium text-amber-700" role="alert">{error}</p>}
 
-        <div className="mt-8 flex items-center justify-between gap-3 border-t border-line pt-5">
+        <div className="no-print mt-8 flex items-center justify-between gap-3 border-t border-line pt-5">
           <button type="button" onClick={back} className={`text-sm font-semibold text-warm hover:text-ink-800 ${step === 0 ? 'invisible' : ''}`}>Terug</button>
           {step < totaalStappen - 1 && <button type="button" onClick={next} className="btn-primary">Volgende</button>}
         </div>

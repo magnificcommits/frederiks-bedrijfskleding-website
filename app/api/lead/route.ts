@@ -4,6 +4,7 @@ import { sendEmail, escapeHtml } from '@/lib/email';
 import { env } from '@/lib/env';
 import { rateLimit, clientIp } from '@/lib/ratelimit';
 import { site } from '@/content/site';
+import { saveLead } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -30,6 +31,18 @@ export async function POST(req: Request) {
   }
   const d = parsed.data;
   if (d.website) return NextResponse.json({ ok: true }); // honeypot: stil negeren
+
+  // Opslaan in de leaddatabase (best effort; faalt nooit de aanvraag).
+  await saveLead({
+    name: d.name,
+    company: d.company || null,
+    email: d.email,
+    phone: d.phone || null,
+    branche: d.branche || null,
+    aantal: d.aantal || null,
+    bericht: d.bericht || null,
+    bron: d.bron || null,
+  }).catch(() => ({ saved: false }));
 
   // Notificatie naar Frederiks (de lead).
   const sent = await sendEmail({

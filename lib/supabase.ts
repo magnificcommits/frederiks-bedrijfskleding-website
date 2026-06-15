@@ -19,9 +19,11 @@ export type Lead = {
   bericht?: string | null;
   bron?: string | null;
   status: string;
+  offertewaarde?: number | null;
+  notitie?: string | null;
 };
 
-export type NieuweLead = Omit<Lead, 'id' | 'created_at' | 'status'> & { status?: string };
+export type NieuweLead = Omit<Lead, 'id' | 'created_at' | 'status' | 'offertewaarde' | 'notitie'> & { status?: string };
 
 function headers() {
   return {
@@ -51,7 +53,7 @@ export async function saveLead(lead: NieuweLead): Promise<{ saved: boolean }> {
 export async function getLeads(): Promise<Lead[]> {
   if (!isLeadsDbConfigured) return [];
   try {
-    const res = await fetch(`${base()}?select=*&order=created_at.desc&limit=500`, {
+    const res = await fetch(`${base()}?select=*&order=created_at.desc&limit=1000`, {
       headers: headers(),
       cache: 'no-store',
     });
@@ -62,13 +64,15 @@ export async function getLeads(): Promise<Lead[]> {
   }
 }
 
-export async function updateLeadStatus(id: string, status: string): Promise<boolean> {
+type LeadPatch = { status?: string; offertewaarde?: number | null; notitie?: string | null };
+
+export async function updateLead(id: string, patch: LeadPatch): Promise<boolean> {
   if (!isLeadsDbConfigured) return false;
   try {
     const res = await fetch(`${base()}?id=eq.${encodeURIComponent(id)}`, {
       method: 'PATCH',
       headers: { ...headers(), Prefer: 'return=minimal' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(patch),
       cache: 'no-store',
     });
     return res.ok;

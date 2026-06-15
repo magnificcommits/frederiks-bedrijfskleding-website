@@ -2,9 +2,14 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { env } from '@/lib/env';
-import { updateLeadStatus } from '@/lib/supabase';
+import { updateLead } from '@/lib/supabase';
 
 const DASH_COOKIE = 'fb_dash';
+
+async function isAuthed() {
+  const auth = (await cookies()).get(DASH_COOKIE)?.value;
+  return Boolean(env.dashboardPassword) && auth === env.dashboardPassword.trim();
+}
 
 export async function login(formData: FormData) {
   const pw = String(formData.get('password') ?? '').trim();
@@ -27,11 +32,14 @@ export async function logout() {
   redirect('/dashboard');
 }
 
-export async function setStatus(formData: FormData) {
-  const auth = (await cookies()).get(DASH_COOKIE)?.value;
-  if (!env.dashboardPassword || auth !== env.dashboardPassword.trim()) redirect('/dashboard');
+export async function saveLeadEdit(formData: FormData) {
+  if (!(await isAuthed())) redirect('/dashboard');
   const id = String(formData.get('id') ?? '');
   const status = String(formData.get('status') ?? '');
-  if (id && status) await updateLeadStatus(id, status);
-  redirect('/dashboard');
+  const ruw = String(formData.get('offertewaarde') ?? '').replace(/[^0-9.,]/g, '').replace(',', '.');
+  const offertewaarde = ruw === '' ? null : Number(ruw);
+  const notitie = String(formData.get('notitie') ?? '').slice(0, 1000) || null;
+  const terug = String(formData.get('terug') ?? '/dashboard');
+  if (id) await updateLead(id, { status, offertewaarde, notitie });
+  redirect(terug || '/dashboard');
 }

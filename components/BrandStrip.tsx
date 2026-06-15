@@ -13,9 +13,9 @@ export function BrandStrip() {
         </p>
         <div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
           {merken.map((m) => (
-            <div key={m.name} className="flex h-20 items-center justify-center rounded-lg border border-line bg-white px-4">
+            <div key={m.name} className="flex h-24 items-center justify-center rounded-lg border border-line bg-white px-3 py-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={m.src} alt={`${m.name} logo`} loading="lazy" className="max-h-10 w-auto max-w-full object-contain" />
+              <img src={m.src} alt={`${m.name} logo`} loading="lazy" className="h-16 w-full object-contain" />
             </div>
           ))}
         </div>

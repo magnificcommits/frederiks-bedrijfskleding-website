@@ -2,37 +2,14 @@
 import { useRef, useState } from 'react';
 import { kleuren, kledingtypes, pakketitems, logoposities } from '@/content/configurator';
 import { branches } from '@/content/branches';
+import { Garment, logoBoxStyle } from '@/components/Garments';
 
 type Status = 'idle' | 'sending' | 'ok' | 'error';
 type ItemState = { on: boolean; aantal: number };
 
-function Garment({ color, light, type }: { color: string; light?: boolean; type: string }) {
-  const stroke = light ? '#cfcfcf' : 'rgba(0,0,0,0.15)';
-  return (
-    <svg viewBox="0 0 200 220" className="h-full w-full" role="img" aria-label="Voorbeeld kledingstuk">
-      <path
-        d="M62 26 L40 44 L26 84 L50 96 L56 74 L56 206 L144 206 L144 74 L150 96 L174 84 L160 44 L138 26 C128 44 112 50 100 50 C88 50 72 44 62 26 Z"
-        fill={color} stroke={stroke} strokeWidth="2" strokeLinejoin="round"
-      />
-      {type === 'jas' && (
-        <>
-          <line x1="100" y1="50" x2="100" y2="206" stroke="rgba(0,0,0,0.25)" strokeWidth="2" />
-          <path d="M88 50 L100 62 L112 50" fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth="2" />
-        </>
-      )}
-    </svg>
-  );
-}
-
-const posStyle: Record<string, React.CSSProperties> = {
-  'borst-links': { left: '34%', top: '34%', width: '16%' },
-  'borst-rechts': { left: '50%', top: '34%', width: '16%' },
-  'rug': { left: '33%', top: '40%', width: '34%' },
-};
-
 export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: string }) {
   const [branche, setBranche] = useState(defaultBranche);
-  const [type, setType] = useState<string>('shirt');
+  const [type, setType] = useState<string>('tshirt');
   const [kleurIdx, setKleurIdx] = useState(0);
   const [logo, setLogo] = useState<string | null>(null);
   const [logoPos, setLogoPos] = useState('borst-links');
@@ -110,7 +87,7 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
           <div className="relative mx-auto aspect-square w-full max-w-sm">
             <Garment color={kleur.hex} light={kleur.licht} type={type} />
             {logo && (
-              <span className="absolute" style={posStyle[logoPos]}>
+              <span style={logoBoxStyle(type, logoPos)}>
                 <img src={logo} alt="Jouw logo op de kleding" className="w-full object-contain"
                   style={techniek === 'borduren' ? { filter: 'drop-shadow(0 1px 0 rgba(0,0,0,0.45)) saturate(1.05)' } : undefined} />
               </span>

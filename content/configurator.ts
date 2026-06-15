@@ -11,8 +11,13 @@ export const kleuren: { name: string; hex: string; licht?: boolean }[] = [
 ];
 
 export const kledingtypes = [
-  { id: 'shirt', label: 'T-shirt / polo' },
-  { id: 'jas', label: 'Jas / softshell' },
+  { id: 'tshirt', label: 'T-shirt' },
+  { id: 'polo', label: 'Polo' },
+  { id: 'sweater', label: 'Sweater / trui' },
+  { id: 'softshell', label: 'Softshell jas' },
+  { id: 'winterjas', label: 'Winterjas' },
+  { id: 'bodywarmer', label: 'Bodywarmer' },
+  { id: 'werkbroek', label: 'Werkbroek' },
 ] as const;
 
 export const pakketitems = [

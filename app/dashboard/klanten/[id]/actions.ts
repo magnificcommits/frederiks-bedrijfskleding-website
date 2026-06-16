@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { env } from '@/lib/env';
 import { addGebruiker, maakItem, zetItemActief, zetBestellingStatus, werkOrganisatieBij } from '@/lib/portaalAdmin';
+import { dashAuthed } from '@/lib/kms/adminClient';
+import { maakContactpersoon, verwijderContactpersoon, maakActiviteit, verwijderActiviteit } from '@/lib/kms/crm';
 
 const DASH_COOKIE = 'fb_dash';
 
@@ -60,5 +62,46 @@ export async function zetStatus(formData: FormData) {
   const bestelId = String(formData.get('bestelId') ?? '');
   const status = String(formData.get('status') ?? '').trim();
   if (bestelId && status) await zetBestellingStatus(bestelId, status);
+  redirect('/dashboard/klanten/' + id);
+}
+
+export async function nieuwContact(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('orgId') ?? '');
+  const naam = String(formData.get('naam') ?? '').trim();
+  const functie = String(formData.get('functie') ?? '').trim() || null;
+  const email = String(formData.get('email') ?? '').trim() || null;
+  const telefoon = String(formData.get('telefoon') ?? '').trim() || null;
+  const mobiel = String(formData.get('mobiel') ?? '').trim() || null;
+  const hoofdcontact = String(formData.get('hoofdcontact') ?? '') === 'on';
+  if (id && naam) await maakContactpersoon(id, { naam, functie, email, telefoon, mobiel, hoofdcontact });
+  redirect('/dashboard/klanten/' + id);
+}
+
+export async function verwijderContactActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('orgId') ?? '');
+  const contactId = String(formData.get('contactId') ?? '');
+  if (contactId) await verwijderContactpersoon(contactId);
+  redirect('/dashboard/klanten/' + id);
+}
+
+export async function nieuweActiviteit(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('orgId') ?? '');
+  const soort = String(formData.get('soort') ?? '').trim() || undefined;
+  const omschrijving = String(formData.get('omschrijving') ?? '').trim();
+  const datum = String(formData.get('datum') ?? '').trim() || null;
+  const opvolgdatum = String(formData.get('opvolgdatum') ?? '').trim() || null;
+  const door = String(formData.get('door') ?? '').trim() || null;
+  if (id && omschrijving) await maakActiviteit(id, { soort, omschrijving, datum, opvolgdatum, door });
+  redirect('/dashboard/klanten/' + id);
+}
+
+export async function verwijderActiviteitActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('orgId') ?? '');
+  const activiteitId = String(formData.get('activiteitId') ?? '');
+  if (activiteitId) await verwijderActiviteit(activiteitId);
   redirect('/dashboard/klanten/' + id);
 }

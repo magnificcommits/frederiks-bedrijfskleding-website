@@ -3,7 +3,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { env, isLeadsDbConfigured } from '@/lib/env';
 import { getOrganisatie, getGebruikers, listItems, listBestellingen } from '@/lib/portaalAdmin';
-import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus } from './actions';
+import { listContactpersonen, listActiviteiten, getKlantVerkoop, ACTIVITEIT_SOORTEN } from '@/lib/kms/crm';
+import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus, nieuwContact, verwijderContactActie, nieuweActiviteit, verwijderActiviteitActie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klant', robots: { index: false, follow: false } };
@@ -19,7 +20,16 @@ function fmt(d: string) {
   try { return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
   catch { return d; }
 }
+function fmtDatum(d: string | null) {
+  if (!d) return '-';
+  try { return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch { return d; }
+}
 const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
+
+const SOORT_LABEL: Record<string, string> = {
+  notitie: 'Notitie', telefoon: 'Telefoon', bezoek: 'Bezoek', offerte: 'Offerte', mail: 'Mail',
+};
 
 const inputCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 
@@ -52,11 +62,21 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const [gebruikers, items, bestellingen] = await Promise.all([
+  const [gebruikers, items, bestellingen, contactpersonen, activiteiten, verkoop] = await Promise.all([
     getGebruikers(id),
     listItems(id),
     listBestellingen(id),
+    listContactpersonen(id),
+    listActiviteiten(id),
+    getKlantVerkoop(id),
   ]);
+
+  const vandaag = new Date(); vandaag.setHours(0, 0, 0, 0);
+  const isOpvolgingDue = (d: string | null) => {
+    if (!d) return false;
+    const dd = new Date(d); dd.setHours(0, 0, 0, 0);
+    return dd.getTime() <= vandaag.getTime();
+  };
 
   return (
     <main className="container-x py-12">
@@ -99,6 +119,213 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
       </section>
 
       <section className="mt-10">
+        <h2 className="font-display text-xl font-bold text-ink-900">Verkoopoverzicht</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+            <p className="text-xs font-semibold uppercase tracking-wide text-warm">Orders</p>
+            <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{verkoop.orders.length}</p>
+          </div>
+          <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+            <p className="text-xs font-semibold uppercase tracking-wide text-warm">Facturen</p>
+            <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{verkoop.facturen.length}</p>
+          </div>
+          <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+            <p className="text-xs font-semibold uppercase tracking-wide text-warm">Omzet (betaald)</p>
+            <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{euro(verkoop.omzetBetaald)}</p>
+          </div>
+        </div>
+        {verkoop.herkomstLead && (
+          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-3 text-sm text-warm">
+            Aangebracht via: <span className="font-semibold text-ink-900">{verkoop.herkomstLead.bron || 'onbekende bron'}</span>
+          </p>
+        )}
+        <div className="mt-4 grid gap-6 lg:grid-cols-2">
+          <div>
+            <h3 className="font-display text-base font-bold text-ink-900">Laatste orders</h3>
+            {verkoop.orders.length === 0 ? (
+              <p className="mt-3 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen orders.</p>
+            ) : (
+              <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-white text-sm shadow-soft">
+                {verkoop.orders.slice(0, 5).map((o) => (
+                  <li key={o.id} className="flex items-center justify-between px-4 py-3">
+                    <span className="text-ink-900">{o.ordernummer != null ? `#${o.ordernummer}` : 'order'} {"·"} {fmtDatum(o.besteldatum)}</span>
+                    <span className="flex items-center gap-3 text-warm">
+                      {o.bedrag != null && <span>{euro(Number(o.bedrag))}</span>}
+                      <span className="inline-block rounded-full bg-mist px-2.5 py-1 text-xs font-semibold text-ink-700">{o.status}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <h3 className="font-display text-base font-bold text-ink-900">Laatste facturen</h3>
+            {verkoop.facturen.length === 0 ? (
+              <p className="mt-3 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen facturen.</p>
+            ) : (
+              <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-white text-sm shadow-soft">
+                {verkoop.facturen.slice(0, 5).map((f) => (
+                  <li key={f.id} className="flex items-center justify-between px-4 py-3">
+                    <span className="text-ink-900">{f.factuurnummer || 'factuur'} {"·"} {fmtDatum(f.factuurdatum)}</span>
+                    <span className="flex items-center gap-3 text-warm">
+                      {f.bedrag_incl != null && <span>{euro(Number(f.bedrag_incl))}</span>}
+                      <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${f.status === 'betaald' ? 'bg-green-100 text-green-800' : 'bg-mist text-ink-700'}`}>{f.status}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="font-display text-xl font-bold text-ink-900">Contactpersonen</h2>
+        <div className="mt-4 grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            {contactpersonen.length === 0 ? (
+              <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen contactpersonen.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+                    <tr>
+                      <th className="px-4 py-3">Naam</th>
+                      <th className="px-4 py-3">Functie</th>
+                      <th className="px-4 py-3">E-mail</th>
+                      <th className="px-4 py-3">Telefoon</th>
+                      <th className="px-4 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contactpersonen.map((c) => (
+                      <tr key={c.id} className="border-b border-line align-top">
+                        <td className="px-4 py-3 font-semibold text-ink-900">
+                          {c.naam}
+                          {c.hoofdcontact && <span className="ml-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">hoofdcontact</span>}
+                        </td>
+                        <td className="px-4 py-3 text-warm">{c.functie || '-'}</td>
+                        <td className="px-4 py-3 text-warm">{c.email || '-'}</td>
+                        <td className="px-4 py-3 text-warm">{[c.telefoon, c.mobiel].filter(Boolean).join(' · ') || '-'}</td>
+                        <td className="px-4 py-3 text-right">
+                          <form action={verwijderContactActie}>
+                            <input type="hidden" name="orgId" value={id} />
+                            <input type="hidden" name="contactId" value={c.id} />
+                            <button type="submit" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</button>
+                          </form>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+            <h3 className="font-display text-base font-bold text-ink-900">Contactpersoon toevoegen</h3>
+            <form action={nieuwContact} className="mt-4 flex flex-col gap-3">
+              <input type="hidden" name="orgId" value={id} />
+              <div>
+                <label className="block text-xs font-semibold text-warm">Naam</label>
+                <input name="naam" required placeholder="Naam" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-warm">Functie</label>
+                <input name="functie" placeholder="Bijv. inkoop" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-warm">E-mail</label>
+                <input name="email" type="email" placeholder="naam@bedrijf.nl" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-warm">Telefoon</label>
+                <input name="telefoon" placeholder="0314 12 34 56" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-warm">Mobiel</label>
+                <input name="mobiel" placeholder="06 12 34 56 78" className={inputCls} />
+              </div>
+              <label className="flex items-center gap-2 text-sm text-warm">
+                <input name="hoofdcontact" type="checkbox" className="h-4 w-4 rounded border-line text-ink-900 focus:ring-amber-200" />
+                Hoofdcontact
+              </label>
+              <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Toevoegen</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="font-display text-xl font-bold text-ink-900">Activiteiten en opvolging</h2>
+        <div className="mt-4 grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            {activiteiten.length === 0 ? (
+              <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen activiteiten vastgelegd.</p>
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {activiteiten.map((a) => {
+                  const due = isOpvolgingDue(a.opvolgdatum);
+                  return (
+                    <li key={a.id} className={`rounded-2xl border p-5 shadow-soft ${due ? 'border-amber-300 bg-amber-50' : 'border-line bg-white'}`}>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-ink-900">
+                            <span className="mr-2 inline-block rounded-full bg-mist px-2.5 py-0.5 text-xs font-semibold text-ink-700">{SOORT_LABEL[a.soort] || a.soort}</span>
+                            {fmtDatum(a.datum)}
+                            {a.door && <span className="ml-2 font-normal text-warm">door {a.door}</span>}
+                          </p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm text-warm">{a.omschrijving}</p>
+                          {a.opvolgdatum && (
+                            <p className={`mt-2 text-xs font-semibold ${due ? 'text-amber-800' : 'text-warm'}`}>
+                              Opvolgen op {fmtDatum(a.opvolgdatum)}{due ? ' (actie nodig)' : ''}
+                            </p>
+                          )}
+                        </div>
+                        <form action={verwijderActiviteitActie}>
+                          <input type="hidden" name="orgId" value={id} />
+                          <input type="hidden" name="activiteitId" value={a.id} />
+                          <button type="submit" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</button>
+                        </form>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+            <h3 className="font-display text-base font-bold text-ink-900">Activiteit toevoegen</h3>
+            <form action={nieuweActiviteit} className="mt-4 flex flex-col gap-3">
+              <input type="hidden" name="orgId" value={id} />
+              <div>
+                <label className="block text-xs font-semibold text-warm">Soort</label>
+                <select name="soort" defaultValue="notitie" className={inputCls}>
+                  {ACTIVITEIT_SOORTEN.map((s) => <option key={s} value={s}>{SOORT_LABEL[s]}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-warm">Omschrijving</label>
+                <textarea name="omschrijving" required rows={3} placeholder="Wat is er gebeurd of afgesproken?" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-warm">Datum (mag leeg = vandaag)</label>
+                <input name="datum" type="date" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-warm">Opvolgdatum (optioneel)</label>
+                <input name="opvolgdatum" type="date" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-warm">Door</label>
+                <input name="door" placeholder="Naam medewerker" className={inputCls} />
+              </div>
+              <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Vastleggen</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-12">
         <h2 className="font-display text-xl font-bold text-ink-900">Gebruikers</h2>
         <p className="mt-1 text-sm text-warm">Een gekoppeld e-mailadres kan inloggen op <code>/portaal</code>.</p>
         <div className="mt-4 grid gap-6 lg:grid-cols-3">

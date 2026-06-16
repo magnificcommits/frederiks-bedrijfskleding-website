@@ -3,12 +3,22 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { isPortalConfigured } from '@/lib/env';
 import { getPortaalUser, getMijnOrganisatie, getKledinglijn } from '@/lib/portaal/queries';
+import { getMijnToegang } from '@/lib/portaal/team';
+import { getWachtendeOrders } from '@/lib/portaal/goedkeuringen';
 import { portaalLogout } from './actions';
+import PortaalNav from './PortaalNav';
 
 export const metadata: Metadata = { title: 'Klantportaal', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
-const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
+const euro = (n: number) =>
+  new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
+
+const rolLabel: Record<string, string> = {
+  beheerder: 'Beheerder',
+  leidinggevende: 'Leidinggevende',
+  medewerker: 'Medewerker',
+};
 
 export default async function Portaal() {
   if (!isPortalConfigured) {
@@ -38,7 +48,12 @@ export default async function Portaal() {
     );
   }
 
-  const items = await getKledinglijn();
+  const toegang = await getMijnToegang();
+  const magKeuren = toegang.rol === 'beheerder' || toegang.rol === 'leidinggevende';
+  const [items, wachtend] = await Promise.all([
+    getKledinglijn(),
+    magKeuren ? getWachtendeOrders() : Promise.resolve([]),
+  ]);
 
   return (
     <main className="container-x py-12">
@@ -46,17 +61,50 @@ export default async function Portaal() {
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
           <h1 className="font-display text-3xl font-extrabold text-ink-900">{org.naam}</h1>
+          <p className="mt-1 text-sm text-warm">
+            Ingelogd als {user.email}
+            {toegang.rol ? ` · ${rolLabel[toegang.rol] ?? toegang.rol}` : ''}
+          </p>
         </div>
-        <div className="flex items-center gap-4">
-          <Link href="/portaal/herbestellen" className="btn-primary">Herbestellen</Link>
-          <Link href="/portaal/webshop" className="text-sm font-semibold text-warm hover:text-ink-800">Webshop</Link>
-          <Link href="/portaal/medewerkers" className="text-sm font-semibold text-warm hover:text-ink-800">Medewerkers</Link>
-          <Link href="/portaal/bestellingen" className="text-sm font-semibold text-warm hover:text-ink-800">Mijn bestellingen</Link>
-          <form action={portaalLogout}><button className="text-sm font-semibold text-warm hover:text-ink-800">Uitloggen</button></form>
-        </div>
+        <Link href="/portaal/webshop" className="btn-primary">Naar de webshop</Link>
       </div>
 
-      <h2 className="mt-10 font-display text-xl font-extrabold text-ink-900">Jullie kledinglijn</h2>
+      <PortaalNav rol={toegang.rol} actief="/portaal" />
+
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Link href="/portaal/webshop" className="rounded-2xl border border-line bg-white p-6 shadow-soft transition hover:border-amber-300">
+          <p className="font-display text-lg font-extrabold text-ink-900">Webshop</p>
+          <p className="mt-1 text-sm text-warm">Bestel kleding uit jullie assortiment.</p>
+        </Link>
+        <Link href="/portaal/bestellingen" className="rounded-2xl border border-line bg-white p-6 shadow-soft transition hover:border-amber-300">
+          <p className="font-display text-lg font-extrabold text-ink-900">Mijn bestellingen</p>
+          <p className="mt-1 text-sm text-warm">Volg de status van je bestellingen.</p>
+        </Link>
+        {magKeuren && (
+          <Link href="/portaal/goedkeuringen" className="rounded-2xl border border-line bg-white p-6 shadow-soft transition hover:border-amber-300">
+            <p className="font-display text-lg font-extrabold text-ink-900">Goedkeuringen</p>
+            <p className="mt-1 text-sm text-warm">
+              {wachtend.length > 0
+                ? `${wachtend.length} ${wachtend.length === 1 ? 'bestelling wacht' : 'bestellingen wachten'} op je`
+                : 'Geen openstaande goedkeuringen.'}
+            </p>
+          </Link>
+        )}
+        {magKeuren && (
+          <Link href="/portaal/medewerkers" className="rounded-2xl border border-line bg-white p-6 shadow-soft transition hover:border-amber-300">
+            <p className="font-display text-lg font-extrabold text-ink-900">Medewerkers en maten</p>
+            <p className="mt-1 text-sm text-warm">Leg medewerkers, maten en budget vast.</p>
+          </Link>
+        )}
+        {toegang.rol === 'beheerder' && (
+          <Link href="/portaal/team" className="rounded-2xl border border-line bg-white p-6 shadow-soft transition hover:border-amber-300">
+            <p className="font-display text-lg font-extrabold text-ink-900">Team en toegang</p>
+            <p className="mt-1 text-sm text-warm">Geef collega&apos;s toegang en bepaal hun rol.</p>
+          </Link>
+        )}
+      </div>
+
+      <h2 className="mt-12 font-display text-xl font-extrabold text-ink-900">Jullie kledinglijn</h2>
       {items.length === 0 ? (
         <p className="mt-3 text-sm text-warm">Er is nog geen kledinglijn ingesteld. Frederiks stelt deze voor je samen.</p>
       ) : (

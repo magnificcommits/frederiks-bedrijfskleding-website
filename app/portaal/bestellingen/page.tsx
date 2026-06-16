@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { isPortalConfigured } from '@/lib/env';
 import { getPortaalUser, getMijnOrganisatie, getBestellingen } from '@/lib/portaal/queries';
+import { getMijnToegang } from '@/lib/portaal/team';
+import PortaalNav from '../PortaalNav';
 
 export const metadata: Metadata = { title: 'Mijn bestellingen', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -56,7 +58,7 @@ export default async function Bestellingen({ searchParams }: { searchParams: Pro
   }
 
   const sp = await searchParams;
-  const bestellingen = await getBestellingen();
+  const [bestellingen, toegang] = await Promise.all([getBestellingen(), getMijnToegang()]);
 
   return (
     <main className="container-x py-12">
@@ -65,11 +67,9 @@ export default async function Bestellingen({ searchParams }: { searchParams: Pro
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
           <h1 className="font-display text-3xl font-extrabold text-ink-900">Mijn bestellingen</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <Link href="/portaal/herbestellen" className="btn-primary">Herbestellen</Link>
-          <Link href="/portaal" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar portaal</Link>
-        </div>
+        <Link href="/portaal/herbestellen" className="btn-primary">Herbestellen</Link>
       </div>
+      <PortaalNav rol={toegang.rol} actief="/portaal/bestellingen" />
 
       {sp?.ok && (
         <div className="mt-6 rounded-xl border border-green-300 bg-green-50 p-4 text-sm text-green-800">

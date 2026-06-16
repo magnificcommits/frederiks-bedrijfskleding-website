@@ -1,8 +1,9 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { isPortalConfigured } from '@/lib/env';
 import { getPortaalUser, getMijnOrganisatie, getKledinglijn, getMedewerkers, getMatenMap } from '@/lib/portaal/queries';
+import { getMijnToegang } from '@/lib/portaal/team';
+import PortaalNav from '../PortaalNav';
 import { vraagHerbestelling } from './actions';
 
 export const metadata: Metadata = { title: 'Herbestellen', robots: { index: false, follow: false } };
@@ -36,7 +37,7 @@ export default async function Herbestellen({ searchParams }: { searchParams: Pro
   }
 
   const sp = await searchParams;
-  const [items, medewerkers] = await Promise.all([getKledinglijn(), getMedewerkers()]);
+  const [items, medewerkers, toegang] = await Promise.all([getKledinglijn(), getMedewerkers(), getMijnToegang()]);
   const maten = sp?.voor ? await getMatenMap(sp.voor) : {};
   const gekozen = medewerkers.find((m) => m.id === sp?.voor);
 
@@ -47,13 +48,10 @@ export default async function Herbestellen({ searchParams }: { searchParams: Pro
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
           <h1 className="font-display text-3xl font-extrabold text-ink-900">Herbestellen</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <Link href="/portaal/medewerkers" className="text-sm font-semibold text-warm hover:text-ink-800">Medewerkers en maten</Link>
-          <Link href="/portaal" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar portaal</Link>
-        </div>
       </div>
+      <PortaalNav rol={toegang.rol} actief="/portaal/herbestellen" />
 
-      <p className="mt-4 max-w-2xl text-sm text-warm">Vul per kledingstuk de maat en het aantal in. Laat het aantal op 0 staan voor stukken die je niet nodig hebt. We zetten je aanvraag klaar en nemen contact op om hem af te ronden.</p>
+      <p className="mt-6 max-w-2xl text-sm text-warm">Vul per kledingstuk de maat en het aantal in. Laat het aantal op 0 staan voor stukken die je niet nodig hebt. We zetten je aanvraag klaar en nemen contact op om hem af te ronden.</p>
 
       {medewerkers.length > 0 && (
         <form method="get" className="mt-6 flex flex-wrap items-end gap-3">

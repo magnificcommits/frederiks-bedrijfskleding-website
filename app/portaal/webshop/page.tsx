@@ -1,8 +1,9 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { isPortalConfigured } from '@/lib/env';
 import { getPortaalUser } from '@/lib/portaal/queries';
+import { getMijnToegang } from '@/lib/portaal/team';
+import PortaalNav from '../PortaalNav';
 import {
   getMijnWebshopOrganisatie,
   getAssortiment,
@@ -31,6 +32,7 @@ const statusLabel: Record<string, string> = {
 const goedkeuringLabel: Record<string, string> = {
   wacht: 'Wacht op goedkeuring',
   goedgekeurd: 'Goedgekeurd',
+  afgewezen: 'Afgewezen',
   afgekeurd: 'Afgekeurd',
   niet_nodig: '',
 };
@@ -67,10 +69,11 @@ export default async function Webshop({
   }
 
   const sp = await searchParams;
-  const [assortiment, eigenMedewerker, orders] = await Promise.all([
+  const [assortiment, eigenMedewerker, orders, toegang] = await Promise.all([
     getAssortiment(),
     getMijnMedewerker(),
     getWebshopOrders(),
+    getMijnToegang(),
   ]);
 
   // Geen eigen medewerker-match (bijv. klantbeheerder): laat een medewerker kiezen.
@@ -95,10 +98,10 @@ export default async function Webshop({
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
           <h1 className="font-display text-3xl font-extrabold text-ink-900">Webshop</h1>
         </div>
-        <Link href="/portaal" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar portaal</Link>
       </div>
+      <PortaalNav rol={toegang.rol} actief="/portaal/webshop" />
 
-      <p className="mt-4 max-w-2xl text-sm text-warm">
+      <p className="mt-6 max-w-2xl text-sm text-warm">
         Kies je producten, stel je winkelwagen samen en plaats je bestelling. We zetten hem klaar in het systeem en handelen de levering met je af.
       </p>
 

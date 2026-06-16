@@ -3,12 +3,14 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { isPortalConfigured } from '@/lib/env';
 import { getPortaalUser, getMijnOrganisatie, getKledinglijn, getMedewerkers, getMatenMap, getVerbruik } from '@/lib/portaal/queries';
+import { getMijnToegang } from '@/lib/portaal/team';
+import PortaalNav from '../PortaalNav';
 import { nieuweMedewerker, verwijderMedewerkerAction, bewaarMaten, bewaarBudget } from './actions';
 
 export const metadata: Metadata = { title: 'Medewerkers', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
-const veld = 'mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm text-ink-900 focus:border-amber-500 focus:outline-none';
+const veld = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
 
 export default async function Medewerkers({ searchParams }: { searchParams: Promise<{ bewaard?: string }> }) {
@@ -32,6 +34,22 @@ export default async function Medewerkers({ searchParams }: { searchParams: Prom
     );
   }
 
+  const toegang = await getMijnToegang();
+  const magBeheren = toegang.rol === 'beheerder' || toegang.rol === 'leidinggevende';
+  if (!magBeheren) {
+    return (
+      <main className="container-x py-12">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
+        <h1 className="font-display text-3xl font-extrabold text-ink-900">Medewerkers en maten</h1>
+        <PortaalNav rol={toegang.rol} actief="/portaal/medewerkers" />
+        <div className="mt-8 max-w-xl rounded-2xl border border-line bg-white p-6 shadow-soft">
+          <p className="text-sm text-warm">Alleen een beheerder of leidinggevende kan medewerkers en maten beheren.</p>
+          <Link href="/portaal" className="mt-4 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar het overzicht</Link>
+        </div>
+      </main>
+    );
+  }
+
   const sp = await searchParams;
   const [items, medewerkers, verbruik] = await Promise.all([getKledinglijn(), getMedewerkers(), getVerbruik()]);
   const matenPer: Record<string, Record<string, string>> = Object.fromEntries(
@@ -45,9 +63,9 @@ export default async function Medewerkers({ searchParams }: { searchParams: Prom
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
           <h1 className="font-display text-3xl font-extrabold text-ink-900">Medewerkers en maten</h1>
         </div>
-        <Link href="/portaal" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar portaal</Link>
       </div>
-      <p className="mt-4 max-w-2xl text-sm text-warm">Leg je medewerkers, hun maten en een eventueel kledingbudget vast. Bij een herbestelling kies je een medewerker en zijn de maten al ingevuld.</p>
+      <PortaalNav rol={toegang.rol} actief="/portaal/medewerkers" />
+      <p className="mt-6 max-w-2xl text-sm text-warm">Leg je medewerkers, hun maten en een eventueel kledingbudget vast. Bij een herbestelling kies je een medewerker en zijn de maten al ingevuld.</p>
 
       {sp?.bewaard && <div className="mt-6 rounded-xl border border-green-300 bg-green-50 p-4 text-sm text-green-800">De maten zijn opgeslagen.</div>}
 
@@ -62,7 +80,7 @@ export default async function Medewerkers({ searchParams }: { searchParams: Prom
                 const restant = m.budget != null ? Number(m.budget) - v : null;
                 return (
                   <div key={m.id} className="rounded-xl border border-line bg-white p-5 shadow-soft">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="font-bold text-ink-900">{m.naam}</p>
                         {m.functie && <p className="text-sm text-warm">{m.functie}</p>}
@@ -78,7 +96,7 @@ export default async function Medewerkers({ searchParams }: { searchParams: Prom
                         <input type="hidden" name="medewerker_id" value={m.id} />
                         <div>
                           <label className="block text-xs font-semibold text-warm">Jaarbudget</label>
-                          <input name="budget" defaultValue={m.budget ?? ''} inputMode="decimal" placeholder="bijv. 250" className="mt-1 w-28 rounded-lg border border-line px-3 py-2 text-sm" />
+                          <input name="budget" defaultValue={m.budget ?? ''} inputMode="decimal" placeholder="bijv. 250" className="mt-1 w-28 rounded-md border border-line px-3 py-2 text-sm" />
                         </div>
                         <button className="rounded-md border border-line px-2.5 py-2 text-xs font-semibold text-ink-700 hover:bg-mist">Opslaan</button>
                       </form>

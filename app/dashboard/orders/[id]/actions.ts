@@ -1,6 +1,6 @@
 'use server';
 import { redirect } from 'next/navigation';
-import { dashAuthed } from '@/lib/kms/adminClient';
+import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { voegOrderregelToe, verwijderOrderregel, zetOrderStatus, zetGoedkeuring } from '@/lib/kms/orders';
 import { genereerInkoopregels } from '@/lib/kms/inkoop';
 
@@ -54,5 +54,15 @@ export async function maakInkoopregels(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const orderId = String(formData.get('orderId') ?? '').trim();
   if (orderId) await genereerInkoopregels(orderId);
+  redirect('/dashboard/orders/' + orderId);
+}
+
+export async function zetTrackTrace(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const orderId = String(formData.get('orderId') ?? '').trim();
+  const track_trace_code = String(formData.get('track_trace_code') ?? '').trim() || null;
+  const vervoerder = String(formData.get('vervoerder') ?? '').trim() || null;
+  const sb = kmsAdmin();
+  if (sb && orderId) await sb.from('orders').update({ track_trace_code, vervoerder }).eq('id', orderId);
   redirect('/dashboard/orders/' + orderId);
 }

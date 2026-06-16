@@ -28,6 +28,22 @@ export type Kerncijfers = {
   openOrders: number;
   omzetDitJaar: number;
 };
+export type VerbruikPerGroep = { naam: string; bedrag: number; aantalOrders: number };
+export type KledingInBezit = {
+  id: string;
+  naam: string;
+  organisatie_naam: string | null;
+  aantal: number;
+};
+export type BudgetmutatieRegel = {
+  id: string;
+  datum: string | null;
+  medewerker_naam: string;
+  soort: string;
+  bedrag: number;
+  saldo_na: number;
+  omschrijving: string | null;
+};
 
 export async function omzetPerKlant(): Promise<OmzetPerKlant[]> {
   const sb = kmsAdmin();
@@ -169,4 +185,169 @@ export async function kerncijfers(): Promise<Kerncijfers | null> {
     .reduce((t, f) => t + (Number(f.bedrag_incl) || 0), 0);
 
   return { openOffertes, openOffertewaarde, openOrders, omzetDitJaar };
+}
+
+export async function verbruikPerVestiging(): Promise<VerbruikPerGroep[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+  const [ordersR, vestigingenR] = await Promise.all([
+    sb.from('orders').select('vestiging_id, bedrag'),
+    sb.from('vestigingen').select('id, naam'),
+  ]);
+  const orders = (ordersR.data as { vestiging_id: string | null; bedrag: number | null }[]) ?? [];
+  const vestigingen = (vestigingenR.data as { id: string; naam: string }[]) ?? [];
+  const naamPer = new Map<string, string>();
+  for (const v of vestigingen) naamPer.set(v.id, v.naam);
+
+  const bedragPer = new Map<string, number>();
+  const aantalPer = new Map<string, number>();
+  for (const o of orders) {
+    const naam = o.vestiging_id ? naamPer.get(o.vestiging_id) ?? 'Onbekende vestiging' : 'Zonder vestiging';
+    bedragPer.set(naam, (bedragPer.get(naam) ?? 0) + (Number(o.bedrag) || 0));
+    aantalPer.set(naam, (aantalPer.get(naam) ?? 0) + 1);
+  }
+  return [...bedragPer.entries()]
+    .map(([naam, bedrag]) => ({ naam, bedrag, aantalOrders: aantalPer.get(naam) ?? 0 }))
+    .sort((a, b) => b.bedrag - a.bedrag);
+}
+
+export async function verbruikPerAfdeling(): Promise<VerbruikPerGroep[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+  const [ordersR, afdelingenR] = await Promise.all([
+    sb.from('orders').select('afdeling_id, bedrag'),
+    sb.from('afdelingen').select('id, naam'),
+  ]);
+  const orders = (ordersR.data as { afdeling_id: string | null; bedrag: number | null }[]) ?? [];
+  const afdelingen = (afdelingenR.data as { id: string; naam: string }[]) ?? [];
+  const naamPer = new Map<string, string>();
+  for (const a of afdelingen) naamPer.set(a.id, a.naam);
+
+  const bedragPer = new Map<string, number>();
+  const aantalPer = new Map<string, number>();
+  for (const o of orders) {
+    const naam = o.afdeling_id ? naamPer.get(o.afdeling_id) ?? 'Onbekende afdeling' : 'Zonder afdeling';
+    bedragPer.set(naam, (bedragPer.get(naam) ?? 0) + (Number(o.bedrag) || 0));
+    aantalPer.set(naam, (aantalPer.get(naam) ?? 0) + 1);
+  }
+  return [...bedragPer.entries()]
+    .map(([naam, bedrag]) => ({ naam, bedrag, aantalOrders: aantalPer.get(naam) ?? 0 }))
+    .sort((a, b) => b.bedrag - a.bedrag);
+}
+
+export async function verbruikPerFunctiegroep(): Promise<VerbruikPerGroep[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+  const [ordersR, koppelingenR, functiesR] = await Promise.all([
+    sb.from('orders').select('medewerker_id, bedrag'),
+    sb.from('medewerker_functies').select('medewerker_id, functie_id'),
+    sb.from('functies').select('id, naam'),
+  ]);
+  const orders = (ordersR.data as { medewerker_id: string | null; bedrag: number | null }[]) ?? [];
+  const koppelingen = (koppelingenR.data as { medewerker_id: string; functie_id: string }[]) ?? [];
+  const functies = (functiesR.data as { id: string; naam: string }[]) ?? [];
+
+  const functieNaam = new Map<string, string>();
+  for (const f of functies) functieNaam.set(f.id, f.naam);
+  // Een medewerker kan meerdere functies hebben; we koppelen het orderbedrag aan elke functie.
+  const functiesPerMedewerker = new Map<string, string[]>();
+  for (const k of koppelingen) {
+    const lijst = functiesPerMedewerker.get(k.medewerker_id) ?? [];
+    lijst.push(k.functie_id);
+    functiesPerMedewerker.set(k.medewerker_id, lijst);
+  }
+
+  const bedragPer = new Map<string, number>();
+  const aantalPer = new Map<string, number>();
+  for (const o of orders) {
+    const bedrag = Number(o.bedrag) || 0;
+    const functieIds = o.medewerker_id ? functiesPerMedewerker.get(o.medewerker_id) ?? [] : [];
+    if (functieIds.length === 0) {
+      bedragPer.set('Zonder functie', (bedragPer.get('Zonder functie') ?? 0) + bedrag);
+      aantalPer.set('Zonder functie', (aantalPer.get('Zonder functie') ?? 0) + 1);
+      continue;
+    }
+    for (const fid of functieIds) {
+      const naam = functieNaam.get(fid) ?? 'Onbekende functie';
+      bedragPer.set(naam, (bedragPer.get(naam) ?? 0) + bedrag);
+      aantalPer.set(naam, (aantalPer.get(naam) ?? 0) + 1);
+    }
+  }
+  return [...bedragPer.entries()]
+    .map(([naam, bedrag]) => ({ naam, bedrag, aantalOrders: aantalPer.get(naam) ?? 0 }))
+    .sort((a, b) => b.bedrag - a.bedrag);
+}
+
+export async function kledingInBezitPerMedewerker(): Promise<KledingInBezit[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+  const [medewerkersR, ordersR, regelsR] = await Promise.all([
+    sb.from('medewerkers').select('id, naam, organisaties(naam)'),
+    sb.from('orders').select('id, medewerker_id, status'),
+    sb.from('orderregels').select('order_id, aantal'),
+  ]);
+  const medewerkers = (medewerkersR.data as unknown as {
+    id: string;
+    naam: string;
+    organisaties: { naam: string } | null;
+  }[]) ?? [];
+  const orders = (ordersR.data as { id: string; medewerker_id: string | null; status: string }[]) ?? [];
+  const regels = (regelsR.data as { order_id: string; aantal: number | null }[]) ?? [];
+
+  // Alleen daadwerkelijk geleverde verstrekkingen tellen mee als 'in bezit'.
+  const geleverd = new Set(['compleet_geleverd', 'afgerond']);
+  const orderNaarMedewerker = new Map<string, string>();
+  for (const o of orders) {
+    if (o.medewerker_id && geleverd.has(o.status)) orderNaarMedewerker.set(o.id, o.medewerker_id);
+  }
+  const aantalPer = new Map<string, number>();
+  for (const r of regels) {
+    const medewerkerId = orderNaarMedewerker.get(r.order_id);
+    if (!medewerkerId) continue;
+    aantalPer.set(medewerkerId, (aantalPer.get(medewerkerId) ?? 0) + (Number(r.aantal) || 0));
+  }
+
+  return medewerkers
+    .map((m) => ({
+      id: m.id,
+      naam: m.naam,
+      organisatie_naam: m.organisaties?.naam ?? null,
+      aantal: aantalPer.get(m.id) ?? 0,
+    }))
+    .filter((m) => m.aantal > 0)
+    .sort((a, b) => b.aantal - a.aantal);
+}
+
+export async function budgetmutatieHistorie(): Promise<BudgetmutatieRegel[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+  const [mutatiesR, medewerkersR] = await Promise.all([
+    sb
+      .from('budget_mutaties')
+      .select('id, medewerker_id, soort, bedrag, saldo_na, omschrijving, datum')
+      .order('datum', { ascending: false }),
+    sb.from('medewerkers').select('id, naam'),
+  ]);
+  const mutaties = (mutatiesR.data as {
+    id: string;
+    medewerker_id: string | null;
+    soort: string;
+    bedrag: number | null;
+    saldo_na: number | null;
+    omschrijving: string | null;
+    datum: string | null;
+  }[]) ?? [];
+  const medewerkers = (medewerkersR.data as { id: string; naam: string }[]) ?? [];
+  const naamPer = new Map<string, string>();
+  for (const m of medewerkers) naamPer.set(m.id, m.naam);
+
+  return mutaties.map((m) => ({
+    id: m.id,
+    datum: m.datum,
+    medewerker_naam: m.medewerker_id ? naamPer.get(m.medewerker_id) ?? 'Onbekende medewerker' : 'Onbekende medewerker',
+    soort: m.soort,
+    bedrag: Number(m.bedrag) || 0,
+    saldo_na: Number(m.saldo_na) || 0,
+    omschrijving: m.omschrijving,
+  }));
 }

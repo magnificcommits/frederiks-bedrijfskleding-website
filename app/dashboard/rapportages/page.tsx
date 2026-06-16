@@ -7,12 +7,19 @@ import {
   omzetPerMerk,
   budgetPerMedewerker,
   verstrekkingenPerMedewerker,
+  verbruikPerVestiging,
+  verbruikPerAfdeling,
+  verbruikPerFunctiegroep,
+  kledingInBezitPerMedewerker,
+  budgetmutatieHistorie,
 } from '@/lib/kms/rapportages';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Rapportages', robots: { index: false, follow: false } };
 
 const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
+const datumKort = (d: string | null) =>
+  d ? new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(d)) : '-';
 
 export default async function RapportagesPage() {
   if (!(await dashAuthed())) redirect('/dashboard');
@@ -30,12 +37,28 @@ export default async function RapportagesPage() {
     );
   }
 
-  const [cijfers, perKlant, perMerk, budget, verstrekkingen] = await Promise.all([
+  const [
+    cijfers,
+    perKlant,
+    perMerk,
+    budget,
+    verstrekkingen,
+    perVestiging,
+    perAfdeling,
+    perFunctie,
+    inBezit,
+    mutaties,
+  ] = await Promise.all([
     kerncijfers(),
     omzetPerKlant(),
     omzetPerMerk(),
     budgetPerMedewerker(),
     verstrekkingenPerMedewerker(),
+    verbruikPerVestiging(),
+    verbruikPerAfdeling(),
+    verbruikPerFunctiegroep(),
+    kledingInBezitPerMedewerker(),
+    budgetmutatieHistorie(),
   ]);
 
   const kpis = [
@@ -51,7 +74,7 @@ export default async function RapportagesPage() {
         <h1 className="font-display text-3xl font-extrabold text-ink-900">Rapportages</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
-      <p className="mt-2 text-sm text-warm">Cijfers over omzet, merken, budget en verstrekkingen. Live berekend uit orders en facturen.</p>
+      <p className="mt-2 text-sm text-warm">Cijfers over omzet, merken, budget, verstrekkingen en verbruik per vestiging, afdeling en functiegroep. Live berekend uit orders en facturen.</p>
 
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {kpis.map((k) => (
@@ -176,6 +199,157 @@ export default async function RapportagesPage() {
                     <td className="px-4 py-3 font-semibold text-ink-900">{m.naam}</td>
                     <td className="px-4 py-3 text-warm">{m.organisatie_naam || '-'}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{m.aantal}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <h2 className="font-display text-xl font-bold text-ink-900">Verbruik per vestiging</h2>
+        <p className="mt-1 text-sm text-warm">Som van orderbedragen per vestiging. Orders zonder vestiging staan apart.</p>
+        {perVestiging.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen orders om te tonen.</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+                <tr>
+                  <th className="px-4 py-3">Vestiging</th>
+                  <th className="px-4 py-3 text-right">Aantal orders</th>
+                  <th className="px-4 py-3 text-right">Verbruik</th>
+                </tr>
+              </thead>
+              <tbody>
+                {perVestiging.map((r) => (
+                  <tr key={r.naam} className="border-b border-line">
+                    <td className="px-4 py-3 font-semibold text-ink-900">{r.naam}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-warm">{r.aantalOrders}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{euro(r.bedrag)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <h2 className="font-display text-xl font-bold text-ink-900">Verbruik per afdeling</h2>
+        <p className="mt-1 text-sm text-warm">Som van orderbedragen per afdeling. Orders zonder afdeling staan apart.</p>
+        {perAfdeling.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen orders om te tonen.</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+                <tr>
+                  <th className="px-4 py-3">Afdeling</th>
+                  <th className="px-4 py-3 text-right">Aantal orders</th>
+                  <th className="px-4 py-3 text-right">Verbruik</th>
+                </tr>
+              </thead>
+              <tbody>
+                {perAfdeling.map((r) => (
+                  <tr key={r.naam} className="border-b border-line">
+                    <td className="px-4 py-3 font-semibold text-ink-900">{r.naam}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-warm">{r.aantalOrders}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{euro(r.bedrag)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <h2 className="font-display text-xl font-bold text-ink-900">Verbruik per functiegroep</h2>
+        <p className="mt-1 text-sm text-warm">Orderbedragen gekoppeld aan de functie(s) van de medewerker. Een order telt mee bij elke functie van die medewerker; medewerkers zonder functie staan apart.</p>
+        {perFunctie.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen orders om te tonen.</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+                <tr>
+                  <th className="px-4 py-3">Functiegroep</th>
+                  <th className="px-4 py-3 text-right">Aantal orders</th>
+                  <th className="px-4 py-3 text-right">Verbruik</th>
+                </tr>
+              </thead>
+              <tbody>
+                {perFunctie.map((r) => (
+                  <tr key={r.naam} className="border-b border-line">
+                    <td className="px-4 py-3 font-semibold text-ink-900">{r.naam}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-warm">{r.aantalOrders}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{euro(r.bedrag)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <h2 className="font-display text-xl font-bold text-ink-900">Kleding in bezit per medewerker</h2>
+        <p className="mt-1 text-sm text-warm">Aantal geleverde stuks uit orders met status compleet geleverd of afgerond. Handig bij uitdiensttreding.</p>
+        {inBezit.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen geleverde verstrekkingen.</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+                <tr>
+                  <th className="px-4 py-3">Medewerker</th>
+                  <th className="px-4 py-3">Klant</th>
+                  <th className="px-4 py-3 text-right">Stuks in bezit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inBezit.map((m) => (
+                  <tr key={m.id} className="border-b border-line">
+                    <td className="px-4 py-3 font-semibold text-ink-900">{m.naam}</td>
+                    <td className="px-4 py-3 text-warm">{m.organisatie_naam || '-'}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{m.aantal}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <h2 className="font-display text-xl font-bold text-ink-900">Budgetmutaties</h2>
+        <p className="mt-1 text-sm text-warm">Alle budgetmutaties, nieuwste eerst, met saldo na de mutatie.</p>
+        {mutaties.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen budgetmutaties geregistreerd.</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+                <tr>
+                  <th className="px-4 py-3">Datum</th>
+                  <th className="px-4 py-3">Medewerker</th>
+                  <th className="px-4 py-3">Soort</th>
+                  <th className="px-4 py-3">Omschrijving</th>
+                  <th className="px-4 py-3 text-right">Bedrag</th>
+                  <th className="px-4 py-3 text-right">Saldo na</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mutaties.map((m) => (
+                  <tr key={m.id} className="border-b border-line">
+                    <td className="whitespace-nowrap px-4 py-3 text-warm">{datumKort(m.datum)}</td>
+                    <td className="px-4 py-3 font-semibold text-ink-900">{m.medewerker_naam}</td>
+                    <td className="px-4 py-3 text-warm">{m.soort}</td>
+                    <td className="px-4 py-3 text-warm">{m.omschrijving || '-'}</td>
+                    <td className={`whitespace-nowrap px-4 py-3 text-right ${m.bedrag < 0 ? 'text-amber-700' : 'text-ink-900'}`}>{euro(m.bedrag)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{euro(m.saldo_na)}</td>
                   </tr>
                 ))}
               </tbody>

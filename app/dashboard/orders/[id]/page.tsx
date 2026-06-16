@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { getOrder, ORDER_STATUSSEN, GOEDKEURING_STATUSSEN } from '@/lib/kms/orders';
 import { listInkoopregelsVoorOrder } from '@/lib/kms/inkoop';
-import { voegRegelToe, verwijderRegel, wijzigStatus, beslisGoedkeuring, maakInkoopregels } from './actions';
+import { voegRegelToe, verwijderRegel, wijzigStatus, beslisGoedkeuring, maakInkoopregels, zetTrackTrace } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Order', robots: { index: false, follow: false } };
@@ -72,12 +72,33 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <h1 className="font-display text-3xl font-extrabold text-ink-900">Order #{order.ordernummer}</h1>
           <p className="mt-1 text-sm text-warm">{order.organisatie_naam || 'Onbekende klant'}{order.medewerker_naam ? ` · ${order.medewerker_naam}` : ''} · {fmt(order.besteldatum)}</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <Link href={`/dashboard/facturen?order=${order.id}`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Maak factuur</Link>
           <Link href={`/dashboard/orders/${order.id}/werkbon`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Werkbon</Link>
+          <Link href={`/dashboard/orders/${order.id}/pakbon`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Pakbon</Link>
+          <Link href={`/dashboard/orders/${order.id}/picklijst`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Picklijst</Link>
+          <Link href={`/dashboard/orders/${order.id}/sticker`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Sticker</Link>
           <Link href="/dashboard/orders" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar orders</Link>
         </div>
       </div>
+
+      <section className="mt-8">
+        <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+          <h2 className="font-display text-base font-bold text-ink-900">Verzending (track en trace)</h2>
+          <form action={zetTrackTrace} className="mt-3 flex flex-wrap items-end gap-3">
+            <input type="hidden" name="orderId" value={order.id} />
+            <div>
+              <label className="block text-xs font-semibold text-warm">Vervoerder</label>
+              <input name="vervoerder" defaultValue={(order as unknown as { vervoerder: string | null }).vervoerder ?? ''} placeholder="Bijv. PostNL" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-warm">Track en trace-code</label>
+              <input name="track_trace_code" defaultValue={(order as unknown as { track_trace_code: string | null }).track_trace_code ?? ''} placeholder="Code of link" className={inputCls} />
+            </div>
+            <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Opslaan</button>
+          </form>
+        </div>
+      </section>
 
       <section className="mt-8 grid gap-6 lg:grid-cols-3">
         <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">

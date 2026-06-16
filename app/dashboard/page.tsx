@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
 import { env, isLeadsDbConfigured } from '@/lib/env';
@@ -86,6 +87,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-display text-3xl font-extrabold text-ink-900">Leads</h1>
         <div className="flex items-center gap-4">
+          <Link href="/dashboard/klanten" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Klanten</Link>
           <a href="/dashboard/export" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Export CSV</a>
           <form action={logout}><button className="text-sm font-semibold text-warm hover:text-ink-800">Uitloggen</button></form>
         </div>
@@ -129,7 +131,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <input name="q" defaultValue={sp.q ?? ''} placeholder="zoeken" className="mt-1 rounded-md border border-line px-3 py-2 text-sm" />
         </div>
         <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Filter</button>
-        {(sp.status || sp.bron || sp.q) && <a href="/dashboard" className="py-2 text-sm font-semibold text-warm hover:text-ink-800">Wis filters</a>}
+        {(sp.status || sp.bron || sp.q) && <Link href="/dashboard" className="py-2 text-sm font-semibold text-warm hover:text-ink-800">Wis filters</Link>}
       </form>
 
       {leads.length === 0 ? (

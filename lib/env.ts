@@ -14,9 +14,13 @@ export const env = {
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
   // Wachtwoord voor het interne lead-dashboard (/dashboard).
   dashboardPassword: process.env.DASHBOARD_PASSWORD ?? '',
+  // Publieke Supabase-gegevens voor het klantportaal (auth in de browser).
+  supabasePublicUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+  supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
 };
 
 export const isEmailConfigured = Boolean(env.resendApiKey);
 export const isAnalyticsConfigured = Boolean(env.gaId);
 export const isLeadsDbConfigured = Boolean(env.supabaseUrl && env.supabaseServiceKey);
 export const isDashboardConfigured = Boolean(env.dashboardPassword);
+export const isPortalConfigured = Boolean(env.supabasePublicUrl && env.supabaseAnonKey);

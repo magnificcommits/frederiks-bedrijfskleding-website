@@ -6,6 +6,7 @@ import { CrossLinks } from '@/components/CrossLinks';
 import { ContactSectie } from '@/components/ContactSectie';
 import { Faq } from '@/components/Faq';
 import { JsonLd } from '@/components/JsonLd';
+import { PortaalPreview } from '@/components/PortaalPreview';
 import { serviceJsonLd, faqJsonLd } from '@/lib/jsonld';
 import { site } from '@/content/site';
 
@@ -73,6 +74,8 @@ export default function KledingbeheerPage() {
           </div>
         </div>
       </section>
+
+      <PortaalPreview />
 
       <section className="border-y border-line bg-mist">
         <div className="container-x py-16">

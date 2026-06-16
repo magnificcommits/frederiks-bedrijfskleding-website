@@ -115,6 +115,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             <label className="block text-xs font-semibold text-warm">Btw (%)</label>
             <input name="btw" inputMode="decimal" defaultValue={String(product.btw ?? 21)} className={inputCls} />
           </div>
+          <div>
+            <label className="block text-xs font-semibold text-warm">Minimale voorraad</label>
+            <input name="min_voorraad" inputMode="numeric" defaultValue={product.min_voorraad != null ? String(product.min_voorraad) : ''} placeholder="Laat leeg als niet van toepassing" className={inputCls} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-warm">Wasinstructies</label>
+            <textarea name="wasinstructies" defaultValue={product.wasinstructies ?? ''} rows={2} placeholder="Bijv. wassen op 40 graden, niet in de droger" className={inputCls} />
+          </div>
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-warm">Leverancier</label>
             <select name="leverancier_id" defaultValue={product.leverancier_id ?? ''} className={inputCls}>

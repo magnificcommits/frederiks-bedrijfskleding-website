@@ -85,7 +85,10 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
           <h1 className="font-display text-3xl font-extrabold text-ink-900">{org.naam}</h1>
           <p className="mt-1 text-sm text-warm">{org.plaats || 'Geen plaats'}</p>
         </div>
-        <Link href="/dashboard/klanten" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar klanten</Link>
+        <div className="flex items-center gap-4">
+          <Link href={`/dashboard/klanten/${id}/structuur`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Inrichting</Link>
+          <Link href="/dashboard/klanten" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar klanten</Link>
+        </div>
       </div>
 
       <section className="mt-8">

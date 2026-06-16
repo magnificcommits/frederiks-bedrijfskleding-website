@@ -31,6 +31,11 @@ export async function werkProduct(formData: FormData) {
     materiaal: String(formData.get('materiaal') ?? '').trim() || null,
     normeringen: String(formData.get('normeringen') ?? '').trim() || null,
     btw: getalOfNull(String(formData.get('btw') ?? '')) ?? 21,
+    min_voorraad: (() => {
+      const n = getalOfNull(String(formData.get('min_voorraad') ?? ''));
+      return n == null ? null : Math.trunc(n);
+    })(),
+    wasinstructies: String(formData.get('wasinstructies') ?? '').trim() || null,
     leverancier_id: String(formData.get('leverancier_id') ?? '').trim() || null,
     afbeeldingen,
   });

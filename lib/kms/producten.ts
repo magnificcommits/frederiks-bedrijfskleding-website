@@ -20,6 +20,8 @@ export type Product = {
   normeringen: string | null;
   materiaal: string | null;
   btw: number;
+  min_voorraad: number | null;
+  wasinstructies: string | null;
   leverancier_id: string | null;
   afbeeldingen: string[] | null;
   actief: boolean;

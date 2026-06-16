@@ -19,11 +19,18 @@ const groepen: Groep[] = [
   ] },
   { titel: 'Catalogus', items: [
     { href: '/dashboard/producten', label: 'Producten' },
+    { href: '/dashboard/voorraad', label: 'Voorraad' },
+    { href: '/dashboard/functies', label: 'Functies' },
+    { href: '/dashboard/pakketten', label: 'Pakketten' },
     { href: '/dashboard/leveranciers', label: 'Leveranciers' },
     { href: '/dashboard/inkoop', label: 'Inkoop' },
   ] },
   { titel: 'Productie', items: [
     { href: '/dashboard/logos', label: 'Logo’s en werkbonnen' },
+  ] },
+  { titel: 'Service', items: [
+    { href: '/dashboard/retouren', label: 'Retouren' },
+    { href: '/dashboard/klachten', label: 'Klachten en vragen' },
   ] },
   { titel: 'Inzicht', items: [
     { href: '/dashboard/rapportages', label: 'Rapportages' },

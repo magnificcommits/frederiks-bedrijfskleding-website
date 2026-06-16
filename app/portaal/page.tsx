@@ -49,6 +49,7 @@ export default async function Portaal() {
         </div>
         <div className="flex items-center gap-4">
           <Link href="/portaal/herbestellen" className="btn-primary">Herbestellen</Link>
+          <Link href="/portaal/webshop" className="text-sm font-semibold text-warm hover:text-ink-800">Webshop</Link>
           <Link href="/portaal/medewerkers" className="text-sm font-semibold text-warm hover:text-ink-800">Medewerkers</Link>
           <Link href="/portaal/bestellingen" className="text-sm font-semibold text-warm hover:text-ink-800">Mijn bestellingen</Link>
           <form action={portaalLogout}><button className="text-sm font-semibold text-warm hover:text-ink-800">Uitloggen</button></form>

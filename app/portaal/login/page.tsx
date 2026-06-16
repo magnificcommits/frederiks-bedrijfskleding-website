@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortalBrowserClient } from '@/lib/portaal/supabaseBrowser';
 
 export default function PortaalLogin() {
@@ -7,6 +7,12 @@ export default function PortaalLogin() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const [bezig, setBezig] = useState(false);
+
+  useEffect(() => {
+    const fout = new URLSearchParams(window.location.search).get('fout');
+    if (fout === 'link') setError('De inloglink werkte niet of is verlopen. Vraag hieronder een nieuwe aan.');
+    else if (fout === 'config') setError('Het portaal is nog niet volledig geconfigureerd. Neem contact op met Frederiks.');
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

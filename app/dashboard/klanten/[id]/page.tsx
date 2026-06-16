@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { env, isLeadsDbConfigured } from '@/lib/env';
 import { getOrganisatie, getGebruikers, listItems, listBestellingen } from '@/lib/portaalAdmin';
-import { koppelGebruiker, voegItemToe, wisselItemActief, zetStatus } from './actions';
+import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klant', robots: { index: false, follow: false } };
@@ -67,6 +67,36 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
         </div>
         <Link href="/dashboard/klanten" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar klanten</Link>
       </div>
+
+      <section className="mt-8">
+        <h2 className="font-display text-xl font-bold text-ink-900">Gegevens</h2>
+        <form action={werkOrganisatie} className="mt-4 grid gap-4 rounded-2xl border border-line bg-white p-6 shadow-soft sm:grid-cols-2">
+          <input type="hidden" name="orgId" value={id} />
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-warm">Bedrijfsnaam</label>
+            <input name="naam" required defaultValue={org.naam} className={inputCls} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-warm">Adres</label>
+            <input name="adres" defaultValue={org.adres ?? ''} placeholder="Straat en huisnummer" className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-warm">Postcode</label>
+            <input name="postcode" defaultValue={org.postcode ?? ''} placeholder="0000 AA" className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-warm">Plaats</label>
+            <input name="plaats" defaultValue={org.plaats ?? ''} placeholder="Plaats" className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-warm">Telefoon</label>
+            <input name="telefoon" defaultValue={org.telefoon ?? ''} placeholder="06 12 34 56 78" className={inputCls} />
+          </div>
+          <div className="flex items-end">
+            <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Gegevens opslaan</button>
+          </div>
+        </form>
+      </section>
 
       <section className="mt-10">
         <h2 className="font-display text-xl font-bold text-ink-900">Gebruikers</h2>

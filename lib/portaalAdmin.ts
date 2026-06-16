@@ -7,7 +7,8 @@ function admin(): SupabaseClient | null {
   return createClient(env.supabaseUrl, env.supabaseServiceKey, { auth: { persistSession: false } });
 }
 
-export type Organisatie = { id: string; naam: string; plaats: string | null; created_at: string };
+export type Organisatie = { id: string; naam: string; plaats: string | null; telefoon: string | null; adres: string | null; postcode: string | null; created_at: string };
+export type OrgVelden = { naam: string; plaats?: string | null; telefoon?: string | null; adres?: string | null; postcode?: string | null };
 export type Gebruiker = { id: string; organisatie_id: string; email: string; naam: string | null; rol: string };
 export type KledingItem = { id: string; organisatie_id: string; naam: string; merk: string | null; kleur: string | null; logopositie: string | null; techniek: string | null; richtprijs: number | null; actief: boolean };
 export type Bestelregel = { id: string; item_naam: string; maat: string | null; aantal: number };
@@ -23,9 +24,27 @@ export async function getOrganisatie(id: string): Promise<Organisatie | null> {
   const { data } = await sb.from('organisaties').select('*').eq('id', id).maybeSingle();
   return (data as Organisatie) ?? null;
 }
-export async function maakOrganisatie(naam: string, plaats: string): Promise<boolean> {
+export async function maakOrganisatie(v: OrgVelden): Promise<string | null> {
+  const sb = admin(); if (!sb) return null;
+  const { data, error } = await sb.from('organisaties').insert({
+    naam: v.naam,
+    plaats: v.plaats || null,
+    telefoon: v.telefoon || null,
+    adres: v.adres || null,
+    postcode: v.postcode || null,
+  }).select('id').single();
+  if (error || !data) return null;
+  return (data as { id: string }).id;
+}
+export async function werkOrganisatieBij(id: string, v: OrgVelden): Promise<boolean> {
   const sb = admin(); if (!sb) return false;
-  const { error } = await sb.from('organisaties').insert({ naam, plaats: plaats || null });
+  const { error } = await sb.from('organisaties').update({
+    naam: v.naam,
+    plaats: v.plaats || null,
+    telefoon: v.telefoon || null,
+    adres: v.adres || null,
+    postcode: v.postcode || null,
+  }).eq('id', id);
   return !error;
 }
 export async function getGebruikers(orgId: string): Promise<Gebruiker[]> {

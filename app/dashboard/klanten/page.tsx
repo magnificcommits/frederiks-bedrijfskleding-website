@@ -75,16 +75,43 @@ export default async function KlantenPage() {
 
         <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
           <h2 className="font-display text-lg font-bold text-ink-900">Nieuwe klant</h2>
+          <p className="mt-1 text-xs text-warm">Vul direct de contactpersoon en het inlog-e-mailadres in, dan kan de klant meteen inloggen op het portaal. Na opslaan ga je door naar de klantpagina voor de kledinglijn.</p>
           <form action={nieuweOrganisatie} className="mt-4 flex flex-col gap-3">
             <div>
-              <label className="block text-xs font-semibold text-warm">Naam</label>
+              <label className="block text-xs font-semibold text-warm">Bedrijfsnaam</label>
               <input name="naam" required placeholder="Bedrijfsnaam" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-warm">Plaats</label>
-              <input name="plaats" placeholder="Plaats" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
+              <label className="block text-xs font-semibold text-warm">Adres</label>
+              <input name="adres" placeholder="Straat en huisnummer" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
             </div>
-            <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Toevoegen</button>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-warm">Postcode</label>
+                <input name="postcode" placeholder="0000 AA" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-warm">Plaats</label>
+                <input name="plaats" placeholder="Plaats" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-warm">Telefoon</label>
+              <input name="telefoon" placeholder="06 12 34 56 78" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
+            </div>
+            <div className="mt-2 border-t border-line pt-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-warm">Contactpersoon (optioneel)</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-warm">Naam contactpersoon</label>
+              <input name="contactpersoon" placeholder="Voor- en achternaam" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-warm">Inlog-e-mail</label>
+              <input name="email" type="email" placeholder="naam@bedrijf.nl" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
+              <p className="mt-1 text-xs text-warm">Dit adres kan straks inloggen op /portaal via een e-maillink.</p>
+            </div>
+            <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Klant aanmaken</button>
           </form>
         </div>
       </div>

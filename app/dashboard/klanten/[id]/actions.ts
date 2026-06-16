@@ -2,12 +2,24 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { env } from '@/lib/env';
-import { addGebruiker, maakItem, zetItemActief, zetBestellingStatus } from '@/lib/portaalAdmin';
+import { addGebruiker, maakItem, zetItemActief, zetBestellingStatus, werkOrganisatieBij } from '@/lib/portaalAdmin';
 
 const DASH_COOKIE = 'fb_dash';
 
 async function authed() {
   return Boolean(env.dashboardPassword) && (await cookies()).get(DASH_COOKIE)?.value === env.dashboardPassword.trim();
+}
+
+export async function werkOrganisatie(formData: FormData) {
+  if (!(await authed())) redirect('/dashboard');
+  const id = String(formData.get('orgId') ?? '');
+  const naam = String(formData.get('naam') ?? '').trim();
+  const plaats = String(formData.get('plaats') ?? '').trim();
+  const adres = String(formData.get('adres') ?? '').trim();
+  const postcode = String(formData.get('postcode') ?? '').trim();
+  const telefoon = String(formData.get('telefoon') ?? '').trim();
+  if (id && naam) await werkOrganisatieBij(id, { naam, plaats, adres, postcode, telefoon });
+  redirect('/dashboard/klanten/' + id);
 }
 
 export async function koppelGebruiker(formData: FormData) {

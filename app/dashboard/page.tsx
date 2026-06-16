@@ -88,6 +88,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <h1 className="font-display text-3xl font-extrabold text-ink-900">Leads</h1>
         <div className="flex items-center gap-4">
           <Link href="/dashboard/klanten" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Klanten</Link>
+          <Link href="/dashboard/producten" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Producten</Link>
+          <Link href="/dashboard/orders" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Orders</Link>
+          <Link href="/dashboard/inkoop" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Inkoop</Link>
+          <Link href="/dashboard/facturen" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Facturen</Link>
+          <Link href="/dashboard/logos" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Logo&apos;s</Link>
+          <Link href="/dashboard/leveranciers" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Leveranciers</Link>
           <a href="/dashboard/export" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Export CSV</a>
           <form action={logout}><button className="text-sm font-semibold text-warm hover:text-ink-800">Uitloggen</button></form>
         </div>

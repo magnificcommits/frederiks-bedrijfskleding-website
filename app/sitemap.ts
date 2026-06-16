@@ -7,7 +7,7 @@ import { artikelen } from '@/content/kennisbank';
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = env.siteUrl.replace(/\/$/, '');
   const now = new Date();
-  const staticRoutes = ['', '/werkkleding', '/werkschoenen', '/bedrukken-borduren', '/referenties', '/over-ons', '/contact', '/offerte', '/kledingadvies', '/kennisbank', '/pakket-samenstellen', '/regio'];
+  const staticRoutes = ['', '/werkkleding', '/werkschoenen', '/bedrukken-borduren', '/referenties', '/over-ons', '/contact', '/offerte', '/kledingadvies', '/kennisbank', '/pakket-samenstellen', '/kledingbeheer', '/regio'];
   return [
     ...staticRoutes.map((r) => ({ url: `${base}${r}`, lastModified: now, changeFrequency: 'monthly' as const, priority: r === '' ? 1 : 0.8 })),
     ...branches.map((b) => ({ url: `${base}/branches/${b.slug}`, lastModified: now, changeFrequency: 'monthly' as const, priority: 0.7 })),

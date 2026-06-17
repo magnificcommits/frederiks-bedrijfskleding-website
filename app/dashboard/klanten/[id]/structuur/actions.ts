@@ -20,6 +20,15 @@ function datum(formData: FormData, naam: string): string | null {
   return String(formData.get(naam) ?? '').trim() || null;
 }
 
+/** Kortingspercentage uit het formulier: leeg blijft leeg, anders begrensd tussen 0 en 100. */
+function percentage(formData: FormData, naam: string): number | null {
+  const ruw = String(formData.get(naam) ?? '').replace(/[^0-9.,]/g, '').replace(',', '.');
+  if (ruw === '') return null;
+  const n = Number(ruw);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(100, Math.max(0, n));
+}
+
 function aan(formData: FormData, naam: string): boolean {
   return String(formData.get(naam) ?? '') === 'on';
 }
@@ -34,6 +43,7 @@ export async function bewaarInstellingen(formData: FormData) {
       type: String(formData.get('type') ?? '').trim() || null,
       min_bestelbedrag: getal(formData, 'min_bestelbedrag'),
       max_bestelbedrag: getal(formData, 'max_bestelbedrag'),
+      korting_pct: percentage(formData, 'korting_pct'),
       verzendkosten: getal(formData, 'verzendkosten'),
       bestelperiode_start: datum(formData, 'bestelperiode_start'),
       bestelperiode_eind: datum(formData, 'bestelperiode_eind'),

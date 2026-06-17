@@ -15,6 +15,7 @@ import {
   getPakketten,
   getVerstrekkingen,
   getVerstrektInPeriode,
+  getKleurAfbeeldingen,
   type VerstrekkingType,
 } from '@/lib/portaal/webshop';
 import WebshopClient from './WebshopClient';
@@ -82,12 +83,13 @@ export default async function Webshop({
   }
 
   const sp = await searchParams;
-  const [assortiment, eigenMedewerker, orders, toegang, pakketten] = await Promise.all([
+  const [assortiment, eigenMedewerker, orders, toegang, pakketten, kleurAfbeeldingen] = await Promise.all([
     getAssortiment(),
     getMijnMedewerker(),
     getWebshopOrders(),
     getMijnToegang(),
     getPakketten(),
+    getKleurAfbeeldingen(),
   ]);
 
   // Geen eigen medewerker-match (bijv. klantbeheerder): laat een medewerker kiezen.
@@ -329,6 +331,8 @@ export default async function Webshop({
         kiesMedewerker={kiesMedewerker}
         medewerkers={medewerkers}
         verstrekkingen={verstrekkingPerProduct}
+        kortingPct={org.korting_pct}
+        kleurAfbeeldingen={kleurAfbeeldingen}
       />
 
       <section className="mt-12">

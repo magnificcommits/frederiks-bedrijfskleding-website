@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { getProduct, listVarianten, listLeveranciers } from '@/lib/kms/producten';
-import { werkProduct, verwijderAfbeelding, schakelActief, voegVariantToe, werkVariant, verwijderVariant } from './actions';
+import { getKleurenVanProduct, listKleurAfbeeldingen } from '@/lib/kms/afbeeldingen';
+import { werkProduct, verwijderAfbeelding, schakelActief, voegVariantToe, werkVariant, verwijderVariant, zetKleurAfbeeldingActie, verwijderKleurAfbeeldingActie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Product', robots: { index: false, follow: false } };
@@ -41,7 +42,12 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const [varianten, leveranciers] = await Promise.all([listVarianten(id), listLeveranciers()]);
+  const [varianten, leveranciers, kleuren, kleurAfbeeldingen] = await Promise.all([
+    listVarianten(id),
+    listLeveranciers(),
+    getKleurenVanProduct(id),
+    listKleurAfbeeldingen(id),
+  ]);
   const afbeeldingen = product.afbeeldingen ?? [];
   const afbVelden = afbeeldingen.length > 0 ? afbeeldingen : [''];
 
@@ -79,6 +85,51 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 </form>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {kleuren.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-display text-xl font-bold text-ink-900">Afbeelding per kleur</h2>
+          <p className="mt-1 text-sm text-warm">Per kleur is een voorkant-afbeelding voldoende. Upload een bestand of plak een URL.</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {kleuren.map((kleur) => {
+              const huidige = kleurAfbeeldingen[kleur];
+              return (
+                <div key={kleur} className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-display text-base font-bold text-ink-900">{kleur}</h3>
+                    {huidige && (
+                      <form action={verwijderKleurAfbeeldingActie}>
+                        <input type="hidden" name="productId" value={id} />
+                        <input type="hidden" name="kleur" value={kleur} />
+                        <button type="submit" className="text-xs font-semibold text-red-700 hover:text-red-800">Verwijderen</button>
+                      </form>
+                    )}
+                  </div>
+                  {huidige ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={huidige} alt={`Afbeelding kleur ${kleur}`} className="mt-3 max-h-40 w-full rounded-md border border-line bg-white object-contain" />
+                  ) : (
+                    <p className="mt-3 rounded-md border border-line bg-mist px-3 py-4 text-center text-xs text-warm">Nog geen afbeelding voor deze kleur.</p>
+                  )}
+                  <form action={zetKleurAfbeeldingActie} className="mt-4 flex flex-col gap-3">
+                    <input type="hidden" name="productId" value={id} />
+                    <input type="hidden" name="kleur" value={kleur} />
+                    <div>
+                      <label className="block text-xs font-semibold text-warm">Afbeelding uploaden</label>
+                      <input type="file" name="afbeelding_bestand" accept="image/*" className={fileCls} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-warm">Of plak een URL</label>
+                      <input name="afbeelding_url" placeholder="https://..." className={inputCls} />
+                    </div>
+                    <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Opslaan</button>
+                  </form>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}

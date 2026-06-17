@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { uploadMedia } from '@/lib/kms/storage';
 import { getProduct, werkProduct as werkProductDb, zetProductActief, maakVariant, werkVariant as werkVariantDb, verwijderVariant as verwijderVariantDb } from '@/lib/kms/producten';
+import { zetKleurAfbeelding, verwijderKleurAfbeelding } from '@/lib/kms/afbeeldingen';
 
 function getalOfNull(raw: string): number | null {
   const s = String(raw ?? '').replace(/[^0-9.,-]/g, '').replace(',', '.');
@@ -103,5 +104,25 @@ export async function verwijderVariant(formData: FormData) {
   const id = String(formData.get('productId') ?? '');
   const variantId = String(formData.get('variantId') ?? '');
   if (variantId) await verwijderVariantDb(variantId);
+  redirect('/dashboard/producten/' + id);
+}
+
+export async function zetKleurAfbeeldingActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('productId') ?? '');
+  const kleur = String(formData.get('kleur') ?? '').trim();
+  if (!id || !kleur) redirect('/dashboard/producten/' + id);
+  let url = String(formData.get('afbeelding_url') ?? '').trim();
+  const geupload = await uploadMedia(formData.get('afbeelding_bestand') as File | null, 'producten');
+  if (geupload) url = geupload;
+  if (url) await zetKleurAfbeelding(id, kleur, url);
+  redirect('/dashboard/producten/' + id);
+}
+
+export async function verwijderKleurAfbeeldingActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('productId') ?? '');
+  const kleur = String(formData.get('kleur') ?? '').trim();
+  if (id && kleur) await verwijderKleurAfbeelding(id, kleur);
   redirect('/dashboard/producten/' + id);
 }

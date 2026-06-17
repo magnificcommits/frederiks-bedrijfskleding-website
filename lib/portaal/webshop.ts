@@ -49,7 +49,25 @@ export type WebshopOrg = {
   gebruik_referentienr: boolean;
   opmerking_bij_bestelling: boolean;
   verzendkosten: number | null;
+  /** Kortingspercentage van de organisatie op de lijstprijs (bijv. 10 = 10% korting). Leeg of 0 is geen korting. */
+  korting_pct: number | null;
 };
+
+/** Lijstprijs (catalogusprijs) van een variant: verkoopprijs plus meerprijs. */
+export function lijstprijs(verkoopprijs: number | null, meerprijs: number | null): number {
+  return (Number(verkoopprijs) || 0) + (Number(meerprijs) || 0);
+}
+
+/**
+ * Nettoprijs na klantkorting, afgerond op centen.
+ * korting_pct leeg of 0 (of buiten 0..100) geeft gewoon de lijstprijs terug (huidig gedrag).
+ */
+export function nettoPrijs(lijst: number, kortingPct: number | null | undefined): number {
+  const pct = Number(kortingPct) || 0;
+  if (pct <= 0) return lijst;
+  const factor = 1 - Math.min(100, pct) / 100;
+  return Math.round(lijst * factor * 100) / 100;
+}
 
 /** Voorkeursmaat per product voor een medewerker. */
 export type Voorkeursmaat = {
@@ -117,7 +135,7 @@ export async function getMijnWebshopOrganisatie(): Promise<WebshopOrg | null> {
   const { data } = await sb
     .from('organisaties')
     .select(
-      'id, naam, budget_actief, goedkeuren_bestellingen, min_bestelbedrag, max_bestelbedrag, toon_voorraad, gebruik_referentienr, opmerking_bij_bestelling, verzendkosten',
+      'id, naam, budget_actief, goedkeuren_bestellingen, min_bestelbedrag, max_bestelbedrag, toon_voorraad, gebruik_referentienr, opmerking_bij_bestelling, verzendkosten, korting_pct',
     )
     .limit(1)
     .maybeSingle();
@@ -174,27 +192,21 @@ export async function getWebshopMedewerkers(): Promise<WebshopMedewerker[]> {
   const { data } = await sb
     .from('medewerkers')
     .select(
-      'id, naam, voornaam, achternaam, email, functie, budget, budget_type, startbudget, productbudget, buiten_budget_toegestaan, vestiging_id, actief',
-    )
-    .eq('actief', true)
-    .order('naam');
-  return (data as WebshopMedewerker[]) ?? [];
-}
-
-/** Som van order.bedrag voor een medewerker (al bestelde waarde). */
-export async function getBudgetVerbruik(medewerkerId: string): Promise<number> {
+      'id, naam, voornaam, achternaam, email, functie, budget, budget_type, startbudget, productbudget, buiten_budget_toege
+/** Eén afbeelding per kleur, per product, voor de eigen organisatie (RLS op assortiment). */
+export async function getKleurAfbeeldingen(): Promise<Record<string, Record<string, string>>> {
   const sb = await getServerSupabase();
-  if (!sb) return 0;
-  const { data } = await sb
-    .from('orders')
-    .select('bedrag')
-    .eq('medewerker_id', medewerkerId);
-  return ((data as { bedrag: number | null }[]) ?? []).reduce((sum, r) => sum + (Number(r.bedrag) || 0), 0);
+  if (!sb) return {};
+  const { data } = await sb.from('product_kleur_afbeeldingen').select('product_id, kleur, afbeelding_url');
+  const map: Record<string, Record<string, string>> = {};
+  ((data as { product_id: string; kleur: string; afbeelding_url: string | null }[]) ?? []).forEach((r) => {
+    if (!r.afbeelding_url) return;
+    if (!map[r.product_id]) map[r.product_id] = {};
+    map[r.product_id][r.kleur] = r.afbeelding_url;
+  });
+  return map;
 }
-
-/**
- * Verstrekkingsinstellingen per product voor de eigen organisatie, als map product_id -> instelling.
- * RLS borgt dat alleen de eigen assortimentregels meekomen. Ontbreekt een product, dan valt het op 'budget' terug.
+leen de eigen assortimentregels meekomen. Ontbreekt een product, dan valt het op 'budget' terug.
  */
 export async function getVerstrekkingen(): Promise<Record<string, Verstrekking>> {
   const sb = await getServerSupabase();

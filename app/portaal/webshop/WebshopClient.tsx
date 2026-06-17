@@ -6,8 +6,15 @@ import type { WebshopProduct, WebshopMedewerker } from '@/lib/portaal/webshop';
 const euro = (n: number) =>
   new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
 
-const effectievePrijs = (verkoopprijs: number | null, meerprijs: number | null) =>
+const lijstprijs = (verkoopprijs: number | null, meerprijs: number | null) =>
   (Number(verkoopprijs) || 0) + (Number(meerprijs) || 0);
+
+/** Nettoprijs na klantkorting, afgerond op centen. korting <= 0 geeft de lijstprijs terug. */
+const nettoPrijs = (lijst: number, kortingPct: number) => {
+  const pct = Number(kortingPct) || 0;
+  if (pct <= 0) return lijst;
+  return Math.round(lijst * (1 - Math.min(100, pct) / 100) * 100) / 100;
+};
 
 type MandItem = { variantId: string; aantal: number };
 
@@ -38,6 +45,8 @@ type Props = {
   kiesMedewerker: boolean;
   medewerkers: WebshopMedewerker[];
   verstrekkingen: Record<string, VerstrekkingInfo>;
+  kortingPct: number | null;
+  kleurAfbeeldingen: Record<string, Record<string, string>>;
 };
 
 const inputClass =
@@ -81,8 +90,17 @@ export default function WebshopClient({
   kiesMedewerker,
   medewerkers,
   verstrekkingen,
+  kortingPct,
+  kleurAfbeeldingen,
 }: Props) {
   const [mand, setMand] = useState<MandItem[]>([]);
+
+  // Klantkorting van de organisatie; leeg of 0 betekent gewoon de lijstprijs.
+  const korting = Number(kortingPct) || 0;
+  const heeftKorting = korting > 0;
+  // Nettoprijs van een variant na klantkorting (op de lijstprijs verkoopprijs + meerprijs).
+  const variantNetto = (v: WebshopProduct['varianten'][number]) =>
+    nettoPrijs(lijstprijs(v.verkoopprijs, v.meerprijs), korting);
 
   // Per product de begin-keuze: de voorkeursmaat-variant als die bestaat, anders de eerste variant.
   const beginKeuze = useMemo(() => {
@@ -126,7 +144,7 @@ export default function WebshopClient({
   const totaal = mand.reduce((sum, item) => {
     const match = variantIndex.get(item.variantId);
     if (!match) return sum;
-    return sum + item.aantal * effectievePrijs(match.variant.verkoopprijs, match.variant.meerprijs);
+    return sum + item.aantal * variantNetto(match.variant);
   }, 0);
 
   const aantalStuks = mand.reduce((sum, item) => sum + item.aantal, 0);
@@ -139,7 +157,7 @@ export default function WebshopClient({
     for (const item of mand) {
       const match = variantIndex.get(item.variantId);
       if (!match) continue;
-      const prijs = effectievePrijs(match.variant.verkoopprijs, match.variant.meerprijs);
+      const prijs = variantNetto(match.variant);
       const info = verstrekkingen[match.product.id];
       const type = info?.type ?? 'budget';
       if (type === 'altijd_gratis') continue;
@@ -153,7 +171,7 @@ export default function WebshopClient({
       som += item.aantal * prijs;
     }
     return som;
-  }, [mand, variantIndex, verstrekkingen]);
+  }, [mand, variantIndex, verstrekkingen, korting]);
 
   const overBudget =
     budgetActief && !buitenBudgetToegestaan && resterendBudget != null && budgetTotaal > resterendBudget;
@@ -176,12 +194,24 @@ export default function WebshopClient({
               const opties = toegestaneVarianten(p, voorkeur);
               const gekozenVariant = keuze[p.id] ?? opties[0]?.id ?? '';
               const heeftVoorkeur = Boolean(voorkeur?.voorkeursmaat);
+              const kleurMap = kleurAfbeeldingen[p.id];
+              const huidigeKleur = opties.find((v) => v.id === gekozenVariant)?.kleur ?? null;
+              const kleurImg = kleurMap ? ((huidigeKleur && kleurMap[huidigeKleur]) || Object.values(kleurMap)[0] || null) : null;
               return (
                 <div key={p.id} className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+                  {kleurImg && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={kleurImg} alt={p.naam} className="mb-3 h-32 w-full rounded-lg border border-line bg-mist object-contain" />
+                  )}
                   <p className="font-bold text-ink-900">{p.naam}</p>
                   <p className="mt-1 text-sm text-warm">
                     {[p.merk, p.categorie].filter(Boolean).join(' · ') || 'Geen details'}
                   </p>
+                  {heeftKorting && (
+                    <p className="mt-2 inline-block rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                      {korting}% klantkorting verwerkt
+                    </p>
+                  )}
                   {(() => {
                     const info = verstrekkingen[p.id];
                     if (!info) return null;
@@ -221,7 +251,7 @@ export default function WebshopClient({
                           return (
                             <option key={v.id} value={v.id}>
                               {[v.maat, v.kleur].filter(Boolean).join(' · ') || 'Standaard'} —{' '}
-                              {euro(effectievePrijs(v.verkoopprijs, v.meerprijs))}
+                              {euro(variantNetto(v))}
                               {toonVoorraad
                                 ? uitVoorraad
                                   ? ' · niet op voorraad'
@@ -271,12 +301,21 @@ export default function WebshopClient({
               {mand.map((item) => {
                 const match = variantIndex.get(item.variantId);
                 if (!match) return null;
-                const prijs = effectievePrijs(match.variant.verkoopprijs, match.variant.meerprijs);
+                const lijst = lijstprijs(match.variant.verkoopprijs, match.variant.meerprijs);
+                const prijs = variantNetto(match.variant);
                 return (
                   <li key={item.variantId} className="border-b border-line pb-3">
                     <p className="text-sm font-semibold text-ink-900">{match.product.naam}</p>
                     <p className="text-xs text-warm">
-                      {[match.variant.maat, match.variant.kleur].filter(Boolean).join(' · ') || 'Standaard'} · {euro(prijs)}
+                      {[match.variant.maat, match.variant.kleur].filter(Boolean).join(' · ') || 'Standaard'} ·{' '}
+                      {heeftKorting && prijs !== lijst ? (
+                        <>
+                          <span className="text-warm line-through">{euro(lijst)}</span>{' '}
+                          <span className="font-semibold text-ink-900">{euro(prijs)}</span>
+                        </>
+                      ) : (
+                        euro(prijs)
+                      )}
                     </p>
                     <div className="mt-2 flex items-center gap-2">
                       <input
@@ -301,6 +340,9 @@ export default function WebshopClient({
             </ul>
           )}
 
+          {heeftKorting && (
+            <p className="mt-4 text-xs text-warm">Klantkorting van {korting}% is al in de prijzen verwerkt.</p>
+          )}
           <div className="mt-4 flex items-center justify-between">
             <span className="text-sm text-warm">Totaal</span>
             <span className="font-display font-extrabold text-ink-900">{euro(totaal)}</span>

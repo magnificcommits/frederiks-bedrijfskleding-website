@@ -16,6 +16,7 @@ export type Instellingen = {
   type: string | null;
   min_bestelbedrag: number | null;
   max_bestelbedrag: number | null;
+  korting_pct: number | null;
   toon_kortingen: boolean | null;
   gebruik_referentienr: boolean | null;
   opmerking_bij_bestelling: boolean | null;
@@ -34,6 +35,7 @@ export type InstellingenVelden = {
   type?: string | null;
   min_bestelbedrag?: number | null;
   max_bestelbedrag?: number | null;
+  korting_pct?: number | null;
   toon_kortingen?: boolean;
   gebruik_referentienr?: boolean;
   opmerking_bij_bestelling?: boolean;
@@ -112,7 +114,7 @@ export type Manager = {
 // ---- Instellingen ----
 
 const INSTELLINGEN_KOLOMMEN =
-  'id, naam, type, min_bestelbedrag, max_bestelbedrag, toon_kortingen, gebruik_referentienr, opmerking_bij_bestelling, toon_voorraad, voorwaarden_tekst, voorschriften_tekst, verzendkosten, bestelperiode_start, bestelperiode_eind, huisstijl_kleur, portaal_logo_url, sfeerafbeelding_url';
+  'id, naam, type, min_bestelbedrag, max_bestelbedrag, korting_pct, toon_kortingen, gebruik_referentienr, opmerking_bij_bestelling, toon_voorraad, voorwaarden_tekst, voorschriften_tekst, verzendkosten, bestelperiode_start, bestelperiode_eind, huisstijl_kleur, portaal_logo_url, sfeerafbeelding_url';
 
 export async function getInstellingen(orgId: string): Promise<Instellingen | null> {
   const sb = kmsAdmin(); if (!sb) return null;
@@ -130,6 +132,7 @@ export async function werkInstellingen(orgId: string, v: InstellingenVelden): Pr
   if (v.type !== undefined) patch.type = v.type || null;
   if (v.min_bestelbedrag !== undefined) patch.min_bestelbedrag = v.min_bestelbedrag;
   if (v.max_bestelbedrag !== undefined) patch.max_bestelbedrag = v.max_bestelbedrag;
+  if (v.korting_pct !== undefined) patch.korting_pct = v.korting_pct;
   if (v.toon_kortingen !== undefined) patch.toon_kortingen = v.toon_kortingen;
   if (v.gebruik_referentienr !== undefined) patch.gebruik_referentienr = v.gebruik_referentienr;
   if (v.opmerking_bij_bestelling !== undefined) patch.opmerking_bij_bestelling = v.opmerking_bij_bestelling;

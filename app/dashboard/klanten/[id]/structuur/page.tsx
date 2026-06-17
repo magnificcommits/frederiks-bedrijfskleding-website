@@ -104,7 +104,11 @@ export default async function InrichtingPage({ params }: { params: Promise<{ id:
             <label className="block text-xs font-semibold text-warm">Verzendkosten (mag leeg)</label>
             <input name="verzendkosten" inputMode="decimal" defaultValue={num(inst.verzendkosten)} placeholder="bedrag" className={inputCls} />
           </div>
-          <div></div>
+          <div>
+            <label className="block text-xs font-semibold text-warm">Klantkorting (%)</label>
+            <input name="korting_pct" inputMode="decimal" defaultValue={num(inst.korting_pct)} placeholder="bijv. 10" className={inputCls} />
+            <p className="mt-1 text-xs text-warm">Dit percentage gaat in het portaal en op de factuur van de catalogusprijs af. Leeg of 0 is geen korting.</p>
+          </div>
 
           <div>
             <label className="block text-xs font-semibold text-warm">Bestelperiode van (optioneel)</label>

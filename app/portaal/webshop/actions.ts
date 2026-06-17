@@ -10,14 +10,13 @@ import {
   getVerstrektInPeriode,
   maakWebshopBestelling,
   bestelPakket,
+  lijstprijs,
+  nettoPrijs,
   type BestelRegelInput,
   type WebshopMedewerker,
   type Verstrekking,
 } from '@/lib/portaal/webshop';
 import { getServerSupabase } from '@/lib/portaal/supabaseServer';
-
-const effectievePrijs = (verkoopprijs: number | null, meerprijs: number | null) =>
-  (Number(verkoopprijs) || 0) + (Number(meerprijs) || 0);
 
 /** Bepaalt de medewerker: eigen match, anders de gekozen medewerker uit het formulier. */
 async function bepaalMedewerker(
@@ -69,7 +68,8 @@ export async function plaatsBestelling(formData: FormData) {
       maat: match.variant.maat,
       kleur: match.variant.kleur,
       aantal,
-      stukprijs: effectievePrijs(match.variant.verkoopprijs, match.variant.meerprijs),
+      // Stukprijs is de nettoprijs na klantkorting; zo kloppen order.bedrag en de factuur automatisch.
+      stukprijs: nettoPrijs(lijstprijs(match.variant.verkoopprijs, match.variant.meerprijs), org.korting_pct),
     });
   }
   if (regels.length === 0) redirect('/portaal/webshop?leeg=1');

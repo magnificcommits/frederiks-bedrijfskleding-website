@@ -4,6 +4,7 @@ import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { getFactuur } from '@/lib/kms/facturen';
 import { voegRegel, werkRegel, verwijderRegel, wijzigStatus } from './actions';
 import PrintKnop from './PrintKnop';
+import ConfirmSubmit from '@/components/ConfirmSubmit';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Factuur', robots: { index: false, follow: false } };
@@ -170,7 +171,7 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
                           <form action={verwijderRegel} className="mt-1">
                             <input type="hidden" name="factuurId" value={factuur.id} />
                             <input type="hidden" name="regelId" value={r.id} />
-                            <button type="submit" className="text-xs font-semibold text-warm hover:text-ink-800">Verwijderen</button>
+                            <ConfirmSubmit message="Deze factuurregel verwijderen?" className="text-xs font-semibold text-warm hover:text-ink-800">Verwijderen</ConfirmSubmit>
                           </form>
                         </td>
                       </tr>

@@ -44,7 +44,7 @@ function Tabel({ groepen }: { groepen: [string, InkoopregelMetLeverancier[]][] }
                 <th className="px-4 py-3">Item</th>
                 <th className="px-4 py-3">Maat / kleur</th>
                 <th className="px-4 py-3">Aantal</th>
-                <th className="px-4 py-3">Besteld op</th>
+                <th className="hidden px-4 py-3 sm:table-cell">Besteld op</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Actie</th>
               </tr>
@@ -55,7 +55,7 @@ function Tabel({ groepen }: { groepen: [string, InkoopregelMetLeverancier[]][] }
                   <td className="px-4 py-3 font-semibold text-ink-900">{r.item_naam || '-'}</td>
                   <td className="px-4 py-3 text-warm">{[r.maat, r.kleur].filter(Boolean).join(' · ') || '-'}</td>
                   <td className="px-4 py-3 text-warm">{r.aantal}x{r.geleverd_aantal ? ` (${r.geleverd_aantal} geleverd)` : ''}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-warm">{fmt(r.besteld_op)}</td>
+                  <td className="hidden whitespace-nowrap px-4 py-3 text-warm sm:table-cell">{fmt(r.besteld_op)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${inkoopBadge[r.status] ?? 'bg-ink-100 text-ink-600'}`}>{r.status.replace(/_/g, ' ')}</span>
                   </td>

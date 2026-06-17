@@ -43,7 +43,7 @@ export default async function KlantenPage() {
       </div>
       <p className="mt-2 text-sm text-warm">Per klant zet je hier de kledinglijn op en handel je herbestellingen af.</p>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-3">
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {orgs.length === 0 ? (
             <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen klanten. Voeg er rechts een toe.</p>
@@ -85,7 +85,7 @@ export default async function KlantenPage() {
               <label className="block text-xs font-semibold text-warm">Adres</label>
               <input name="adres" placeholder="Straat en huisnummer" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-semibold text-warm">Postcode</label>
                 <input name="postcode" placeholder="0000 AA" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />

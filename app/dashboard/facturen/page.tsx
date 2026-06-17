@@ -65,7 +65,7 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
         {status && <Link href="/dashboard/facturen" className="text-sm font-semibold text-warm hover:text-ink-800">Wissen</Link>}
       </form>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-3">
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {facturen.length === 0 ? (
             <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Geen facturen gevonden. Maak er rechts een aan.</p>

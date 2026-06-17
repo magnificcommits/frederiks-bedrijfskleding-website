@@ -51,7 +51,7 @@ export default async function MedewerkerInstellingen({
   if (!org) redirect('/portaal');
 
   const toegang = await getMijnToegang();
-  if (toegang.rol !== 'beheerder') redirect('/portaal/team');
+  if (toegang.rol !== 'beheerder') redirect('/portaal/medewerkers');
 
   const { id } = await params;
   const medewerker = await getMedewerkerDetail(id);
@@ -63,8 +63,8 @@ export default async function MedewerkerInstellingen({
         <PortaalNav rol={toegang.rol} actief="/portaal/team" />
         <div className="mt-8 max-w-xl rounded-2xl border border-line bg-white p-6 shadow-soft">
           <p className="text-sm text-warm">Deze medewerker bestaat niet of valt buiten je bedrijf.</p>
-          <Link href="/portaal/team" className="mt-4 inline-block text-sm font-semibold text-warm hover:text-ink-800">
-            Terug naar team en toegang
+          <Link href="/portaal/medewerkers" className="mt-4 inline-block text-sm font-semibold text-warm hover:text-ink-800">
+            Terug naar medewerkers
           </Link>
         </div>
       </main>
@@ -93,8 +93,8 @@ export default async function MedewerkerInstellingen({
             {[medewerker.functie, medewerker.email].filter(Boolean).join(' · ') || 'Geen contactgegevens'}
           </p>
         </div>
-        <Link href="/portaal/team" className="text-sm font-semibold text-warm hover:text-ink-800">
-          Terug naar team
+        <Link href="/portaal/medewerkers" className="text-sm font-semibold text-warm hover:text-ink-800">
+          Terug naar medewerkers
         </Link>
       </div>
       <PortaalNav rol={toegang.rol} actief="/portaal/team" />

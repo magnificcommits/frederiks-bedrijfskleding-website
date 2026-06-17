@@ -29,14 +29,14 @@ function leesGeheel(waarde: string): number | null {
 async function guardBeheerder() {
   const toegang = await getMijnToegang();
   if (!toegang.email) redirect('/portaal/login');
-  if (toegang.rol !== 'beheerder' || !toegang.organisatieId) redirect('/portaal/team');
+  if (toegang.rol !== 'beheerder' || !toegang.organisatieId) redirect('/portaal/medewerkers');
   return toegang;
 }
 
 export async function zetBudgetInstellingenAction(formData: FormData) {
   await guardBeheerder();
   const id = String(formData.get('medewerker_id') ?? '').trim();
-  if (!id) redirect('/portaal/team');
+  if (!id) redirect('/portaal/medewerkers');
 
   const budgetType = leesBudgetType(String(formData.get('budget_type') ?? 'euro'));
   const vestigingRaw = String(formData.get('vestiging_id') ?? '').trim();

@@ -4,6 +4,7 @@ import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { getProduct, listVarianten, listLeveranciers } from '@/lib/kms/producten';
 import { getKleurenVanProduct, listKleurAfbeeldingen } from '@/lib/kms/afbeeldingen';
 import { werkProduct, verwijderAfbeelding, schakelActief, voegVariantToe, werkVariant, verwijderVariant, zetKleurAfbeeldingActie, verwijderKleurAfbeeldingActie } from './actions';
+import ConfirmSubmit from '@/components/ConfirmSubmit';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Product', robots: { index: false, follow: false } };
@@ -81,7 +82,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 <form action={verwijderAfbeelding}>
                   <input type="hidden" name="productId" value={id} />
                   <input type="hidden" name="url" value={url} />
-                  <button type="submit" className="w-full rounded-md border border-line px-2 py-1 text-xs font-semibold text-red-700 hover:bg-mist">Verwijderen</button>
+                  <ConfirmSubmit message="Deze afbeelding verwijderen?" className="w-full rounded-md border border-line px-2 py-1 text-xs font-semibold text-red-700 hover:bg-mist">Verwijderen</ConfirmSubmit>
                 </form>
               </div>
             ))}
@@ -104,7 +105,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                       <form action={verwijderKleurAfbeeldingActie}>
                         <input type="hidden" name="productId" value={id} />
                         <input type="hidden" name="kleur" value={kleur} />
-                        <button type="submit" className="text-xs font-semibold text-red-700 hover:text-red-800">Verwijderen</button>
+                        <ConfirmSubmit message="Deze afbeelding verwijderen?" className="text-xs font-semibold text-red-700 hover:text-red-800">Verwijderen</ConfirmSubmit>
                       </form>
                     )}
                   </div>
@@ -283,7 +284,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                           <form action={verwijderVariant} className="mt-1">
                             <input type="hidden" name="productId" value={id} />
                             <input type="hidden" name="variantId" value={v.id} />
-                            <button type="submit" className="text-xs font-semibold text-red-700 hover:text-red-800">Verwijderen</button>
+                            <ConfirmSubmit message="Deze variant verwijderen?" className="text-xs font-semibold text-red-700 hover:text-red-800">Verwijderen</ConfirmSubmit>
                           </form>
                         </td>
                       </tr>

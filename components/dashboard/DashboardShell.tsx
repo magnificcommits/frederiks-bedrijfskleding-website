@@ -33,6 +33,7 @@ const groepen: Groep[] = [
     { href: '/dashboard/klachten', label: 'Klachten en vragen' },
   ] },
   { titel: 'Inzicht', items: [
+    { href: '/dashboard/analyse', label: 'Analyse' },
     { href: '/dashboard/rapportages', label: 'Rapportages' },
     { href: '/dashboard/meldingen', label: 'Meldingen' },
     { href: '/dashboard/import', label: 'Import' },
@@ -91,8 +92,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </div>
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-0 h-full w-64 bg-ink-900">{nav}</div>
+          <button type="button" aria-label="Menu sluiten" onClick={() => setOpen(false)} className="absolute inset-0 cursor-pointer bg-black/40" />
+          <div className="absolute left-0 top-0 h-full w-72 max-w-[80%] bg-ink-900">{nav}</div>
         </div>
       )}
       <aside className="hidden w-60 shrink-0 bg-ink-900 md:block">{nav}</aside>

@@ -192,7 +192,30 @@ export async function getWebshopMedewerkers(): Promise<WebshopMedewerker[]> {
   const { data } = await sb
     .from('medewerkers')
     .select(
-      'id, naam, voornaam, achternaam, email, functie, budget, budget_type, startbudget, productbudget, buiten_budget_toege
+      'id, naam, voornaam, achternaam, email, functie, budget, budget_type, startbudget, productbudget, buiten_budget_toegestaan, vestiging_id, actief',
+    )
+    .eq('actief', true)
+    .order('naam');
+  return (data as WebshopMedewerker[]) ?? [];
+}
+
+/**
+ * Totaal verbruikt budget (in euro) van een medewerker: som van aantal × stukprijs
+ * over alle orderregels van diens orders. RLS borgt dat alleen de eigen organisatie meekomt.
+ */
+export async function getBudgetVerbruik(medewerkerId: string): Promise<number> {
+  const sb = await getServerSupabase();
+  if (!sb) return 0;
+  const { data: orders } = await sb.from('orders').select('id').eq('medewerker_id', medewerkerId);
+  const orderIds = ((orders as { id: string }[]) ?? []).map((o) => o.id);
+  if (orderIds.length === 0) return 0;
+  const { data: regels } = await sb.from('orderregels').select('aantal, stukprijs').in('order_id', orderIds);
+  return ((regels as { aantal: number | null; stukprijs: number | null }[]) ?? []).reduce(
+    (sum, r) => sum + (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0),
+    0,
+  );
+}
+
 /** Eén afbeelding per kleur, per product, voor de eigen organisatie (RLS op assortiment). */
 export async function getKleurAfbeeldingen(): Promise<Record<string, Record<string, string>>> {
   const sb = await getServerSupabase();
@@ -206,7 +229,10 @@ export async function getKleurAfbeeldingen(): Promise<Record<string, Record<stri
   });
   return map;
 }
-leen de eigen assortimentregels meekomen. Ontbreekt een product, dan valt het op 'budget' terug.
+
+/**
+ * Verstrekkingstype per product voor de eigen organisatie, waarbij alleen de
+ * eigen assortimentregels meekomen. Ontbreekt een product, dan valt het op 'budget' terug.
  */
 export async function getVerstrekkingen(): Promise<Record<string, Verstrekking>> {
   const sb = await getServerSupabase();

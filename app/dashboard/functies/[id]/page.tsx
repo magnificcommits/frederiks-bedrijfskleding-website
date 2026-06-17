@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { getFunctie, listFunctieProducten, listProducten } from '@/lib/kms/functies';
 import { voegProductToe, verwijderProductActie } from './actions';
+import ConfirmSubmit from '@/components/ConfirmSubmit';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Functie', robots: { index: false, follow: false } };
@@ -79,7 +80,7 @@ export default async function FunctiePage({ params }: { params: Promise<{ id: st
                           <form action={verwijderProductActie}>
                             <input type="hidden" name="functieId" value={id} />
                             <input type="hidden" name="regelId" value={r.id} />
-                            <button type="submit" className="text-xs font-semibold text-red-700 hover:text-red-800">Verwijderen</button>
+                            <ConfirmSubmit message="Dit product uit het pakket verwijderen?" className="text-xs font-semibold text-red-700 hover:text-red-800">Verwijderen</ConfirmSubmit>
                           </form>
                         </td>
                       </tr>

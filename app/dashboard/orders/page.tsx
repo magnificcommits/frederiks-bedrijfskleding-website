@@ -77,7 +77,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         {status && <Link href="/dashboard/orders" className="text-sm font-semibold text-warm hover:text-ink-800">Wissen</Link>}
       </form>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-3">
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {orders.length === 0 ? (
             <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Geen orders gevonden. Maak er rechts een aan.</p>
@@ -91,7 +91,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     <th className="px-4 py-3">Datum</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3">Bedrag</th>
-                    <th className="px-4 py-3">Goedkeuring</th>
+                    <th className="hidden px-4 py-3 sm:table-cell">Goedkeuring</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -109,7 +109,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                         <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[o.status] ?? 'bg-ink-100 text-ink-600'}`}>{o.status.replace(/_/g, ' ')}</span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-warm">{o.bedrag != null ? euro(Number(o.bedrag)) : '-'}</td>
-                      <td className="px-4 py-3">
+                      <td className="hidden px-4 py-3 sm:table-cell">
                         <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${goedkeurBadge[o.goedkeuring_status] ?? 'bg-ink-100 text-ink-500'}`}>{o.goedkeuring_status.replace(/_/g, ' ')}</span>
                       </td>
                     </tr>

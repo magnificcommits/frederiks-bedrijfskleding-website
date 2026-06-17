@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { listOrganisaties, listFuncties } from '@/lib/kms/functies';
 import { nieuweFunctie, verwijderFunctieActie } from './actions';
+import ConfirmSubmit from '@/components/ConfirmSubmit';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Functies', robots: { index: false, follow: false } };
@@ -79,7 +80,7 @@ export default async function FunctiesPage({ searchParams }: { searchParams: Pro
                           <form action={verwijderFunctieActie}>
                             <input type="hidden" name="orgId" value={gekozen} />
                             <input type="hidden" name="functieId" value={f.id} />
-                            <button type="submit" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</button>
+                            <ConfirmSubmit message="Deze functie verwijderen?" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</ConfirmSubmit>
                           </form>
                         </td>
                       </tr>

@@ -5,6 +5,7 @@ import { env, isLeadsDbConfigured } from '@/lib/env';
 import { getOrganisatie, getGebruikers, listItems, listBestellingen } from '@/lib/portaalAdmin';
 import { listContactpersonen, listActiviteiten, getKlantVerkoop, ACTIVITEIT_SOORTEN } from '@/lib/kms/crm';
 import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus, nieuwContact, verwijderContactActie, nieuweActiviteit, verwijderActiviteitActie } from './actions';
+import ConfirmSubmit from '@/components/ConfirmSubmit';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klant', robots: { index: false, follow: false } };
@@ -215,7 +216,7 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
                           <form action={verwijderContactActie}>
                             <input type="hidden" name="orgId" value={id} />
                             <input type="hidden" name="contactId" value={c.id} />
-                            <button type="submit" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</button>
+                            <ConfirmSubmit message="Deze contactpersoon verwijderen?" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</ConfirmSubmit>
                           </form>
                         </td>
                       </tr>
@@ -288,7 +289,7 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
                         <form action={verwijderActiviteitActie}>
                           <input type="hidden" name="orgId" value={id} />
                           <input type="hidden" name="activiteitId" value={a.id} />
-                          <button type="submit" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</button>
+                          <ConfirmSubmit message="Deze activiteit verwijderen?" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</ConfirmSubmit>
                         </form>
                       </div>
                     </li>

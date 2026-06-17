@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { sendEmail, escapeHtml } from '@/lib/email';
+import { sendEmail, escapeHtml, emailLayout } from '@/lib/email';
 import { env } from '@/lib/env';
 import { rateLimit, clientIp } from '@/lib/ratelimit';
 import { site } from '@/content/site';
@@ -66,15 +66,15 @@ export async function POST(req: Request) {
   await sendEmail({
     to: d.email,
     subject: 'Bedankt voor je aanvraag bij Frederiks Bedrijfskleding',
-    html: `
-      <div style="font-family:Inter,Arial,sans-serif;color:#1b2430;max-width:560px;margin:0 auto">
-        <h2 style="color:#2f4a6b">Bedankt voor je aanvraag</h2>
-        <p>Beste ${escapeHtml(d.name)},</p>
-        <p>Bedankt voor je bericht aan Frederiks Bedrijfskleding. We nemen zo snel mogelijk persoonlijk contact met je op om je wensen door te nemen en passend advies te geven.</p>
-        <p>Heb je een dringende vraag? Bel of WhatsApp gerust: <strong>${escapeHtml(site.phone)}</strong>.</p>
-        <p style="color:#4a4f57;font-size:13px;margin-top:24px">${escapeHtml(site.name)} · ${escapeHtml(site.address.street)}, ${escapeHtml(site.address.postalCode)} ${escapeHtml(site.address.city)} · ${escapeHtml(site.phone)}</p>
-      </div>
-    `,
+    html: emailLayout({
+      heading: 'Bedankt voor je aanvraag',
+      preheader: 'We nemen zo snel mogelijk persoonlijk contact met je op.',
+      bodyHtml: `
+        <p style="margin:0;">Beste ${escapeHtml(d.name)},</p>
+        <p style="margin:14px 0 0;">Bedankt voor je bericht aan Frederiks Bedrijfskleding. We nemen zo snel mogelijk persoonlijk contact met je op om je wensen door te nemen en passend advies te geven.</p>
+        <p style="margin:14px 0 0;">Heb je een dringende vraag? Bel of WhatsApp gerust: <strong style="color:#1c1c1c;">${escapeHtml(site.phone)}</strong>.</p>
+      `,
+    }),
   }).catch(() => {});
 
   return NextResponse.json({ ok: true, emailed: sent.sent });

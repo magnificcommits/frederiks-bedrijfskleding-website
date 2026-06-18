@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import { getFactuur } from '@/lib/kms/facturen';
+import { getFactuur, getFactuurMailLog } from '@/lib/kms/facturen';
 import { voegRegel, werkRegel, verwijderRegel, wijzigStatus } from './actions';
 import PrintKnop from './PrintKnop';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
@@ -14,6 +14,11 @@ const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', 
 function fmt(d: string | null) {
   if (!d) return '-';
   try { return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch { return d; }
+}
+function fmtTijd(d: string | null) {
+  if (!d) return '-';
+  try { return new Date(d).toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
   catch { return d; }
 }
 
@@ -46,7 +51,7 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
     );
   }
 
-  const factuur = await getFactuur(id);
+  const [factuur, mailLog] = await Promise.all([getFactuur(id), getFactuurMailLog(id)]);
   if (!factuur) {
     return (
       <main className="container-x py-20">
@@ -212,6 +217,24 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
               <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Toevoegen</button>
             </form>
           </div>
+        </div>
+      </section>
+
+      <section className="mt-10 print:hidden">
+        <h2 className="font-display text-xl font-bold text-ink-900">Verzendlogboek boekhouder</h2>
+        <div className="mt-4 max-w-2xl rounded-2xl border border-line bg-white p-6 shadow-soft">
+          {mailLog.length === 0 ? (
+            <p className="text-sm text-warm">Nog niet naar de boekhouder gemaild.</p>
+          ) : (
+            <ul className="divide-y divide-line text-sm">
+              {mailLog.map((log, i) => (
+                <li key={i} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <span className="text-ink-900">{fmtTijd(log.verzonden_op)}</span>
+                  <span className="text-warm">{log.naar_email}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
 

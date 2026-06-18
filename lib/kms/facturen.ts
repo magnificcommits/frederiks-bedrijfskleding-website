@@ -1,4 +1,6 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { isEmailConfigured, env } from '@/lib/env';
+import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
 
 /**
  * Data-access voor de module Facturatie (zelf gebouwd, geen externe boekhouding).
@@ -23,6 +25,7 @@ export type Factuur = {
   factuur_email: string | null;
   betaaldatum: string | null;
   toegepaste_prijsafspraken: string | null;
+  gemaild_op: string | null;
   created_at: string;
 };
 
@@ -298,4 +301,119 @@ export async function listFactureerbareOrders(): Promise<{ id: string; ordernumm
   return rows
     .filter((o) => !metFactuur.has(o.id))
     .map((o) => ({ id: o.id, ordernummer: o.ordernummer, bedrag: o.bedrag, organisatie_naam: o.organisaties?.naam ?? null }));
+}
+
+/** Het ingestelde e-mailadres van de boekhouder ('' als nog niet ingesteld). */
+export async function getBoekhouderEmail(): Promise<string> {
+  const sb = kmsAdmin(); if (!sb) return '';
+  const { data } = await sb
+    .from('instellingen')
+    .select('waarde')
+    .eq('sleutel', 'boekhouder_email')
+    .maybeSingle();
+  return (data as { waarde: string | null } | null)?.waarde ?? '';
+}
+
+/** Bewaart (upsert) het e-mailadres van de boekhouder. */
+export async function zetBoekhouderEmail(email: string): Promise<boolean> {
+  const sb = kmsAdmin(); if (!sb) return false;
+  const { error } = await sb
+    .from('instellingen')
+    .upsert(
+      { sleutel: 'boekhouder_email', waarde: email.trim(), bijgewerkt_op: new Date().toISOString() },
+      { onConflict: 'sleutel' },
+    );
+  return !error;
+}
+
+/**
+ * Mailt de geselecteerde facturen in één e-mail naar de boekhouder, markeert ze
+ * als gemaild (facturen.gemaild_op) en logt elke verzending in factuur_mail_log.
+ */
+export async function mailFacturenNaarBoekhouder(ids: string[]): Promise<{ ok: boolean; aantal: number; error?: string }> {
+  if (!ids || ids.length === 0) return { ok: false, aantal: 0, error: 'Geen facturen geselecteerd.' };
+  if (!isEmailConfigured) {
+    return { ok: false, aantal: 0, error: 'E-mail is nog niet geconfigureerd (Resend). Stel dat eerst in voordat je facturen kunt mailen.' };
+  }
+  const boekhouder = await getBoekhouderEmail();
+  if (!boekhouder.trim()) return { ok: false, aantal: 0, error: 'Stel eerst het e-mailadres van de boekhouder in.' };
+
+  const sb = kmsAdmin();
+  if (!sb) return { ok: false, aantal: 0, error: 'Leaddatabase niet gekoppeld.' };
+
+  const { data } = await sb
+    .from('facturen')
+    .select('id, factuurnummer, bedrag_incl, factuurdatum, status, organisaties(naam)')
+    .in('id', ids);
+  const rows = (data as unknown as {
+    id: string;
+    factuurnummer: string | null;
+    bedrag_incl: number | null;
+    factuurdatum: string | null;
+    status: string;
+    organisaties: { naam: string } | null;
+  }[]) ?? [];
+  if (rows.length === 0) return { ok: false, aantal: 0, error: 'Geen facturen gevonden.' };
+
+  const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
+  const datum = (d: string | null) => {
+    if (!d) return '-';
+    try { return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' }); }
+    catch { return d; }
+  };
+
+  const rijenHtml = rows.map((r) => {
+    const klant = escapeHtml(r.organisaties?.naam ?? '-');
+    const nummer = escapeHtml(r.factuurnummer || 'concept');
+    const link = `${env.siteUrl}/dashboard/facturen/${r.id}`;
+    return `<tr>
+      <td style="padding:8px 10px;border-bottom:1px solid #e4e2e0;"><a href="${link}" style="color:#ec6726;font-weight:700;text-decoration:none;">${nummer}</a></td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e4e2e0;">${klant}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e4e2e0;">${datum(r.factuurdatum)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e4e2e0;text-align:right;">${euro(Number(r.bedrag_incl) || 0)}</td>
+    </tr>`;
+  }).join('');
+
+  const bodyHtml = `
+    <p style="margin:0 0 14px;">Hierbij ${rows.length === 1 ? 'de factuur' : `de ${rows.length} facturen`} ter verwerking. Klik op een factuurnummer om de factuur in te zien.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+      <thead>
+        <tr style="background-color:#f6f5f4;">
+          <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e4e2e0;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:#52504e;">Nummer</th>
+          <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e4e2e0;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:#52504e;">Klant</th>
+          <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e4e2e0;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:#52504e;">Datum</th>
+          <th style="padding:8px 10px;text-align:right;border-bottom:2px solid #e4e2e0;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:#52504e;">Bedrag incl.</th>
+        </tr>
+      </thead>
+      <tbody>${rijenHtml}</tbody>
+    </table>`;
+
+  const html = emailLayout({
+    heading: 'Facturen ter verwerking',
+    preheader: `${rows.length} ${rows.length === 1 ? 'factuur' : 'facturen'} ter verwerking`,
+    bodyHtml,
+  });
+
+  try {
+    await sendEmail({ to: boekhouder, subject: 'Facturen ter verwerking — Frederiks Bedrijfskleding', html });
+  } catch {
+    return { ok: false, aantal: 0, error: 'Versturen mislukt.' };
+  }
+
+  const nu = new Date().toISOString();
+  await sb.from('facturen').update({ gemaild_op: nu }).in('id', ids);
+  await sb.from('factuur_mail_log').insert(ids.map((id) => ({ factuur_id: id, naar_email: boekhouder.trim() })));
+
+  return { ok: true, aantal: ids.length };
+}
+
+/** Verzendlogboek van een factuur naar de boekhouder, nieuwste eerst. */
+export async function getFactuurMailLog(factuurId: string): Promise<{ naar_email: string; verzonden_op: string }[]> {
+  const sb = kmsAdmin(); if (!sb) return [];
+  const { data } = await sb
+    .from('factuur_mail_log')
+    .select('naar_email, verzonden_op')
+    .eq('factuur_id', factuurId)
+    .order('verzonden_op', { ascending: false });
+  return (data as { naar_email: string; verzonden_op: string }[]) ?? [];
 }

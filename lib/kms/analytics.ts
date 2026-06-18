@@ -255,6 +255,47 @@ export async function topProducten(limit = 8): Promise<TopProduct[]> {
   return [...perProduct.values()].sort((a, b) => b.stuks - a.stuks).slice(0, limit);
 }
 
+export type TopMerk = { merk: string; stuks: number; omzet: number };
+
+/** Best verkochte merken op stuks, gegroepeerd via het merk van het product (geen concept/offerte/geannuleerd). */
+export async function topMerken(limit = 8): Promise<TopMerk[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+  const { data: ordersData } = await sb.from('orders').select('id, status');
+  const geldig = new Set(
+    ((ordersData as { id: string; status: string }[]) ?? [])
+      .filter((o) => !['concept', 'geannuleerd', 'offerte_verstuurd'].includes(o.status))
+      .map((o) => o.id),
+  );
+  if (geldig.size === 0) return [];
+  const { data: productenData } = await sb.from('producten').select('id, merk');
+  const merkPerProduct = new Map<string, string>();
+  ((productenData as { id: string; merk: string | null }[]) ?? []).forEach((p) => {
+    const merk = p.merk && p.merk.trim() !== '' ? p.merk : 'Onbekend';
+    merkPerProduct.set(p.id, merk);
+  });
+  const { data: regels } = await sb
+    .from('orderregels')
+    .select('order_id, product_id, aantal, stukprijs');
+  const perMerk = new Map<string, TopMerk>();
+  (
+    (regels as {
+      order_id: string;
+      product_id: string | null;
+      aantal: number | null;
+      stukprijs: number | null;
+    }[]) ?? []
+  ).forEach((r) => {
+    if (!geldig.has(r.order_id)) return;
+    const merk = (r.product_id ? merkPerProduct.get(r.product_id) : undefined) ?? 'Onbekend';
+    const huidig = perMerk.get(merk) ?? { merk, stuks: 0, omzet: 0 };
+    huidig.stuks += Number(r.aantal) || 0;
+    huidig.omzet += (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0);
+    perMerk.set(merk, huidig);
+  });
+  return [...perMerk.values()].sort((a, b) => b.stuks - a.stuks).slice(0, limit);
+}
+
 export type Voorraadwaarde = {
   stuks: number;
   inkoopwaarde: number;

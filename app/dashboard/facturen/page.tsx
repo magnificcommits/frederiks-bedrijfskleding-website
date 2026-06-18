@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import { listFacturen, listOrganisaties, listFactureerbareOrders, FACTUUR_STATUSSEN } from '@/lib/kms/facturen';
+import { listFacturen, listOrganisaties, listFactureerbareOrders, getBoekhouderEmail, FACTUUR_STATUSSEN } from '@/lib/kms/facturen';
 import NavigateSelect from '@/components/dashboard/NavigateSelect';
-import { factuurVanOrder, legeFactuur } from './actions';
+import { factuurVanOrder, legeFactuur, zetBoekhouderEmailActie, mailFacturenActie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Facturen', robots: { index: false, follow: false } };
@@ -22,7 +22,7 @@ const statusBadge: Record<string, string> = {
   betaald: 'bg-green-100 text-green-800',
 };
 
-export default async function FacturenPage({ searchParams }: { searchParams: Promise<{ status?: string; order?: string }> }) {
+export default async function FacturenPage({ searchParams }: { searchParams: Promise<{ status?: string; order?: string; ok?: string; gemaild?: string; mailfout?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const sb = kmsAdmin();
 
@@ -38,11 +38,12 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
     );
   }
 
-  const { status, order } = await searchParams;
-  const [facturen, organisaties, factureerbaar] = await Promise.all([
+  const { status, order, ok, gemaild, mailfout } = await searchParams;
+  const [facturen, organisaties, factureerbaar, boekhouderEmail] = await Promise.all([
     listFacturen(status),
     listOrganisaties(),
     listFactureerbareOrders(),
+    getBoekhouderEmail(),
   ]);
   const voorgeselecteerd = order && factureerbaar.some((o) => o.id === order) ? order : '';
 
@@ -53,6 +54,28 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 text-sm text-warm">Alle facturen met hun status. Klik op een factuurnummer om de regels te beheren en de factuur af te drukken.</p>
+
+      {gemaild && (
+        <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">{gemaild} {Number(gemaild) === 1 ? 'factuur' : 'facturen'} gemaild naar de boekhouder.</p>
+      )}
+      {mailfout && (
+        <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-800">{mailfout}</p>
+      )}
+      {ok === 'boekhouder' && (
+        <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">E-mailadres van de boekhouder opgeslagen.</p>
+      )}
+
+      <div className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-soft">
+        <h2 className="font-display text-lg font-bold text-ink-900">Boekhouder</h2>
+        <p className="mt-1 text-xs text-warm">Facturen worden naar dit adres gemaild.</p>
+        <form action={zetBoekhouderEmailActie} className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="min-w-[16rem] flex-1">
+            <label className="block text-xs font-semibold text-warm">E-mailadres boekhouder</label>
+            <input type="email" name="boekhouder_email" defaultValue={boekhouderEmail} placeholder="boekhouder@voorbeeld.nl" className={inputCls} />
+          </div>
+          <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Opslaan</button>
+        </form>
+      </div>
 
       <div className="mt-6 flex flex-wrap items-end gap-3">
         <div>
@@ -74,34 +97,51 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
           {facturen.length === 0 ? (
             <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Geen facturen gevonden. Maak er rechts een aan.</p>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
-                  <tr>
-                    <th className="px-4 py-3">Nummer</th>
-                    <th className="px-4 py-3">Klant</th>
-                    <th className="px-4 py-3">Datum</th>
-                    <th className="px-4 py-3">Bedrag incl.</th>
-                    <th className="px-4 py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {facturen.map((f) => (
-                    <tr key={f.id} className="border-b border-line">
-                      <td className="px-4 py-3">
-                        <Link href={`/dashboard/facturen/${f.id}`} className="font-semibold text-amber-700 hover:text-amber-800">{f.factuurnummer || 'concept'}</Link>
-                      </td>
-                      <td className="px-4 py-3 text-ink-900">{f.organisatie_naam || '-'}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-warm">{fmt(f.factuurdatum)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-warm">{f.bedrag_incl != null ? euro(Number(f.bedrag_incl)) : '-'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[f.status] ?? 'bg-ink-100 text-ink-600'}`}>{f.status}</span>
-                      </td>
+            <form action={mailFacturenActie}>
+              <div className="mb-3 flex justify-end">
+                <button type="submit" className="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700">Mail geselecteerde naar boekhouder</button>
+              </div>
+              <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+                    <tr>
+                      <th className="px-4 py-3"><span className="sr-only">Selecteren</span></th>
+                      <th className="px-4 py-3">Nummer</th>
+                      <th className="px-4 py-3">Klant</th>
+                      <th className="px-4 py-3">Datum</th>
+                      <th className="px-4 py-3">Bedrag incl.</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Boekhouder</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {facturen.map((f) => (
+                      <tr key={f.id} className="border-b border-line">
+                        <td className="px-4 py-3">
+                          <input type="checkbox" name="factuur_ids" value={f.id} className="h-4 w-4 rounded border-line text-amber-600 focus:ring-amber-200" aria-label={`Selecteer factuur ${f.factuurnummer || 'concept'}`} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <Link href={`/dashboard/facturen/${f.id}`} className="font-semibold text-amber-700 hover:text-amber-800">{f.factuurnummer || 'concept'}</Link>
+                        </td>
+                        <td className="px-4 py-3 text-ink-900">{f.organisatie_naam || '-'}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-warm">{fmt(f.factuurdatum)}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-warm">{f.bedrag_incl != null ? euro(Number(f.bedrag_incl)) : '-'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[f.status] ?? 'bg-ink-100 text-ink-600'}`}>{f.status}</span>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          {f.gemaild_op ? (
+                            <span className="inline-block rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">Gemaild · {fmt(f.gemaild_op)}</span>
+                          ) : (
+                            <span className="text-xs text-warm">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </form>
           )}
         </div>
 

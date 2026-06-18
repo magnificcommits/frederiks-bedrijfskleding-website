@@ -8,6 +8,7 @@ import {
   omzetPerMaand,
   kerncijfersAnalyse,
   topProducten,
+  topMerken,
   voorraadwaarde,
   leadConversie,
   type GroeiCijfers,
@@ -55,18 +56,20 @@ export default async function AnalysePage() {
     );
   }
 
-  const [cijfers, perBedrijf, stuks, omzet, top, voorraad, conversie] = await Promise.all([
+  const [cijfers, perBedrijf, stuks, omzet, top, merken, voorraad, conversie] = await Promise.all([
     kerncijfersAnalyse(),
     medewerkersPerBedrijf(),
     stuksPerMaand(12),
     omzetPerMaand(12),
     topProducten(8),
+    topMerken(8),
     voorraadwaarde(),
     leadConversie(),
   ]);
 
   const maxBedrijf = Math.max(1, ...perBedrijf.lijst.map((b) => b.aantal));
   const maxStuks = Math.max(1, ...top.map((t) => t.stuks));
+  const maxMerkStuks = Math.max(1, ...merken.map((m) => m.stuks));
 
   return (
     <main className="container-x py-12">
@@ -204,6 +207,44 @@ export default async function AnalysePage() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{formatGetal(t.stuks)}</td>
                     <td className="hidden whitespace-nowrap px-4 py-3 text-right text-warm sm:table-cell">{formatEuro(t.omzet, 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <h2 className="font-display text-xl font-bold text-ink-900">Best verkochte merken</h2>
+        <p className="mt-1 text-sm text-warm">Top {merken.length} op aantal verkochte stuks (uit geplaatste orders).</p>
+        {merken.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen verkochte merken.</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+                <tr>
+                  <th className="px-4 py-3">Merk</th>
+                  <th className="px-4 py-3">Verdeling</th>
+                  <th className="px-4 py-3 text-right">Stuks</th>
+                  <th className="hidden px-4 py-3 text-right sm:table-cell">Omzet</th>
+                </tr>
+              </thead>
+              <tbody>
+                {merken.map((m) => (
+                  <tr key={m.merk} className="border-b border-line">
+                    <td className="px-4 py-3 font-semibold text-ink-900">{m.merk}</td>
+                    <td className="px-4 py-3">
+                      <span className="block h-2.5 w-full max-w-xs rounded-full bg-mist">
+                        <span
+                          className="block h-2.5 rounded-full bg-amber-600"
+                          style={{ width: `${Math.round((m.stuks / maxMerkStuks) * 100)}%` }}
+                        />
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{formatGetal(m.stuks)}</td>
+                    <td className="hidden whitespace-nowrap px-4 py-3 text-right text-warm sm:table-cell">{formatEuro(m.omzet, 0)}</td>
                   </tr>
                 ))}
               </tbody>

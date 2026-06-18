@@ -8,6 +8,7 @@ import { Reviews } from '@/components/Reviews';
 import { CtaBand } from '@/components/CtaBand';
 import { Faq } from '@/components/Faq';
 import { KledingadviesWizard } from '@/components/KledingadviesWizard';
+import { PortaalUsp } from '@/components/PortaalUsp';
 import { site } from '@/content/site';
 import { JsonLd } from '@/components/JsonLd';
 import { faqJsonLd } from '@/lib/jsonld';
@@ -62,6 +63,7 @@ export default function HomePage() {
       </section>
 
       <BrancheGrid />
+      <PortaalUsp />
       <Reviews limit={6} />
 
       <section className="container-x py-16 sm:py-24">

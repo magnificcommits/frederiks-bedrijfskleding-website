@@ -70,31 +70,31 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
   ];
 
   return (
-    <main className="container-x py-12">
-      <h1 className="font-display text-3xl font-extrabold text-ink-900">Overzicht</h1>
-      <p className="mt-1 text-sm text-warm">De stand van zaken in één oogopslag.</p>
+    <main className="container-x py-8">
+      <h1 className="font-display text-2xl font-extrabold text-ink-900">Overzicht</h1>
+      <p className="mt-0.5 text-sm text-warm">De stand van zaken in één oogopslag.</p>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         {kpis.map((k) => (
-          <Link key={k.label} href={k.href} className="rounded-2xl border border-line bg-white p-5 shadow-soft hover:border-amber-300">
-            <p className="text-xs uppercase tracking-wide text-warm">{k.label}</p>
-            <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{k.waarde}</p>
+          <Link key={k.label} href={k.href} className="rounded-xl border border-line bg-white p-3.5 shadow-soft hover:border-amber-300">
+            <p className="text-[11px] uppercase tracking-wide text-warm">{k.label}</p>
+            <p className="mt-1 font-display text-xl font-extrabold text-ink-900">{k.waarde}</p>
           </Link>
         ))}
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-line bg-white p-4 shadow-soft">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold text-ink-900">Recente leads</h2>
+            <h2 className="font-display text-base font-bold text-ink-900">Recente leads</h2>
             <Link href="/dashboard/leads" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Alle leads</Link>
           </div>
           {(!o || o.recenteLeads.length === 0) ? (
-            <p className="mt-3 text-sm text-warm">Nog geen leads.</p>
+            <p className="mt-2 text-sm text-warm">Nog geen leads.</p>
           ) : (
-            <ul className="mt-3 divide-y divide-line">
+            <ul className="mt-2 divide-y divide-line">
               {o.recenteLeads.map((l) => (
-                <li key={l.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <li key={l.id} className="flex items-center justify-between gap-3 py-1.5 text-sm">
                   <span className="min-w-0 truncate text-ink-900">{l.name}{l.company ? ` · ${l.company}` : ''}</span>
                   <span className="flex shrink-0 items-center gap-3">
                     <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge[l.status] ?? 'bg-ink-100 text-ink-600'}`}>{l.status}</span>
@@ -106,9 +106,9 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
           )}
         </div>
 
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
-          <h2 className="font-display text-lg font-bold text-ink-900">Snel naar</h2>
-          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+        <div className="rounded-xl border border-line bg-white p-4 shadow-soft">
+          <h2 className="font-display text-base font-bold text-ink-900">Snel naar</h2>
+          <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
             <Link href="/dashboard/klanten" className="rounded-md border border-line px-3 py-2 font-semibold text-ink-800 hover:bg-mist">Klanten</Link>
             <Link href="/dashboard/orders" className="rounded-md border border-line px-3 py-2 font-semibold text-ink-800 hover:bg-mist">Orders</Link>
             <Link href="/dashboard/producten" className="rounded-md border border-line px-3 py-2 font-semibold text-ink-800 hover:bg-mist">Producten</Link>

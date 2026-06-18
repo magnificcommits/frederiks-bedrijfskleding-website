@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { listOrganisaties, listLogos } from '@/lib/kms/logos';
 import { nieuwLogo, verwijderLogoActie } from './actions';
+import NavigateSelect from '@/components/dashboard/NavigateSelect';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Logobibliotheek', robots: { index: false, follow: false } };
@@ -37,16 +38,14 @@ export default async function LogosPage({ searchParams }: { searchParams: Promis
       <p className="mt-2 text-sm text-warm">Per klant bewaar je hier de logo&apos;s met de bijbehorende bestanden voor bedrukken en borduren.</p>
 
       <section className="mt-8">
-        <form method="get" className="flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-white p-6 shadow-soft">
+        <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-white p-6 shadow-soft">
           <div className="min-w-[16rem]">
             <label className="block text-xs font-semibold text-warm">Klant</label>
-            <select name="org" defaultValue={gekozen} className={inputCls}>
-              <option value="">Kies een klant</option>
-              {orgs.map((o) => <option key={o.id} value={o.id}>{o.naam}</option>)}
-            </select>
+            <div className="mt-1">
+              <NavigateSelect options={orgs.map((o) => ({ value: o.id, label: o.naam }))} value={gekozen} basePath="/dashboard/logos" param="org" placeholder="Kies een klant" />
+            </div>
           </div>
-          <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Tonen</button>
-        </form>
+        </div>
       </section>
 
       {!gekozen ? (

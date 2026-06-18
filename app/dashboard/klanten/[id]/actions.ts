@@ -5,6 +5,8 @@ import { env } from '@/lib/env';
 import { addGebruiker, maakItem, zetItemActief, zetBestellingStatus, werkOrganisatieBij } from '@/lib/portaalAdmin';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { maakContactpersoon, verwijderContactpersoon, maakActiviteit, verwijderActiviteit } from '@/lib/kms/crm';
+import { uploadMedia } from '@/lib/kms/storage';
+import { maakLogo, verwijderLogo } from '@/lib/kms/logos';
 
 const DASH_COOKIE = 'fb_dash';
 
@@ -103,5 +105,30 @@ export async function verwijderActiviteitActie(formData: FormData) {
   const id = String(formData.get('orgId') ?? '');
   const activiteitId = String(formData.get('activiteitId') ?? '');
   if (activiteitId) await verwijderActiviteit(activiteitId);
+  redirect('/dashboard/klanten/' + id);
+}
+
+export async function nieuwLogoActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('orgId') ?? '').trim();
+  const naam = String(formData.get('naam') ?? '').trim();
+  const logoUpload = await uploadMedia(formData.get('logo_bestand') as File | null, 'logos');
+  const vectorUpload = await uploadMedia(formData.get('vectorbestand') as File | null, 'logos');
+  const borduurUpload = await uploadMedia(formData.get('borduurbestand') as File | null, 'logos');
+  const logo_bestand_url = logoUpload ?? (String(formData.get('logo_bestand_url') ?? '').trim() || null);
+  const vectorbestand_url = vectorUpload ?? (String(formData.get('vectorbestand_url') ?? '').trim() || null);
+  const borduurbestand_url = borduurUpload ?? (String(formData.get('borduurbestand_url') ?? '').trim() || null);
+  const opmerkingen = String(formData.get('opmerkingen') ?? '').trim() || null;
+  if (id && naam) {
+    await maakLogo(id, { naam, logo_bestand_url, vectorbestand_url, borduurbestand_url, opmerkingen });
+  }
+  redirect('/dashboard/klanten/' + id);
+}
+
+export async function verwijderLogoActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('orgId') ?? '').trim();
+  const logoId = String(formData.get('logoId') ?? '').trim();
+  if (logoId) await verwijderLogo(logoId);
   redirect('/dashboard/klanten/' + id);
 }

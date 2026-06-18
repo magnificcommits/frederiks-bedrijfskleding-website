@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { listOrganisaties, listPakketten } from '@/lib/kms/pakketten';
 import { nieuwPakket } from './actions';
+import NavigateSelect from '@/components/dashboard/NavigateSelect';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Pakketten', robots: { index: false, follow: false } };
@@ -41,16 +42,14 @@ export default async function PakkettenPage({ searchParams }: { searchParams: Pr
       <p className="mt-2 text-sm text-warm">Per klant stel je een startpakket en reguliere pakketten samen met een vaste pakketprijs. Kies een pakket om de inhoud te bewerken.</p>
 
       <section className="mt-8">
-        <form method="get" className="flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-white p-6 shadow-soft">
+        <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-white p-6 shadow-soft">
           <div className="min-w-[16rem]">
             <label className="block text-xs font-semibold text-warm">Klant</label>
-            <select name="org" defaultValue={gekozen} className={inputCls}>
-              <option value="">Kies een klant</option>
-              {orgs.map((o) => <option key={o.id} value={o.id}>{o.naam}</option>)}
-            </select>
+            <div className="mt-1">
+              <NavigateSelect options={orgs.map((o) => ({ value: o.id, label: o.naam }))} value={gekozen} basePath="/dashboard/pakketten" param="org" placeholder="Kies een klant" />
+            </div>
           </div>
-          <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Tonen</button>
-        </form>
+        </div>
       </section>
 
       {!gekozen ? (

@@ -133,22 +133,33 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                     {l.offertewaarde != null && <p className="mt-1 text-xs font-semibold text-ink-700">{euro(Number(l.offertewaarde))}</p>}
                   </td>
                   <td className="px-4 py-3">
-                    <form action={saveLeadEdit} className="flex flex-col gap-2">
-                      <input type="hidden" name="id" value={l.id} />
-                      <input type="hidden" name="terug" value={terug} />
-                      <div className="flex items-center gap-2">
-                        <select name="status" defaultValue={l.status} className="rounded-md border border-line px-2 py-1 text-xs">
-                          {statusen.map((s) => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                        <input name="offertewaarde" defaultValue={l.offertewaarde ?? ''} inputMode="decimal" placeholder="bedrag" className="w-24 rounded-md border border-line px-2 py-1 text-xs" />
-                      </div>
-                      <input name="notitie" defaultValue={l.notitie ?? ''} placeholder="notitie" className="w-full rounded-md border border-line px-2 py-1 text-xs" />
-                      <button type="submit" className="self-start rounded-md bg-ink-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-ink-800">Opslaan</button>
-                    </form>
-                    <form action={converteerLead} className="mt-2">
-                      <input type="hidden" name="id" value={l.id} />
-                      <button type="submit" className="text-xs font-semibold text-amber-700 hover:text-amber-800">Converteer naar klant</button>
-                    </form>
+                    <div className="w-56 rounded-lg border border-line bg-mist p-3">
+                      <form action={saveLeadEdit} className="flex flex-col gap-2.5">
+                        <input type="hidden" name="id" value={l.id} />
+                        <input type="hidden" name="terug" value={terug} />
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <label className="block text-[11px] font-semibold uppercase tracking-wide text-warm">Status</label>
+                            <select name="status" defaultValue={l.status} className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1.5 text-xs">
+                              {statusen.map((s) => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                          </div>
+                          <div className="w-24">
+                            <label className="block text-[11px] font-semibold uppercase tracking-wide text-warm">Bedrag</label>
+                            <input name="offertewaarde" defaultValue={l.offertewaarde ?? ''} inputMode="decimal" placeholder="bedrag" className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1.5 text-xs" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold uppercase tracking-wide text-warm">Notitie</label>
+                          <input name="notitie" defaultValue={l.notitie ?? ''} placeholder="notitie" className="mt-1 w-full rounded-md border border-line bg-white px-2 py-1.5 text-xs" />
+                        </div>
+                        <button type="submit" className="w-full rounded-md bg-ink-900 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-ink-800">Opslaan</button>
+                      </form>
+                      <form action={converteerLead} className="mt-3 border-t border-line pt-3">
+                        <input type="hidden" name="id" value={l.id} />
+                        <button type="submit" className="text-xs font-semibold text-amber-700 hover:text-amber-800">Converteer naar klant</button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               ))}

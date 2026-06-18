@@ -4,8 +4,10 @@ import { redirect } from 'next/navigation';
 import { env, isLeadsDbConfigured } from '@/lib/env';
 import { getOrganisatie, getGebruikers, listItems, listBestellingen } from '@/lib/portaalAdmin';
 import { listContactpersonen, listActiviteiten, getKlantVerkoop, ACTIVITEIT_SOORTEN } from '@/lib/kms/crm';
-import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus, nieuwContact, verwijderContactActie, nieuweActiviteit, verwijderActiviteitActie } from './actions';
+import { listLogos } from '@/lib/kms/logos';
+import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus, nieuwContact, verwijderContactActie, nieuweActiviteit, verwijderActiviteitActie, nieuwLogoActie, verwijderLogoActie } from './actions';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
+import Tabs, { type TabDef } from '@/components/dashboard/Tabs';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klant', robots: { index: false, follow: false } };
@@ -33,6 +35,7 @@ const SOORT_LABEL: Record<string, string> = {
 };
 
 const inputCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+const fileCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-mist file:px-3 file:py-1 file:text-xs file:font-semibold file:text-ink-700 hover:file:bg-line focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 
 export default async function KlantPage({ params }: { params: Promise<{ id: string }> }) {
   if (!(await authed())) redirect('/dashboard');
@@ -63,13 +66,14 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const [gebruikers, items, bestellingen, contactpersonen, activiteiten, verkoop] = await Promise.all([
+  const [gebruikers, items, bestellingen, contactpersonen, activiteiten, verkoop, logos] = await Promise.all([
     getGebruikers(id),
     listItems(id),
     listBestellingen(id),
     listContactpersonen(id),
     listActiviteiten(id),
     getKlantVerkoop(id),
+    listLogos(id),
   ]);
 
   const vandaag = new Date(); vandaag.setHours(0, 0, 0, 0);
@@ -79,21 +83,9 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
     return dd.getTime() <= vandaag.getTime();
   };
 
-  return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-extrabold text-ink-900">{org.naam}</h1>
-          <p className="mt-1 text-sm text-warm">{org.plaats || 'Geen plaats'}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href={`/dashboard/klanten/${id}/structuur`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Inrichting</Link>
-          <Link href={`/dashboard/klanten/${id}/assortiment`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Assortiment</Link>
-          <Link href="/dashboard/klanten" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar klanten</Link>
-        </div>
-      </div>
-
-      <section className="mt-8">
+  const gegevensTab = (
+    <>
+      <section>
         <h2 className="font-display text-xl font-bold text-ink-900">Gegevens</h2>
         <form action={werkOrganisatie} className="mt-4 grid gap-4 rounded-2xl border border-line bg-white p-6 shadow-soft sm:grid-cols-2">
           <input type="hidden" name="orgId" value={id} />
@@ -122,8 +114,54 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
           </div>
         </form>
       </section>
+    </>
+  );
 
-      <section className="mt-10">
+  const bestellingenSectie = (
+    <section className="mt-12">
+        <h2 className="font-display text-xl font-bold text-ink-900">Bestellingen</h2>
+        {bestellingen.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen herbestellingen.</p>
+        ) : (
+          <div className="mt-4 flex flex-col gap-4">
+            {bestellingen.map((b) => (
+              <div key={b.id} className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-ink-900">{fmt(b.created_at)}</p>
+                    <p className="text-sm text-warm">Aangevraagd door {b.aangevraagd_door || 'onbekend'}</p>
+                    {(b.medewerker_naam || b.waarde != null) && (
+                      <p className="text-sm text-warm">{b.medewerker_naam ? `Voor ${b.medewerker_naam}` : ''}{b.medewerker_naam && b.waarde != null ? ' · ' : ''}{b.waarde != null ? `waarde ${euro(Number(b.waarde))}` : ''}</p>
+                    )}
+                  </div>
+                  <form action={zetStatus} className="flex items-center gap-2">
+                    <input type="hidden" name="orgId" value={id} />
+                    <input type="hidden" name="bestelId" value={b.id} />
+                    <select name="status" defaultValue={b.status} className="rounded-md border border-line px-2 py-1 text-xs">
+                      {bestelStatussen.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <button type="submit" className="rounded-md bg-ink-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-ink-800">Opslaan</button>
+                  </form>
+                </div>
+                <ul className="mt-3 divide-y divide-line border-t border-line text-sm">
+                  {b.portaal_bestelregels.map((r) => (
+                    <li key={r.id} className="flex items-center justify-between py-2">
+                      <span className="text-ink-900">{r.item_naam}{r.maat ? ` · maat ${r.maat}` : ''}</span>
+                      <span className="text-warm">{r.aantal}x</span>
+                    </li>
+                  ))}
+                </ul>
+                {b.notitie && <p className="mt-3 whitespace-pre-wrap rounded-md bg-mist px-3 py-2 text-xs text-warm">{b.notitie}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+    </section>
+  );
+
+  const verkoopTab = (
+    <>
+      <section>
         <h2 className="font-display text-xl font-bold text-ink-900">Verkoopoverzicht</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
@@ -183,8 +221,13 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </section>
+      {bestellingenSectie}
+    </>
+  );
 
-      <section className="mt-12">
+  const contactTab = (
+    <>
+      <section>
         <h2 className="font-display text-xl font-bold text-ink-900">Contactpersonen</h2>
         <div className="mt-4 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
@@ -373,8 +416,12 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </section>
+    </>
+  );
 
-      <section className="mt-12">
+  const kledinglijnTab = (
+    <>
+      <section>
         <h2 className="font-display text-xl font-bold text-ink-900">Kledinglijn</h2>
         <div className="mt-4 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
@@ -448,46 +495,106 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </section>
+    </>
+  );
 
-      <section className="mt-12">
-        <h2 className="font-display text-xl font-bold text-ink-900">Bestellingen</h2>
-        {bestellingen.length === 0 ? (
-          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen herbestellingen.</p>
-        ) : (
-          <div className="mt-4 flex flex-col gap-4">
-            {bestellingen.map((b) => (
-              <div key={b.id} className="rounded-2xl border border-line bg-white p-5 shadow-soft">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-ink-900">{fmt(b.created_at)}</p>
-                    <p className="text-sm text-warm">Aangevraagd door {b.aangevraagd_door || 'onbekend'}</p>
-                    {(b.medewerker_naam || b.waarde != null) && (
-                      <p className="text-sm text-warm">{b.medewerker_naam ? `Voor ${b.medewerker_naam}` : ''}{b.medewerker_naam && b.waarde != null ? ' · ' : ''}{b.waarde != null ? `waarde ${euro(Number(b.waarde))}` : ''}</p>
+  const logosTab = (
+    <section>
+      <h2 className="font-display text-xl font-bold text-ink-900">Logo&apos;s</h2>
+      <p className="mt-1 text-sm text-warm">Per klant bewaar je hier de logo&apos;s met de bestanden voor bedrukken en borduren.</p>
+      <div className="mt-4 grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          {logos.length === 0 ? (
+            <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen logo&apos;s voor deze klant. Voeg er rechts een toe.</p>
+          ) : (
+            <ul className="grid gap-4 sm:grid-cols-2">
+              {logos.map((l) => (
+                <li key={l.id} className="flex flex-col rounded-2xl border border-line bg-white p-4 shadow-soft">
+                  <div className="flex h-32 items-center justify-center overflow-hidden rounded-xl border border-line bg-mist">
+                    {l.logo_bestand_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={l.logo_bestand_url} alt={l.naam} className="max-h-full max-w-full object-contain" />
+                    ) : (
+                      <span className="text-xs text-warm">Geen preview</span>
                     )}
                   </div>
-                  <form action={zetStatus} className="flex items-center gap-2">
+                  <p className="mt-3 font-semibold text-ink-900">{l.naam}</p>
+                  {l.opmerkingen && <p className="mt-1 text-xs text-warm">{l.opmerkingen}</p>}
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {l.logo_bestand_url && <a href={l.logo_bestand_url} target="_blank" rel="noreferrer" className="rounded-md border border-line px-2 py-0.5 text-xs font-semibold text-amber-700 hover:bg-mist">Logo</a>}
+                    {l.vectorbestand_url && <a href={l.vectorbestand_url} target="_blank" rel="noreferrer" className="rounded-md border border-line px-2 py-0.5 text-xs font-semibold text-amber-700 hover:bg-mist">Vector</a>}
+                    {l.borduurbestand_url && <a href={l.borduurbestand_url} target="_blank" rel="noreferrer" className="rounded-md border border-line px-2 py-0.5 text-xs font-semibold text-amber-700 hover:bg-mist">Borduur</a>}
+                  </div>
+                  <form action={verwijderLogoActie} className="mt-3">
                     <input type="hidden" name="orgId" value={id} />
-                    <input type="hidden" name="bestelId" value={b.id} />
-                    <select name="status" defaultValue={b.status} className="rounded-md border border-line px-2 py-1 text-xs">
-                      {bestelStatussen.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <button type="submit" className="rounded-md bg-ink-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-ink-800">Opslaan</button>
+                    <input type="hidden" name="logoId" value={l.id} />
+                    <ConfirmSubmit message="Dit logo verwijderen?" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</ConfirmSubmit>
                   </form>
-                </div>
-                <ul className="mt-3 divide-y divide-line border-t border-line text-sm">
-                  {b.portaal_bestelregels.map((r) => (
-                    <li key={r.id} className="flex items-center justify-between py-2">
-                      <span className="text-ink-900">{r.item_naam}{r.maat ? ` · maat ${r.maat}` : ''}</span>
-                      <span className="text-warm">{r.aantal}x</span>
-                    </li>
-                  ))}
-                </ul>
-                {b.notitie && <p className="mt-3 whitespace-pre-wrap rounded-md bg-mist px-3 py-2 text-xs text-warm">{b.notitie}</p>}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+          <h3 className="font-display text-base font-bold text-ink-900">Logo toevoegen</h3>
+          <p className="mt-1 text-xs text-warm">Upload een bestand, of plak een URL als alternatief.</p>
+          <form action={nieuwLogoActie} className="mt-4 flex flex-col gap-3">
+            <input type="hidden" name="orgId" value={id} />
+            <div>
+              <label className="block text-xs font-semibold text-warm">Naam</label>
+              <input name="naam" required placeholder="Bijv. Bedrijfslogo borst" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-warm">Logo-bestand</label>
+              <input type="file" name="logo_bestand" accept="image/*" className={fileCls} />
+              <input name="logo_bestand_url" placeholder="of plak een URL" className={`${inputCls} mt-2`} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-warm">Vectorbestand</label>
+              <input type="file" name="vectorbestand" accept="image/*" className={fileCls} />
+              <input name="vectorbestand_url" placeholder="of plak een URL" className={`${inputCls} mt-2`} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-warm">Borduurbestand</label>
+              <input type="file" name="borduurbestand" accept="image/*" className={fileCls} />
+              <input name="borduurbestand_url" placeholder="of plak een URL" className={`${inputCls} mt-2`} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-warm">Opmerkingen / positie / techniek</label>
+              <textarea name="opmerkingen" rows={3} placeholder="Bijv. borst links, borduren, kleurcodes" className={inputCls} />
+            </div>
+            <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Logo opslaan</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  );
+
+  const tabs: TabDef[] = [
+    { id: 'gegevens', label: 'Gegevens', content: gegevensTab },
+    { id: 'contact', label: 'Contact', content: contactTab, badge: contactpersonen.length || null },
+    { id: 'verkoop', label: 'Verkoop', content: verkoopTab, badge: verkoop.orders.length || null },
+    { id: 'kledinglijn', label: 'Kledinglijn', content: kledinglijnTab, badge: items.length || null },
+    { id: 'logos', label: "Logo's", content: logosTab, badge: logos.length || null },
+  ];
+
+  return (
+    <main className="container-x py-12">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-ink-900">{org.naam}</h1>
+          <p className="mt-1 text-sm text-warm">{org.plaats || 'Geen plaats'}</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <Link href={`/dashboard/klanten/${id}/structuur`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Inrichting</Link>
+          <Link href={`/dashboard/klanten/${id}/assortiment`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Assortiment</Link>
+          <Link href="/dashboard/klanten" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar klanten</Link>
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <Tabs tabs={tabs} />
+      </div>
     </main>
   );
 }

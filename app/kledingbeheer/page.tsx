@@ -27,9 +27,9 @@ const voordelen = [
 ];
 
 const functies = [
-  { t: 'Eigen webshop per medewerker', d: 'Iedere medewerker ziet alleen het toegestane assortiment met de eigen maat, en bestelt in een paar klikken.' },
+  { t: 'Eigen bestelomgeving per medewerker', d: 'Iedere medewerker ziet alleen het toegestane assortiment met de eigen maat, en bestelt in een paar klikken.' },
   { t: 'Budget en goedkeuring', d: 'Werk met een budget per persoon en laat bestellingen waar nodig eerst goedkeuren door een leidinggevende.' },
-  { t: 'Maten en voorkeursmaat', d: 'Leg de maat per medewerker vast. De webshop vult die voor, met de optie om een maat groter of kleiner te kiezen.' },
+  { t: 'Maten en voorkeursmaat', d: 'Leg de maat per medewerker vast. De bestelomgeving vult die voor, met de optie om een maat groter of kleiner te kiezen.' },
   { t: 'Vestigingen en afdelingen', d: 'Richt meerdere vestigingen en afdelingen in, elk met een eigen lever- en factuuradres.' },
   { t: 'Rapportages en verbruik', d: 'Zie het verbruik per medewerker, afdeling, vestiging en functie, en het budgetgebruik in een oogopslag.' },
   { t: 'Retouren en vragen', d: 'Medewerkers melden een retour of stellen een vraag, jij handelt het overzichtelijk af.' },

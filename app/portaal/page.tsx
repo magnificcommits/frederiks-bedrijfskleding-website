@@ -65,15 +65,15 @@ export default async function Portaal() {
             {toegang.rol ? ` · ${rolLabel[toegang.rol] ?? toegang.rol}` : ''}
           </p>
         </div>
-        <Link href="/portaal/webshop" className="btn-primary">Naar de webshop</Link>
+        <Link href="/portaal/webshop" className="btn-primary">Kleding bestellen</Link>
       </div>
 
       <PortaalNav rol={toegang.rol} actief="/portaal" />
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Link href="/portaal/webshop" className="rounded-2xl border border-line bg-white p-6 shadow-soft transition hover:border-amber-300">
-          <p className="font-display text-lg font-extrabold text-ink-900">Webshop</p>
-          <p className="mt-1 text-sm text-warm">Bestel kleding uit jullie assortiment.</p>
+          <p className="font-display text-lg font-extrabold text-ink-900">Kleding bestellen</p>
+          <p className="mt-1 text-sm text-warm">Bestel kleding uit jullie eigen lijn.</p>
         </Link>
         <Link href="/portaal/bestellingen" className="rounded-2xl border border-line bg-white p-6 shadow-soft transition hover:border-amber-300">
           <p className="font-display text-lg font-extrabold text-ink-900">Mijn bestellingen</p>

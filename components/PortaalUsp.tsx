@@ -6,7 +6,7 @@ import Link from 'next/link';
  * afbeeldingen). Linkt door naar de volledige /kledingbeheer-pagina.
  */
 const punten = [
-  { t: 'Eigen webshop per medewerker', d: 'Iedereen ziet alleen het toegestane assortiment, met de eigen maat al ingevuld.' },
+  { t: 'Eigen bestelomgeving per medewerker', d: 'Iedereen ziet alleen het toegestane assortiment, met de eigen maat al ingevuld.' },
   { t: 'Budget en goedkeuring', d: 'Stel een budget per persoon in en laat bestellingen waar nodig eerst goedkeuren.' },
   { t: 'Maten al vastgelegd', d: 'Nabestellen gaat met een paar klikken — de juiste maat staat klaar.' },
   { t: 'Grip met rapportages', d: 'Verbruik en budget per medewerker, afdeling en vestiging in één oogopslag.' },

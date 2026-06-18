@@ -76,7 +76,7 @@ export default async function Bestellingen({ searchParams }: { searchParams: Pro
       {orders.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-line bg-white p-8 text-center shadow-soft">
           <p className="text-sm text-warm">Je hebt nog geen bestellingen.</p>
-          <Link href="/portaal/webshop" className="btn-primary mt-5 inline-block">Naar de webshop</Link>
+          <Link href="/portaal/webshop" className="btn-primary mt-5 inline-block">Kleding bestellen</Link>
         </div>
       ) : (
         <div className="mt-8 space-y-5">

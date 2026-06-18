@@ -13,7 +13,7 @@ export default function PortaalNav({ rol, actief }: { rol: PortaalRol | null; ac
   const mag = (rollen: PortaalRol[]) => rol != null && rollen.includes(rol);
   const links: { href: string; label: string; toon: boolean }[] = [
     { href: '/portaal', label: 'Overzicht', toon: true },
-    { href: '/portaal/webshop', label: 'Webshop', toon: true },
+    { href: '/portaal/webshop', label: 'Kleding bestellen', toon: true },
     { href: '/portaal/bestellingen', label: 'Mijn bestellingen', toon: true },
     { href: '/portaal/retouren', label: 'Retouren', toon: true },
     { href: '/portaal/klachten', label: 'Vragen en klachten', toon: true },

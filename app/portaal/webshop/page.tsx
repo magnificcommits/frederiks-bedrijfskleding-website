@@ -21,7 +21,7 @@ import {
 import WebshopClient from './WebshopClient';
 import { bestelPakketActie } from './actions';
 
-export const metadata: Metadata = { title: 'Webshop', robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: 'Kleding bestellen', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 const euro = (n: number) =>
@@ -148,7 +148,7 @@ export default async function Webshop({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
-          <h1 className="font-display text-3xl font-extrabold text-ink-900">Webshop</h1>
+          <h1 className="font-display text-3xl font-extrabold text-ink-900">Kleding bestellen</h1>
         </div>
       </div>
       <PortaalNav rol={toegang.rol} actief="/portaal/webshop" />

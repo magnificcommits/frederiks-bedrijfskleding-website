@@ -237,7 +237,7 @@ export default async function MedewerkerInstellingen({
         <section className="rounded-2xl border border-line bg-white p-6 shadow-soft">
           <h2 className="font-display text-lg font-extrabold text-ink-900">Voorkeursmaten</h2>
           <p className="mt-1 text-sm text-warm">
-            Leg per product de vaste maat van deze medewerker vast. In de webshop wordt die maat dan al voorgesteld.
+            Leg per product de vaste maat van deze medewerker vast. Bij het bestellen wordt die maat dan al voorgesteld.
           </p>
 
           {producten.length === 0 ? (

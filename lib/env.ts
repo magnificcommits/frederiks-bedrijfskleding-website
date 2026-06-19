@@ -9,8 +9,8 @@ export const env = {
   resendFrom: process.env.RESEND_FROM_EMAIL ?? 'Frederiks Bedrijfskleding <offerte@frederiksbedrijfskleding.nl>',
   notifyEmail: process.env.LEAD_NOTIFY_EMAIL ?? 'info@frederiksbedrijfskleding.nl',
   gaId: process.env.NEXT_PUBLIC_GA_ID ?? '',
-  // AI (OpenAI). Functies die AI nodig hebben doen niets zonder key (env-gated).
-  openaiApiKey: process.env.OPENAI_API_KEY ?? '',
+  // AI (Claude / Anthropic). Functies die AI nodig hebben doen niets zonder key (env-gated).
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
   // Leaddatabase (Supabase). De service-role key staat ALLEEN server-side.
   supabaseUrl: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
@@ -23,7 +23,7 @@ export const env = {
 
 export const isEmailConfigured = Boolean(env.resendApiKey);
 export const isAnalyticsConfigured = Boolean(env.gaId);
-export const isAiConfigured = Boolean(env.openaiApiKey);
+export const isAiConfigured = Boolean(env.anthropicApiKey);
 export const isLeadsDbConfigured = Boolean(env.supabaseUrl && env.supabaseServiceKey);
 export const isDashboardConfigured = Boolean(env.dashboardPassword);
 export const isPortalConfigured = Boolean(env.supabasePublicUrl && env.supabaseAnonKey);

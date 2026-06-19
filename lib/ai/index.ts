@@ -1,8 +1,8 @@
 import { env, isAiConfigured } from '@/lib/env';
 
 /**
- * Dunne AI-laag bovenop de OpenAI Chat Completions API.
- * Env-gated: zonder OPENAI_API_KEY doet dit niets (geeft nette fout terug
+ * Dunne AI-laag bovenop de Anthropic (Claude) Messages API.
+ * Env-gated: zonder ANTHROPIC_API_KEY doet dit niets (geeft een nette fout terug
  * in plaats van te crashen). ALLEEN server-side gebruiken (deze module wordt
  * alleen aangeroepen vanuit een 'use server' action) — de key mag NOOIT naar
  * de client lekken.
@@ -12,6 +12,8 @@ const STANDAARD_SYSTEEM =
   'Je bent een behulpzame Nederlandse marketing- en kledingexpert voor een ' +
   'bedrijfskledingleverancier. Schrijf concreet, menselijk, zonder overdreven verkooptaal.';
 
+const STANDAARD_MODEL = 'claude-sonnet-4-6';
+
 export async function aiTekst(
   opdracht: string,
   opties?: { systeem?: string; model?: string },
@@ -19,24 +21,24 @@ export async function aiTekst(
   if (!isAiConfigured) {
     return {
       ok: false,
-      error: 'AI is nog niet geconfigureerd. Zet OPENAI_API_KEY in de omgevingsvariabelen.',
+      error: 'AI is nog niet geconfigureerd. Zet ANTHROPIC_API_KEY in de omgevingsvariabelen.',
     };
   }
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${env.openaiApiKey}`,
+        'content-type': 'application/json',
+        'x-api-key': env.anthropicApiKey,
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: opties?.model ?? 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: opties?.systeem ?? STANDAARD_SYSTEEM },
-          { role: 'user', content: opdracht },
-        ],
+        model: opties?.model ?? STANDAARD_MODEL,
+        max_tokens: 1500,
         temperature: 0.7,
+        system: opties?.systeem ?? STANDAARD_SYSTEEM,
+        messages: [{ role: 'user', content: opdracht }],
       }),
     });
 
@@ -48,10 +50,12 @@ export async function aiTekst(
       };
     }
 
-    const data = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const tekst = data?.choices?.[0]?.message?.content?.trim();
+    const data = (await res.json()) as { content?: { type?: string; text?: string }[] };
+    const tekst = data?.content
+      ?.filter((b) => b.type === 'text')
+      .map((b) => b.text ?? '')
+      .join('')
+      .trim();
 
     if (!tekst) {
       return { ok: false, error: 'AI gaf geen tekst terug. Probeer het opnieuw.' };

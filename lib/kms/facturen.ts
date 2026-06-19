@@ -415,7 +415,7 @@ export async function mailFacturenNaarBoekhouder(ids: string[]): Promise<{ ok: b
   });
 
   try {
-    await sendEmail({ to: boekhouder, subject: 'Facturen ter verwerking — Frederiks Bedrijfskleding', html });
+    await sendEmail({ to: boekhouder, subject: 'Facturen ter verwerking voor Frederiks Bedrijfskleding', html });
   } catch {
     return { ok: false, aantal: 0, error: 'Versturen mislukt.' };
   }

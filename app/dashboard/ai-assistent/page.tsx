@@ -46,7 +46,7 @@ export default function AiAssistentPage() {
 
       {aiAan === false && (
         <p className="mt-4 max-w-2xl rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
-          AI staat nog uit — zet <code>OPENAI_API_KEY</code> in Vercel om dit te activeren. Je kunt
+          AI staat nog uit. Zet <code>OPENAI_API_KEY</code> in Vercel om dit te activeren. Je kunt
           het formulier alvast bekijken.
         </p>
       )}

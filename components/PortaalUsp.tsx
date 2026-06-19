@@ -8,7 +8,7 @@ import Link from 'next/link';
 const punten = [
   { t: 'Eigen bestelomgeving per medewerker', d: 'Iedereen ziet alleen het toegestane assortiment, met de eigen maat al ingevuld.' },
   { t: 'Budget en goedkeuring', d: 'Stel een budget per persoon in en laat bestellingen waar nodig eerst goedkeuren.' },
-  { t: 'Maten al vastgelegd', d: 'Nabestellen gaat met een paar klikken — de juiste maat staat klaar.' },
+  { t: 'Maten al vastgelegd', d: 'Nabestellen gaat met een paar klikken. De juiste maat staat klaar.' },
   { t: 'Grip met rapportages', d: 'Verbruik en budget per medewerker, afdeling en vestiging in één oogopslag.' },
 ];
 
@@ -25,7 +25,7 @@ export function PortaalUsp() {
         <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-500">Inbegrepen bij je bedrijfskleding</p>
-            <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl">Je eigen online kledingbeheer — gratis erbij</h2>
+            <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl">Je eigen online kledingbeheer, gratis erbij</h2>
             <p className="mt-4 text-lg text-ink-100">
               Neem je je kleding bij Frederiks af, dan krijg je er een compleet bestelportaal bij. Je medewerkers
               bestellen zelf binnen budget, jij houdt overzicht. Geen losse mailtjes en lijstjes meer.

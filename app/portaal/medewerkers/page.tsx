@@ -107,7 +107,7 @@ export default async function Medewerkers({
     const restant = m.budget != null ? Number(m.budget) - v : null;
     const budgetRestantLabel = restant != null ? `Restant ${formatEuro(restant, 0)}` : '';
     const loginLabel = m.toegang
-      ? `Kan inloggen — ${rolLabel[m.toegang.rol] ?? m.toegang.rol}`
+      ? `Kan inloggen, ${rolLabel[m.toegang.rol] ?? m.toegang.rol}`
       : 'Geen login';
 
     const detail = (

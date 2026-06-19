@@ -33,8 +33,8 @@ export function Hero() {
           </p>
           <p className="mt-4 text-sm text-ink-200">
             <span className="font-semibold text-amber-300">Inbegrepen:</span> je eigen{' '}
-            <Link href="/kledingbeheer" className="font-semibold text-white underline decoration-amber-500 underline-offset-2 hover:text-amber-200">online kledingbeheer</Link>{' '}
-            — gratis bij je bedrijfskleding.
+            <Link href="/kledingbeheer" className="font-semibold text-white underline decoration-amber-500 underline-offset-2 hover:text-amber-200">online kledingbeheer</Link>,{' '}
+            gratis bij je bedrijfskleding.
           </p>
           <dl className="mt-10 grid max-w-md grid-cols-3 gap-4 border-t border-white/10 pt-6">
             {stats.map((s) => (
@@ -59,7 +59,7 @@ export function Hero() {
           {/* Bijschrift bij de foto: wie je voor je krijgt */}
           <span className="absolute right-4 top-4 inline-flex items-center gap-2 rounded-[3px] border-r-2 border-dashed border-amber-500 bg-white/95 px-3 py-1.5 text-xs font-bold text-ink-900 shadow-card">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
-            {site.owner.split(' ')[0]} — komt langs om te passen
+            {site.owner.split(' ')[0]} komt langs om te passen
           </span>
           {site.rating.count > 0 && (
             <div className="absolute bottom-4 left-4 flex items-center gap-3 rounded-[3px] border-l-2 border-dashed border-amber-500 bg-white px-4 py-3 shadow-card">

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
+import PortaalKnop from '@/components/PortaalKnop';
 import { branches } from '@/content/branches';
 import { site } from '@/content/site';
 
@@ -11,12 +12,14 @@ const kledingNav = [
   { href: '/werkschoenen', label: 'Werkschoenen' },
   { href: '/bedrukken-borduren', label: 'Bedrukken en borduren' },
   { href: '/pakket-samenstellen', label: 'Pakket samenstellen' },
+  { href: '/maattabellen', label: 'Maattabellen' },
 ];
 // Losse hoofditems
 const hoofdNav = [
   { href: '/kledingbeheer', label: 'Kledingbeheer' },
   { href: '/kennisbank', label: 'Kennisbank' },
   { href: '/referenties', label: 'Referenties' },
+  { href: '/klantenservice', label: 'Klantenservice' },
 ];
 const topNav = [
   { href: '/over-ons', label: 'Over ons' },
@@ -80,7 +83,10 @@ export function Header() {
               </Link>
             ))}
           </nav>
-          <Link href="/kledingadvies" className="btn-primary hidden shrink-0 whitespace-nowrap px-5 py-2.5 text-[13px] lg:inline-flex">Vraag advies aan</Link>
+          <div className="hidden shrink-0 items-center gap-2 lg:flex">
+            <PortaalKnop className="whitespace-nowrap rounded-md px-3 py-2.5 text-[13px] font-semibold text-ink-800 hover:text-amber-700 hover:bg-mist" />
+            <Link href="/kledingadvies" className="btn-primary whitespace-nowrap px-5 py-2.5 text-[13px] inline-flex">Vraag advies aan</Link>
+          </div>
           <button className="shrink-0 rounded-md px-3 py-2.5 text-[15px] font-bold text-ink-900 hover:bg-mist lg:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Menu">
             Menu
           </button>
@@ -103,6 +109,7 @@ export function Header() {
                 <Link key={b.slug} href={`/branches/${b.slug}`} className="rounded-md px-3 py-2.5 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{b.navLabel}</Link>
               ))}
               <a href={`tel:${site.phoneIntl}`} className="mt-2 rounded-md px-3 py-2.5 text-[15px] font-bold text-ink-900 hover:bg-mist">{site.phone}</a>
+              <PortaalKnop className="mt-2 rounded-md border border-line px-3 py-2.5 text-center text-[15px] font-semibold text-ink-800 hover:bg-mist" />
               <Link href="/kledingadvies" className="btn-primary mt-2" onClick={() => setOpen(false)}>Vraag advies aan</Link>
             </nav>
           </div>

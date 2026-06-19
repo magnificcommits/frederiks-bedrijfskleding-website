@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import Link from 'next/link';
 import { isPortalConfigured } from '@/lib/env';
 import { getHuisstijl, veiligeKleur } from '@/lib/portaal/huisstijl';
 import { getMijnToegang } from '@/lib/portaal/team';
@@ -70,6 +71,7 @@ export default async function PortaalLayout({ children }: { children: React.Reac
           <div className="hidden items-center gap-3 sm:flex">
             {rol && <span className="rounded-full bg-mist px-3 py-1 text-xs font-semibold text-ink-700">{rolLabel[rol] ?? rol}</span>}
             <span className="text-xs text-warm">Portaal van Frederiks Bedrijfskleding</span>
+            <Link href="/" className="text-xs font-medium text-warm hover:text-ink-900">Naar website</Link>
           </div>
         </div>
         <div className="h-1 w-full" style={{ backgroundColor: 'var(--portaal-accent)' }} aria-hidden="true" />

@@ -19,10 +19,10 @@ const hoofdNav = [
   { href: '/kledingbeheer', label: 'Kledingbeheer' },
   { href: '/kennisbank', label: 'Kennisbank' },
   { href: '/referenties', label: 'Referenties' },
-  { href: '/klantenservice', label: 'Klantenservice' },
 ];
 const topNav = [
   { href: '/over-ons', label: 'Over ons' },
+  { href: '/klantenservice', label: 'Klantenservice' },
   { href: '/contact', label: 'Contact' },
 ];
 

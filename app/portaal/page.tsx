@@ -135,14 +135,14 @@ export default async function Portaal() {
         )}
         {magKeuren && (
           <Link href="/portaal/medewerkers" className="rounded-2xl border border-line bg-white p-6 shadow-soft transition hover:border-amber-300">
-            <p className="font-display text-lg font-extrabold text-ink-900">Medewerkers en maten</p>
-            <p className="mt-1 text-sm text-warm">Leg medewerkers, maten en budget vast.</p>
+            <p className="font-display text-lg font-extrabold text-ink-900">Medewerkers</p>
+            <p className="mt-1 text-sm text-warm">Personen, maten, budget en toegang op &eacute;&eacute;n plek.</p>
           </Link>
         )}
-        {toegang.rol === 'beheerder' && (
-          <Link href="/portaal/team" className="rounded-2xl border border-line bg-white p-6 shadow-soft transition hover:border-amber-300">
-            <p className="font-display text-lg font-extrabold text-ink-900">Team en toegang</p>
-            <p className="mt-1 text-sm text-warm">Geef collega&apos;s toegang en bepaal hun rol.</p>
+        {magKeuren && (
+          <Link href="/portaal/facturen" className="rounded-2xl border border-line bg-white p-6 shadow-soft transition hover:border-amber-300">
+            <p className="font-display text-lg font-extrabold text-ink-900">Facturen</p>
+            <p className="mt-1 text-sm text-warm">Bekijk de facturen van jullie bedrijf.</p>
           </Link>
         )}
       </div>

@@ -19,6 +19,19 @@ export async function listOrganisaties(): Promise<Organisatie[]> {
   const { data } = await sb.from('organisaties').select('*').order('naam');
   return (data as Organisatie[]) ?? [];
 }
+/** Eén pagina organisaties (gesorteerd op naam) plus het totaal aantal rijen voor paginering. */
+export async function listOrganisatiesPaged(opts: { pagina: number; perPagina: number }): Promise<{ rijen: Organisatie[]; totaal: number }> {
+  const sb = admin(); if (!sb) return { rijen: [], totaal: 0 };
+  const pagina = Math.max(1, opts.pagina);
+  const from = (pagina - 1) * opts.perPagina;
+  const to = from + opts.perPagina - 1;
+  const { data, count } = await sb
+    .from('organisaties')
+    .select('*', { count: 'exact' })
+    .order('naam')
+    .range(from, to);
+  return { rijen: (data as Organisatie[]) ?? [], totaal: count ?? 0 };
+}
 export async function getOrganisatie(id: string): Promise<Organisatie | null> {
   const sb = admin(); if (!sb) return null;
   const { data } = await sb.from('organisaties').select('*').eq('id', id).maybeSingle();

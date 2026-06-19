@@ -7,6 +7,7 @@ import { dashAuthed } from '@/lib/kms/adminClient';
 import { maakContactpersoon, verwijderContactpersoon, maakActiviteit, verwijderActiviteit } from '@/lib/kms/crm';
 import { uploadMedia } from '@/lib/kms/storage';
 import { maakLogo, verwijderLogo } from '@/lib/kms/logos';
+import { logAudit } from '@/lib/kms/audit';
 
 const DASH_COOKIE = 'fb_dash';
 
@@ -22,7 +23,10 @@ export async function werkOrganisatie(formData: FormData) {
   const adres = String(formData.get('adres') ?? '').trim();
   const postcode = String(formData.get('postcode') ?? '').trim();
   const telefoon = String(formData.get('telefoon') ?? '').trim();
-  if (id && naam) await werkOrganisatieBij(id, { naam, plaats, adres, postcode, telefoon });
+  if (id && naam) {
+    await werkOrganisatieBij(id, { naam, plaats, adres, postcode, telefoon });
+    await logAudit('klant_gewijzigd', { entiteit: 'organisatie', entiteitId: id });
+  }
   redirect('/dashboard/klanten/' + id);
 }
 
@@ -121,6 +125,7 @@ export async function nieuwLogoActie(formData: FormData) {
   const opmerkingen = String(formData.get('opmerkingen') ?? '').trim() || null;
   if (id && naam) {
     await maakLogo(id, { naam, logo_bestand_url, vectorbestand_url, borduurbestand_url, opmerkingen });
+    await logAudit('logo_toegevoegd', { entiteit: 'organisatie', entiteitId: id, details: { naam } });
   }
   redirect('/dashboard/klanten/' + id);
 }
@@ -129,6 +134,9 @@ export async function verwijderLogoActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const id = String(formData.get('orgId') ?? '').trim();
   const logoId = String(formData.get('logoId') ?? '').trim();
-  if (logoId) await verwijderLogo(logoId);
+  if (logoId) {
+    await verwijderLogo(logoId);
+    await logAudit('logo_verwijderd', { entiteit: 'organisatie', entiteitId: id });
+  }
   redirect('/dashboard/klanten/' + id);
 }

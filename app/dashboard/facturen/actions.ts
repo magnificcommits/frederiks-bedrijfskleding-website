@@ -2,6 +2,7 @@
 import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { maakFactuurVanOrder, maakLegeFactuur, zetBoekhouderEmail, mailFacturenNaarBoekhouder } from '@/lib/kms/facturen';
+import { logAudit } from '@/lib/kms/audit';
 
 export async function factuurVanOrder(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
@@ -25,6 +26,7 @@ export async function zetBoekhouderEmailActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const email = String(formData.get('boekhouder_email') ?? '').trim();
   await zetBoekhouderEmail(email);
+  await logAudit('boekhouder_email_gewijzigd', { entiteit: 'instellingen' });
   redirect('/dashboard/facturen?ok=boekhouder');
 }
 
@@ -32,6 +34,9 @@ export async function mailFacturenActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const ids = formData.getAll('factuur_ids').map(String).filter(Boolean);
   const r = await mailFacturenNaarBoekhouder(ids);
-  if (r.ok) redirect(`/dashboard/facturen?gemaild=${r.aantal}`);
+  if (r.ok) {
+    await logAudit('facturen_gemaild', { entiteit: 'facturen', details: { aantal: r.aantal } });
+    redirect(`/dashboard/facturen?gemaild=${r.aantal}`);
+  }
   redirect(`/dashboard/facturen?mailfout=${encodeURIComponent(r.error ?? 'Onbekende fout')}`);
 }

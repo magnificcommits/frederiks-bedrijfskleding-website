@@ -96,6 +96,26 @@ export async function listOrders(status?: string): Promise<OrderMetKlant[]> {
   });
 }
 
+/** Eén pagina orders (nieuwste eerst) met optioneel statusfilter, plus het totaal aantal rijen voor paginering. */
+export async function listOrdersPaged(opts: { pagina: number; perPagina: number; status?: string }): Promise<{ rijen: OrderMetKlant[]; totaal: number }> {
+  const sb = kmsAdmin(); if (!sb) return { rijen: [], totaal: 0 };
+  const pagina = Math.max(1, opts.pagina);
+  const from = (pagina - 1) * opts.perPagina;
+  const to = from + opts.perPagina - 1;
+  let q = sb
+    .from('orders')
+    .select('*, organisaties(naam), medewerkers(naam)', { count: 'exact' })
+    .order('ordernummer', { ascending: false });
+  if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
+  const { data, count } = await q.range(from, to);
+  const rows = (data as unknown as (Order & { organisaties: { naam: string } | null; medewerkers: { naam: string } | null })[]) ?? [];
+  const rijen = rows.map((r) => {
+    const { organisaties, medewerkers, ...rest } = r;
+    return { ...rest, organisatie_naam: organisaties?.naam ?? null, medewerker_naam: medewerkers?.naam ?? null } as OrderMetKlant;
+  });
+  return { rijen, totaal: count ?? 0 };
+}
+
 export async function getOrder(id: string): Promise<OrderDetail | null> {
   const sb = kmsAdmin(); if (!sb) return null;
   const { data } = await sb

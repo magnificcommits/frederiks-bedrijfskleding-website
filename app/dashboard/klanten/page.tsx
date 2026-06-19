@@ -2,13 +2,14 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { env, isLeadsDbConfigured } from '@/lib/env';
-import { listOrganisaties } from '@/lib/portaalAdmin';
+import { listOrganisatiesPaged } from '@/lib/portaalAdmin';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { nieuweOrganisatie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klanten', robots: { index: false, follow: false } };
 const DASH_COOKIE = 'fb_dash';
+const PER_PAGINA = 25;
 
 async function authed() {
   return Boolean(env.dashboardPassword) && (await cookies()).get(DASH_COOKIE)?.value === env.dashboardPassword.trim();
@@ -31,7 +32,7 @@ async function medewerkersPerOrg(): Promise<Record<string, number>> {
   return map;
 }
 
-export default async function KlantenPage() {
+export default async function KlantenPage({ searchParams }: { searchParams: Promise<{ pagina?: string }> }) {
   if (!(await authed())) redirect('/dashboard');
 
   if (!isLeadsDbConfigured) {
@@ -46,8 +47,11 @@ export default async function KlantenPage() {
     );
   }
 
-  const orgs = await listOrganisaties();
+  const { pagina } = await searchParams;
+  const huidigePagina = Math.max(1, Number(pagina) || 1);
+  const { rijen: orgs, totaal } = await listOrganisatiesPaged({ pagina: huidigePagina, perPagina: PER_PAGINA });
   const aantalPerOrg = await medewerkersPerOrg();
+  const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
 
   return (
     <main className="container-x py-12">
@@ -86,6 +90,17 @@ export default async function KlantenPage() {
                 </tbody>
               </table>
             </div>
+          )}
+          {aantalPaginas > 1 && (
+            <nav className="mt-4 flex items-center justify-between gap-4 text-sm" aria-label="Paginering">
+              {huidigePagina > 1 ? (
+                <Link href={`/dashboard/klanten?pagina=${huidigePagina - 1}`} className="font-semibold text-warm hover:text-ink-800">Vorige</Link>
+              ) : <span />}
+              <span className="text-warm">Pagina {huidigePagina} van {aantalPaginas}</span>
+              {huidigePagina < aantalPaginas ? (
+                <Link href={`/dashboard/klanten?pagina=${huidigePagina + 1}`} className="font-semibold text-warm hover:text-ink-800">Volgende</Link>
+              ) : <span />}
+            </nav>
           )}
         </div>
 

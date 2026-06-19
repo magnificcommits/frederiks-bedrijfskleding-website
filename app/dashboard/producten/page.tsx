@@ -1,15 +1,16 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import { listProducten, listMerken, listLeveranciers } from '@/lib/kms/producten';
+import { listProductenPaged, listMerken, listLeveranciers } from '@/lib/kms/producten';
 import { nieuwProduct } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Producten', robots: { index: false, follow: false } };
 
 const inputCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+const PER_PAGINA = 25;
 
-export default async function ProductenPage({ searchParams }: { searchParams: Promise<{ zoek?: string; merk?: string }> }) {
+export default async function ProductenPage({ searchParams }: { searchParams: Promise<{ zoek?: string; merk?: string; pagina?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const sb = kmsAdmin();
 
@@ -25,12 +26,15 @@ export default async function ProductenPage({ searchParams }: { searchParams: Pr
     );
   }
 
-  const { zoek, merk } = await searchParams;
-  const [producten, merken, leveranciers] = await Promise.all([
-    listProducten(zoek, merk),
+  const { zoek, merk, pagina } = await searchParams;
+  const huidigePagina = Math.max(1, Number(pagina) || 1);
+  const [{ rijen: producten, totaal }, merken, leveranciers] = await Promise.all([
+    listProductenPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, zoek, merk }),
     listMerken(),
     listLeveranciers(),
   ]);
+  const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
+  const filterQs = `${zoek ? `&zoek=${encodeURIComponent(zoek)}` : ''}${merk ? `&merk=${encodeURIComponent(merk)}` : ''}`;
 
   return (
     <main className="container-x py-12">
@@ -89,6 +93,17 @@ export default async function ProductenPage({ searchParams }: { searchParams: Pr
                 </tbody>
               </table>
             </div>
+          )}
+          {aantalPaginas > 1 && (
+            <nav className="mt-4 flex items-center justify-between gap-4 text-sm" aria-label="Paginering">
+              {huidigePagina > 1 ? (
+                <Link href={`/dashboard/producten?pagina=${huidigePagina - 1}${filterQs}`} className="font-semibold text-warm hover:text-ink-800">Vorige</Link>
+              ) : <span />}
+              <span className="text-warm">Pagina {huidigePagina} van {aantalPaginas}</span>
+              {huidigePagina < aantalPaginas ? (
+                <Link href={`/dashboard/producten?pagina=${huidigePagina + 1}${filterQs}`} className="font-semibold text-warm hover:text-ink-800">Volgende</Link>
+              ) : <span />}
+            </nav>
           )}
         </div>
 

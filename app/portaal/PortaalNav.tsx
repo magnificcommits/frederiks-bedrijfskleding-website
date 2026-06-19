@@ -19,6 +19,7 @@ export default function PortaalNav({ rol, actief }: { rol: PortaalRol | null; ac
     { href: '/portaal/klachten', label: 'Vragen en klachten', toon: true },
     { href: '/portaal/goedkeuringen', label: 'Goedkeuringen', toon: mag(['beheerder', 'leidinggevende']) },
     { href: '/portaal/medewerkers', label: 'Medewerkers', toon: mag(['beheerder', 'leidinggevende']) },
+    { href: '/portaal/facturen', label: 'Facturen', toon: mag(['beheerder', 'leidinggevende']) },
   ];
   // De detailpagina /portaal/team/[id] markeert "Medewerkers" als actief.
   const isActief = (href: string) =>

@@ -36,10 +36,12 @@ const groepen: Groep[] = [
   ] },
   { titel: 'Inzicht', items: [
     { href: '/dashboard/analyse', label: 'Analyse' },
+    { href: '/dashboard/ai-assistent', label: 'AI-assistent' },
     { href: '/dashboard/rapportages', label: 'Rapportages' },
     { href: '/dashboard/meldingen', label: 'Meldingen' },
     { href: '/dashboard/import', label: 'Import' },
     { href: '/dashboard/export', label: 'Export CSV' },
+    { href: '/dashboard/audit', label: 'Logboek' },
   ] },
 ];
 

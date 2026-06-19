@@ -77,6 +77,27 @@ export async function listProducten(zoek?: string, merk?: string): Promise<Produ
   });
 }
 
+/** Eén pagina producten (gesorteerd op naam) met dezelfde zoek/merk-filters, plus het totaal aantal rijen voor paginering. */
+export async function listProductenPaged(opts: { pagina: number; perPagina: number; zoek?: string; merk?: string }): Promise<{ rijen: ProductMetTelling[]; totaal: number }> {
+  const sb = kmsAdmin(); if (!sb) return { rijen: [], totaal: 0 };
+  const pagina = Math.max(1, opts.pagina);
+  const from = (pagina - 1) * opts.perPagina;
+  const to = from + opts.perPagina - 1;
+  let q = sb.from('producten').select('*, product_varianten(count)', { count: 'exact' }).order('naam');
+  if (opts.zoek && opts.zoek.trim()) {
+    const term = `%${opts.zoek.trim()}%`;
+    q = q.or(`naam.ilike.${term},sku.ilike.${term},merk.ilike.${term},categorie.ilike.${term}`);
+  }
+  if (opts.merk && opts.merk.trim()) q = q.eq('merk', opts.merk.trim());
+  const { data, count } = await q.range(from, to);
+  const rows = (data as (Product & { product_varianten: { count: number }[] })[]) ?? [];
+  const rijen = rows.map((r) => {
+    const { product_varianten, ...rest } = r;
+    return { ...rest, aantal_varianten: product_varianten?.[0]?.count ?? 0 } as ProductMetTelling;
+  });
+  return { rijen, totaal: count ?? 0 };
+}
+
 export async function listMerken(): Promise<string[]> {
   const sb = kmsAdmin(); if (!sb) return [];
   const { data } = await sb.from('producten').select('merk').not('merk', 'is', null);

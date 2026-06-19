@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import { listFacturen, listOrganisaties, listFactureerbareOrders, getBoekhouderEmail, FACTUUR_STATUSSEN } from '@/lib/kms/facturen';
+import { listFacturenPaged, listOrganisaties, listFactureerbareOrders, getBoekhouderEmail, FACTUUR_STATUSSEN } from '@/lib/kms/facturen';
 import NavigateSelect from '@/components/dashboard/NavigateSelect';
 import { factuurVanOrder, legeFactuur, zetBoekhouderEmailActie, mailFacturenActie } from './actions';
 
@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Facturen', robots: { index: false, follow: false } };
 
 const inputCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+const PER_PAGINA = 25;
 const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
 function fmt(d: string | null) {
   if (!d) return '-';
@@ -22,7 +23,7 @@ const statusBadge: Record<string, string> = {
   betaald: 'bg-green-100 text-green-800',
 };
 
-export default async function FacturenPage({ searchParams }: { searchParams: Promise<{ status?: string; order?: string; ok?: string; gemaild?: string; mailfout?: string }> }) {
+export default async function FacturenPage({ searchParams }: { searchParams: Promise<{ status?: string; order?: string; ok?: string; gemaild?: string; mailfout?: string; pagina?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const sb = kmsAdmin();
 
@@ -38,14 +39,17 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
     );
   }
 
-  const { status, order, ok, gemaild, mailfout } = await searchParams;
-  const [facturen, organisaties, factureerbaar, boekhouderEmail] = await Promise.all([
-    listFacturen(status),
+  const { status, order, ok, gemaild, mailfout, pagina } = await searchParams;
+  const huidigePagina = Math.max(1, Number(pagina) || 1);
+  const [{ rijen: facturen, totaal }, organisaties, factureerbaar, boekhouderEmail] = await Promise.all([
+    listFacturenPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, status }),
     listOrganisaties(),
     listFactureerbareOrders(),
     getBoekhouderEmail(),
   ]);
   const voorgeselecteerd = order && factureerbaar.some((o) => o.id === order) ? order : '';
+  const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
+  const statusQs = status ? `&status=${encodeURIComponent(status)}` : '';
 
   return (
     <main className="container-x py-12">
@@ -142,6 +146,17 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
                 </table>
               </div>
             </form>
+          )}
+          {aantalPaginas > 1 && (
+            <nav className="mt-4 flex items-center justify-between gap-4 text-sm" aria-label="Paginering">
+              {huidigePagina > 1 ? (
+                <Link href={`/dashboard/facturen?pagina=${huidigePagina - 1}${statusQs}`} className="font-semibold text-warm hover:text-ink-800">Vorige</Link>
+              ) : <span />}
+              <span className="text-warm">Pagina {huidigePagina} van {aantalPaginas}</span>
+              {huidigePagina < aantalPaginas ? (
+                <Link href={`/dashboard/facturen?pagina=${huidigePagina + 1}${statusQs}`} className="font-semibold text-warm hover:text-ink-800">Volgende</Link>
+              ) : <span />}
+            </nav>
           )}
         </div>
 

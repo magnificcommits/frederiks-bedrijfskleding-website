@@ -105,6 +105,26 @@ export async function listFacturen(statusFilter?: string): Promise<FactuurMetKla
   });
 }
 
+/** Eén pagina facturen (nieuwste eerst) met optioneel statusfilter, plus het totaal aantal rijen voor paginering. */
+export async function listFacturenPaged(opts: { pagina: number; perPagina: number; status?: string }): Promise<{ rijen: FactuurMetKlant[]; totaal: number }> {
+  const sb = kmsAdmin(); if (!sb) return { rijen: [], totaal: 0 };
+  const pagina = Math.max(1, opts.pagina);
+  const from = (pagina - 1) * opts.perPagina;
+  const to = from + opts.perPagina - 1;
+  let q = sb
+    .from('facturen')
+    .select('*, organisaties(naam)', { count: 'exact' })
+    .order('created_at', { ascending: false });
+  if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
+  const { data, count } = await q.range(from, to);
+  const rows = (data as unknown as (Factuur & { organisaties: { naam: string } | null })[]) ?? [];
+  const rijen = rows.map((r) => {
+    const { organisaties, ...rest } = r;
+    return { ...rest, organisatie_naam: organisaties?.naam ?? null } as FactuurMetKlant;
+  });
+  return { rijen, totaal: count ?? 0 };
+}
+
 export async function getFactuur(id: string): Promise<FactuurDetail | null> {
   const sb = kmsAdmin(); if (!sb) return null;
   const { data } = await sb.from('facturen').select('*').eq('id', id).maybeSingle();

@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { env } from '@/lib/env';
 import { maakOrganisatie, addGebruiker } from '@/lib/portaalAdmin';
+import { logAudit } from '@/lib/kms/audit';
 
 const DASH_COOKIE = 'fb_dash';
 
@@ -22,5 +23,6 @@ export async function nieuweOrganisatie(formData: FormData) {
   if (!naam) redirect('/dashboard/klanten');
   const id = await maakOrganisatie({ naam, plaats, adres, postcode, telefoon });
   if (id && email) await addGebruiker(id, email, contactpersoon);
+  if (id) await logAudit('klant_aangemaakt', { entiteit: 'organisatie', entiteitId: id, details: { naam } });
   redirect(id ? '/dashboard/klanten/' + id : '/dashboard/klanten');
 }

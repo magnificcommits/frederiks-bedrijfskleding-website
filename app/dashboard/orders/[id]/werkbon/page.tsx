@@ -4,6 +4,7 @@ import { dashAuthed, kmsAdmin } from '@/lib/kms/adminClient';
 import { getOrderVoorWerkbon, listLogos, type Decoratie, type Logo } from '@/lib/kms/logos';
 import { voegDecoratieToe, verwijderDecoratieActie } from './actions';
 import PrintKnop from './PrintKnop';
+import ConfirmSubmit from '@/components/ConfirmSubmit';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Werkbon', robots: { index: false, follow: false } };
@@ -81,7 +82,7 @@ export default async function WerkbonPage({ params }: { params: Promise<{ id: st
                       <form action={verwijderDecoratieActie}>
                         <input type="hidden" name="orderId" value={id} />
                         <input type="hidden" name="decoratieId" value={d.id} />
-                        <button type="submit" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</button>
+                        <ConfirmSubmit message="Deze decoratie verwijderen?" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</ConfirmSubmit>
                       </form>
                     </li>
                   ))}

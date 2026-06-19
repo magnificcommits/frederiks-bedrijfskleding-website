@@ -85,7 +85,7 @@ export const branches: Branche[] = [
     ],
     items: ['Werkbroeken', 'Softshell- en winterjassen', 'Hi-vis kleding', 'Polo’s en sweaters', 'Veiligheidsschoenen'],
     normen: ['EN ISO 20471 (hi-vis)', 'EN ISO 20345 (veiligheidsschoenen)'],
-    voorbeeld: { quote: 'Wij zijn altijd super tevreden met de service. Jessi is snel en vakkundig in het uitzoeken en leveren van onze bedrijfskleding, en prettig in contact.', author: 'Getra Transport' },
+    voorbeeld: { quote: 'Wij zijn altijd super tevreden met de service. Jessi is snel en vakkundig in het uitzoeken en leveren van onze bedrijfskleding, en prettig in contact.', author: 'Een transportbedrijf uit de regio' },
     brands: ['Tricorp', 'Mascot', 'Snickers Workwear', 'U-Power'],
     gallery: ['/Bedrijfskleding-bedrukken-en-borduren.jpg'],
     faq: [

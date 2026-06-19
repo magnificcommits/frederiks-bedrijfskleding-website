@@ -117,7 +117,8 @@ export function LeadForm({ defaultBranche = '' }: { defaultBranche?: string }) {
       <button type="submit" disabled={status === 'sending'} className="btn-primary w-full sm:w-auto">
         {status === 'sending' ? 'Versturen…' : 'Verstuur aanvraag'}
       </button>
-      <p className="text-xs text-warm">Of bel of WhatsApp ons direct. We denken graag met je mee.</p>
+      <p className="text-sm font-medium text-ink-800">Vrijblijvend, geen verplichting &middot; Binnen 1 werkdag persoonlijk contact &middot; Geen prijsdruk.</p>
+      <p className="text-xs text-warm">Jessi neemt persoonlijk contact met je op om mee te denken. Of bel of WhatsApp ons direct.</p>
     </form>
   );
 }

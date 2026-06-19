@@ -34,6 +34,7 @@ export type Offerteregel = {
 };
 
 export type OfferteMetKlant = Offerte & { organisatie_naam: string | null };
+export type OfferteMetTotaal = OfferteMetKlant & { totaal: number };
 export type OfferteDetail = Offerte & { organisatie_naam: string | null; regels: Offerteregel[] };
 
 export type OfferteVelden = {
@@ -81,6 +82,61 @@ export async function listOffertes(statusFilter?: string): Promise<OfferteMetKla
     const { organisaties, ...rest } = r;
     return { ...rest, organisatie_naam: organisaties?.naam ?? null } as OfferteMetKlant;
   });
+}
+
+/**
+ * Eén pagina offertes (nieuwste eerst) met optioneel statusfilter, plus het totaal aantal rijen
+ * voor paginering. Het bedrag per offerte wordt zonder N+1 berekend: van alle offertes op de pagina
+ * halen we de regels in één extra query op (`.in('offerte_id', ids)`) en sommeren we in geheugen.
+ */
+export async function listOffertesPaged(opts: {
+  pagina: number;
+  perPagina: number;
+  status?: string;
+}): Promise<{ rijen: OfferteMetTotaal[]; totaal: number }> {
+  const sb = kmsAdmin(); if (!sb) return { rijen: [], totaal: 0 };
+  const pagina = Math.max(1, opts.pagina);
+  const from = (pagina - 1) * opts.perPagina;
+  const to = from + opts.perPagina - 1;
+  let q = sb
+    .from('offertes')
+    .select('*, organisaties(naam)', { count: 'exact' })
+    .order('created_at', { ascending: false });
+  if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
+  const { data, count } = await q.range(from, to);
+  const rows = (data as unknown as (Offerte & { organisaties: { naam: string } | null })[]) ?? [];
+
+  // Regels van alle offertes op deze pagina in één query; daarna per offerte in geheugen sommeren.
+  const ids = rows.map((r) => r.id);
+  const totaalPerOfferte = new Map<string, number>();
+  if (ids.length > 0) {
+    const { data: regelData } = await sb
+      .from('offerteregels')
+      .select('offerte_id, aantal, stukprijs')
+      .in('offerte_id', ids);
+    const regels = (regelData as { offerte_id: string; aantal: number | null; stukprijs: number | null }[]) ?? [];
+    const subtotaalPer = new Map<string, number>();
+    for (const r of regels) {
+      const sub = (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0);
+      subtotaalPer.set(r.offerte_id, (subtotaalPer.get(r.offerte_id) ?? 0) + sub);
+    }
+    for (const o of rows) {
+      const subtotaal = subtotaalPer.get(o.id) ?? 0;
+      const pct = Number(o.btw_pct);
+      const btw = subtotaal * (Number.isFinite(pct) ? pct : 0) / 100;
+      totaalPerOfferte.set(o.id, Math.round((subtotaal + btw) * 100) / 100);
+    }
+  }
+
+  const rijen = rows.map((r) => {
+    const { organisaties, ...rest } = r;
+    return {
+      ...rest,
+      organisatie_naam: organisaties?.naam ?? null,
+      totaal: totaalPerOfferte.get(r.id) ?? 0,
+    } as OfferteMetTotaal;
+  });
+  return { rijen, totaal: count ?? 0 };
 }
 
 export async function getOfferte(id: string): Promise<OfferteDetail | null> {

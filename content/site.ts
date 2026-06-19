@@ -15,7 +15,7 @@ export const site = {
   phone: '06 15 21 50 29',
   phoneIntl: '+31615215029',
   whatsapp: '+31615215029',
-  rating: { value: 5.0, count: 11 },
+  rating: { value: 5.0, count: 8 },
   address: {
     street: 'Kruisbergseweg 9',
     postalCode: '7255 AG',
@@ -36,12 +36,12 @@ export const site = {
     { day: 'Donderdag', dayCode: 'Th', open: '09:00', close: '17:00' },
     { day: 'Vrijdag', dayCode: 'Fr', open: '09:00', close: '17:00' },
   ],
-  openingNote: 'Showroombezoek op afspraak. Wij komen ook graag bij u langs om te passen.',
+  openingNote: 'Showroombezoek op afspraak. Wij komen ook graag bij je langs om te passen.',
   usps: [
-    { title: 'Eén vast aanspreekpunt', text: 'Persoonlijk contact met iemand die uw bedrijf kent. Niet elke keer een ander.' },
-    { title: 'Passen op locatie', text: 'Wij komen bij u langs voor maatadvies. Zo raakt u geen werktijd kwijt aan een showroom.' },
-    { title: 'Eigen bedrukken en borduren', text: 'Uw logo strak en slijtvast aangebracht, in eigen huis. Dus snel en met grip op de kwaliteit.' },
-    { title: 'Alles onder één dak', text: 'Van advies en maatvoering tot bedrukken en nalevering. U regelt het op één plek.' },
+    { title: 'Eén vast aanspreekpunt', text: 'Persoonlijk contact met iemand die jouw bedrijf kent. Niet elke keer een ander.' },
+    { title: 'Passen op locatie', text: 'Wij komen bij je langs voor maatadvies. Zo raak je geen werktijd kwijt aan een showroom.' },
+    { title: 'Eigen bedrukken en borduren', text: 'Jouw logo strak en slijtvast aangebracht, in eigen huis. Dus snel en met grip op de kwaliteit.' },
+    { title: 'Alles onder één dak', text: 'Van advies en maatvoering tot bedrukken en nalevering. Je regelt het op één plek.' },
   ],
   brands: [
     'Tricorp', 'Snickers Workwear', 'Mascot', 'FHB', 'Chaud Devant',

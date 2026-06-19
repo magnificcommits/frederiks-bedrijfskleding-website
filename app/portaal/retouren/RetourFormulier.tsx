@@ -118,18 +118,42 @@ export default function RetourFormulier({ orders }: { orders: RetourneerbareOrde
                       <span className="text-warm"> {'·'} besteld: {r.besteld_aantal}</span>
                     </span>
                   </label>
-                  <label className="flex items-center gap-1 text-xs text-warm">
-                    Aantal
-                    <input
-                      type="number"
-                      min={1}
-                      max={r.besteld_aantal}
-                      value={keuze?.aantal ?? r.besteld_aantal}
-                      disabled={!aan}
-                      onChange={(e) => zetAantal(r.orderregel_id, Number(e.target.value), r.besteld_aantal)}
-                      className="w-16 rounded-md border border-line px-2 py-1 text-sm text-ink-900 disabled:bg-mist disabled:text-warm focus:border-amber-500 focus:outline-none"
-                    />
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-warm">Aantal</span>
+                    {(() => {
+                      const huidig = keuze?.aantal ?? r.besteld_aantal;
+                      const knopCls =
+                        'flex h-11 w-11 items-center justify-center rounded-md border border-line text-lg font-bold text-ink-900 disabled:cursor-not-allowed disabled:bg-mist disabled:text-warm';
+                      return (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            aria-label="Aantal verlagen"
+                            disabled={!aan || huidig <= 1}
+                            onClick={() => zetAantal(r.orderregel_id, huidig - 1, r.besteld_aantal)}
+                            className={knopCls}
+                          >
+                            {'−'}
+                          </button>
+                          <span
+                            aria-live="polite"
+                            className={`w-10 text-center text-sm font-semibold ${aan ? 'text-ink-900' : 'text-warm'}`}
+                          >
+                            {huidig}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label="Aantal verhogen"
+                            disabled={!aan || huidig >= r.besteld_aantal}
+                            onClick={() => zetAantal(r.orderregel_id, huidig + 1, r.besteld_aantal)}
+                            className={knopCls}
+                          >
+                            +
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               );
             })}

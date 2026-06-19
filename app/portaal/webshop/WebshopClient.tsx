@@ -185,7 +185,7 @@ export default function WebshopClient({
   const geblokkeerd = leeg || overBudget || overProductbudget || onderMin || bovenMax;
 
   return (
-    <div className="mt-8 grid gap-8 lg:grid-cols-3">
+    <div className="mt-8 grid gap-8 pb-24 lg:grid-cols-3 lg:pb-0">
       <div className="lg:col-span-2">
         <h2 className="font-display text-xl font-extrabold text-ink-900">Producten</h2>
         {producten.length === 0 ? (
@@ -247,44 +247,178 @@ export default function WebshopClient({
                   {opties.length === 0 ? (
                     <p className="mt-4 text-sm text-warm">Geen leverbare varianten.</p>
                   ) : (
-                    <div className="mt-4">
-                      <label className="block text-xs font-semibold text-warm">
-                        Maat en kleur
-                        {heeftVoorkeur && (
-                          <span className="ml-1 font-normal text-amber-700">
-                            (voorkeur: {voorkeur?.voorkeursmaat}
-                            {voorkeur?.plus_minus_toegestaan ? ', één maat groter of kleiner mag' : ''})
-                          </span>
-                        )}
-                      </label>
-                      <select
-                        value={gekozenVariant}
-                        onChange={(e) => setKeuze((k) => ({ ...k, [p.id]: e.target.value }))}
-                        className={inputClass}
-                      >
-                        {opties.map((v) => {
-                          const uitVoorraad = toonVoorraad && (Number(v.voorraad) || 0) <= 0;
-                          return (
-                            <option key={v.id} value={v.id}>
-                              {[v.maat, v.kleur].filter(Boolean).join(' · ') || 'Standaard'} —{' '}
-                              {euro(variantNetto(v))}
-                              {toonVoorraad
-                                ? uitVoorraad
-                                  ? ' · niet op voorraad'
-                                  : ` · ${Number(v.voorraad) || 0} op voorraad`
-                                : ''}
-                            </option>
-                          );
-                        })}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => voegToe(gekozenVariant)}
-                        className="btn-primary mt-3 w-full"
-                      >
-                        In winkelwagen
-                      </button>
-                    </div>
+                    (() => {
+                      // Splits de toegestane varianten netjes in kleuren en maten.
+                      // Valt terug op een simpele variant-knoppenrij als de structuur niet klopt.
+                      const gekozen = opties.find((v) => v.id === gekozenVariant) ?? opties[0];
+                      const heeftMaten = opties.some((v) => v.maat != null && v.maat !== '');
+                      const kleuren: string[] = [];
+                      for (const v of opties) {
+                        const kl = v.kleur ?? '';
+                        if (kl !== '' && !kleuren.includes(kl)) kleuren.push(kl);
+                      }
+                      const meerdereKleuren = kleuren.length > 1;
+                      const activeKleur = gekozen?.kleur ?? null;
+
+                      // Maten die horen bij de huidige kleur (of alle maten als er geen kleur is).
+                      const matenVoorKleur = opties.filter(
+                        (v) => activeKleur == null || (v.kleur ?? '') === (activeKleur ?? ''),
+                      );
+
+                      const kiesKleur = (kl: string) => {
+                        // Behoud de huidige maat in de nieuwe kleur als die bestaat, anders de eerste leverbare.
+                        const huidigeMaat = gekozen?.maat ?? null;
+                        const inKleur = opties.filter((v) => (v.kleur ?? '') === kl);
+                        const zelfdeMaat = inKleur.find((v) => v.maat === huidigeMaat);
+                        const eerstOpVoorraad = inKleur.find(
+                          (v) => !toonVoorraad || (Number(v.voorraad) || 0) > 0,
+                        );
+                        const doel = zelfdeMaat ?? eerstOpVoorraad ?? inKleur[0];
+                        if (doel) setKeuze((k) => ({ ...k, [p.id]: doel.id }));
+                      };
+
+                      const uitVoorraad =
+                        toonVoorraad && gekozen != null && (Number(gekozen.voorraad) || 0) <= 0;
+
+                      return (
+                        <div className="mt-4">
+                          <p className="text-xs font-semibold text-warm">
+                            Kies maat{meerdereKleuren ? ' en kleur' : ''}
+                            {heeftVoorkeur && (
+                              <span className="ml-1 font-normal text-amber-700">
+                                (voorkeur: {voorkeur?.voorkeursmaat}
+                                {voorkeur?.plus_minus_toegestaan
+                                  ? ', één maat groter of kleiner mag'
+                                  : ''}
+                                )
+                              </span>
+                            )}
+                          </p>
+
+                          {meerdereKleuren && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {kleuren.map((kl) => {
+                                const actief = (activeKleur ?? '') === kl;
+                                const blokje = kleurMap?.[kl] ?? null;
+                                return (
+                                  <button
+                                    key={kl}
+                                    type="button"
+                                    onClick={() => kiesKleur(kl)}
+                                    aria-pressed={actief}
+                                    className={`inline-flex min-h-[44px] items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
+                                      actief
+                                        ? 'border-amber-500 bg-amber-50 text-amber-800'
+                                        : 'border-line bg-white text-ink-900 hover:border-amber-300'
+                                    }`}
+                                  >
+                                    {blokje ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img
+                                        src={blokje}
+                                        alt=""
+                                        className="h-5 w-5 shrink-0 rounded-full border border-line object-cover"
+                                      />
+                                    ) : null}
+                                    {kl}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {heeftMaten ? (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {matenVoorKleur.map((v) => {
+                                const actief = v.id === gekozenVariant;
+                                const geenVoorraad =
+                                  toonVoorraad && (Number(v.voorraad) || 0) <= 0;
+                                return (
+                                  <button
+                                    key={v.id}
+                                    type="button"
+                                    onClick={() => setKeuze((k) => ({ ...k, [p.id]: v.id }))}
+                                    disabled={geenVoorraad}
+                                    aria-pressed={actief}
+                                    title={
+                                      geenVoorraad ? 'Niet op voorraad' : undefined
+                                    }
+                                    className={`min-h-[44px] min-w-[44px] rounded-lg border px-3 py-2 text-sm font-semibold ${
+                                      actief
+                                        ? 'border-amber-500 bg-amber-500 text-white'
+                                        : 'border-line bg-white text-ink-900 hover:border-amber-300'
+                                    } ${
+                                      geenVoorraad
+                                        ? 'cursor-not-allowed text-warm line-through opacity-50'
+                                        : ''
+                                    }`}
+                                  >
+                                    {v.maat || 'Maat'}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : !meerdereKleuren ? (
+                            // Geen maat- en geen kleurkeuze: één variant, knoppenrij als terugval.
+                            opties.length > 1 ? (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {opties.map((v) => {
+                                  const actief = v.id === gekozenVariant;
+                                  const geenVoorraad =
+                                    toonVoorraad && (Number(v.voorraad) || 0) <= 0;
+                                  return (
+                                    <button
+                                      key={v.id}
+                                      type="button"
+                                      onClick={() => setKeuze((k) => ({ ...k, [p.id]: v.id }))}
+                                      disabled={geenVoorraad}
+                                      aria-pressed={actief}
+                                      className={`min-h-[44px] rounded-lg border px-3 py-2 text-sm font-semibold ${
+                                        actief
+                                          ? 'border-amber-500 bg-amber-500 text-white'
+                                          : 'border-line bg-white text-ink-900 hover:border-amber-300'
+                                      } ${
+                                        geenVoorraad
+                                          ? 'cursor-not-allowed text-warm line-through opacity-50'
+                                          : ''
+                                      }`}
+                                    >
+                                      {[v.maat, v.kleur].filter(Boolean).join(' · ') ||
+                                        'Standaard'}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : null
+                          ) : null}
+
+                          <div className="mt-3 flex items-baseline justify-between">
+                            <span className="text-sm font-semibold text-ink-900">
+                              {gekozen ? euro(variantNetto(gekozen)) : ''}
+                            </span>
+                            {toonVoorraad && gekozen != null && (
+                              <span className="text-xs text-warm">
+                                {uitVoorraad
+                                  ? 'Niet op voorraad'
+                                  : `${Number(gekozen.voorraad) || 0} op voorraad`}
+                              </span>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => voegToe(gekozenVariant)}
+                            disabled={uitVoorraad}
+                            className="btn-primary mt-3 w-full disabled:opacity-50"
+                          >
+                            In winkelwagen
+                          </button>
+                          {uitVoorraad && (
+                            <p className="mt-2 text-xs font-semibold text-warm">Niet op voorraad</p>
+                          )}
+                        </div>
+                      );
+                    })()
                   )}
                 </div>
               );
@@ -293,7 +427,7 @@ export default function WebshopClient({
         )}
       </div>
 
-      <div>
+      <div id="winkelwagen" className="scroll-mt-4">
         <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
           <h2 className="font-display text-xl font-extrabold text-ink-900">Winkelwagen</h2>
 
@@ -333,19 +467,32 @@ export default function WebshopClient({
                         euro(prijs)
                       )}
                     </p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={0}
-                        step={1}
-                        value={item.aantal}
-                        onChange={(e) => wijzigAantal(item.variantId, parseInt(e.target.value || '0', 10))}
-                        className="w-20 rounded-md border border-line px-3 py-1.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                      />
+                    <div className="mt-2 flex items-center gap-3">
+                      <div className="inline-flex items-center rounded-md border border-line">
+                        <button
+                          type="button"
+                          onClick={() => wijzigAantal(item.variantId, item.aantal - 1)}
+                          aria-label="Eén minder"
+                          className="flex min-h-[40px] w-11 items-center justify-center text-lg font-bold text-ink-900 hover:bg-mist"
+                        >
+                          &minus;
+                        </button>
+                        <span className="min-w-[40px] px-2 text-center text-sm font-semibold text-ink-900">
+                          {item.aantal}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => wijzigAantal(item.variantId, item.aantal + 1)}
+                          aria-label="Eén meer"
+                          className="flex min-h-[40px] w-11 items-center justify-center text-lg font-bold text-ink-900 hover:bg-mist"
+                        >
+                          +
+                        </button>
+                      </div>
                       <button
                         type="button"
                         onClick={() => wijzigAantal(item.variantId, 0)}
-                        className="text-xs font-semibold text-warm hover:text-ink-800"
+                        className="min-h-[40px] text-xs font-semibold text-warm hover:text-ink-800"
                       >
                         Verwijder
                       </button>
@@ -438,6 +585,29 @@ export default function WebshopClient({
           </form>
         </div>
       </div>
+
+      {!leeg && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white px-4 py-3 shadow-soft lg:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs text-warm">
+                {aantalStuks} {aantalStuks === 1 ? 'stuk' : 'stuks'}
+              </p>
+              <p className="font-display text-lg font-extrabold text-ink-900">{euro(totaal)}</p>
+            </div>
+            <button
+              type="button"
+              disabled={geblokkeerd}
+              onClick={() =>
+                document.getElementById('winkelwagen')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+              className="btn-primary min-h-[48px] flex-1 max-w-[60%] disabled:opacity-50"
+            >
+              Bestellen
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { listProductenPaged, listMerken, listLeveranciers } from '@/lib/kms/producten';
+import NavigateSelect from '@/components/dashboard/NavigateSelect';
 import { nieuwProduct } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -44,21 +45,31 @@ export default async function ProductenPage({ searchParams }: { searchParams: Pr
       </div>
       <p className="mt-2 text-sm text-warm">De productcatalogus met varianten en prijzen. Klik op een product om het te bewerken.</p>
 
-      <form method="get" className="mt-6 flex flex-wrap items-end gap-3">
-        <div>
-          <label className="block text-xs font-semibold text-warm">Zoeken</label>
-          <input name="zoek" defaultValue={zoek ?? ''} placeholder="Naam, SKU, merk, categorie" className={inputCls} />
-        </div>
+      <div className="mt-6 flex flex-wrap items-end gap-3">
+        {/* Zoeken blijft een tekstveld met submit (per toetsaanslag auto-submitten zou een debounce vergen).
+            Het actieve merk reist mee als hidden veld zodat zoeken het merkfilter behoudt. */}
+        <form method="get" className="flex items-end gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-warm">Zoeken</label>
+            <input name="zoek" defaultValue={zoek ?? ''} placeholder="Naam, SKU, merk, categorie" className={inputCls} />
+          </div>
+          {merk && <input type="hidden" name="merk" value={merk} />}
+          <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Zoeken</button>
+        </form>
+        {/* Merk auto-navigeert (geen aparte knop). De zoekterm reist mee via de param-injectie. */}
         <div>
           <label className="block text-xs font-semibold text-warm">Merk</label>
-          <select name="merk" defaultValue={merk ?? ''} className={inputCls}>
-            <option value="">Alle merken</option>
-            {merken.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
+          <NavigateSelect
+            basePath="/dashboard/producten"
+            param={zoek ? `zoek=${encodeURIComponent(zoek)}&merk` : 'merk'}
+            value={merk ?? ''}
+            placeholder="Alle merken"
+            className={inputCls}
+            options={merken.map((m) => ({ value: m, label: m }))}
+          />
         </div>
-        <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Filteren</button>
         {(zoek || merk) && <Link href="/dashboard/producten" className="text-sm font-semibold text-warm hover:text-ink-800">Wissen</Link>}
-      </form>
+      </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">

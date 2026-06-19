@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { env, isLeadsDbConfigured } from '@/lib/env';
-import { listOrganisatiesPaged } from '@/lib/portaalAdmin';
+import { listOrganisatiesPaged, type Organisatie } from '@/lib/portaalAdmin';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { nieuweOrganisatie } from './actions';
 
@@ -10,6 +10,35 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klanten', robots: { index: false, follow: false } };
 const DASH_COOKIE = 'fb_dash';
 const PER_PAGINA = 25;
+const inputCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+
+/**
+ * Eén pagina klanten met server-side zoekfilter op naam, plaats en contactpersoon.
+ * `listOrganisatiesPaged` (lib/portaalAdmin) kent geen zoekparameter en mag in deze
+ * opdracht niet gewijzigd worden, daarom draaien we hier — bij een zoekterm — een
+ * gelijkwaardige gepagineerde + getelde query via de reeds beschikbare kmsAdmin-client.
+ * Zonder zoekterm valt de pagina terug op de bestaande helper, zodat het gedrag
+ * identiek blijft. Filteren en pagineren gebeuren beide server-side in de query.
+ */
+async function zoekOrganisatiesPaged(opts: { pagina: number; perPagina: number; zoek?: string }): Promise<{ rijen: Organisatie[]; totaal: number }> {
+  const term = (opts.zoek ?? '').trim();
+  if (!term) return listOrganisatiesPaged({ pagina: opts.pagina, perPagina: opts.perPagina });
+  const sb = kmsAdmin();
+  if (!sb) return { rijen: [], totaal: 0 };
+  const pagina = Math.max(1, opts.pagina);
+  const from = (pagina - 1) * opts.perPagina;
+  const to = from + opts.perPagina - 1;
+  // Escape PostgREST-tekens (% , ) die de or-filter zouden kunnen breken.
+  const veilig = term.replace(/[%,()]/g, ' ');
+  const patroon = `%${veilig}%`;
+  const { data, count } = await sb
+    .from('organisaties')
+    .select('*', { count: 'exact' })
+    .or(`naam.ilike.${patroon},plaats.ilike.${patroon},contactpersoon.ilike.${patroon}`)
+    .order('naam')
+    .range(from, to);
+  return { rijen: (data as Organisatie[]) ?? [], totaal: count ?? 0 };
+}
 
 async function authed() {
   return Boolean(env.dashboardPassword) && (await cookies()).get(DASH_COOKIE)?.value === env.dashboardPassword.trim();
@@ -32,7 +61,7 @@ async function medewerkersPerOrg(): Promise<Record<string, number>> {
   return map;
 }
 
-export default async function KlantenPage({ searchParams }: { searchParams: Promise<{ pagina?: string }> }) {
+export default async function KlantenPage({ searchParams }: { searchParams: Promise<{ pagina?: string; zoek?: string }> }) {
   if (!(await authed())) redirect('/dashboard');
 
   if (!isLeadsDbConfigured) {
@@ -47,11 +76,12 @@ export default async function KlantenPage({ searchParams }: { searchParams: Prom
     );
   }
 
-  const { pagina } = await searchParams;
+  const { pagina, zoek } = await searchParams;
   const huidigePagina = Math.max(1, Number(pagina) || 1);
-  const { rijen: orgs, totaal } = await listOrganisatiesPaged({ pagina: huidigePagina, perPagina: PER_PAGINA });
+  const { rijen: orgs, totaal } = await zoekOrganisatiesPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, zoek });
   const aantalPerOrg = await medewerkersPerOrg();
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
+  const zoekQs = zoek && zoek.trim() ? `&zoek=${encodeURIComponent(zoek.trim())}` : '';
 
   return (
     <main className="container-x py-12">
@@ -60,6 +90,15 @@ export default async function KlantenPage({ searchParams }: { searchParams: Prom
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 text-sm text-warm">Per klant zet je hier de kledinglijn op en handel je herbestellingen af.</p>
+
+      <form method="get" className="mt-6 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-warm">Zoeken</label>
+          <input name="zoek" defaultValue={zoek ?? ''} placeholder="Naam, plaats of contactpersoon" className={inputCls} />
+        </div>
+        <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Zoeken</button>
+        {zoek && zoek.trim() && <Link href="/dashboard/klanten" className="text-sm font-semibold text-warm hover:text-ink-800">Wissen</Link>}
+      </form>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -94,11 +133,11 @@ export default async function KlantenPage({ searchParams }: { searchParams: Prom
           {aantalPaginas > 1 && (
             <nav className="mt-4 flex items-center justify-between gap-4 text-sm" aria-label="Paginering">
               {huidigePagina > 1 ? (
-                <Link href={`/dashboard/klanten?pagina=${huidigePagina - 1}`} className="font-semibold text-warm hover:text-ink-800">Vorige</Link>
+                <Link href={`/dashboard/klanten?pagina=${huidigePagina - 1}${zoekQs}`} className="font-semibold text-warm hover:text-ink-800">Vorige</Link>
               ) : <span />}
               <span className="text-warm">Pagina {huidigePagina} van {aantalPaginas}</span>
               {huidigePagina < aantalPaginas ? (
-                <Link href={`/dashboard/klanten?pagina=${huidigePagina + 1}`} className="font-semibold text-warm hover:text-ink-800">Volgende</Link>
+                <Link href={`/dashboard/klanten?pagina=${huidigePagina + 1}${zoekQs}`} className="font-semibold text-warm hover:text-ink-800">Volgende</Link>
               ) : <span />}
             </nav>
           )}

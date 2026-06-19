@@ -27,6 +27,9 @@ export function ContactSectie({
             </div>
           </div>
           <div>
+            <p className="mb-4 rounded-xl border-l-2 border-dashed border-amber-500 bg-white px-4 py-3 text-sm text-warm">
+              <strong className="text-ink-900">{site.owner.split(' ')[0]}</strong> neemt binnen 1 werkdag persoonlijk contact met je op. Vrijblijvend, je zit nergens aan vast.
+            </p>
             <LeadForm defaultBranche={defaultBranche} />
           </div>
         </div>

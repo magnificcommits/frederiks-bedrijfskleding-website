@@ -3,8 +3,7 @@ import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { getBoekhouderEmail } from '@/lib/kms/facturen';
 import { getRetourtermijn } from '@/lib/portaal/service';
-import { getSpaarInstellingen } from '@/lib/kms/sparen';
-import { zetBoekhouderActie, zetRetourActie, zetSpaarActie } from './actions';
+import { zetBoekhouderActie, zetRetourActie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Instellingen', robots: { index: false, follow: false } };
@@ -19,10 +18,9 @@ export default async function InstellingenPage({
   if (!(await dashAuthed())) redirect('/dashboard');
 
   const { ok } = await searchParams;
-  const [boekhouderEmail, termijn, spaar] = await Promise.all([
+  const [boekhouderEmail, termijn] = await Promise.all([
     getBoekhouderEmail(),
     getRetourtermijn(),
-    getSpaarInstellingen(),
   ]);
 
   return (
@@ -38,9 +36,6 @@ export default async function InstellingenPage({
       )}
       {ok === 'retour' && (
         <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">Retourbeleid opgeslagen.</p>
-      )}
-      {ok === 'sparen' && (
-        <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">Spaarinstellingen opgeslagen.</p>
       )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -84,31 +79,11 @@ export default async function InstellingenPage({
           </form>
         </div>
 
-        {/* Spaarsysteem */}
+        {/* Spaarsysteem — beheer staat op de eigen Sparen-pagina */}
         <div className="rounded-2xl border border-line bg-white p-6 shadow-soft lg:col-span-2">
           <h2 className="font-display text-lg font-bold text-ink-900">Spaarsysteem</h2>
-          <p className="mt-1 text-xs text-warm">Bedrijven sparen punten op hun bestellingen, in te wisselen voor korting op een volgende bestelling.</p>
-          <form action={zetSpaarActie} className="mt-4 flex flex-wrap items-end gap-4">
-            <div>
-              <label htmlFor="spaar_actief" className="block text-xs font-semibold text-warm">Spaarsysteem</label>
-              <select id="spaar_actief" name="actief" defaultValue={spaar.actief ? 'aan' : 'uit'} className={inputCls}>
-                <option value="aan">Aan</option>
-                <option value="uit">Uit</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="punten_per_euro" className="block text-xs font-semibold text-warm">Punten per bestede euro</label>
-              <input id="punten_per_euro" type="number" name="punten_per_euro" step="0.01" min="0" defaultValue={spaar.puntenPerEuro} className={`${inputCls} w-44`} />
-            </div>
-            <div>
-              <label htmlFor="euro_per_punt" className="block text-xs font-semibold text-warm">Kortingswaarde per punt (in euro)</label>
-              <input id="euro_per_punt" type="number" name="euro_per_punt" step="0.001" min="0" defaultValue={spaar.euroPerPunt} className={`${inputCls} w-44`} />
-            </div>
-            <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Opslaan</button>
-          </form>
-          <p className="mt-4 rounded-xl border border-line bg-mist px-4 py-3 text-xs text-warm">
-            Voorbeeld: bij {spaar.puntenPerEuro} punt per euro en een kortingswaarde van {spaar.euroPerPunt} euro per punt levert 100 euro omzet {Math.round(100 * spaar.puntenPerEuro)} punten op, samen goed voor {(100 * spaar.puntenPerEuro * spaar.euroPerPunt).toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })} korting.
-          </p>
+          <p className="mt-1 text-xs text-warm">Het spaarsysteem beheer je onder Sparen: punten per euro, kortingswaarde en de saldi per bedrijf.</p>
+          <Link href="/dashboard/sparen" className="mt-4 inline-block rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Naar Sparen</Link>
         </div>
       </div>
     </main>

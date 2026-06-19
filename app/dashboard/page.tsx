@@ -4,7 +4,7 @@ import { env, isLeadsDbConfigured } from '@/lib/env';
 import { login } from './actions';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import AdminLoginForm from '@/components/dashboard/AdminLoginForm';
-import { getOverzicht } from '@/lib/kms/overzicht';
+import { getOverzicht, getVandaagSignalen } from '@/lib/kms/overzicht';
 
 export const metadata: Metadata = { title: 'Overzicht', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -70,7 +70,37 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
     );
   }
 
-  const o = await getOverzicht();
+  const [o, signalen] = await Promise.all([getOverzicht(), getVandaagSignalen()]);
+  const oppakken = [
+    {
+      label: 'Openstaande taken',
+      aantal: signalen?.openTaken ?? 0,
+      detail: (signalen?.verlopenTaken ?? 0) > 0 ? `${signalen?.verlopenTaken} verlopen` : null,
+      urgent: (signalen?.verlopenTaken ?? 0) > 0,
+      href: '/dashboard/taken',
+    },
+    {
+      label: 'Orders wachten op goedkeuring',
+      aantal: signalen?.ordersWachtGoedkeuring ?? 0,
+      detail: null,
+      urgent: (signalen?.ordersWachtGoedkeuring ?? 0) > 0,
+      href: '/dashboard/orders',
+    },
+    {
+      label: 'Retouren te beoordelen',
+      aantal: signalen?.retourenTeBeoordelen ?? 0,
+      detail: null,
+      urgent: (signalen?.retourenTeBeoordelen ?? 0) > 0,
+      href: '/dashboard/retouren',
+    },
+    {
+      label: 'Vervallen facturen',
+      aantal: signalen?.vervallenFacturen ?? 0,
+      detail: null,
+      urgent: (signalen?.vervallenFacturen ?? 0) > 0,
+      href: '/dashboard/facturen',
+    },
+  ];
   const kpis = [
     { label: 'Nieuwe leads', waarde: String(o?.nieuweLeads ?? 0), href: '/dashboard/leads' },
     { label: 'Openstaande offertewaarde', waarde: euro(o?.openOffertewaarde ?? 0), href: '/dashboard/leads' },
@@ -118,14 +148,22 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
         </div>
 
         <div className="rounded-xl border border-line bg-white p-4 shadow-soft">
-          <h2 className="font-display text-base font-bold text-ink-900">Snel naar</h2>
-          <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-            <Link href="/dashboard/klanten" className="rounded-md border border-line px-3 py-2 font-semibold text-ink-800 hover:bg-mist">Klanten</Link>
-            <Link href="/dashboard/orders" className="rounded-md border border-line px-3 py-2 font-semibold text-ink-800 hover:bg-mist">Orders</Link>
-            <Link href="/dashboard/producten" className="rounded-md border border-line px-3 py-2 font-semibold text-ink-800 hover:bg-mist">Producten</Link>
-            <Link href="/dashboard/facturen" className="rounded-md border border-line px-3 py-2 font-semibold text-ink-800 hover:bg-mist">Facturen</Link>
-            <Link href="/dashboard/inkoop" className="rounded-md border border-line px-3 py-2 font-semibold text-ink-800 hover:bg-mist">Inkoop</Link>
-            <Link href="/dashboard/rapportages" className="rounded-md border border-line px-3 py-2 font-semibold text-ink-800 hover:bg-mist">Rapportages</Link>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-base font-bold text-ink-900">Vandaag oppakken</h2>
+            <Link href="/dashboard/meldingen" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Alle meldingen</Link>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {oppakken.map((b) => (
+              <Link
+                key={b.label}
+                href={b.href}
+                className={`rounded-md border px-3 py-2.5 hover:bg-mist ${b.urgent ? 'border-amber-300 bg-amber-50' : 'border-line'}`}
+              >
+                <span className="block font-display text-xl font-extrabold text-ink-900">{b.aantal}</span>
+                <span className="mt-0.5 block text-xs font-semibold leading-tight text-ink-700">{b.label}</span>
+                {b.detail && <span className="mt-0.5 block text-[11px] font-semibold text-amber-700">{b.detail}</span>}
+              </Link>
+            ))}
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { getOrder, ORDER_STATUSSEN, GOEDKEURING_STATUSSEN } from '@/lib/kms/orders';
 import { listInkoopregelsVoorOrder } from '@/lib/kms/inkoop';
 import { voegRegelToe, verwijderRegel, wijzigStatus, beslisGoedkeuring, maakInkoopregels, zetTrackTrace } from './actions';
+import ConfirmSubmit from '@/components/ConfirmSubmit';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Order', robots: { index: false, follow: false } };
@@ -168,7 +169,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                           <form action={verwijderRegel}>
                             <input type="hidden" name="orderId" value={order.id} />
                             <input type="hidden" name="regelId" value={r.id} />
-                            <button type="submit" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijder</button>
+                            <ConfirmSubmit message="Deze orderregel verwijderen?" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijder</ConfirmSubmit>
                           </form>
                         </td>
                       </tr>

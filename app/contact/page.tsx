@@ -13,7 +13,7 @@ export default function ContactPage() {
   return (
     <>
       <PageHero eyebrow="Contact" title="Kom gerust langs of neem contact op"
-        intro={`${site.address.locationNote} Showroombezoek op afspraak. We komen ook graag bij u langs.`} />
+        intro={`${site.address.locationNote} Showroombezoek op afspraak. We komen ook graag bij je langs.`} />
       <section className="container-x py-16">
         <div className="grid gap-10 lg:grid-cols-2">
           <div>

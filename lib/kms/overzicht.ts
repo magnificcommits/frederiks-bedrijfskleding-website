@@ -42,3 +42,49 @@ export async function getOverzicht(): Promise<Overzicht | null> {
 
   return { nieuweLeads, openOffertewaarde, openOrders, teBestellen, openFacturenBedrag, omzetMaand, recenteLeads };
 }
+
+export type VandaagSignalen = {
+  openTaken: number;
+  verlopenTaken: number;
+  ordersWachtGoedkeuring: number;
+  retourenTeBeoordelen: number;
+  vervallenFacturen: number;
+};
+
+/**
+ * Tellingen voor het "Vandaag oppakken"-blok op de dashboard-home.
+ * Alle queries via kmsAdmin() (service-role, omzeilt RLS), in dezelfde stijl als
+ * getOverzicht(). Alleen server-side gebruiken, achter dashAuthed().
+ *
+ * - Taken: open taken, plus daarvan de verlopen taken (vervaldatum < vandaag).
+ * - Orders: goedkeuring_status === 'wacht' (wacht op goedkeuring).
+ * - Retouren: status === 'aangemeld' (nog te beoordelen).
+ * - Facturen: verstuurd (niet betaald, niet concept) met verstreken vervaldatum.
+ */
+export async function getVandaagSignalen(): Promise<VandaagSignalen | null> {
+  const sb = kmsAdmin();
+  if (!sb) return null;
+  const vandaag = new Date().toISOString().slice(0, 10);
+
+  const [takenR, ordersR, retourenR, facturenR] = await Promise.all([
+    sb.from('taken').select('status, vervaldatum').eq('status', 'open'),
+    sb.from('orders').select('goedkeuring_status'),
+    sb.from('retouren').select('status'),
+    sb.from('facturen').select('status, vervaldatum'),
+  ]);
+
+  const taken = (takenR.data as { status: string; vervaldatum: string | null }[]) ?? [];
+  const orders = (ordersR.data as { goedkeuring_status: string }[]) ?? [];
+  const retouren = (retourenR.data as { status: string }[]) ?? [];
+  const facturen = (facturenR.data as { status: string; vervaldatum: string | null }[]) ?? [];
+
+  const openTaken = taken.length;
+  const verlopenTaken = taken.filter((t) => t.vervaldatum && t.vervaldatum < vandaag).length;
+  const ordersWachtGoedkeuring = orders.filter((o) => o.goedkeuring_status === 'wacht').length;
+  const retourenTeBeoordelen = retouren.filter((r) => r.status === 'aangemeld').length;
+  const vervallenFacturen = facturen.filter(
+    (f) => f.status !== 'betaald' && f.status !== 'concept' && f.vervaldatum && f.vervaldatum < vandaag,
+  ).length;
+
+  return { openTaken, verlopenTaken, ordersWachtGoedkeuring, retourenTeBeoordelen, vervallenFacturen };
+}

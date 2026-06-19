@@ -92,8 +92,8 @@ export default async function Facturen() {
           <p className="text-sm text-warm">Er zijn nog geen facturen.</p>
         </div>
       ) : (
-        <div className="mt-8 overflow-hidden rounded-2xl border border-line bg-white shadow-soft">
-          <table className="w-full text-sm">
+        <div className="mt-8 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
+          <table className="w-full min-w-[480px] text-sm">
             <thead>
               <tr className="border-b border-line bg-cream text-left text-xs font-bold uppercase tracking-[0.04em] text-warm">
                 <th className="px-5 py-3">Factuurnummer</th>

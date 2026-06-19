@@ -16,6 +16,7 @@ import {
   verwijderAfdelingActie,
   bewaarManagerScope,
 } from './actions';
+import ConfirmSubmit from '@/components/ConfirmSubmit';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Inrichting', robots: { index: false, follow: false } };
@@ -203,7 +204,7 @@ export default async function InrichtingPage({ params }: { params: Promise<{ id:
                           <form action={verwijderVestigingActie}>
                             <input type="hidden" name="orgId" value={id} />
                             <input type="hidden" name="vestigingId" value={v.id} />
-                            <button type="submit" className={wisCls}>Verwijderen</button>
+                            <ConfirmSubmit message="Deze vestiging verwijderen?" className={wisCls}>Verwijderen</ConfirmSubmit>
                           </form>
                         </td>
                       </tr>
@@ -273,7 +274,7 @@ export default async function InrichtingPage({ params }: { params: Promise<{ id:
                           <form action={verwijderAfdelingActie}>
                             <input type="hidden" name="orgId" value={id} />
                             <input type="hidden" name="afdelingId" value={a.id} />
-                            <button type="submit" className={wisCls}>Verwijderen</button>
+                            <ConfirmSubmit message="Deze afdeling verwijderen?" className={wisCls}>Verwijderen</ConfirmSubmit>
                           </form>
                         </td>
                       </tr>

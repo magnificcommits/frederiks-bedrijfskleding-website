@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import { listOffertes, getOfferte, offerteTotalen, OFFERTE_STATUSSEN } from '@/lib/kms/offertes';
+import { listOffertesPaged, OFFERTE_STATUSSEN } from '@/lib/kms/offertes';
 import { listOrganisaties } from '@/lib/portaalAdmin';
 import { formatEuro, formatDatum } from '@/lib/format';
 import NavigateSelect from '@/components/dashboard/NavigateSelect';
@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Offertes', robots: { index: false, follow: false } };
 
 const inputCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+const PER_PAGINA = 25;
 
 const statusBadge: Record<string, string> = {
   concept: 'bg-ink-100 text-ink-600',
@@ -19,7 +20,7 @@ const statusBadge: Record<string, string> = {
   afgewezen: 'bg-red-100 text-red-800',
 };
 
-export default async function OffertesPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+export default async function OffertesPage({ searchParams }: { searchParams: Promise<{ status?: string; pagina?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const sb = kmsAdmin();
 
@@ -35,20 +36,15 @@ export default async function OffertesPage({ searchParams }: { searchParams: Pro
     );
   }
 
-  const { status } = await searchParams;
-  const [offertes, organisaties] = await Promise.all([listOffertes(status), listOrganisaties()]);
-
-  // Totaal per offerte: regels ophalen per offerte zou N+1 zijn; we tonen het
-  // totaal compact door de detail-helper alleen voor de lijst te benutten.
-  const totalen = await Promise.all(
-    offertes.map(async (o) => {
-      const detail = await getOfferte(o.id);
-      if (!detail) return { id: o.id, totaal: 0 };
-      const { totaal } = offerteTotalen(detail.regels, detail.btw_pct);
-      return { id: o.id, totaal };
-    }),
-  );
-  const totaalMap = new Map(totalen.map((t) => [t.id, t.totaal]));
+  const { status, pagina } = await searchParams;
+  const huidigePagina = Math.max(1, Number(pagina) || 1);
+  // Totaalbedrag per offerte komt nu in één query mee (geen N+1 meer per rij).
+  const [{ rijen: offertes, totaal }, organisaties] = await Promise.all([
+    listOffertesPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, status }),
+    listOrganisaties(),
+  ]);
+  const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
+  const statusQs = status ? `&status=${encodeURIComponent(status)}` : '';
 
   return (
     <main className="container-x py-12">
@@ -102,12 +98,23 @@ export default async function OffertesPage({ searchParams }: { searchParams: Pro
                       <td className="px-4 py-3">
                         <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[o.status] ?? 'bg-ink-100 text-ink-600'}`}>{o.status}</span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{formatEuro(totaalMap.get(o.id) ?? 0)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{formatEuro(o.totaal)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+          )}
+          {aantalPaginas > 1 && (
+            <nav className="mt-4 flex items-center justify-between gap-4 text-sm" aria-label="Paginering">
+              {huidigePagina > 1 ? (
+                <Link href={`/dashboard/offertes?pagina=${huidigePagina - 1}${statusQs}`} className="font-semibold text-warm hover:text-ink-800">Vorige</Link>
+              ) : <span />}
+              <span className="text-warm">Pagina {huidigePagina} van {aantalPaginas}</span>
+              {huidigePagina < aantalPaginas ? (
+                <Link href={`/dashboard/offertes?pagina=${huidigePagina + 1}${statusQs}`} className="font-semibold text-warm hover:text-ink-800">Volgende</Link>
+              ) : <span />}
+            </nav>
           )}
         </div>
 

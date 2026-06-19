@@ -37,7 +37,7 @@ export default function HomePage() {
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <div>
             <p className="eyebrow">Bedrijfskleding met persoonlijke aandacht</p>
-            <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl">Bedrijfskleding die gezien mag worden</h2>
+            <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl">We komen langs, passen op de zaak en kennen de Achterhoek</h2>
             <div className="prose-nl mt-4 text-lg">
               <p>Zoek je een vaste partner voor bedrijfskleding in de Achterhoek? Bij {site.name} regel je alles op één plek: van advies en maatvoering tot bedrukken en nalevering.</p>
               <p>Je krijgt één vast aanspreekpunt dat je bedrijf kent. Samen kiezen we een kledingpakket dat past bij je branche, je eisen en je uitstraling.</p>

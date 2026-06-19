@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { listOrdersPaged, ORDER_STATUSSEN } from '@/lib/kms/orders';
 import NavigateSelect from '@/components/dashboard/NavigateSelect';
-import { nieuweOrder } from './actions';
+import { nieuweOrder, wijzigOrderStatusInline } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Orders', robots: { index: false, follow: false } };
@@ -61,6 +61,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const medewerkers = (medewData as { id: string; naam: string }[]) ?? [];
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
   const statusQs = status ? `&status=${encodeURIComponent(status)}` : '';
+  // URL van de huidige weergave: na een inline statuswijziging keren we hier terug
+  // zodat statusfilter en pagina behouden blijven.
+  const huidigeUrl = `/dashboard/orders?pagina=${huidigePagina}${statusQs}`;
 
   return (
     <main className="container-x py-12">
@@ -114,7 +117,19 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-warm">{fmt(o.besteldatum)}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[o.status] ?? 'bg-ink-100 text-ink-600'}`}>{o.status.replace(/_/g, ' ')}</span>
+                        <form action={wijzigOrderStatusInline} className="flex items-center gap-1.5" data-statusform>
+                          <input type="hidden" name="orderId" value={o.id} />
+                          <input type="hidden" name="terug" value={huidigeUrl} />
+                          <select
+                            name="status"
+                            defaultValue={o.status}
+                            aria-label="Status wijzigen"
+                            className={`rounded-md border border-line px-2 py-1 text-xs font-semibold focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200 ${statusBadge[o.status] ?? 'bg-ink-100 text-ink-600'}`}
+                          >
+                            {ORDER_STATUSSEN.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                          </select>
+                          <button type="submit" className="rounded-md border border-line px-2 py-1 text-xs font-semibold text-ink-700 hover:bg-mist" data-statusbtn>Opslaan</button>
+                        </form>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-warm">{o.bedrag != null ? euro(Number(o.bedrag)) : '-'}</td>
                       <td className="hidden px-4 py-3 sm:table-cell">
@@ -165,6 +180,19 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           </form>
         </div>
       </div>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `(function(){
+            document.querySelectorAll('form[data-statusform]').forEach(function(f){
+              var sel = f.querySelector('select[name="status"]');
+              if(!sel) return;
+              sel.addEventListener('change', function(){
+                if (f.requestSubmit) { f.requestSubmit(); } else { f.submit(); }
+              });
+            });
+          })();`,
+        }}
+      />
     </main>
   );
 }

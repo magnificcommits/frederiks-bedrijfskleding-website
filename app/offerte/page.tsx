@@ -14,7 +14,7 @@ export default async function OffertePage({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHero eyebrow="Advies & offerte" title="Vraag vrijblijvend advies aan"
-        intro="Vertel ons wat u zoekt. We nemen persoonlijk contact op, denken met u mee en komen graag langs om te passen." />
+        intro="Vertel ons wat je zoekt. We nemen persoonlijk contact op, denken met je mee en komen graag langs om te passen." />
       <section className="container-x py-16">
         <div className="grid gap-10 lg:grid-cols-5">
           <div className="lg:col-span-3">
@@ -29,12 +29,12 @@ export default async function OffertePage({ searchParams }: { searchParams: Prom
                 <a href={`mailto:${site.email}`} className="font-semibold text-amber-600 hover:underline">{site.email}</a>
               </p>
               <hr className="my-5 border-line" />
-              <h3 className="text-sm font-semibold text-ink-800">Wat u kunt verwachten</h3>
+              <h3 className="text-sm font-semibold text-ink-800">Wat je kunt verwachten</h3>
               <ul className="prose-nl mt-2 text-sm">
-                <li>Persoonlijk advies, afgestemd op uw branche</li>
+                <li>Persoonlijk advies, afgestemd op jouw branche</li>
                 <li>Passen op locatie, geen werktijd kwijt</li>
                 <li>Eigen bedrukken & borduren, slijtvast</li>
-                <li>Snelle nalevering van uw vaste kledinglijn</li>
+                <li>Snelle nalevering van jouw vaste kledinglijn</li>
               </ul>
             </div>
           </aside>

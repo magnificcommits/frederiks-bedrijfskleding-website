@@ -84,6 +84,33 @@ export default async function Portaal() {
 
       <PortaalNav rol={toegang.rol} actief="/portaal" />
 
+      <section className="mt-8 rounded-2xl border border-line bg-white p-5 shadow-soft sm:p-6">
+        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-700">Zo bestel je</p>
+        <ol className="mt-4 grid gap-4 sm:grid-cols-3">
+          <li className="flex items-start gap-3">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 font-display text-sm font-extrabold text-amber-700" aria-hidden="true">1</span>
+            <div>
+              <p className="font-semibold text-ink-900">Kies je kleding</p>
+              <p className="mt-0.5 text-sm text-warm">Blader door jullie eigen kledinglijn.</p>
+            </div>
+          </li>
+          <li className="flex items-start gap-3">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 font-display text-sm font-extrabold text-amber-700" aria-hidden="true">2</span>
+            <div>
+              <p className="font-semibold text-ink-900">Kies je maat</p>
+              <p className="mt-0.5 text-sm text-warm">Twijfel je? Wij helpen je graag.</p>
+            </div>
+          </li>
+          <li className="flex items-start gap-3">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 font-display text-sm font-extrabold text-amber-700" aria-hidden="true">3</span>
+            <div>
+              <p className="font-semibold text-ink-900">Plaats je bestelling</p>
+              <p className="mt-0.5 text-sm text-warm">De rest regelen wij voor je.</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
       {spaarsaldo && spaarMijlpaal && (
         <section className="mt-8 overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-amber-50 to-white p-6 shadow-soft sm:p-7">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -153,12 +180,20 @@ export default async function Portaal() {
       ) : (
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((i) => (
-            <div key={i.id} className="rounded-xl border border-line bg-white p-5 shadow-soft">
+            <Link
+              key={i.id}
+              href="/portaal/webshop"
+              className="group flex flex-col rounded-xl border border-line bg-white p-5 shadow-soft transition hover:border-amber-300 hover:shadow-md"
+            >
               <p className="font-bold text-ink-900">{i.naam}</p>
               <p className="mt-1 text-sm text-warm">{[i.merk, i.kleur].filter(Boolean).join(' · ') || 'Geen details'}</p>
               <p className="mt-1 text-xs text-warm">Logo: {i.logopositie || 'n.t.b.'}{i.techniek ? ` · ${i.techniek}` : ''}</p>
               {i.richtprijs != null && <p className="mt-2 text-sm font-semibold text-ink-700">{euro(Number(i.richtprijs))}</p>}
-            </div>
+              <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-amber-700">
+                Bestellen
+                <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">&rarr;</span>
+              </span>
+            </Link>
           ))}
         </div>
       )}

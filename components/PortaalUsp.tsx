@@ -47,7 +47,7 @@ export function PortaalUsp() {
                 href="/kledingadvies"
                 className="inline-flex items-center rounded-md border border-ink-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-ink-800"
               >
-                Vraag een demo aan
+                Bekijk hoe het werkt
               </Link>
             </div>
           </div>

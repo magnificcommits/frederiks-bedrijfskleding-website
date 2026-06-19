@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import PortaalKnop from '@/components/PortaalKnop';
@@ -29,6 +29,53 @@ const topNav = [
 const dropdownLink = 'block rounded-md px-3 py-2 text-sm text-ink-700 hover:bg-mist';
 const navTrigger = 'whitespace-nowrap rounded-md px-3 py-2.5 text-[15px] font-semibold text-ink-800 hover:bg-mist';
 
+/**
+ * Toegankelijke desktop-dropdown: klikbaar (touch + toetsenbord) via useState,
+ * met aria-haspopup/aria-expanded op een echte <button>. Sluit bij klik buiten
+ * of Escape. Hover blijft als aanvulling op desktop (group-hover) zodat
+ * muisgebruikers het gewende gedrag houden; klik werkt onafhankelijk daarvan.
+ */
+function NavDropdown({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointer(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="group relative">
+      <button
+        type="button"
+        className={navTrigger}
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {label}
+      </button>
+      {/* Zichtbaar bij klik (open) of bij hover op desktop (group-hover). */}
+      <div
+        className={`absolute left-0 top-full w-64 rounded-lg border border-line bg-white p-2 shadow-card transition group-hover:visible group-hover:opacity-100 ${open ? 'visible opacity-100' : 'invisible opacity-0'}`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function Header() {
   const [open, setOpen] = useState(false);
   return (
@@ -53,22 +100,16 @@ export function Header() {
         <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between gap-4 px-5 sm:px-6 lg:px-8">
           <Logo />
           <nav className="hidden min-w-0 items-center gap-1 lg:flex" aria-label="Hoofdnavigatie">
-            <div className="group relative">
-              <button className={navTrigger} aria-haspopup="true">Branches</button>
-              <div className="invisible absolute left-0 top-full w-64 rounded-lg border border-line bg-white p-2 opacity-0 shadow-card transition group-hover:visible group-hover:opacity-100">
-                {branches.map((b) => (
-                  <Link key={b.slug} href={`/branches/${b.slug}`} className={dropdownLink}>{b.navLabel}</Link>
-                ))}
-              </div>
-            </div>
-            <div className="group relative">
-              <button className={navTrigger} aria-haspopup="true">Kleding</button>
-              <div className="invisible absolute left-0 top-full w-60 rounded-lg border border-line bg-white p-2 opacity-0 shadow-card transition group-hover:visible group-hover:opacity-100">
-                {kledingNav.map((i) => (
-                  <Link key={i.href} href={i.href} className={dropdownLink}>{i.label}</Link>
-                ))}
-              </div>
-            </div>
+            <NavDropdown label="Branches">
+              {branches.map((b) => (
+                <Link key={b.slug} href={`/branches/${b.slug}`} className={dropdownLink}>{b.navLabel}</Link>
+              ))}
+            </NavDropdown>
+            <NavDropdown label="Kleding">
+              {kledingNav.map((i) => (
+                <Link key={i.href} href={i.href} className={dropdownLink}>{i.label}</Link>
+              ))}
+            </NavDropdown>
             {hoofdNav.map((i) => (
               <Link
                 key={i.href}

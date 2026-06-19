@@ -7,6 +7,7 @@ import { getLeads } from '@/lib/supabase';
 import { saveLeadEdit } from '../actions';
 import { converteerLead } from './actions';
 import AiOpvolg from './AiOpvolg';
+import NavigateSelect from '@/components/dashboard/NavigateSelect';
 
 export const metadata: Metadata = { title: 'Leads', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -51,6 +52,17 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   if (q) qs.set('q', q);
   const terug = `/dashboard/leads${qs.toString() ? `?${qs}` : ''}`;
 
+  // Param-string voor NavigateSelect: de overige actieve filters reizen mee, gevolgd door de te zetten sleutel.
+  // NavigateSelect bouwt `${basePath}?${param}=<waarde>`, dus we leveren de carry-over params hier mee.
+  // Bij keuze "Alle" (lege waarde) navigeert NavigateSelect naar basePath en wordt dit filter gewist.
+  const statusBehalveParam = (sleutel: 'status' | 'bron') => {
+    const carry: string[] = [];
+    if (sleutel !== 'status' && sp.status) carry.push(`status=${encodeURIComponent(sp.status)}`);
+    if (sleutel !== 'bron' && sp.bron) carry.push(`bron=${encodeURIComponent(sp.bron)}`);
+    if (sp.q) carry.push(`q=${encodeURIComponent(sp.q)}`);
+    return [...carry, sleutel].join('&');
+  };
+
   return (
     <main className="container-x py-12">
       <h1 className="font-display text-3xl font-extrabold text-ink-900">Leads</h1>
@@ -74,28 +86,43 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         <p><span className="text-warm">Openstaande waarde (nieuw + offerte):</span> <span className="font-bold text-ink-900">{euro(waardeOpen)}</span></p>
       </div>
 
-      <form method="get" className="mt-6 flex flex-wrap items-end gap-3">
+      <div className="mt-6 flex flex-wrap items-end gap-3">
+        {/* De select-filters navigeren automatisch (geen aparte "Filter"-knop meer); de zoekterm en het
+            andere filter reizen mee via param-injectie in NavigateSelect. Op "Alle" wordt dat filter gewist. */}
         <div>
           <label className="block text-xs font-semibold text-warm">Status</label>
-          <select name="status" defaultValue={sp.status ?? ''} className="mt-1 rounded-md border border-line px-3 py-2 text-sm">
-            <option value="">Alle</option>
-            {statusen.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <NavigateSelect
+            basePath="/dashboard/leads"
+            param={statusBehalveParam('status')}
+            value={sp.status ?? ''}
+            placeholder="Alle"
+            className="mt-1 rounded-md border border-line px-3 py-2 text-sm"
+            options={statusen.map((s) => ({ value: s, label: s }))}
+          />
         </div>
         <div>
           <label className="block text-xs font-semibold text-warm">Herkomst</label>
-          <select name="bron" defaultValue={sp.bron ?? ''} className="mt-1 max-w-[14rem] rounded-md border border-line px-3 py-2 text-sm">
-            <option value="">Alle</option>
-            {bronnen.map((b) => <option key={b} value={b}>{b.length > 40 ? b.slice(0, 40) + '...' : b}</option>)}
-          </select>
+          <NavigateSelect
+            basePath="/dashboard/leads"
+            param={statusBehalveParam('bron')}
+            value={sp.bron ?? ''}
+            placeholder="Alle"
+            className="mt-1 max-w-[14rem] rounded-md border border-line px-3 py-2 text-sm"
+            options={bronnen.map((b) => ({ value: b, label: b.length > 40 ? b.slice(0, 40) + '...' : b }))}
+          />
         </div>
-        <div>
-          <label className="block text-xs font-semibold text-warm">Zoek (naam, bedrijf, e-mail)</label>
-          <input name="q" defaultValue={sp.q ?? ''} placeholder="zoeken" className="mt-1 rounded-md border border-line px-3 py-2 text-sm" />
-        </div>
-        <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Filter</button>
+        {/* Zoeken blijft een tekstveld met submit; status en bron reizen mee als hidden velden. */}
+        <form method="get" className="flex items-end gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-warm">Zoek (naam, bedrijf, e-mail)</label>
+            <input name="q" defaultValue={sp.q ?? ''} placeholder="zoeken" className="mt-1 rounded-md border border-line px-3 py-2 text-sm" />
+          </div>
+          {sp.status && <input type="hidden" name="status" value={sp.status} />}
+          {sp.bron && <input type="hidden" name="bron" value={sp.bron} />}
+          <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Zoeken</button>
+        </form>
         {(sp.status || sp.bron || sp.q) && <Link href="/dashboard/leads" className="py-2 text-sm font-semibold text-warm hover:text-ink-800">Wis filters</Link>}
-      </form>
+      </div>
 
       {leads.length === 0 ? (
         <p className="mt-10 text-sm text-warm">Geen aanvragen die aan dit filter voldoen.</p>

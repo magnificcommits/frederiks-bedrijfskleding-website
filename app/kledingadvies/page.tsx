@@ -35,6 +35,11 @@ export default async function KledingadviesPage({ searchParams }: { searchParams
             ))}
           </ul>
           <p className="mt-8 text-sm text-ink-300">Liever bellen? <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-400 hover:underline">{site.phone}</a></p>
+          <div className="mt-8 rounded-xl border-l-2 border-dashed border-amber-500 bg-white/10 px-5 py-4">
+            <p className="text-sm text-white">
+              <strong className="text-amber-300">{site.owner.split(' ')[0]}</strong> neemt je aanvraag persoonlijk op. Vrijblijvend en binnen 1 werkdag contact.
+            </p>
+          </div>
         </div>
         <div className="lg:col-span-3">
           <KledingadviesWizard defaultBranche={branche ?? ''} />

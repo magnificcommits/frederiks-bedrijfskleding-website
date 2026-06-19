@@ -106,6 +106,34 @@ export default function BedrukkenPage() {
       </section>
       <BrandStrip />
 
+      <section className="border-y border-line bg-mist">
+        <div className="container-x py-16">
+          <p className="eyebrow">In 3 stappen</p>
+          <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Van logo naar herkenbaar team</h2>
+          <ol className="mt-8 grid gap-6 sm:grid-cols-3">
+            <li className="rounded-xl border-l-2 border-dashed border-amber-500 bg-white p-6 shadow-soft">
+              <span className="font-display text-2xl font-extrabold text-amber-500">1</span>
+              <h3 className="mt-2 text-base font-bold text-ink-900">Vraag gratis advies aan</h3>
+              <p className="mt-2 text-sm text-warm">Stuur je logo of vertel wat je zoekt. {site.owner.split(' ')[0]} neemt binnen 1 werkdag persoonlijk contact op.</p>
+            </li>
+            <li className="rounded-xl border-l-2 border-dashed border-amber-500 bg-white p-6 shadow-soft">
+              <span className="font-display text-2xl font-extrabold text-amber-500">2</span>
+              <h3 className="mt-2 text-base font-bold text-ink-900">We komen langs en passen op locatie</h3>
+              <p className="mt-2 text-sm text-warm">Samen kiezen we techniek, plaatsing en kleur, en bepalen we de juiste maten voor je team.</p>
+            </li>
+            <li className="rounded-xl border-l-2 border-dashed border-amber-500 bg-white p-6 shadow-soft">
+              <span className="font-display text-2xl font-extrabold text-amber-500">3</span>
+              <h3 className="mt-2 text-base font-bold text-ink-900">Wij regelen bedrukking en levering</h3>
+              <p className="mt-2 text-sm text-warm">Je logo brengen we in eigen huis aan. Je ziet vooraf het resultaat en nabestellen gaat met een belletje.</p>
+            </li>
+          </ol>
+          <p className="mt-6 max-w-2xl text-warm">Je offerte is vrijblijvend en op maat. Of het nu om één jas of een compleet team gaat, we denken mee over techniek én budget. Geen kleine lettertjes, gewoon een eerlijk voorstel.</p>
+          <div className="mt-6">
+            <Link href="/kledingadvies" className="btn-primary">Vraag gratis kledingadvies aan</Link>
+          </div>
+        </div>
+      </section>
+
       <Faq items={faq} />
       <CrossLinks exclude="/bedrukken-borduren" />
       <ContactSectie title="Je logo op de kleding? Laten we het bespreken"

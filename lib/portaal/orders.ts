@@ -52,6 +52,7 @@ const GOEDKEURING_LABELS: Record<string, string> = {
   wacht: 'Wacht op goedkeuring',
   goedgekeurd: 'Goedgekeurd',
   afgewezen: 'Afgewezen',
+  afgekeurd: 'Afgewezen',
 };
 
 /**

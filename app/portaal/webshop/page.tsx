@@ -10,7 +10,6 @@ import {
   getMijnMedewerker,
   getBudgetVerbruik,
   getWebshopMedewerkers,
-  getWebshopOrders,
   getVoorkeursmaten,
   getPakketten,
   getVerstrekkingen,
@@ -21,29 +20,13 @@ import {
 import { getFavorieten } from '@/lib/portaal/favorieten';
 import WebshopClient from './WebshopClient';
 import { bestelPakketActie } from './actions';
+import Link from 'next/link';
 
 export const metadata: Metadata = { title: 'Kleding bestellen', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 const euro = (n: number) =>
   new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
-
-const statusLabel: Record<string, string> = {
-  concept: 'Concept',
-  nog_bestellen: 'Nog bestellen',
-  besteld: 'Besteld',
-  binnen: 'Binnen',
-  geleverd: 'Geleverd',
-  geannuleerd: 'Geannuleerd',
-};
-
-const goedkeuringLabel: Record<string, string> = {
-  wacht: 'Wacht op goedkeuring',
-  goedgekeurd: 'Goedgekeurd',
-  afgewezen: 'Afgewezen',
-  afgekeurd: 'Afgekeurd',
-  niet_nodig: '',
-};
 
 export default async function Webshop({
   searchParams,
@@ -84,10 +67,9 @@ export default async function Webshop({
   }
 
   const sp = await searchParams;
-  const [assortiment, eigenMedewerker, orders, toegang, pakketten, kleurAfbeeldingen] = await Promise.all([
+  const [assortiment, eigenMedewerker, toegang, pakketten, kleurAfbeeldingen] = await Promise.all([
     getAssortiment(),
     getMijnMedewerker(),
-    getWebshopOrders(),
     getMijnToegang(),
     getPakketten(),
     getKleurAfbeeldingen(),
@@ -340,30 +322,13 @@ export default async function Webshop({
       />
 
       <section className="mt-12">
-        <h2 className="font-display text-xl font-extrabold text-ink-900">Bestelhistorie</h2>
-        {orders.length === 0 ? (
-          <p className="mt-3 text-sm text-warm">Er zijn nog geen bestellingen.</p>
-        ) : (
-          <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-white shadow-soft">
-            {orders.map((o, idx) => {
-              const goed = o.goedkeuring_status ? goedkeuringLabel[o.goedkeuring_status] ?? o.goedkeuring_status : '';
-              return (
-                <div key={o.id} className={`flex flex-wrap items-center justify-between gap-3 p-5 ${idx > 0 ? 'border-t border-line' : ''}`}>
-                  <div>
-                    <p className="text-sm font-semibold text-ink-900">
-                      {new Date(o.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
-                    <p className="mt-1 text-xs text-warm">
-                      {statusLabel[o.status ?? ''] ?? o.status ?? 'Onbekend'}
-                      {goed ? ` · ${goed}` : ''}
-                    </p>
-                  </div>
-                  <span className="font-semibold text-ink-900">{euro(Number(o.bedrag) || 0)}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <h2 className="font-display text-xl font-extrabold text-ink-900">Je bestellingen</h2>
+        <p className="mt-2 max-w-2xl text-sm text-warm">
+          Bekijk de status en details van al je bestellingen op één plek.
+        </p>
+        <Link href="/portaal/bestellingen" className="btn-primary mt-4 inline-flex">
+          Bekijk mijn bestellingen
+        </Link>
       </section>
     </main>
   );

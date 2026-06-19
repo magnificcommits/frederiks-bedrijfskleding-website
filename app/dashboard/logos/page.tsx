@@ -4,6 +4,7 @@ import { dashAuthed } from '@/lib/kms/adminClient';
 import { listOrganisaties, listLogos } from '@/lib/kms/logos';
 import { nieuwLogo, verwijderLogoActie } from './actions';
 import NavigateSelect from '@/components/dashboard/NavigateSelect';
+import ConfirmSubmit from '@/components/ConfirmSubmit';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Logobibliotheek', robots: { index: false, follow: false } };
@@ -85,7 +86,7 @@ export default async function LogosPage({ searchParams }: { searchParams: Promis
                             <form action={verwijderLogoActie}>
                               <input type="hidden" name="orgId" value={gekozen} />
                               <input type="hidden" name="logoId" value={l.id} />
-                              <button type="submit" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</button>
+                              <ConfirmSubmit message="Dit logo verwijderen?" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</ConfirmSubmit>
                             </form>
                           </td>
                         </tr>

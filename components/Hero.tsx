@@ -56,6 +56,11 @@ export function Hero() {
             <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />
             Sinds {site.foundedYear} · Hengelo Gld
           </span>
+          {/* Bijschrift bij de foto: wie je voor je krijgt */}
+          <span className="absolute right-4 top-4 inline-flex items-center gap-2 rounded-[3px] border-r-2 border-dashed border-amber-500 bg-white/95 px-3 py-1.5 text-xs font-bold text-ink-900 shadow-card">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+            {site.owner.split(' ')[0]} — komt langs om te passen
+          </span>
           {site.rating.count > 0 && (
             <div className="absolute bottom-4 left-4 flex items-center gap-3 rounded-[3px] border-l-2 border-dashed border-amber-500 bg-white px-4 py-3 shadow-card">
               <Stars value={Math.round(site.rating.value)} />

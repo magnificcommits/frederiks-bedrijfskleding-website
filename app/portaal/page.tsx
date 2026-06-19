@@ -58,6 +58,16 @@ export default async function Portaal() {
     getSpaarInstellingen(),
   ]);
   const spaarsaldo = spaarInstellingen.actief ? await getSpaarsaldo(org.id) : null;
+  const spaarMijlpaal = spaarsaldo
+    ? (() => {
+        const tiers = [5, 10, 25, 50, 100, 250, 500];
+        const huidig = spaarsaldo.euroWaarde;
+        const target = tiers.find((t) => t > huidig) ?? Math.ceil((huidig + 1) / 100) * 100;
+        const vorige = [0, ...tiers].filter((t) => t <= huidig).pop() ?? 0;
+        const pct = Math.max(4, Math.min(100, Math.round(((huidig - vorige) / (target - vorige)) * 100)));
+        return { target, pct, teGaan: Math.max(0, target - huidig) };
+      })()
+    : null;
 
   return (
     <main className="container-x py-12">
@@ -74,14 +84,34 @@ export default async function Portaal() {
 
       <PortaalNav rol={toegang.rol} actief="/portaal" />
 
-      {spaarsaldo && (
-        <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-soft">
-          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-700">Spaarsaldo</p>
-          <p className="mt-2 font-display text-2xl font-extrabold text-ink-900">
-            {formatGetal(spaarsaldo.saldo)} {spaarsaldo.saldo === 1 ? 'punt' : 'punten'} <span className="text-warm">&middot; t.w.v. {formatEuro(spaarsaldo.euroWaarde)}</span>
-          </p>
-          <p className="mt-2 text-sm text-warm">In te zetten als korting op je volgende bestelling &mdash; vraag ernaar bij Frederiks.</p>
-        </div>
+      {spaarsaldo && spaarMijlpaal && (
+        <section className="mt-8 overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-amber-50 to-white p-6 shadow-soft sm:p-7">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-700">Jullie spaarvoordeel</p>
+              <p className="mt-1 font-display text-3xl font-extrabold text-ink-900">
+                {formatEuro(spaarsaldo.euroWaarde)} <span className="text-base font-bold text-warm">aan korting gespaard</span>
+              </p>
+              <p className="mt-1 text-sm text-warm">
+                {formatGetal(spaarsaldo.saldo)} {spaarsaldo.saldo === 1 ? 'punt' : 'punten'} &middot; in te zetten op je volgende bestelling
+              </p>
+            </div>
+            <Link href="/portaal/webshop" className="btn-primary shrink-0">Bestel en spaar door</Link>
+          </div>
+
+          <div className="mt-6">
+            <div className="flex items-center justify-between text-xs font-semibold">
+              <span className="text-amber-800">Volgende mijlpaal</span>
+              <span className="text-warm">{formatEuro(spaarMijlpaal.target)} korting</span>
+            </div>
+            <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-amber-100">
+              <div className="h-3 rounded-full bg-amber-500 transition-all" style={{ width: `${spaarMijlpaal.pct}%` }} aria-hidden="true" />
+            </div>
+            <p className="mt-3 text-sm text-ink-700">
+              Nog <strong className="text-ink-900">{formatEuro(spaarMijlpaal.teGaan)}</strong> aan korting te gaan tot de mijlpaal van {formatEuro(spaarMijlpaal.target)}. Hoe meer jullie bestellen, hoe sneller het oploopt.
+            </p>
+          </div>
+        </section>
       )}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

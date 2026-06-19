@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { isPortalConfigured } from '@/lib/env';
 import { getPortaalUser, getMijnOrganisatie } from '@/lib/portaal/queries';
 import { getMijnToegang } from '@/lib/portaal/team';
-import { getWachtendeOrders } from '@/lib/portaal/goedkeuringen';
+import { getWachtendeOrders, getBehandeldeOrders } from '@/lib/portaal/goedkeuringen';
 import PortaalNav from '../PortaalNav';
 import { keurGoed, wijsAf } from './actions';
 
@@ -75,6 +75,7 @@ export default async function Goedkeuringen({
   const sp = await searchParams;
   const melding = sp?.ok ? meldingen[sp.ok] : null;
   const orders = await getWachtendeOrders();
+  const behandeld = await getBehandeldeOrders();
 
   return (
     <main className="container-x py-12">
@@ -166,6 +167,55 @@ export default async function Goedkeuringen({
           })}
         </div>
       )}
+
+      <div className="mt-14 border-t border-line pt-10">
+        <h2 className="font-display text-2xl font-extrabold text-ink-900">Behandeld</h2>
+        <p className="mt-2 max-w-2xl text-sm text-warm">
+          Eerder goedgekeurde en afgewezen bestellingen.
+        </p>
+
+        {behandeld.length === 0 ? (
+          <p className="mt-6 text-sm text-warm">Nog niets behandeld.</p>
+        ) : (
+          <div className="mt-6 space-y-3">
+            {behandeld.map((o) => {
+              const wanneer = o.besteldatum ?? o.created_at;
+              const afgewezen = o.goedkeuring_status === 'afgewezen';
+              return (
+                <div
+                  key={o.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-4 shadow-soft"
+                >
+                  <div className="min-w-0">
+                    <p className="font-bold text-ink-900">
+                      {o.ordernummer ? `Order ${o.ordernummer}` : 'Bestelling'}
+                    </p>
+                    <p className="mt-0.5 text-sm text-warm">
+                      {wanneer ? datum(wanneer) : 'Onbekende datum'}
+                      {o.medewerker_naam ? ` · voor ${o.medewerker_naam}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="font-display text-base font-extrabold text-ink-900">
+                      {euro(Number(o.bedrag) || 0)}
+                    </span>
+                    <span
+                      className={
+                        afgewezen
+                          ? 'inline-flex items-center rounded-full border border-red-300 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700'
+                          : 'inline-flex items-center rounded-full border border-green-300 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700'
+                      }
+                    >
+                      {afgewezen ? 'Afgewezen' : 'Goedgekeurd'}
+                      {o.goedgekeurd_door ? ` · door ${o.goedgekeurd_door}` : ''}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </main>
   );
 }

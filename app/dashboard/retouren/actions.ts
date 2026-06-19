@@ -2,6 +2,7 @@
 import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { maakRetour, zetRetourStatus, zetRetourInstructie } from '@/lib/kms/service';
+import { zetRetourtermijn } from '@/lib/portaal/service';
 
 function tekstOfNull(raw: FormDataEntryValue | null): string | null {
   const s = String(raw ?? '').trim();
@@ -15,6 +16,14 @@ export async function nieuwRetour(formData: FormData) {
     reden: tekstOfNull(formData.get('reden')),
   });
   redirect('/dashboard/retouren');
+}
+
+export async function zetRetourbeleid(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const dagen = Number.parseInt(String(formData.get('dagen') ?? '').trim(), 10);
+  const veilig = Number.isFinite(dagen) && dagen > 0 ? dagen : 30;
+  await zetRetourtermijn(veilig);
+  redirect('/dashboard/retouren?ok=beleid');
 }
 
 export async function wijzigRetourStatus(formData: FormData) {

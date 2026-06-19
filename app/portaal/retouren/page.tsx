@@ -3,14 +3,13 @@ import type { Metadata } from 'next';
 import { isPortalConfigured } from '@/lib/env';
 import { getPortaalUser, getMijnOrganisatie } from '@/lib/portaal/queries';
 import { getMijnToegang } from '@/lib/portaal/team';
-import { getMijnRetouren, getMijnOrders, type RetourStatus } from '@/lib/portaal/service';
+import { getMijnRetouren, getMijnRetourneerbareOrders, getRetourtermijn, type RetourStatus } from '@/lib/portaal/service';
 import PortaalNav from '../PortaalNav';
-import { vraagRetour } from './actions';
+import RetourFormulier from './RetourFormulier';
 
 export const metadata: Metadata = { title: 'Retouren', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
-const veld = 'mt-2 w-full rounded-lg border border-line px-3 py-2 text-sm text-ink-900 focus:border-amber-500 focus:outline-none';
 const datum = (s: string) => new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(s));
 
 const statusLabel: Record<RetourStatus, string> = {
@@ -31,7 +30,7 @@ function StatusBadge({ status }: { status: RetourStatus }) {
   return <span className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${toon}`}>{label}</span>;
 }
 
-export default async function Retouren({ searchParams }: { searchParams: Promise<{ ok?: string; leeg?: string; fout?: string }> }) {
+export default async function Retouren({ searchParams }: { searchParams: Promise<{ ok?: string; leeg?: string; fout?: string; geenregels?: string }> }) {
   if (!isPortalConfigured) {
     return (
       <main className="container-x py-20">
@@ -59,7 +58,12 @@ export default async function Retouren({ searchParams }: { searchParams: Promise
   }
 
   const sp = await searchParams;
-  const [retouren, orders, toegang] = await Promise.all([getMijnRetouren(), getMijnOrders(), getMijnToegang()]);
+  const termijn = await getRetourtermijn();
+  const [retouren, orders, toegang] = await Promise.all([
+    getMijnRetouren(),
+    getMijnRetourneerbareOrders(termijn),
+    getMijnToegang(),
+  ]);
 
   return (
     <main className="container-x py-12">
@@ -73,6 +77,10 @@ export default async function Retouren({ searchParams }: { searchParams: Promise
 
       <p className="mt-6 max-w-2xl text-sm text-warm">Meld een retour aan voor kleding die je terug wilt sturen. We beoordelen je aanmelding en sturen je het retouradres met de juiste instructies.</p>
 
+      <p className="mt-3 max-w-2xl rounded-lg bg-cream px-4 py-3 text-sm text-ink-800">
+        <span className="font-semibold">Retourbeleid:</span> je kunt tot {termijn} dagen na de besteldatum retourneren. Bestellingen daarbuiten kun je niet meer aanmelden.
+      </p>
+
       {sp?.ok && (
         <div className="mt-6 rounded-xl border border-green-300 bg-green-50 p-4 text-sm text-green-800">
           Je retour is aangemeld. We nemen het in behandeling en laten je het retouradres weten.
@@ -83,9 +91,14 @@ export default async function Retouren({ searchParams }: { searchParams: Promise
           Vul kort een reden in zodat we de retour kunnen beoordelen.
         </div>
       )}
+      {sp?.geenregels && (
+        <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink-800">
+          Kies een bestelling en vink minstens één artikel aan dat je wilt terugsturen.
+        </div>
+      )}
       {sp?.fout && (
         <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink-800">
-          Er ging iets mis bij het aanmelden. Probeer het zo nog eens of bel ons even.
+          Er ging iets mis bij het aanmelden. Mogelijk valt de bestelling buiten de retourtermijn. Probeer het zo nog eens of bel ons even.
         </div>
       )}
 
@@ -93,20 +106,7 @@ export default async function Retouren({ searchParams }: { searchParams: Promise
         <div>
           <div className="rounded-xl border border-line bg-white p-5 shadow-soft">
             <h2 className="font-display text-lg font-extrabold text-ink-900">Retour aanmelden</h2>
-            <form action={vraagRetour} className="mt-4">
-              <label htmlFor="order_id" className="block text-sm font-semibold text-ink-900">Bestelling (optioneel)</label>
-              <select id="order_id" name="order_id" className={veld} defaultValue="">
-                <option value="">Geen specifieke bestelling</option>
-                {orders.map((o) => (
-                  <option key={o.id} value={o.id}>{o.ordernummer ? `Order ${o.ordernummer}` : 'Bestelling'}</option>
-                ))}
-              </select>
-
-              <label htmlFor="reden" className="mt-4 block text-sm font-semibold text-ink-900">Reden</label>
-              <textarea id="reden" name="reden" rows={4} required placeholder="Bijvoorbeeld een verkeerde maat of een beschadigd kledingstuk." className={veld} />
-
-              <button type="submit" className="btn-primary mt-4 w-full justify-center">Retour aanmelden</button>
-            </form>
+            <RetourFormulier orders={orders} />
           </div>
         </div>
 
@@ -123,6 +123,20 @@ export default async function Retouren({ searchParams }: { searchParams: Promise
                     </p>
                     <StatusBadge status={r.status} />
                   </div>
+
+                  {r.regels.length > 0 && (
+                    <ul className="mt-3 space-y-1 text-sm text-ink-800">
+                      {r.regels.map((rg, i) => (
+                        <li key={`${rg.orderregel_id}-${i}`} className="flex flex-wrap gap-1">
+                          <span className="font-semibold">{rg.aantal}{'×'}</span>
+                          <span>{rg.item_naam}</span>
+                          {(rg.maat || rg.kleur) && (
+                            <span className="text-warm">{[rg.maat, rg.kleur].filter(Boolean).join(' / ')}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
 
                   {r.reden && (
                     <p className="mt-3 text-sm text-ink-800"><span className="font-semibold">Reden:</span> {r.reden}</p>

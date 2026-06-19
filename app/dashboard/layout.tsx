@@ -1,11 +1,13 @@
-import { cookies } from 'next/headers';
-import { env } from '@/lib/env';
+import { dashAuthed, getHuidigeAdmin } from '@/lib/kms/adminClient';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 
-const DASH_COOKIE = 'fb_dash';
-
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const authed = Boolean(env.dashboardPassword) && (await cookies()).get(DASH_COOKIE)?.value === env.dashboardPassword.trim();
+  const authed = await dashAuthed();
   if (!authed) return <>{children}</>;
-  return <DashboardShell>{children}</DashboardShell>;
+  const huidige = await getHuidigeAdmin();
+  return (
+    <DashboardShell adminNaam={huidige?.naam ?? huidige?.email ?? null} adminRol={huidige?.rol ?? null}>
+      {children}
+    </DashboardShell>
+  );
 }

@@ -3,12 +3,11 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { env } from '@/lib/env';
 import { updateLead } from '@/lib/supabase';
-
-const DASH_COOKIE = 'fb_dash';
+import { dashAuthed, DASH_COOKIE } from '@/lib/kms/adminClient';
+import { getServerSupabase } from '@/lib/portaal/supabaseServer';
 
 async function isAuthed() {
-  const auth = (await cookies()).get(DASH_COOKIE)?.value;
-  return Boolean(env.dashboardPassword) && auth === env.dashboardPassword.trim();
+  return dashAuthed();
 }
 
 export async function login(formData: FormData) {
@@ -29,6 +28,12 @@ export async function login(formData: FormData) {
 
 export async function logout() {
   (await cookies()).delete(DASH_COOKIE);
+  try {
+    const sb = await getServerSupabase();
+    if (sb) await sb.auth.signOut();
+  } catch {
+    // best-effort: account-sessie afmelden mag niet crashen
+  }
   redirect('/dashboard');
 }
 

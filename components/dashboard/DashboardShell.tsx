@@ -50,10 +50,22 @@ function isActief(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + '/');
 }
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({
+  children,
+  adminNaam = null,
+  adminRol = null,
+}: {
+  children: React.ReactNode;
+  adminNaam?: string | null;
+  adminRol?: string | null;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Beheerders-link tonen voor een eigenaar, of bij wachtwoord-login (geen admin-account => adminRol null).
+  const toonBeheerders = adminRol === 'eigenaar' || adminRol === null;
+  const beheerItem: Item | null = toonBeheerders ? { href: '/dashboard/admins', label: 'Beheerders' } : null;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -85,7 +97,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <div key={g.titel}>
             <p className="mb-1 px-2 text-[11px] font-bold uppercase tracking-wide text-ink-400">{g.titel}</p>
             <div className="flex flex-col">
-              {g.items.map((it) => (
+              {(g.titel === 'Overzicht' && beheerItem ? [...g.items, beheerItem] : g.items).map((it) => (
                 <Link
                   key={it.href}
                   href={it.href}
@@ -99,9 +111,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         ))}
       </div>
-      <form action={logout} className="mt-auto pt-4">
-        <button className="text-sm font-semibold text-ink-300 hover:text-white">Uitloggen</button>
-      </form>
+      <div className="mt-auto pt-4">
+        {adminNaam && (
+          <p className="mb-1.5 truncate px-2 text-xs text-ink-400" title={adminNaam}>
+            Ingelogd als <span className="font-semibold text-ink-200">{adminNaam}</span>
+          </p>
+        )}
+        <form action={logout}>
+          <button className="text-sm font-semibold text-ink-300 hover:text-white">Uitloggen</button>
+        </form>
+      </div>
     </nav>
   );
 

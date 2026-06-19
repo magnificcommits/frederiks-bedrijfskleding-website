@@ -1,13 +1,13 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
 import { env, isLeadsDbConfigured } from '@/lib/env';
 import { login } from './actions';
+import { dashAuthed } from '@/lib/kms/adminClient';
+import AdminLoginForm from '@/components/dashboard/AdminLoginForm';
 import { getOverzicht } from '@/lib/kms/overzicht';
 
 export const metadata: Metadata = { title: 'Overzicht', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
-const DASH_COOKIE = 'fb_dash';
 const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
 function fmt(d: string) {
   try { return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' }); }
@@ -24,7 +24,7 @@ const badge: Record<string, string> = {
 
 export default async function DashboardHome({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const authed = Boolean(env.dashboardPassword) && (await cookies()).get(DASH_COOKIE)?.value === env.dashboardPassword.trim();
+  const authed = await dashAuthed();
 
   if (!authed) {
     return (
@@ -32,17 +32,28 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
         <div className="mx-auto max-w-sm rounded-2xl border border-line bg-white p-8 shadow-soft">
           <h1 className="font-display text-2xl font-extrabold text-ink-900">Frederiks KMS</h1>
           <p className="mt-2 text-sm text-warm">Log in om het systeem te beheren.</p>
-          {!env.dashboardPassword && (
-            <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">Nog niet ingesteld. Zet <code>DASHBOARD_PASSWORD</code> in de omgevingsvariabelen.</p>
+          {sp?.fout === 'link' && (
+            <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">De inloglink werkte niet of is verlopen. Vraag hieronder een nieuwe aan.</p>
           )}
-          {sp?.fout && (
-            <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">Wachtwoord onjuist. Probeer het opnieuw.</p>
-          )}
-          <form action={login} className="mt-5">
-            <input type="password" name="password" placeholder="Wachtwoord" autoComplete="current-password"
-              className="w-full rounded-md border border-line bg-white px-4 py-3 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
-            <button type="submit" className="btn-primary mt-3 w-full">Inloggen</button>
-          </form>
+          <div className="mt-5">
+            <AdminLoginForm />
+            <p className="mt-2 text-xs text-warm">Voor beheerders met een eigen account.</p>
+          </div>
+
+          <div className="mt-6 border-t border-line pt-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Of log in met het wachtwoord</p>
+            {!env.dashboardPassword && (
+              <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">Nog niet ingesteld. Zet <code>DASHBOARD_PASSWORD</code> in de omgevingsvariabelen.</p>
+            )}
+            {sp?.fout === '1' && (
+              <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">Wachtwoord onjuist. Probeer het opnieuw.</p>
+            )}
+            <form action={login} className="mt-3">
+              <input type="password" name="password" placeholder="Wachtwoord" autoComplete="current-password"
+                className="w-full rounded-md border border-line bg-white px-4 py-3 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
+              <button type="submit" className="mt-3 w-full rounded-md border border-line px-4 py-2.5 text-sm font-semibold text-ink-800 hover:bg-mist">Inloggen met wachtwoord</button>
+            </form>
+          </div>
         </div>
       </main>
     );

@@ -19,6 +19,7 @@ const schema = z.object({
   bron: z.string().max(400).optional().or(z.literal('')),
   logo: z.string().max(3_500_000).optional().or(z.literal('')), // base64 data-URL uit de configurator
   logoNaam: z.string().max(200).optional().or(z.literal('')),
+  ontwerp: z.string().max(8_000_000).optional().or(z.literal('')), // PNG van het samengestelde ontwerp
   consent: z.union([z.literal('on'), z.boolean()]).optional(),
   website: z.string().max(200).optional(), // honeypot
 });
@@ -55,6 +56,10 @@ export async function POST(req: Request) {
       const naam = (d.logoNaam && d.logoNaam.trim()) || `logo.${ext}`;
       attachments.push({ filename: naam, content: m[2] });
     }
+  }
+  if (d.ontwerp) {
+    const mo = /^data:image\/png;base64,(.+)$/i.exec(d.ontwerp);
+    if (mo) attachments.push({ filename: 'Ontwerp-configurator.png', content: mo[1] });
   }
 
   // Notificatie naar Frederiks (de lead).

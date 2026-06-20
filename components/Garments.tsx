@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 
 function adjust(hex: string, amt: number): string {
   const n = parseInt(hex.replace('#', ''), 16);
@@ -63,7 +63,7 @@ export function Garment({
   const shade = adjust(color, light ? -22 : -34);
   const hi = adjust(color, light ? 10 : 26);
   const seam = light ? '#cfcdc9' : adjust(color, -55);
-  const gid = 'gradient-garment';
+  const gid = 'grad' + useId().replace(/[^a-zA-Z0-9]/g, '');
   const S = (extra: React.SVGAttributes<SVGElement> = {}): React.SVGAttributes<SVGElement> => ({ stroke: seam, strokeWidth: 1.4, fill: 'none', strokeLinejoin: 'round', strokeLinecap: 'round', ...extra });
 
   const mainPath = view === 'front' ? bodyPaths[type] : backSilhouette(type);

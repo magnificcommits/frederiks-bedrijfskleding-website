@@ -4,6 +4,7 @@ import { kleuren, kledingtypes, logoposities, broekposities, positiesVoor, teamg
 import { branches } from '@/content/branches';
 import { Garment } from '@/components/Garments';
 import { getHerkomst } from '@/lib/herkomst';
+import { site } from '@/content/site';
 
 type Status = 'idle' | 'sending' | 'ok' | 'error';
 type Item = { id: number; type: string; kleur: number; positie: string; aantal: string };
@@ -148,6 +149,82 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     ].join('\n');
   }
 
+  function svgNaarImage(svg: SVGSVGElement): Promise<HTMLImageElement | null> {
+    return new Promise((resolve) => {
+      try {
+        const clone = svg.cloneNode(true) as SVGSVGElement;
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        clone.setAttribute('width', '240');
+        clone.setAttribute('height', '260');
+        const xml = new XMLSerializer().serializeToString(clone);
+        const src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = src;
+      } catch { resolve(null); }
+    });
+  }
+
+  /** Rendert het ontwerp (de kledingstukken met logo) tot één gebrande PNG, voor in de e-mail. */
+  async function genereerOntwerpPng(): Promise<string | null> {
+    try {
+      if (typeof document === 'undefined') return null;
+      const doc = document.getElementById('ontwerp-doc');
+      const svgs = doc ? Array.from(doc.querySelectorAll('svg')) : [];
+      if (svgs.length === 0) return null;
+      const labels = items.map((i) => ({
+        titel: `${typeLabel(i.type)}${i.aantal ? ` (${i.aantal}x)` : ''}`,
+        sub: `${kleuren[i.kleur].name}, logo ${posLabel(i.positie).toLowerCase()}`,
+      }));
+      const cols = Math.min(3, svgs.length);
+      const cell = 230, pad = 28, headerH = 96, labelH = 52;
+      const rows = Math.ceil(svgs.length / cols);
+      const W = pad * 2 + cols * cell;
+      const H = headerH + pad + rows * (cell + labelH);
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = W * scale;
+      canvas.height = H * scale;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#1c1c1c';
+      ctx.fillRect(0, 0, W, headerH);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 28px Arial, sans-serif';
+      ctx.fillText('FREDERIKS', pad, 46);
+      ctx.fillStyle = '#ec6726';
+      ctx.font = '700 12px Arial, sans-serif';
+      ctx.fillText('B E D R I J F S K L E D I N G', pad, 66);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '600 15px Arial, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('Jouw werkkledingontwerp', W - pad, 52);
+      ctx.textAlign = 'left';
+      const imgs = await Promise.all(svgs.map((s) => svgNaarImage(s as SVGSVGElement)));
+      imgs.forEach((img, idx) => {
+        const r = Math.floor(idx / cols), c = idx % cols;
+        const x = pad + c * cell, y = headerH + pad + r * (cell + labelH);
+        if (img) ctx.drawImage(img, x + 8, y, cell - 16, cell - 16);
+        const m = labels[idx];
+        if (m) {
+          ctx.fillStyle = '#1c1c1c';
+          ctx.font = '700 14px Arial, sans-serif';
+          ctx.fillText(m.titel, x + 8, y + cell - 4);
+          ctx.fillStyle = '#52504e';
+          ctx.font = '12px Arial, sans-serif';
+          ctx.fillText(m.sub, x + 8, y + cell + 14);
+        }
+      });
+      return canvas.toDataURL('image/png');
+    } catch {
+      return null;
+    }
+  }
+
   function buildRegels(): { item_naam: string; kleur: string | null; aantal: number }[] {
     const kleding = items.map((i) => ({
       item_naam: `${typeLabel(i.type)}, logo ${posLabel(i.positie).toLowerCase()} (${techniek})`,
@@ -177,10 +254,11 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   async function mailOntwerp() {
     if (!mailEmail || !mailConsent) { setMailError('Vul je e-mailadres in en geef toestemming.'); return; }
     setMailStatus('sending'); setMailError('');
+    const ontwerp = await genereerOntwerpPng();
     try {
       const res = await fetch('/api/ontwerp-mail', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: contact.name || '', email: mailEmail, bericht: buildBericht(), resumeUrl: buildResumeUrl(), logo: logo ?? '', logoNaam: logoNaam ?? '', bron: getHerkomst(), consent: true }),
+        body: JSON.stringify({ name: contact.name || '', email: mailEmail, bericht: buildBericht(), resumeUrl: buildResumeUrl(), ontwerp: ontwerp ?? '', bron: getHerkomst(), consent: true }),
       });
       if (!res.ok) { const j = await res.json().catch(() => null); throw new Error(j?.error ?? 'Er ging iets mis.'); }
       (window as unknown as { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'generate_lead', { event_label: 'pakket-configurator-ontwerp-mail' });
@@ -203,10 +281,11 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     if (!contact.name || !contact.email || !consent) { setError('Vul je naam en e-mailadres in en geef toestemming.'); return; }
     setStatus('sending'); setError('');
     const bericht = buildBericht();
+    const ontwerp = await genereerOntwerpPng();
     try {
       const res = await fetch('/api/lead', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...contact, branche, aantal: team, bericht, bron: getHerkomst(), consent: true, logo: logo ?? '', logoNaam: logoNaam ?? '' }),
+        body: JSON.stringify({ ...contact, branche, aantal: team, bericht, bron: getHerkomst(), consent: true, logo: logo ?? '', logoNaam: logoNaam ?? '', ontwerp: ontwerp ?? '' }),
       });
       if (!res.ok) { const j = await res.json().catch(() => null); throw new Error(j?.error ?? 'Er ging iets mis.'); }
       (window as unknown as { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'generate_lead', { event_label: 'pakket-configurator' });
@@ -240,16 +319,11 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
 
   return (
     <div className="mx-auto max-w-4xl">
-      {/* Printstijl: bij printen tonen we alleen de samenvatting en verbergen we de rest. */}
-      <style>{`@media print {
-        body * { visibility: hidden; }
-        #pakket-print, #pakket-print * { visibility: visible; }
-        #pakket-print { position: absolute; left: 0; top: 0; width: 100%; padding: 24px; }
-        .no-print { display: none !important; }
-      }`}</style>
+      {/* Bij printen verbergen we de wizard en tonen we het gebrande ontwerpdocument. */}
+      <style>{`@media print { @page { margin: 12mm; } .no-print { display: none !important; } }`}</style>
 
       {/* Voortgang */}
-      <div className="no-print flex items-center gap-2">
+      <div className="no-print print:hidden flex items-center gap-2">
         {Array.from({ length: totaalStappen }).map((_, i) => (
           <div key={i} className="flex-1">
             <div className={`h-1.5 rounded-full ${i <= step ? 'bg-amber-500' : 'bg-line'}`} />
@@ -258,7 +332,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         ))}
       </div>
 
-      <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-soft sm:p-8">
+      <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-soft sm:p-8 print:hidden">
         {step === 0 && (
           <div className="no-print">
             <h3 className="text-xl font-extrabold text-ink-900">Voor wie is de kleding?</h3>
@@ -486,6 +560,58 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
           <button type="button" onClick={back} className={`text-sm font-semibold text-warm hover:text-ink-800 ${step === 0 ? 'invisible' : ''}`}>Terug</button>
           {step < totaalStappen - 1 && <button type="button" onClick={next} className="btn-primary">Volgende</button>}
         </div>
+      </div>
+
+      <div id="ontwerp-doc" className="hidden print:block" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as React.CSSProperties}>
+        <div className="flex items-end justify-between border-b-2 border-dashed border-amber-500 pb-3">
+          <div>
+            <p className="font-display text-2xl font-extrabold tracking-wide text-ink-900">FREDERIKS</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-amber-600">Bedrijfskleding</p>
+          </div>
+          <div className="text-right text-xs text-warm">
+            <p className="font-semibold text-ink-900">Jouw werkkledingontwerp</p>
+            <p>{branche || 'Bedrijfskleding'}{team ? `, ${team}` : ''}</p>
+          </div>
+        </div>
+
+        <h2 className="mt-5 text-lg font-extrabold text-ink-900">Je samengestelde pakket</h2>
+        {items.length ? (
+          <div className="mt-3 grid grid-cols-3 gap-4">
+            {items.map((i) => (
+              <div key={i.id} className="rounded-lg border border-line p-2 text-center">
+                <div className="mx-auto aspect-square w-full max-w-[150px]"><Preview type={i.type} kleur={i.kleur} logo={logo} positie={i.positie} techniek={techniek} /></div>
+                <p className="mt-1 text-[12px] font-bold text-ink-900">{typeLabel(i.type)}{i.aantal ? `, ${i.aantal}x` : ''}</p>
+                <p className="text-[11px] text-warm">{kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-warm">Nog geen kledingstukken gekozen.</p>
+        )}
+
+        {extrasOpties.some((e) => extras[e.id]?.on) && (
+          <div className="mt-4">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Aanvullend</p>
+            <ul className="mt-1 text-sm text-ink-800">
+              {extrasOpties.filter((e) => extras[e.id]?.on).map((e) => <li key={e.id}>{e.label}{extras[e.id].aantal ? `, ${extras[e.id].aantal}x` : ''}</li>)}
+            </ul>
+          </div>
+        )}
+
+        <div className="mt-5 grid grid-cols-4 gap-3 border-t border-line pt-4 text-sm text-ink-800">
+          <p><span className="block text-[11px] uppercase tracking-wide text-warm">Branche</span>{branche || 'n.t.b.'}</p>
+          <p><span className="block text-[11px] uppercase tracking-wide text-warm">Team</span>{team || 'n.t.b.'}</p>
+          <p><span className="block text-[11px] uppercase tracking-wide text-warm">Techniek</span>{techniek === 'borduren' ? 'Borduren' : 'Bedrukken'}</p>
+          <p><span className="block text-[11px] uppercase tracking-wide text-warm">Logo</span>{logo ? 'aangeleverd' : 'volgt later'}</p>
+        </div>
+
+        <div className="mt-5 rounded-lg bg-ink-900 p-4 text-white" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as React.CSSProperties}>
+          <p className="text-sm font-extrabold text-amber-400">Vraag je offerte vrijblijvend aan</p>
+          <p className="mt-1 text-xs text-ink-100">We denken mee, kiezen samen de juiste maten en komen langs om te passen. Bel of mail {site.phone}, {site.email}.</p>
+        </div>
+        {(contact.name || contact.company || contact.email || contact.phone) && (
+          <p className="mt-3 text-xs text-warm">Jouw gegevens: {[contact.name, contact.company, contact.email, contact.phone].filter(Boolean).join(', ')}</p>
+        )}
       </div>
     </div>
   );

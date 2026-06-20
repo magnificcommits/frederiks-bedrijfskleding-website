@@ -20,6 +20,7 @@ const schema = z.object({
   resumeUrl: z.string().max(2000).optional().or(z.literal('')),
   logo: z.string().max(3_500_000).optional().or(z.literal('')),
   logoNaam: z.string().max(200).optional().or(z.literal('')),
+  ontwerp: z.string().max(8_000_000).optional().or(z.literal('')), // PNG van het ontwerp uit de configurator
   bron: z.string().max(400).optional().or(z.literal('')),
   consent: z.union([z.literal('on'), z.boolean()]).optional(),
   website: z.string().max(200).optional(), // honeypot
@@ -44,6 +45,10 @@ export async function POST(req: Request) {
       const ext = m[1].split('/')[1].replace('svg+xml', 'svg').replace('jpeg', 'jpg');
       attachments.push({ filename: (d.logoNaam && d.logoNaam.trim()) || `logo.${ext}`, content: m[2] });
     }
+  }
+  if (d.ontwerp) {
+    const mo = /^data:image\/png;base64,(.+)$/i.exec(d.ontwerp);
+    if (mo) attachments.push({ filename: 'Jouw-ontwerp-Frederiks.png', content: mo[1] });
   }
 
   const berichtHtml = escapeHtml(d.bericht ?? '').replace(/\n/g, '<br>');
@@ -90,6 +95,7 @@ export async function POST(req: Request) {
         <p style="margin:0;">${d.name ? `Beste ${escapeHtml(d.name)},` : 'Hallo,'}</p>
         <p style="margin:14px 0 0;">Hier is het pakket dat je hebt samengesteld. Wil je verder of het als offerte aanvragen? We denken vrijblijvend mee en komen langs om te passen.</p>
         <div style="margin:16px 0;padding:14px 16px;background-color:#f6f5f4;border-radius:10px;color:#1c1c1c;font-size:14px;line-height:1.6;">${berichtHtml}</div>
+        ${d.ontwerp ? `<p style="margin:14px 0 0;">Je volledige ontwerp met je logo op de kleding zie je in de bijgevoegde afbeelding.</p>` : ''}
         ${veiligeResume ? `<p style="margin:14px 0 0;"><a href="${veiligeResume}" style="display:inline-block;background-color:#ec6726;color:#ffffff;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:8px;">Ga verder met je ontwerp</a></p>` : ''}
         <p style="margin:16px 0 0;">Liever even bellen of WhatsAppen? <strong style="color:#1c1c1c;">${escapeHtml(site.phone)}</strong>.</p>
       `,

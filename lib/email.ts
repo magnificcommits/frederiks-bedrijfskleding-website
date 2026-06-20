@@ -41,13 +41,13 @@ export function emailLayout({ heading, bodyHtml, preheader }: { heading: string;
 </table>`;
 }
 
-type SendArgs = { to: string; subject: string; html: string; replyTo?: string };
+type SendArgs = { to: string; subject: string; html: string; replyTo?: string; attachments?: { filename: string; content: string }[] };
 
 /**
  * Verstuurt e-mail via Resend. Zonder RESEND_API_KEY wordt er niets verstuurd
  * (en faalt de flow niet), handig voor preview/lokaal.
  */
-export async function sendEmail({ to, subject, html, replyTo }: SendArgs): Promise<{ sent: boolean }> {
+export async function sendEmail({ to, subject, html, replyTo, attachments }: SendArgs): Promise<{ sent: boolean }> {
   if (!isEmailConfigured) return { sent: false };
   const { Resend } = await import('resend');
   const resend = new Resend(env.resendApiKey);
@@ -57,6 +57,7 @@ export async function sendEmail({ to, subject, html, replyTo }: SendArgs): Promi
     subject,
     html,
     ...(replyTo ? { replyTo } : {}),
+    ...(attachments && attachments.length ? { attachments } : {}),
   });
   return { sent: true };
 }

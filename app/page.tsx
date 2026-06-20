@@ -82,6 +82,38 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Pakketsamensteller */}
+      <section className="bg-ink-900 text-white">
+        <div className="container-x grid items-center gap-10 py-16 sm:py-24 lg:grid-cols-2">
+          <div>
+            <p className="eyebrow text-amber-500">Pakketsamensteller</p>
+            <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl">Stel je pakket samen en zie je logo meteen op de kleding</h2>
+            <p className="mt-4 text-lg text-white/80">Kies de kleding en kleuren die bij je werk passen. Upload je logo en bekijk live hoe het op de polo, jas of broek staat. Geen webshop, geen verplichtingen.</p>
+            <p className="mt-4 text-white/80">Tevreden over je pakket? Vraag het in één klik vrijblijvend als offerte aan. Jessi kijkt mee, denkt mee over maten en aantallen en belt je terug.</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/pakket-samenstellen" className="btn-primary">Stel je pakket samen</Link>
+              <Link href="/bedrukken-borduren" className="btn-outline border-white/40 text-white hover:bg-white hover:text-ink-900">Zo brengen we je logo aan</Link>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/15 bg-white/5 p-6">
+            <ol className="space-y-4">
+              <li className="flex gap-4">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-ink-900">1</span>
+                <p className="text-white/80"><span className="font-bold text-white">Kies je kleding.</span> Stel je set samen uit polo’s, jassen, broeken en schoenen.</p>
+              </li>
+              <li className="flex gap-4">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-ink-900">2</span>
+                <p className="text-white/80"><span className="font-bold text-white">Zet je logo erop.</span> Upload je logo en zie direct hoe het op de kleding staat.</p>
+              </li>
+              <li className="flex gap-4">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-ink-900">3</span>
+                <p className="text-white/80"><span className="font-bold text-white">Vraag je offerte aan.</span> Wij rekenen het uit en nemen contact op. Vrijblijvend.</p>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
       {/* Leadtool */}
       <section className="border-y border-line bg-mist">
         <div className="container-x grid gap-10 py-16 sm:py-24 lg:grid-cols-5">

@@ -17,6 +17,8 @@ const schema = z.object({
   aantal: z.string().max(40).optional().or(z.literal('')),
   bericht: z.string().max(2000).optional().or(z.literal('')),
   bron: z.string().max(400).optional().or(z.literal('')),
+  logo: z.string().max(3_500_000).optional().or(z.literal('')), // base64 data-URL uit de configurator
+  logoNaam: z.string().max(200).optional().or(z.literal('')),
   consent: z.union([z.literal('on'), z.boolean()]).optional(),
   website: z.string().max(200).optional(), // honeypot
 });
@@ -44,10 +46,22 @@ export async function POST(req: Request) {
     bron: d.bron || null,
   }).catch(() => ({ saved: false }));
 
+  // Logo uit de configurator: als bijlage meesturen naar Frederiks.
+  const attachments: { filename: string; content: string }[] = [];
+  if (d.logo) {
+    const m = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(d.logo);
+    if (m) {
+      const ext = m[1].split('/')[1].replace('svg+xml', 'svg').replace('jpeg', 'jpg');
+      const naam = (d.logoNaam && d.logoNaam.trim()) || `logo.${ext}`;
+      attachments.push({ filename: naam, content: m[2] });
+    }
+  }
+
   // Notificatie naar Frederiks (de lead).
   const sent = await sendEmail({
     to: env.notifyEmail,
     replyTo: d.email,
+    attachments,
     subject: `Nieuwe offerte-/adviesaanvraag${d.company ? ` voor ${d.company}` : ''}`,
     html: `
       <h3>Nieuwe aanvraag via de website</h3>

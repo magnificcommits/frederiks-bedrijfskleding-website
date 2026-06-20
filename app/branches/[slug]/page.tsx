@@ -122,6 +122,7 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
                 <h3 className="text-lg font-extrabold text-ink-900">Advies voor {b.navLabel.toLowerCase()}</h3>
                 <p className="mt-2 text-sm text-warm">Vertel ons in een minuut wat je zoekt. We bellen je binnen een werkdag terug en komen graag langs om te passen.</p>
                 <Link href={`/kledingadvies?branche=${encodeURIComponent(b.navLabel)}`} className="btn-primary mt-4 w-full">Start kledingadvies</Link>
+                <Link href={`/pakket-samenstellen?branche=${encodeURIComponent(b.navLabel)}`} className="btn-outline mt-2 w-full">Stel je pakket samen</Link>
                 <a href={`tel:${site.phoneIntl}`} className="btn-outline mt-2 w-full">Bel {site.phone}</a>
               </div>
               {b.voorbeeld && (

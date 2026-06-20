@@ -55,6 +55,7 @@ export default function BedrukkenPage() {
           <div className="prose-nl text-lg">
             <p>Bij Frederiks helpen we je om je bedrijfskleding een unieke, professionele uitstraling te geven. Of het nu gaat om één jas of een complete teamuitrusting, we zorgen dat je logo, bedrijfsnaam of slogan strak en duidelijk zichtbaar is.</p>
             <p>Omdat we het bedrukken en borduren zelf doen, zie je vooraf hoe het eruitkomt en kunnen we snel schakelen, ook bij een spoedklus. Geen tussenpartij, gewoon iemand die met je meedenkt.</p>
+            <p>Wil je het nu al zien? <Link href="/pakket-samenstellen" className="font-semibold text-amber-600 hover:underline">Stel je pakket samen</Link> en plaats je eigen logo direct op de kleding.</p>
           </div>
         </div>
 
@@ -128,8 +129,9 @@ export default function BedrukkenPage() {
             </li>
           </ol>
           <p className="mt-6 max-w-2xl text-warm">Je offerte is vrijblijvend en op maat. Of het nu om één jas of een compleet team gaat, we denken mee over techniek én budget. Geen kleine lettertjes, gewoon een eerlijk voorstel.</p>
-          <div className="mt-6">
+          <div className="mt-6 flex flex-wrap gap-3">
             <Link href="/kledingadvies" className="btn-primary">Vraag gratis kledingadvies aan</Link>
+            <Link href="/pakket-samenstellen" className="btn-outline">Zie je logo direct op de kleding</Link>
           </div>
         </div>
       </section>

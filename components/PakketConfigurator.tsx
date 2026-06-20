@@ -39,6 +39,7 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
   const [branche, setBranche] = useState(defaultBranche);
   const [team, setTeam] = useState('');
   const [logo, setLogo] = useState<string | null>(null);
+  const [logoNaam, setLogoNaam] = useState<string | null>(null);
   const [techniek, setTechniek] = useState<'borduren' | 'bedrukken'>('borduren');
   const [defPositie, setDefPositie] = useState('borst-links');
   const [draft, setDraft] = useState<{ type: string; kleur: number; positie: string; aantal: string }>({ type: 'polo', kleur: 0, positie: 'borst-links', aantal: '' });
@@ -89,8 +90,9 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
   function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (f.size > 4_000_000) { setError('Logo is te groot (max 4 MB).'); return; }
+    if (f.size > 2_000_000) { setError('Logo is te groot (max 2 MB).'); return; }
     setError('');
+    setLogoNaam(f.name);
     const r = new FileReader();
     r.onload = () => setLogo(typeof r.result === 'string' ? r.result : null);
     r.readAsDataURL(f);
@@ -147,7 +149,7 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
     try {
       const res = await fetch('/api/lead', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...contact, branche, aantal: team, bericht, bron: getHerkomst(), consent: true }),
+        body: JSON.stringify({ ...contact, branche, aantal: team, bericht, bron: getHerkomst(), consent: true, logo: logo ?? '', logoNaam: logoNaam ?? '' }),
       });
       if (!res.ok) { const j = await res.json().catch(() => null); throw new Error(j?.error ?? 'Er ging iets mis.'); }
       (window as unknown as { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'generate_lead', { event_label: 'pakket-configurator' });
@@ -217,7 +219,7 @@ export function PakketConfigurator({ defaultBranche = '' }: { defaultBranche?: s
               <p className="mt-1 text-sm text-warm">Upload je logo, dan zie je het zo op de kleding. Geen logo bij de hand? Sla over, je kunt het later aanleveren.</p>
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <button type="button" onClick={() => fileRef.current?.click()} className="btn-outline px-4 py-2 text-[13px]">{logo ? 'Ander logo kiezen' : 'Upload je logo'}</button>
-                {logo && <button type="button" onClick={() => setLogo(null)} className="text-sm text-warm hover:text-ink-800">Verwijderen</button>}
+                {logo && <button type="button" onClick={() => { setLogo(null); setLogoNaam(null); }} className="text-sm text-warm hover:text-ink-800">Verwijderen</button>}
                 <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={onLogo} className="hidden" />
               </div>
               <p className="mt-2 text-xs text-warm">Tip: een logo met transparante achtergrond (PNG of SVG) staat het mooist op gekleurde kleding.</p>

@@ -25,12 +25,9 @@ export function Hero() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/kledingadvies" className="btn-primary">Gratis kledingadvies</Link>
+            <Link href="/pakket-samenstellen" className="btn border-2 border-white bg-transparent text-white hover:bg-white hover:text-ink-900">Stel je pakket samen</Link>
             <a href={`tel:${site.phoneIntl}`} className="btn border-2 border-white/30 text-white hover:border-white/70">Bel {site.phone}</a>
           </div>
-          <p className="mt-3 text-sm text-ink-200">
-            Of{' '}
-            <Link href="/pakket-samenstellen" className="font-semibold text-amber-300 underline decoration-amber-500/60 underline-offset-2 hover:text-amber-200">stel zelf je pakket samen</Link>.
-          </p>
           <p className="mt-4 text-sm text-ink-200">
             <span className="font-semibold text-amber-300">Inbegrepen:</span> je eigen{' '}
             <Link href="/kledingbeheer" className="font-semibold text-white underline decoration-amber-500 underline-offset-2 hover:text-amber-200">online kledingbeheer</Link>,{' '}

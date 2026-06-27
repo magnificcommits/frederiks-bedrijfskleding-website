@@ -236,3 +236,54 @@ export async function verwijderRegel(regelId: string): Promise<boolean> {
   const { error } = await sb.from('offerteregels').delete().eq('id', regelId);
   return !error;
 }
+
+export type OfferteProductOptie = {
+  product_id: string;
+  naam: string;
+  merk: string | null;
+  varianten: { id: string; maat: string | null; kleur: string | null; verkoopprijs: number | null }[];
+};
+
+/**
+ * Producten die voor een klant van toepassing zijn (uit het assortiment), met varianten en
+ * verkoopprijs, voor de productkiezer op een offerte. Heeft de klant nog geen assortiment,
+ * dan vallen we terug op alle actieve producten zodat de kiezer niet leeg is.
+ */
+export async function getKlantProductOpties(orgId: string | null): Promise<OfferteProductOptie[]> {
+  const sb = kmsAdmin(); if (!sb) return [];
+
+  let productIds: string[] | null = null;
+  if (orgId) {
+    const { data: ass } = await sb
+      .from('assortiment')
+      .select('product_id, toegestaan')
+      .eq('organisatie_id', orgId);
+    const toegestaan = ((ass as { product_id: string; toegestaan: boolean }[]) ?? [])
+      .filter((a) => a.toegestaan)
+      .map((a) => a.product_id);
+    if (toegestaan.length > 0) productIds = Array.from(new Set(toegestaan));
+  }
+
+  let q = sb
+    .from('producten')
+    .select('id, naam, merk, product_varianten(id, maat, kleur, verkoopprijs, actief)')
+    .eq('actief', true)
+    .order('naam');
+  if (productIds) q = q.in('id', productIds);
+  const { data } = await q;
+
+  const rows = (data as unknown as {
+    id: string; naam: string; merk: string | null;
+    product_varianten: { id: string; maat: string | null; kleur: string | null; verkoopprijs: number | null; actief: boolean | null }[] | null;
+  }[]) ?? [];
+
+  return rows.map((p) => ({
+    product_id: p.id,
+    naam: p.naam,
+    merk: p.merk,
+    varianten: (p.product_varianten ?? [])
+      .filter((v) => v.actief !== false)
+      .map((v) => ({ id: v.id, maat: v.maat, kleur: v.kleur, verkoopprijs: v.verkoopprijs }))
+      .sort((a, b) => (a.maat ?? '').localeCompare(b.maat ?? '', 'nl') || (a.kleur ?? '').localeCompare(b.kleur ?? '', 'nl')),
+  }));
+}

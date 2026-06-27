@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import { getOfferte, offerteTotalen, OFFERTE_STATUSSEN } from '@/lib/kms/offertes';
+import { getOfferte, offerteTotalen, OFFERTE_STATUSSEN, getKlantProductOpties } from '@/lib/kms/offertes';
 import { listOrganisaties } from '@/lib/portaalAdmin';
 import { formatEuro, formatDatum } from '@/lib/format';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
@@ -9,10 +9,10 @@ import {
   werkOfferteActie,
   wijzigStatusActie,
   verwijderOfferteActie,
-  voegRegelActie,
   werkRegelActie,
   verwijderRegelActie,
 } from './actions';
+import RegelToevoegen from './RegelToevoegen';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Offerte', robots: { index: false, follow: false } };
@@ -65,6 +65,7 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
   }
 
   const { subtotaal, btw, totaal } = offerteTotalen(offerte.regels, offerte.btw_pct);
+  const opties = await getKlantProductOpties(offerte.organisatie_id);
   const okTekst: Record<string, string> = {
     aangemaakt: 'Offerte aangemaakt. Vul hieronder de regels in.',
     opgeslagen: 'Kopgegevens opgeslagen.',
@@ -214,27 +215,7 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
             )}
           </div>
 
-          <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
-            <h3 className="font-display text-base font-bold text-ink-900">Regel toevoegen</h3>
-            <form action={voegRegelActie} className="mt-4 flex flex-col gap-3">
-              <input type="hidden" name="offerteId" value={offerte.id} />
-              <div>
-                <label className="block text-xs font-semibold text-warm">Omschrijving</label>
-                <input name="omschrijving" required placeholder="Bijv. Softshell jas met logo" className={inputCls} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-warm">Aantal</label>
-                  <input name="aantal" inputMode="decimal" defaultValue="1" className={inputCls} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-warm">Stukprijs</label>
-                  <input name="stukprijs" inputMode="decimal" placeholder="bedrag" className={inputCls} />
-                </div>
-              </div>
-              <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Toevoegen</button>
-            </form>
-          </div>
+          <RegelToevoegen offerteId={offerte.id} opties={opties} />
         </div>
       </section>
     </main>

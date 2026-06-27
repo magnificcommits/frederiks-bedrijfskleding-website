@@ -19,6 +19,9 @@ export const env = {
   // Publieke Supabase-gegevens voor het klantportaal (auth in de browser).
   supabasePublicUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+  // Groeimotor: aparte afzender voor outbound campagnes (eigen subdomein voor deliverability) en cron-secret.
+  campagneFrom: process.env.CAMPAGNE_FROM_EMAIL ?? '',
+  cronSecret: process.env.CRON_SECRET ?? '',
 };
 
 export const isEmailConfigured = Boolean(env.resendApiKey);
@@ -27,3 +30,4 @@ export const isAiConfigured = Boolean(env.anthropicApiKey);
 export const isLeadsDbConfigured = Boolean(env.supabaseUrl && env.supabaseServiceKey);
 export const isDashboardConfigured = Boolean(env.dashboardPassword);
 export const isPortalConfigured = Boolean(env.supabasePublicUrl && env.supabaseAnonKey);
+export const isCampagneConfigured = Boolean(env.resendApiKey && env.campagneFrom);

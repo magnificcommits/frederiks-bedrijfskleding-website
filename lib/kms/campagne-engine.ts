@@ -1,7 +1,8 @@
 import crypto from 'crypto';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { sendEmail } from '@/lib/email';
-import { env } from '@/lib/env';
+import { env, isAiConfigured } from '@/lib/env';
+import { aiTekst } from '@/lib/ai';
 
 /**
  * Verzendmotor voor de outbound campagnes. Bewust server-side en achter een
@@ -60,18 +61,18 @@ export async function verwerkCampagneWachtrij(limiet = 40): Promise<{ verwerkt: 
 
     const { data: stapData } = await sb
       .from('campagne_stappen')
-      .select('id, volgorde, wacht_dagen, onderwerp, body')
+      .select('id, volgorde, wacht_dagen, onderwerp, body, ai_personaliseer')
       .eq('campagne_id', ins.campagne_id)
       .order('volgorde', { ascending: true });
-    const stappen = (stapData as { id: string; volgorde: number; wacht_dagen: number; onderwerp: string; body: string }[]) ?? [];
+    const stappen = (stapData as { id: string; volgorde: number; wacht_dagen: number; onderwerp: string; body: string; ai_personaliseer: boolean }[]) ?? [];
     if (ins.huidige_stap >= stappen.length) {
       await sb.from('campagne_inschrijvingen').update({ status: 'klaar', volgende_verzending: null }).eq('id', ins.id);
       continue;
     }
     const stap = stappen[ins.huidige_stap];
 
-    const { data: prData } = await sb.from('prospecten').select('id, bedrijfsnaam, contactpersoon, email, status').eq('id', ins.prospect_id).maybeSingle();
-    const pr = prData as { id: string; bedrijfsnaam: string | null; contactpersoon: string | null; email: string | null; status: string } | null;
+    const { data: prData } = await sb.from('prospecten').select('id, bedrijfsnaam, contactpersoon, email, status, branche, plaats').eq('id', ins.prospect_id).maybeSingle();
+    const pr = prData as { id: string; bedrijfsnaam: string | null; contactpersoon: string | null; email: string | null; status: string; branche: string | null; plaats: string | null } | null;
     if (!pr || !pr.email) {
       await sb.from('campagne_inschrijvingen').update({ status: 'gestopt', volgende_verzending: null }).eq('id', ins.id);
       continue;
@@ -81,8 +82,20 @@ export async function verwerkCampagneWachtrij(limiet = 40): Promise<{ verwerkt: 
       continue;
     }
 
-    const onderwerp = vulIn(stap.onderwerp, pr);
-    const bodyTekst = vulIn(stap.body, pr);
+    let aiZin = '';
+    if (stap.ai_personaliseer && isAiConfigured) {
+      try {
+        const r = await aiTekst(
+          `Schrijf één korte, persoonlijke openingszin (maximaal 25 woorden) voor een koude zakelijke e-mail aan ${pr.bedrijfsnaam || 'dit bedrijf'}${pr.branche ? `, actief in ${pr.branche}` : ''}${pr.plaats ? ` in ${pr.plaats}` : ''}, namens Frederiks Bedrijfskleding (werk- en bedrijfskleding). Concreet en relevant, geen clichés, geen aanhef of ondertekening, alleen die ene zin.`,
+        );
+        if (r.ok && r.tekst) aiZin = r.tekst.trim();
+      } catch {
+        aiZin = '';
+      }
+    }
+    const metAi = (t: string) => t.replace(/\{\{\s*ai\s*\}\}/gi, aiZin);
+    const onderwerp = metAi(vulIn(stap.onderwerp, pr));
+    const bodyTekst = metAi(vulIn(stap.body, pr));
     const afmeld = afmeldUrl(pr.email);
     const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1c1c1c;">${bodyTekst.replace(/\n/g, '<br>')}<hr style="border:none;border-top:1px solid #eeeeee;margin:24px 0 12px;"><p style="font-size:12px;color:#999999;">Geen interesse? <a href="${afmeld}" style="color:#999999;">Afmelden</a>.</p></div>`;
     const van = camp.van_email
@@ -93,6 +106,7 @@ export async function verwerkCampagneWachtrij(limiet = 40): Promise<{ verwerkt: 
 
     const res = await sendEmail({ to: pr.email, from: van, subject: onderwerp, html }).catch(() => ({ sent: false }));
     await sb.from('campagne_verzendingen').insert({
+      campagne_id: ins.campagne_id,
       inschrijving_id: ins.id,
       prospect_id: pr.id,
       stap_id: stap.id,

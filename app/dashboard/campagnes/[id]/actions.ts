@@ -33,8 +33,9 @@ export async function voegStapActie(formData: FormData) {
   const body = String(formData.get('body') ?? '');
   const volgorde = getalOfNul(String(formData.get('volgorde') ?? '1')) || 1;
   const wacht_dagen = getalOfNul(String(formData.get('wacht_dagen') ?? '0'));
+  const ai_personaliseer = formData.get('ai_personaliseer') === 'on';
   if (campagneId && onderwerp && body.trim()) {
-    await voegStapToe(campagneId, { volgorde, wacht_dagen, onderwerp, body });
+    await voegStapToe(campagneId, { volgorde, wacht_dagen, onderwerp, body, ai_personaliseer });
     await logAudit('campagnestap_toegevoegd', { entiteit: 'campagnes', entiteitId: campagneId });
   }
   redirect('/dashboard/campagnes/' + campagneId);
@@ -48,8 +49,9 @@ export async function werkStapActie(formData: FormData) {
   const body = String(formData.get('body') ?? '');
   const volgorde = getalOfNul(String(formData.get('volgorde') ?? '1')) || 1;
   const wacht_dagen = getalOfNul(String(formData.get('wacht_dagen') ?? '0'));
+  const ai_personaliseer = formData.get('ai_personaliseer') === 'on';
   if (stapId && onderwerp && body.trim()) {
-    await werkStap(stapId, { volgorde, wacht_dagen, onderwerp, body });
+    await werkStap(stapId, { volgorde, wacht_dagen, onderwerp, body, ai_personaliseer });
     await logAudit('campagnestap_gewijzigd', { entiteit: 'campagnes', entiteitId: campagneId });
   }
   redirect('/dashboard/campagnes/' + campagneId);

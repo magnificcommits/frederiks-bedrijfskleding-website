@@ -84,7 +84,7 @@ export default async function CampagneDetailPage({ params, searchParams }: { par
         <div className="flex flex-col gap-6 lg:col-span-2">
           <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
             <h2 className="font-display text-base font-bold text-ink-900">Stappen</h2>
-            <p className="mt-1 text-xs text-warm">In het onderwerp en de body kun je de placeholders <code>{'{{bedrijfsnaam}}'}</code> en <code>{'{{contactpersoon}}'}</code> gebruiken. Die worden bij verzending per prospect ingevuld.</p>
+            <p className="mt-1 text-xs text-warm">In het onderwerp en de body kun je <code>{'{{bedrijfsnaam}}'}</code>, <code>{'{{contactpersoon}}'}</code> en <code>{'{{ai}}'}</code> gebruiken. <code>{'{{ai}}'}</code> wordt per prospect vervangen door een gegenereerde openingszin als je AI-personalisatie voor die stap aanzet.</p>
 
             {campagne.stappen.length === 0 ? (
               <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen stappen. Voeg hieronder de eerste stap toe.</p>
@@ -111,8 +111,13 @@ export default async function CampagneDetailPage({ params, searchParams }: { par
                         <label className="block text-xs font-semibold text-warm">Bericht</label>
                         <textarea name="body" required rows={5} defaultValue={s.body ?? ''} className={inputCls} />
                       </div>
-                      <div className="sm:col-span-2">
+                      <label className="flex items-start gap-2 text-xs text-ink-700 sm:col-span-2">
+                        <input type="checkbox" name="ai_personaliseer" defaultChecked={s.ai_personaliseer} className="mt-0.5 h-4 w-4 rounded border-line text-amber-500 focus:ring-amber-300" />
+                        <span>AI-personalisatie: vervang <code>{'{{ai}}'}</code> door een unieke openingszin per prospect</span>
+                      </label>
+                      <div className="flex items-center justify-between gap-3 sm:col-span-2">
                         <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Stap opslaan</button>
+                        <span className="text-xs text-warm">{campagne.verzondenPerStap[s.id] ?? 0} verzonden</span>
                       </div>
                     </form>
                     <form action={verwijderStapActie} className="mt-2">
@@ -144,8 +149,12 @@ export default async function CampagneDetailPage({ params, searchParams }: { par
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-warm">Bericht</label>
-                <textarea name="body" required rows={5} placeholder={'Beste {{contactpersoon}},\n\n...'} className={inputCls} />
+                <textarea name="body" required rows={5} placeholder={'Beste {{contactpersoon}},\n\n{{ai}}\n\n...'} className={inputCls} />
               </div>
+              <label className="flex items-start gap-2 text-xs text-ink-700 sm:col-span-2">
+                <input type="checkbox" name="ai_personaliseer" className="mt-0.5 h-4 w-4 rounded border-line text-amber-500 focus:ring-amber-300" />
+                <span>AI-personalisatie: vervang <code>{'{{ai}}'}</code> door een unieke openingszin per prospect</span>
+              </label>
               <div className="sm:col-span-2">
                 <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Stap toevoegen</button>
               </div>
@@ -176,7 +185,18 @@ export default async function CampagneDetailPage({ params, searchParams }: { par
               <div className="flex justify-between gap-3"><dt className="text-warm">Totaal ingeschreven</dt><dd className="text-ink-900">{campagne.aantalInschrijvingen}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-warm">Actief</dt><dd className="text-ink-900">{campagne.aantalActief}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-warm">Verzonden mails</dt><dd className="text-ink-900">{campagne.aantalVerzonden}</dd></div>
+              {campagne.aantalGefaald > 0 && <div className="flex justify-between gap-3"><dt className="text-warm">Mislukt</dt><dd className="font-semibold text-amber-700">{campagne.aantalGefaald}</dd></div>}
             </dl>
+            {Object.keys(campagne.statusVerdeling).length > 0 && (
+              <div className="mt-3 border-t border-line pt-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-warm">Inschrijvingen per status</p>
+                <ul className="mt-1.5 space-y-1 text-sm">
+                  {Object.entries(campagne.statusVerdeling).map(([s, n]) => (
+                    <li key={s} className="flex justify-between gap-3"><span className="text-warm">{s}</span><span className="text-ink-900">{n}</span></li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">

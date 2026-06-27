@@ -32,6 +32,7 @@ export type CampagneStap = {
   wacht_dagen: number;
   onderwerp: string;
   body: string;
+  ai_personaliseer: boolean;
   created_at: string;
 };
 
@@ -44,7 +45,10 @@ export type CampagneDetail = Campagne & {
   stappen: CampagneStap[];
   aantalInschrijvingen: number;
   aantalVerzonden: number;
+  aantalGefaald: number;
   aantalActief: number;
+  statusVerdeling: Record<string, number>;
+  verzondenPerStap: Record<string, number>;
 };
 
 export type StapVelden = {
@@ -52,6 +56,7 @@ export type StapVelden = {
   wacht_dagen?: number;
   onderwerp: string;
   body: string;
+  ai_personaliseer?: boolean;
 };
 
 /**
@@ -123,18 +128,30 @@ export async function getCampagne(id: string): Promise<CampagneDetail | null> {
   const inschrijvingen = (insData as { status: string }[]) ?? [];
   const aantalInschrijvingen = inschrijvingen.length;
   const aantalActief = inschrijvingen.filter((r) => r.status === 'actief').length;
+  const statusVerdeling: Record<string, number> = {};
+  for (const r of inschrijvingen) statusVerdeling[r.status] = (statusVerdeling[r.status] ?? 0) + 1;
 
-  const { count: verzondenCount } = await sb
+  const { data: verzData } = await sb
     .from('campagne_verzendingen')
-    .select('id', { count: 'exact', head: true })
+    .select('stap_id, status')
     .eq('campagne_id', id);
+  const verzendingen = (verzData as { stap_id: string | null; status: string }[]) ?? [];
+  const aantalVerzonden = verzendingen.filter((v) => v.status === 'verzonden').length;
+  const aantalGefaald = verzendingen.filter((v) => v.status === 'gefaald').length;
+  const verzondenPerStap: Record<string, number> = {};
+  for (const v of verzendingen) {
+    if (v.status === 'verzonden' && v.stap_id) verzondenPerStap[v.stap_id] = (verzondenPerStap[v.stap_id] ?? 0) + 1;
+  }
 
   return {
     ...campagne,
     stappen,
     aantalInschrijvingen,
-    aantalVerzonden: verzondenCount ?? 0,
+    aantalVerzonden,
+    aantalGefaald,
     aantalActief,
+    statusVerdeling,
+    verzondenPerStap,
   };
 }
 
@@ -175,6 +192,7 @@ export async function voegStapToe(campagneId: string, v: StapVelden): Promise<bo
     wacht_dagen: Number.isFinite(Number(v.wacht_dagen)) ? Math.round(Number(v.wacht_dagen)) : 0,
     onderwerp: v.onderwerp.trim(),
     body: v.body,
+    ai_personaliseer: Boolean(v.ai_personaliseer),
   });
   return !error;
 }
@@ -185,6 +203,7 @@ export async function werkStap(stapId: string, v: StapVelden): Promise<boolean> 
     onderwerp: v.onderwerp.trim(),
     body: v.body,
   };
+  if (v.ai_personaliseer !== undefined) patch.ai_personaliseer = Boolean(v.ai_personaliseer);
   if (v.volgorde !== undefined) patch.volgorde = Number.isFinite(Number(v.volgorde)) ? Math.round(Number(v.volgorde)) : 1;
   if (v.wacht_dagen !== undefined) patch.wacht_dagen = Number.isFinite(Number(v.wacht_dagen)) ? Math.round(Number(v.wacht_dagen)) : 0;
   const { error } = await sb.from('campagne_stappen').update(patch).eq('id', stapId);

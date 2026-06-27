@@ -49,6 +49,7 @@ export type VandaagSignalen = {
   ordersWachtGoedkeuring: number;
   retourenTeBeoordelen: number;
   vervallenFacturen: number;
+  voorraadOnderMinimum: number;
 };
 
 /**
@@ -66,17 +67,19 @@ export async function getVandaagSignalen(): Promise<VandaagSignalen | null> {
   if (!sb) return null;
   const vandaag = new Date().toISOString().slice(0, 10);
 
-  const [takenR, ordersR, retourenR, facturenR] = await Promise.all([
+  const [takenR, ordersR, retourenR, facturenR, productenR] = await Promise.all([
     sb.from('taken').select('status, vervaldatum').eq('status', 'open'),
     sb.from('orders').select('goedkeuring_status'),
     sb.from('retouren').select('status'),
     sb.from('facturen').select('status, vervaldatum'),
+    sb.from('producten').select('id, min_voorraad, product_varianten(voorraad)'),
   ]);
 
   const taken = (takenR.data as { status: string; vervaldatum: string | null }[]) ?? [];
   const orders = (ordersR.data as { goedkeuring_status: string }[]) ?? [];
   const retouren = (retourenR.data as { status: string }[]) ?? [];
   const facturen = (facturenR.data as { status: string; vervaldatum: string | null }[]) ?? [];
+  const producten = (productenR.data as { id: string; min_voorraad: number | null; product_varianten: { voorraad: number | null }[] | null }[]) ?? [];
 
   const openTaken = taken.length;
   const verlopenTaken = taken.filter((t) => t.vervaldatum && t.vervaldatum < vandaag).length;
@@ -85,6 +88,11 @@ export async function getVandaagSignalen(): Promise<VandaagSignalen | null> {
   const vervallenFacturen = facturen.filter(
     (f) => f.status !== 'betaald' && f.status !== 'concept' && f.vervaldatum && f.vervaldatum < vandaag,
   ).length;
+  const voorraadOnderMinimum = producten.filter((p) => {
+    if (p.min_voorraad == null) return false;
+    const totaal = (p.product_varianten ?? []).reduce((s, v) => s + (Number(v.voorraad) || 0), 0);
+    return totaal < p.min_voorraad;
+  }).length;
 
-  return { openTaken, verlopenTaken, ordersWachtGoedkeuring, retourenTeBeoordelen, vervallenFacturen };
+  return { openTaken, verlopenTaken, ordersWachtGoedkeuring, retourenTeBeoordelen, vervallenFacturen, voorraadOnderMinimum };
 }

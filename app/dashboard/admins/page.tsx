@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { dashAuthed, getHuidigeAdmin } from '@/lib/kms/adminClient';
 import { listAdmins } from '@/lib/kms/adminGebruikers';
 import { adminToevoegen, adminActiefZetten, adminRolWijzigen } from './actions';
-import { AutoSubmitSelect } from '@/components/dashboard/AutoSubmitSelect';
+import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
 
 export const metadata: Metadata = { title: 'Beheerders', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';

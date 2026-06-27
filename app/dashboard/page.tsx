@@ -100,7 +100,16 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
       urgent: (signalen?.vervallenFacturen ?? 0) > 0,
       href: '/dashboard/facturen',
     },
+    {
+      label: 'Voorraad onder minimum',
+      aantal: signalen?.voorraadOnderMinimum ?? 0,
+      detail: null,
+      urgent: (signalen?.voorraadOnderMinimum ?? 0) > 0,
+      href: '/dashboard/voorraad',
+    },
   ];
+  const oppakkenGesorteerd = [...oppakken].sort((a, b) => Number(b.urgent) - Number(a.urgent) || b.aantal - a.aantal);
+  const aantalUrgent = oppakken.filter((b) => b.urgent).length;
   const kpis = [
     { label: 'Nieuwe leads', waarde: String(o?.nieuweLeads ?? 0), href: '/dashboard/leads' },
     { label: 'Openstaande offertewaarde', waarde: euro(o?.openOffertewaarde ?? 0), href: '/dashboard/leads' },
@@ -152,8 +161,11 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
             <h2 className="font-display text-base font-bold text-ink-900">Vandaag oppakken</h2>
             <Link href="/dashboard/meldingen" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Alle meldingen</Link>
           </div>
+          <p className={`mt-1 text-xs font-semibold ${aantalUrgent > 0 ? 'text-amber-700' : 'text-green-700'}`}>
+            {aantalUrgent > 0 ? `${aantalUrgent} ${aantalUrgent === 1 ? 'punt vraagt' : 'punten vragen'} je aandacht` : 'Niets dringends, goed bezig'}
+          </p>
           <div className="mt-2 grid grid-cols-2 gap-2">
-            {oppakken.map((b) => (
+            {oppakkenGesorteerd.map((b) => (
               <Link
                 key={b.label}
                 href={b.href}

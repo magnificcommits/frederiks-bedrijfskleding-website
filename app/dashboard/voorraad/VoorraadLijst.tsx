@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { VoorraadProduct } from '@/lib/kms/voorraad';
+import { zetVariantVoorraadActie } from './actions';
 
 const GEEN_MERK = 'Geen merk';
 
@@ -192,6 +193,38 @@ export default function VoorraadLijst({ producten }: { producten: VoorraadProduc
   );
 }
 
+/**
+ * Inline bewerkbare voorraadwaarde per variant. Slaat op bij verlaten van het veld
+ * of bij Enter, en alleen als de waarde echt gewijzigd is. De server-actie revalideert
+ * zonder redirect, zodat de zoek- en filterstaat van de lijst behouden blijft.
+ */
+function VoorraadCel({ variantId, voorraad }: { variantId: string; voorraad: number }) {
+  const [waarde, setWaarde] = useState(String(voorraad));
+  const verzendBijWijziging = (form: HTMLFormElement | null) => {
+    if (form && waarde.trim() !== '' && waarde !== String(voorraad)) form.requestSubmit();
+  };
+  return (
+    <form action={zetVariantVoorraadActie} className="inline-flex items-center">
+      <input type="hidden" name="variant_id" value={variantId} />
+      <input
+        name="voorraad"
+        inputMode="numeric"
+        value={waarde}
+        onChange={(e) => setWaarde(e.target.value.replace(/[^0-9]/g, ''))}
+        onBlur={(e) => verzendBijWijziging(e.currentTarget.form)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            verzendBijWijziging(e.currentTarget.form);
+          }
+        }}
+        aria-label="Voorraad bijwerken"
+        className="w-16 rounded-md border border-line px-2 py-1 text-sm font-semibold text-ink-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+      />
+    </form>
+  );
+}
+
 function ProductRij({ product: p, forceOpen = false }: { product: VoorraadProduct; forceOpen?: boolean }) {
   const [lokaalOpen, setLokaalOpen] = useState(false);
   const open = forceOpen || lokaalOpen;
@@ -258,7 +291,7 @@ function ProductRij({ product: p, forceOpen = false }: { product: VoorraadProduc
                     <tr key={v.id} className="border-b border-line last:border-b-0">
                       <td className="px-4 py-3 text-warm">{v.maat || '-'}</td>
                       <td className="px-4 py-3 text-warm">{v.kleur || '-'}</td>
-                      <td className="px-4 py-3 font-semibold text-ink-900">{v.voorraad}</td>
+                      <td className="px-4 py-3"><VoorraadCel variantId={v.id} voorraad={v.voorraad} /></td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${

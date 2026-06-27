@@ -26,7 +26,7 @@ export default async function OfferteAfdrukPage({ params }: { params: Promise<{ 
     );
   }
 
-  const { subtotaal, btw, totaal } = offerteTotalen(offerte.regels, offerte.btw_pct);
+  const { subtotaal, korting, btw, totaal } = offerteTotalen(offerte.regels, offerte.btw_pct);
   const btwPct = offerte.btw_pct ?? 21;
   const nummer = offerte.offertenummer != null ? `${offerte.offertenummer}` : 'concept';
 
@@ -84,12 +84,14 @@ export default async function OfferteAfdrukPage({ params }: { params: Promise<{ 
                 offerte.regels.map((r) => {
                   const aantal = Number(r.aantal) || 0;
                   const stukprijs = Number(r.stukprijs) || 0;
+                  const kort = Number(r.korting_pct) || 0;
+                  const netto = aantal * stukprijs * (1 - kort / 100);
                   return (
                     <tr key={r.id} className="border-b border-line">
-                      <td className="py-2 pr-3 text-ink-900">{r.omschrijving || '-'}</td>
+                      <td className="py-2 pr-3 text-ink-900">{r.omschrijving || '-'}{kort ? ` (-${kort}% korting)` : ''}</td>
                       <td className="py-2 px-3 text-right text-warm">{aantal}</td>
                       <td className="py-2 px-3 text-right text-warm">{formatEuro(stukprijs)}</td>
-                      <td className="py-2 pl-3 text-right font-medium text-ink-900">{formatEuro(aantal * stukprijs)}</td>
+                      <td className="py-2 pl-3 text-right font-medium text-ink-900">{formatEuro(netto)}</td>
                     </tr>
                   );
                 })
@@ -98,6 +100,7 @@ export default async function OfferteAfdrukPage({ params }: { params: Promise<{ 
           </table>
 
           <div className="mt-4 ml-auto w-full max-w-xs space-y-1 text-sm">
+            {korting > 0 && <div className="flex justify-between"><span className="text-warm">Korting</span><span className="text-ink-900">- {formatEuro(korting)}</span></div>}
             <div className="flex justify-between"><span className="text-warm">Subtotaal</span><span className="text-ink-900">{formatEuro(subtotaal)}</span></div>
             <div className="flex justify-between"><span className="text-warm">Btw ({btwPct}%)</span><span className="text-ink-900">{formatEuro(btw)}</span></div>
             <div className="flex justify-between border-t border-line pt-1 font-extrabold text-ink-900"><span>Totaal</span><span>{formatEuro(totaal)}</span></div>

@@ -1,4 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { maakOrder, voegOrderregelToe } from '@/lib/kms/orders';
 
 /**
  * Data-access voor de module Offertes. Offertes met regels, status en een
@@ -30,12 +31,14 @@ export type Offerteregel = {
   omschrijving: string | null;
   aantal: number | null;
   stukprijs: number | null;
+  korting_pct: number | null;
+  inkoop: number | null;
   created_at: string;
 };
 
 export type OfferteMetKlant = Offerte & { organisatie_naam: string | null };
 export type OfferteMetTotaal = OfferteMetKlant & { totaal: number };
-export type OfferteDetail = Offerte & { organisatie_naam: string | null; regels: Offerteregel[] };
+export type OfferteDetail = Offerte & { organisatie_naam: string | null; organisatie_email: string | null; regels: Offerteregel[] };
 
 export type OfferteVelden = {
   organisatie_id?: string | null;
@@ -49,23 +52,39 @@ export type RegelVelden = {
   omschrijving: string;
   aantal?: number;
   stukprijs?: number;
+  korting_pct?: number;
+  inkoop?: number | null;
 };
 
-/** Subtotaal (som aantal*stukprijs), btw en totaal voor een set regels. */
+/**
+ * Totalen voor een set regels: subtotaal (na regelkorting, excl. btw), het kortingsbedrag,
+ * btw, totaal, en de marge (subtotaal min inkoopkosten, voor regels met een inkoopprijs).
+ */
 export function offerteTotalen(
-  regels: { aantal: number | null; stukprijs: number | null }[],
+  regels: { aantal: number | null; stukprijs: number | null; korting_pct?: number | null; inkoop?: number | null }[],
   btwPct: number | null | undefined,
-): { subtotaal: number; btw: number; totaal: number } {
-  const subtotaal = regels.reduce(
-    (t, r) => t + (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0),
-    0,
-  );
+): { subtotaal: number; korting: number; btw: number; totaal: number; marge: number } {
+  let bruto = 0;
+  let netto = 0;
+  let kostprijs = 0;
+  for (const r of regels) {
+    const aantal = Number(r.aantal) || 0;
+    const stuk = Number(r.stukprijs) || 0;
+    const kort = Number(r.korting_pct) || 0;
+    const regelBruto = aantal * stuk;
+    bruto += regelBruto;
+    netto += regelBruto * (1 - kort / 100);
+    if (r.inkoop != null && Number.isFinite(Number(r.inkoop))) kostprijs += aantal * Number(r.inkoop);
+  }
   const pct = Number(btwPct);
-  const btw = subtotaal * (Number.isFinite(pct) ? pct : 0) / 100;
+  const btw = netto * (Number.isFinite(pct) ? pct : 0) / 100;
+  const r2 = (n: number) => Math.round(n * 100) / 100;
   return {
-    subtotaal: Math.round(subtotaal * 100) / 100,
-    btw: Math.round(btw * 100) / 100,
-    totaal: Math.round((subtotaal + btw) * 100) / 100,
+    subtotaal: r2(netto),
+    korting: r2(bruto - netto),
+    btw: r2(btw),
+    totaal: r2(netto + btw),
+    marge: r2(netto - kostprijs),
   };
 }
 
@@ -112,12 +131,13 @@ export async function listOffertesPaged(opts: {
   if (ids.length > 0) {
     const { data: regelData } = await sb
       .from('offerteregels')
-      .select('offerte_id, aantal, stukprijs')
+      .select('offerte_id, aantal, stukprijs, korting_pct')
       .in('offerte_id', ids);
-    const regels = (regelData as { offerte_id: string; aantal: number | null; stukprijs: number | null }[]) ?? [];
+    const regels = (regelData as { offerte_id: string; aantal: number | null; stukprijs: number | null; korting_pct: number | null }[]) ?? [];
     const subtotaalPer = new Map<string, number>();
     for (const r of regels) {
-      const sub = (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0);
+      const kort = Number(r.korting_pct) || 0;
+      const sub = (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0) * (1 - kort / 100);
       subtotaalPer.set(r.offerte_id, (subtotaalPer.get(r.offerte_id) ?? 0) + sub);
     }
     for (const o of rows) {
@@ -143,11 +163,11 @@ export async function getOfferte(id: string): Promise<OfferteDetail | null> {
   const sb = kmsAdmin(); if (!sb) return null;
   const { data } = await sb
     .from('offertes')
-    .select('*, organisaties(naam)')
+    .select('*, organisaties(naam, email_algemeen, factuur_email)')
     .eq('id', id)
     .maybeSingle();
   if (!data) return null;
-  const rij = data as unknown as Offerte & { organisaties: { naam: string } | null };
+  const rij = data as unknown as Offerte & { organisaties: { naam: string; email_algemeen: string | null; factuur_email: string | null } | null };
   const { organisaties, ...rest } = rij;
   const { data: regelData } = await sb
     .from('offerteregels')
@@ -157,6 +177,7 @@ export async function getOfferte(id: string): Promise<OfferteDetail | null> {
   return {
     ...(rest as Offerte),
     organisatie_naam: organisaties?.naam ?? null,
+    organisatie_email: organisaties?.email_algemeen?.trim() || organisaties?.factuur_email?.trim() || null,
     regels: (regelData as Offerteregel[]) ?? [],
   };
 }
@@ -209,25 +230,27 @@ export async function verwijderOfferte(id: string): Promise<boolean> {
 
 export async function voegRegelToe(offerteId: string, v: RegelVelden): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
-  const aantal = Number(v.aantal) || 0;
-  const stukprijs = Number(v.stukprijs) || 0;
   const { error } = await sb.from('offerteregels').insert({
     offerte_id: offerteId,
     omschrijving: v.omschrijving,
-    aantal,
-    stukprijs,
+    aantal: Number(v.aantal) || 0,
+    stukprijs: Number(v.stukprijs) || 0,
+    korting_pct: Number(v.korting_pct) || 0,
+    inkoop: v.inkoop != null && Number.isFinite(Number(v.inkoop)) ? Number(v.inkoop) : null,
   });
   return !error;
 }
 
 export async function werkRegel(regelId: string, v: RegelVelden): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
-  const aantal = Number(v.aantal) || 0;
-  const stukprijs = Number(v.stukprijs) || 0;
-  const { error } = await sb
-    .from('offerteregels')
-    .update({ omschrijving: v.omschrijving, aantal, stukprijs })
-    .eq('id', regelId);
+  const patch: Record<string, unknown> = {
+    omschrijving: v.omschrijving,
+    aantal: Number(v.aantal) || 0,
+    stukprijs: Number(v.stukprijs) || 0,
+    korting_pct: Number(v.korting_pct) || 0,
+  };
+  if (v.inkoop !== undefined) patch.inkoop = v.inkoop != null ? Number(v.inkoop) : null;
+  const { error } = await sb.from('offerteregels').update(patch).eq('id', regelId);
   return !error;
 }
 
@@ -241,7 +264,7 @@ export type OfferteProductOptie = {
   product_id: string;
   naam: string;
   merk: string | null;
-  varianten: { id: string; maat: string | null; kleur: string | null; verkoopprijs: number | null }[];
+  varianten: { id: string; maat: string | null; kleur: string | null; verkoopprijs: number | null; inkoop: number | null }[];
 };
 
 /**
@@ -266,7 +289,7 @@ export async function getKlantProductOpties(orgId: string | null): Promise<Offer
 
   let q = sb
     .from('producten')
-    .select('id, naam, merk, product_varianten(id, maat, kleur, verkoopprijs, actief)')
+    .select('id, naam, merk, product_varianten(id, maat, kleur, verkoopprijs, inkoopprijs, actief)')
     .eq('actief', true)
     .order('naam');
   if (productIds) q = q.in('id', productIds);
@@ -274,7 +297,7 @@ export async function getKlantProductOpties(orgId: string | null): Promise<Offer
 
   const rows = (data as unknown as {
     id: string; naam: string; merk: string | null;
-    product_varianten: { id: string; maat: string | null; kleur: string | null; verkoopprijs: number | null; actief: boolean | null }[] | null;
+    product_varianten: { id: string; maat: string | null; kleur: string | null; verkoopprijs: number | null; inkoopprijs: number | null; actief: boolean | null }[] | null;
   }[]) ?? [];
 
   return rows.map((p) => ({
@@ -283,7 +306,34 @@ export async function getKlantProductOpties(orgId: string | null): Promise<Offer
     merk: p.merk,
     varianten: (p.product_varianten ?? [])
       .filter((v) => v.actief !== false)
-      .map((v) => ({ id: v.id, maat: v.maat, kleur: v.kleur, verkoopprijs: v.verkoopprijs }))
+      .map((v) => ({ id: v.id, maat: v.maat, kleur: v.kleur, verkoopprijs: v.verkoopprijs, inkoop: v.inkoopprijs }))
       .sort((a, b) => (a.maat ?? '').localeCompare(b.maat ?? '', 'nl') || (a.kleur ?? '').localeCompare(b.kleur ?? '', 'nl')),
   }));
+}
+
+/**
+ * Zet een offerte om naar een order: maakt een order voor dezelfde klant met de offerteregels
+ * (nettoprijs na korting) als orderregels, en zet de offerte op 'geaccepteerd'. Geeft het
+ * order-id terug, of null als er geen klant aan de offerte hangt.
+ */
+export async function maakOrderVanOfferte(offerteId: string): Promise<string | null> {
+  const off = await getOfferte(offerteId);
+  if (!off || !off.organisatie_id) return null;
+  const orderId = await maakOrder({
+    organisatie_id: off.organisatie_id,
+    status: 'concept',
+    notitie: `Aangemaakt uit offerte ${off.offertenummer != null ? `#${off.offertenummer}` : ''}`.trim(),
+  });
+  if (!orderId) return null;
+  for (const r of off.regels) {
+    const kort = Number(r.korting_pct) || 0;
+    const netto = (Number(r.stukprijs) || 0) * (1 - kort / 100);
+    await voegOrderregelToe(orderId, {
+      item_naam: r.omschrijving ?? 'Regel',
+      aantal: Math.max(1, Math.round(Number(r.aantal) || 1)),
+      stukprijs: Math.round(netto * 100) / 100,
+    });
+  }
+  await zetOfferteStatus(offerteId, 'geaccepteerd');
+  return orderId;
 }

@@ -11,6 +11,8 @@ import {
   verwijderOfferteActie,
   werkRegelActie,
   verwijderRegelActie,
+  mailOfferteActie,
+  maakOrderVanOfferteActie,
 } from './actions';
 import RegelToevoegen from './RegelToevoegen';
 
@@ -33,10 +35,10 @@ function dateInputWaarde(d: string | null): string {
   return dt.toISOString().slice(0, 10);
 }
 
-export default async function OfferteDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string }> }) {
+export default async function OfferteDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; fout?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const { id } = await params;
-  const { ok } = await searchParams;
+  const { ok, fout } = await searchParams;
   const sb = kmsAdmin();
 
   if (!sb) {
@@ -64,12 +66,18 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
     );
   }
 
-  const { subtotaal, btw, totaal } = offerteTotalen(offerte.regels, offerte.btw_pct);
+  const { subtotaal, korting, btw, totaal, marge } = offerteTotalen(offerte.regels, offerte.btw_pct);
   const opties = await getKlantProductOpties(offerte.organisatie_id);
+  const verlopen = !!offerte.geldig_tot && offerte.status !== 'geaccepteerd' && offerte.status !== 'afgewezen' && new Date(offerte.geldig_tot) < new Date(new Date().toDateString());
   const okTekst: Record<string, string> = {
     aangemaakt: 'Offerte aangemaakt. Vul hieronder de regels in.',
     opgeslagen: 'Kopgegevens opgeslagen.',
     status: 'Status bijgewerkt.',
+    gemaild: 'Offerte gemaild naar de klant.',
+  };
+  const foutTekst: Record<string, string> = {
+    order: 'Kon geen order maken. Koppel eerst een klant aan de offerte.',
+    mail: 'Vul een e-mailadres in om de offerte te mailen.',
   };
 
   return (
@@ -87,6 +95,9 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
 
       {ok && okTekst[ok] && (
         <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">{okTekst[ok]}</p>
+      )}
+      {fout && foutTekst[fout] && (
+        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-semibold text-red-800">{foutTekst[fout]}</p>
       )}
 
       <section className="mt-8 grid gap-6 lg:grid-cols-3">
@@ -140,11 +151,29 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
           </div>
 
           <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+            <h2 className="font-display text-base font-bold text-ink-900">Versturen en omzetten</h2>
+            {verlopen && <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">Deze offerte is verlopen ({formatDatum(offerte.geldig_tot)}).</p>}
+            <form action={mailOfferteActie} className="mt-3">
+              <input type="hidden" name="offerteId" value={offerte.id} />
+              <label className="block text-xs font-semibold text-warm">Mail offerte naar</label>
+              <input name="to" type="email" defaultValue={offerte.organisatie_email ?? ''} placeholder="klant@bedrijf.nl" className={inputCls} />
+              <button type="submit" className="mt-2 w-full rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Mail naar klant</button>
+            </form>
+            <form action={maakOrderVanOfferteActie} className="mt-4 border-t border-line pt-4">
+              <input type="hidden" name="offerteId" value={offerte.id} />
+              <button type="submit" disabled={!offerte.organisatie_id} className="w-full rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50">Omzetten naar order</button>
+              {!offerte.organisatie_id && <p className="mt-1 text-xs text-warm">Koppel eerst een klant om een order te maken.</p>}
+            </form>
+          </div>
+
+          <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
             <h2 className="font-display text-base font-bold text-ink-900">Totalen</h2>
             <dl className="mt-3 space-y-1.5 text-sm">
+              {korting > 0 && <div className="flex justify-between gap-3"><dt className="text-warm">Korting</dt><dd className="text-ink-900">- {formatEuro(korting)}</dd></div>}
               <div className="flex justify-between gap-3"><dt className="text-warm">Subtotaal</dt><dd className="text-ink-900">{formatEuro(subtotaal)}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-warm">Btw ({offerte.btw_pct ?? 21}%)</dt><dd className="text-ink-900">{formatEuro(btw)}</dd></div>
               <div className="flex justify-between gap-3 border-t border-line pt-1.5 font-extrabold text-ink-900"><dt>Totaal</dt><dd>{formatEuro(totaal)}</dd></div>
+              {marge !== 0 && <div className="flex justify-between gap-3 border-t border-line pt-1.5 text-xs"><dt className="text-warm">Marge (indicatie)</dt><dd className="font-semibold text-ink-700">{formatEuro(marge)}</dd></div>}
             </dl>
           </div>
 
@@ -182,16 +211,19 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
                           <form action={werkRegelActie} className="grid grid-cols-12 items-end gap-2">
                             <input type="hidden" name="offerteId" value={offerte.id} />
                             <input type="hidden" name="regelId" value={r.id} />
-                            <div className="col-span-12 sm:col-span-6">
-                              <input name="omschrijving" required defaultValue={r.omschrijving ?? ''} className={inputCls} />
+                            <div className="col-span-12 sm:col-span-5">
+                              <input name="omschrijving" required defaultValue={r.omschrijving ?? ''} aria-label="Omschrijving" className={inputCls} />
                             </div>
-                            <div className="col-span-4 sm:col-span-1">
-                              <input name="aantal" inputMode="decimal" defaultValue={String(r.aantal ?? 0)} className={inputCls} />
+                            <div className="col-span-3 sm:col-span-1">
+                              <input name="aantal" inputMode="decimal" defaultValue={String(r.aantal ?? 0)} aria-label="Aantal" className={inputCls} />
                             </div>
                             <div className="col-span-4 sm:col-span-2">
-                              <input name="stukprijs" inputMode="decimal" defaultValue={String(r.stukprijs ?? 0)} className={inputCls} />
+                              <input name="stukprijs" inputMode="decimal" defaultValue={String(r.stukprijs ?? 0)} aria-label="Stukprijs" className={inputCls} />
                             </div>
-                            <div className="col-span-4 sm:col-span-2 text-right text-sm font-medium text-ink-900">{formatEuro((Number(r.aantal) || 0) * (Number(r.stukprijs) || 0))}</div>
+                            <div className="col-span-2 sm:col-span-1">
+                              <input name="korting_pct" inputMode="decimal" defaultValue={String(r.korting_pct ?? 0)} aria-label="Korting %" title="Korting %" className={inputCls} />
+                            </div>
+                            <div className="col-span-3 sm:col-span-2 text-right text-sm font-medium text-ink-900">{formatEuro((Number(r.aantal) || 0) * (Number(r.stukprijs) || 0) * (1 - (Number(r.korting_pct) || 0) / 100))}</div>
                             <div className="col-span-12 sm:col-span-1 flex gap-2">
                               <button type="submit" className="rounded-md bg-ink-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-ink-800">Opslaan</button>
                             </div>

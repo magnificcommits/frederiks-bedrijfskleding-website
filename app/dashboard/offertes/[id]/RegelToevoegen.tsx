@@ -32,6 +32,8 @@ export default function RegelToevoegen({
   const [omschrijving, setOmschrijving] = useState('');
   const [aantal, setAantal] = useState('1');
   const [stukprijs, setStukprijs] = useState('');
+  const [korting, setKorting] = useState('0');
+  const [inkoop, setInkoop] = useState('');
   const [handmatig, setHandmatig] = useState(false);
 
   const product = useMemo(
@@ -45,6 +47,7 @@ export default function RegelToevoegen({
     if (p && v) {
       if (!handmatig) setOmschrijving(bouwOmschrijving(p.naam, v));
       if (v.verkoopprijs != null) setStukprijs(String(v.verkoopprijs));
+      setInkoop(v.inkoop != null ? String(v.inkoop) : '');
     }
   }
 
@@ -114,29 +117,21 @@ export default function RegelToevoegen({
             className={inputCls}
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-semibold text-warm">Aantal</label>
-            <input
-              name="aantal"
-              inputMode="decimal"
-              value={aantal}
-              onChange={(e) => setAantal(e.target.value)}
-              className={inputCls}
-            />
+            <input name="aantal" inputMode="decimal" value={aantal} onChange={(e) => setAantal(e.target.value)} className={inputCls} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-warm">Stukprijs</label>
-            <input
-              name="stukprijs"
-              inputMode="decimal"
-              value={stukprijs}
-              onChange={(e) => setStukprijs(e.target.value)}
-              placeholder="bedrag"
-              className={inputCls}
-            />
+            <input name="stukprijs" inputMode="decimal" value={stukprijs} onChange={(e) => setStukprijs(e.target.value)} placeholder="bedrag" className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-warm">Korting %</label>
+            <input name="korting_pct" inputMode="decimal" value={korting} onChange={(e) => setKorting(e.target.value)} className={inputCls} />
           </div>
         </div>
+        <input type="hidden" name="inkoop" value={inkoop} />
         <button
           type="submit"
           className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800"

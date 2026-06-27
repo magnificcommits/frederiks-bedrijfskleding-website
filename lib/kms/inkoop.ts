@@ -1,4 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
 
 /**
  * Data-access voor de module Inkoop.
@@ -139,4 +140,87 @@ export async function zetInkoopStatus(id: string, status: string, besteldOp?: st
   if (geleverdAantal !== undefined && geleverdAantal !== null) patch.geleverd_aantal = geleverdAantal;
   const { error } = await sb.from('inkoopregels').update(patch).eq('id', id);
   return !error;
+}
+
+export type LeverancierBestelGroep = {
+  leverancier_id: string | null;
+  leverancier_naam: string | null;
+  heeftEmail: boolean;
+  aantalRegels: number;
+  aantalStuks: number;
+};
+
+/** De te bestellen inkoopregels gegroepeerd per leverancier, voor het in een keer bestellen. */
+export async function teBestellenPerLeverancier(): Promise<LeverancierBestelGroep[]> {
+  const sb = kmsAdmin(); if (!sb) return [];
+  const { data } = await sb.from('inkoopregels').select('leverancier_id, aantal').eq('status', 'te_bestellen');
+  const regels = (data as { leverancier_id: string | null; aantal: number }[]) ?? [];
+  if (regels.length === 0) return [];
+
+  const per = new Map<string, { aantalRegels: number; aantalStuks: number }>();
+  for (const r of regels) {
+    const key = r.leverancier_id ?? 'geen';
+    const g = per.get(key) ?? { aantalRegels: 0, aantalStuks: 0 };
+    g.aantalRegels += 1;
+    g.aantalStuks += Number(r.aantal) || 0;
+    per.set(key, g);
+  }
+
+  const ids = [...per.keys()].filter((k) => k !== 'geen');
+  const info = new Map<string, { naam: string | null; email: string | null }>();
+  if (ids.length > 0) {
+    const { data: levData } = await sb.from('leveranciers').select('id, naam, email').in('id', ids);
+    for (const l of (levData as { id: string; naam: string | null; email: string | null }[]) ?? []) info.set(l.id, { naam: l.naam, email: l.email });
+  }
+
+  return [...per.entries()]
+    .map(([key, g]) => {
+      const lev = key !== 'geen' ? info.get(key) : undefined;
+      return {
+        leverancier_id: key === 'geen' ? null : key,
+        leverancier_naam: lev?.naam ?? null,
+        heeftEmail: Boolean(lev?.email && lev.email.trim()),
+        aantalRegels: g.aantalRegels,
+        aantalStuks: g.aantalStuks,
+      };
+    })
+    .sort((a, b) => (a.leverancier_naam ?? 'zzz').localeCompare(b.leverancier_naam ?? 'zzz', 'nl'));
+}
+
+/**
+ * Bestelt in een keer alle te bestellen regels bij een leverancier: stuurt (als er een
+ * e-mailadres is) een bestelmail met de artikelen en zet alle regels op 'besteld' met de datum van vandaag.
+ */
+export async function bestelBijLeverancier(leverancierId: string): Promise<{ ok: boolean; aantal: number; gemaild: boolean; leverancier: string | null }> {
+  const sb = kmsAdmin(); if (!sb) return { ok: false, aantal: 0, gemaild: false, leverancier: null };
+
+  const { data: levData } = await sb.from('leveranciers').select('naam, email').eq('id', leverancierId).maybeSingle();
+  const lev = levData as { naam: string | null; email: string | null } | null;
+
+  const { data: regelData } = await sb
+    .from('inkoopregels')
+    .select('id, merk, item_naam, maat, kleur, aantal')
+    .eq('status', 'te_bestellen')
+    .eq('leverancier_id', leverancierId);
+  const regels = (regelData as { id: string; merk: string | null; item_naam: string | null; maat: string | null; kleur: string | null; aantal: number }[]) ?? [];
+  if (regels.length === 0) return { ok: false, aantal: 0, gemaild: false, leverancier: lev?.naam ?? null };
+
+  let gemaild = false;
+  if (lev?.email && lev.email.trim()) {
+    const rijenHtml = regels
+      .map((r) => `<tr><td style="padding:6px 0;border-bottom:1px solid #eeeeee;">${escapeHtml(r.item_naam ?? '')}${r.merk ? ` (${escapeHtml(r.merk)})` : ''}</td><td style="padding:6px 0;border-bottom:1px solid #eeeeee;">${escapeHtml([r.maat, r.kleur].filter(Boolean).join(', '))}</td><td style="padding:6px 0;border-bottom:1px solid #eeeeee;text-align:right;">${r.aantal}</td></tr>`)
+      .join('');
+    const html = emailLayout({
+      heading: 'Bestelling',
+      preheader: 'Nieuwe bestelling van Frederiks Bedrijfskleding',
+      bodyHtml: `<p style="margin:0;">Beste ${escapeHtml(lev.naam ?? 'leverancier')},</p><p style="margin:14px 0 0;">Graag onderstaande artikelen voor ons bestellen:</p><table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;"><thead><tr><th style="text-align:left;border-bottom:2px solid #1c1c1c;padding:6px 0;">Artikel</th><th style="text-align:left;border-bottom:2px solid #1c1c1c;padding:6px 0;">Maat/kleur</th><th style="text-align:right;border-bottom:2px solid #1c1c1c;padding:6px 0;">Aantal</th></tr></thead><tbody>${rijenHtml}</tbody></table><p style="margin:14px 0 0;">Alvast bedankt. Met vriendelijke groet, Frederiks Bedrijfskleding.</p>`,
+    });
+    const res = await sendEmail({ to: lev.email.trim(), subject: 'Bestelling Frederiks Bedrijfskleding', html }).catch(() => ({ sent: false }));
+    gemaild = res.sent;
+  }
+
+  const ids = regels.map((r) => r.id);
+  const vandaag = new Date().toISOString().slice(0, 10);
+  await sb.from('inkoopregels').update({ status: 'besteld', besteld_op: vandaag }).in('id', ids);
+  return { ok: true, aantal: regels.length, gemaild, leverancier: lev?.naam ?? null };
 }

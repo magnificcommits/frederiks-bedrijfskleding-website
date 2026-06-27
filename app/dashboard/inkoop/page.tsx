@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import { listInkoopregels, type InkoopregelMetLeverancier } from '@/lib/kms/inkoop';
-import { markeerInkoop } from './actions';
+import { listInkoopregels, teBestellenPerLeverancier, type InkoopregelMetLeverancier } from '@/lib/kms/inkoop';
+import { markeerInkoop, bestelBijLeverancierActie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Inkoop', robots: { index: false, follow: false } };
@@ -89,8 +89,9 @@ function Tabel({ groepen }: { groepen: [string, InkoopregelMetLeverancier[]][] }
   );
 }
 
-export default async function InkoopPage() {
+export default async function InkoopPage({ searchParams }: { searchParams: Promise<{ ok?: string; aantal?: string; gemaild?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
+  const { ok, aantal, gemaild } = await searchParams;
   const sb = kmsAdmin();
 
   if (!sb) {
@@ -105,7 +106,7 @@ export default async function InkoopPage() {
     );
   }
 
-  const alle = await listInkoopregels();
+  const [alle, perLeverancier] = await Promise.all([listInkoopregels(), teBestellenPerLeverancier()]);
   const teBestellen = alle.filter((r) => r.status === 'te_bestellen');
   const rest = alle.filter((r) => r.status !== 'te_bestellen');
 
@@ -116,6 +117,35 @@ export default async function InkoopPage() {
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 text-sm text-warm">Inkoopregels die uit orders zijn gegenereerd, gegroepeerd per merk en leverancier.</p>
+
+      {ok === 'besteld' && (
+        <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">{Number(aantal) || 0} regel(s) op besteld gezet{gemaild === '1' ? ', en de bestelmail is naar de leverancier verstuurd.' : '. De leverancier heeft geen e-mailadres, dus er is geen mail verstuurd.'}</p>
+      )}
+
+      {perLeverancier.length > 0 && (
+        <section className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-soft">
+          <h2 className="font-display text-base font-bold text-ink-900">Bestel in een keer per leverancier</h2>
+          <p className="mt-1 text-xs text-warm">Zet alle te bestellen regels van een leverancier in een keer op besteld en mail de bestelling.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {perLeverancier.map((g) => (
+              <div key={g.leverancier_id ?? 'geen'} className="flex flex-col justify-between rounded-xl border border-line p-4">
+                <div>
+                  <p className="font-semibold text-ink-900">{g.leverancier_naam ?? 'Zonder leverancier'}</p>
+                  <p className="mt-0.5 text-xs text-warm">{g.aantalRegels} regel(s), {g.aantalStuks} stuks{g.leverancier_id && !g.heeftEmail ? ' · geen e-mailadres' : ''}</p>
+                </div>
+                {g.leverancier_id ? (
+                  <form action={bestelBijLeverancierActie} className="mt-3">
+                    <input type="hidden" name="leverancierId" value={g.leverancier_id} />
+                    <button type="submit" className="w-full rounded-md bg-ink-900 px-3 py-2 text-xs font-semibold text-white hover:bg-ink-800">{g.heeftEmail ? 'Bestel en mail' : 'Markeer als besteld'}</button>
+                  </form>
+                ) : (
+                  <p className="mt-3 text-xs text-warm">Koppel een leverancier aan deze producten om te kunnen bestellen.</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mt-8">
         <h2 className="font-display text-xl font-bold text-ink-900">Te bestellen</h2>

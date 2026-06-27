@@ -1,7 +1,7 @@
 'use server';
 import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
-import { zetInkoopStatus } from '@/lib/kms/inkoop';
+import { zetInkoopStatus, bestelBijLeverancier } from '@/lib/kms/inkoop';
 
 function getalOfNull(raw: string): number | null {
   const s = raw.replace(/[^0-9.,-]/g, '').replace(',', '.');
@@ -23,4 +23,12 @@ export async function markeerInkoop(formData: FormData) {
 
   await zetInkoopStatus(id, status, besteldOp, geleverdAantal);
   redirect('/dashboard/inkoop');
+}
+
+export async function bestelBijLeverancierActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const leverancierId = String(formData.get('leverancierId') ?? '').trim();
+  if (!leverancierId) redirect('/dashboard/inkoop');
+  const res = await bestelBijLeverancier(leverancierId);
+  redirect(`/dashboard/inkoop?ok=besteld&aantal=${res.aantal}&gemaild=${res.gemaild ? 1 : 0}`);
 }

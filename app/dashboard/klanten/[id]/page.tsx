@@ -5,7 +5,7 @@ import { env, isLeadsDbConfigured } from '@/lib/env';
 import { getOrganisatie, getGebruikers, listItems, listBestellingen } from '@/lib/portaalAdmin';
 import { listContactpersonen, listActiviteiten, getKlantVerkoop, ACTIVITEIT_SOORTEN } from '@/lib/kms/crm';
 import { listLogos } from '@/lib/kms/logos';
-import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus, nieuwContact, verwijderContactActie, nieuweActiviteit, verwijderActiviteitActie, nieuwLogoActie, verwijderLogoActie } from './actions';
+import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus, nieuwContact, verwijderContactActie, nieuweActiviteit, verwijderActiviteitActie, nieuwLogoActie, verwijderLogoActie, zetRetourenActiefActie } from './actions';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import Tabs, { type TabDef } from '@/components/dashboard/Tabs';
 
@@ -65,6 +65,7 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
       </main>
     );
   }
+  const retourenAan = (org as { retouren_actief?: boolean | null }).retouren_actief !== false;
 
   const [gebruikers, items, bestellingen, contactpersonen, activiteiten, verkoop, logos] = await Promise.all([
     getGebruikers(id),
@@ -113,6 +114,17 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
             <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Gegevens opslaan</button>
           </div>
         </form>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line bg-white p-6 shadow-soft">
+          <div>
+            <p className="font-display text-base font-bold text-ink-900">Retouren via het portaal</p>
+            <p className="mt-1 text-xs text-warm">{retourenAan ? 'Deze klant kan retouren aanmelden in het portaal.' : 'Retouren staan uit voor deze klant.'}</p>
+          </div>
+          <form action={zetRetourenActiefActie}>
+            <input type="hidden" name="orgId" value={id} />
+            <input type="hidden" name="aan" value={retourenAan ? 'false' : 'true'} />
+            <button type="submit" className={`rounded-md px-4 py-2 text-sm font-semibold ${retourenAan ? 'border border-line text-ink-700 hover:bg-mist' : 'bg-ink-900 text-white hover:bg-ink-800'}`}>{retourenAan ? 'Retouren uitzetten' : 'Retouren aanzetten'}</button>
+          </form>
+        </div>
       </section>
     </>
   );

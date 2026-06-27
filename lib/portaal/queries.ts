@@ -26,6 +26,15 @@ export async function getMijnOrganisatie(): Promise<Organisatie | null> {
   return (data as Organisatie) ?? null;
 }
 
+/** Of retouren via het portaal voor de eigen organisatie aan staan. Standaard aan. */
+export async function getRetourenActief(): Promise<boolean> {
+  const sb = await getServerSupabase();
+  if (!sb) return true;
+  const { data } = await sb.from('organisaties').select('retouren_actief').limit(1).maybeSingle();
+  const v = (data as { retouren_actief: boolean | null } | null)?.retouren_actief;
+  return v !== false;
+}
+
 export async function getKledinglijn(): Promise<KledingItem[]> {
   const sb = await getServerSupabase();
   if (!sb) return [];

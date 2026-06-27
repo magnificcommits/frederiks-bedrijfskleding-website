@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { env } from '@/lib/env';
 import { addGebruiker, maakItem, zetItemActief, zetBestellingStatus, werkOrganisatieBij } from '@/lib/portaalAdmin';
-import { dashAuthed } from '@/lib/kms/adminClient';
+import { dashAuthed, kmsAdmin } from '@/lib/kms/adminClient';
 import { maakContactpersoon, verwijderContactpersoon, maakActiviteit, verwijderActiviteit } from '@/lib/kms/crm';
 import { uploadMedia } from '@/lib/kms/storage';
 import { maakLogo, verwijderLogo } from '@/lib/kms/logos';
@@ -26,6 +26,18 @@ export async function werkOrganisatie(formData: FormData) {
   if (id && naam) {
     await werkOrganisatieBij(id, { naam, plaats, adres, postcode, telefoon });
     await logAudit('klant_gewijzigd', { entiteit: 'organisatie', entiteitId: id });
+  }
+  redirect('/dashboard/klanten/' + id);
+}
+
+export async function zetRetourenActiefActie(formData: FormData) {
+  if (!(await authed())) redirect('/dashboard');
+  const id = String(formData.get('orgId') ?? '').trim();
+  const aan = String(formData.get('aan') ?? '') === 'true';
+  if (id) {
+    const sb = kmsAdmin();
+    if (sb) await sb.from('organisaties').update({ retouren_actief: aan }).eq('id', id);
+    await logAudit('klant_retouren_toggle', { entiteit: 'organisatie', entiteitId: id, details: { aan } });
   }
   redirect('/dashboard/klanten/' + id);
 }

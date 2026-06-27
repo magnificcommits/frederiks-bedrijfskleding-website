@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { isPortalConfigured } from '@/lib/env';
-import { getPortaalUser, getMijnOrganisatie } from '@/lib/portaal/queries';
+import { getPortaalUser, getMijnOrganisatie, getRetourenActief } from '@/lib/portaal/queries';
 import { getMijnToegang } from '@/lib/portaal/team';
 import { getMijnRetouren, getMijnRetourneerbareOrders, getRetourtermijn, type RetourStatus } from '@/lib/portaal/service';
 import PortaalNav from '../PortaalNav';
@@ -59,10 +59,11 @@ export default async function Retouren({ searchParams }: { searchParams: Promise
 
   const sp = await searchParams;
   const termijn = await getRetourtermijn();
-  const [retouren, orders, toegang] = await Promise.all([
+  const [retouren, orders, toegang, retourenAan] = await Promise.all([
     getMijnRetouren(),
     getMijnRetourneerbareOrders(termijn),
     getMijnToegang(),
+    getRetourenActief(),
   ]);
 
   return (
@@ -106,7 +107,11 @@ export default async function Retouren({ searchParams }: { searchParams: Promise
         <div>
           <div className="rounded-xl border border-line bg-white p-5 shadow-soft">
             <h2 className="font-display text-lg font-extrabold text-ink-900">Retour aanmelden</h2>
-            <RetourFormulier orders={orders} />
+            {retourenAan ? (
+              <RetourFormulier orders={orders} />
+            ) : (
+              <p className="mt-3 text-sm text-warm">Retouren via het portaal staan voor jullie uit. Neem contact op met Frederiks Bedrijfskleding om een retour te regelen.</p>
+            )}
           </div>
         </div>
 

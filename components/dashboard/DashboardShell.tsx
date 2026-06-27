@@ -38,6 +38,7 @@ const groepen: Groep[] = [
   ] },
   { titel: 'Productie', items: [
     { href: '/dashboard/logos', label: 'Logo’s en werkbonnen' },
+    { href: '/dashboard/drukproeven', label: 'Drukproeven' },
   ] },
   { titel: 'Service', items: [
     { href: '/dashboard/retouren', label: 'Retouren' },

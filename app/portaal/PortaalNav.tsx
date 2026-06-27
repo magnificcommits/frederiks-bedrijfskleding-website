@@ -19,6 +19,7 @@ export default function PortaalNav({ rol, actief }: { rol: PortaalRol | null; ac
     { href: '/portaal/retouren', label: 'Retouren', toon: true },
     { href: '/portaal/klachten', label: 'Vragen en klachten', toon: true },
     { href: '/portaal/goedkeuringen', label: 'Goedkeuringen', toon: mag(['beheerder', 'leidinggevende']) },
+    { href: '/portaal/drukproeven', label: 'Drukproeven', toon: mag(['beheerder', 'leidinggevende']) },
     { href: '/portaal/medewerkers', label: 'Medewerkers', toon: mag(['beheerder', 'leidinggevende']) },
     { href: '/portaal/facturen', label: 'Facturen', toon: mag(['beheerder', 'leidinggevende']) },
   ];

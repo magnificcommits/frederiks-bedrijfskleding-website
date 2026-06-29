@@ -104,8 +104,8 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
                   {prospecten.map((p) => (
                     <tr key={p.id} className="border-b border-line">
                       <td className="px-4 py-3 text-ink-900">
-                        <span className="font-semibold">{p.bedrijfsnaam}</span>
-                        {p.contactpersoon && <span className="block text-xs text-warm">{p.contactpersoon}</span>}
+                        <Link href={`/dashboard/prospects/${p.id}`} className="font-semibold text-amber-700 hover:text-amber-800">{p.bedrijfsnaam}</Link>
+                        {(p.eigenaar || p.contactpersoon) && <span className="block text-xs text-warm">{p.eigenaar || p.contactpersoon}</span>}
                         {p.email && <span className="block text-xs text-warm">{p.email}</span>}
                       </td>
                       <td className="px-4 py-3 text-warm">{p.plaats || '-'}</td>

@@ -20,6 +20,7 @@ export type Prospect = {
   id: string;
   bedrijfsnaam: string;
   contactpersoon: string | null;
+  eigenaar: string | null;
   email: string | null;
   telefoon: string | null;
   branche: string | null;
@@ -37,6 +38,7 @@ export type Prospect = {
 export type ProspectVelden = {
   bedrijfsnaam: string;
   contactpersoon?: string | null;
+  eigenaar?: string | null;
   email?: string | null;
   telefoon?: string | null;
   branche?: string | null;
@@ -156,5 +158,40 @@ export async function zetProspectStatus(id: string, status: string): Promise<boo
 export async function werkProspectNotitie(id: string, notitie: string): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
   const { error } = await sb.from('prospecten').update({ notitie: notitie || null }).eq('id', id);
+  return !error;
+}
+
+/** Eén prospect ophalen voor de detail-/bewerkpagina. */
+export async function getProspect(id: string): Promise<Prospect | null> {
+  const sb = kmsAdmin(); if (!sb) return null;
+  const { data } = await sb.from('prospecten').select('*').eq('id', id).maybeSingle();
+  return (data as Prospect) ?? null;
+}
+
+/**
+ * Werkt alle bewerkbare velden van een prospect bij (incl. eigenaar, status, score, notitie).
+ * Lege tekstvelden worden null. Alleen meegegeven velden worden aangepast.
+ */
+export async function werkProspect(
+  id: string,
+  v: Partial<ProspectVelden & { status: string; score: number; notitie: string | null }>,
+): Promise<boolean> {
+  const sb = kmsAdmin(); if (!sb) return false;
+  const tekst = (s: string | null | undefined) => (s == null ? undefined : s.trim() || null);
+  const patch: Record<string, unknown> = {};
+  if (v.bedrijfsnaam !== undefined && v.bedrijfsnaam.trim()) patch.bedrijfsnaam = v.bedrijfsnaam.trim();
+  if (v.contactpersoon !== undefined) patch.contactpersoon = tekst(v.contactpersoon);
+  if (v.eigenaar !== undefined) patch.eigenaar = tekst(v.eigenaar);
+  if (v.email !== undefined) patch.email = tekst(v.email);
+  if (v.telefoon !== undefined) patch.telefoon = tekst(v.telefoon);
+  if (v.branche !== undefined) patch.branche = tekst(v.branche);
+  if (v.plaats !== undefined) patch.plaats = tekst(v.plaats);
+  if (v.website !== undefined) patch.website = tekst(v.website);
+  if (v.grootte !== undefined) patch.grootte = tekst(v.grootte);
+  if (v.notitie !== undefined) patch.notitie = tekst(v.notitie);
+  if (v.status !== undefined && v.status.trim()) patch.status = v.status.trim();
+  if (v.score !== undefined && Number.isFinite(Number(v.score))) patch.score = Math.round(Number(v.score));
+  if (Object.keys(patch).length === 0) return true;
+  const { error } = await sb.from('prospecten').update(patch).eq('id', id);
   return !error;
 }

@@ -1,0 +1,19 @@
+# Projectregels (Claude Code / Cowork)
+
+> Kopieer dit bestand naar `CLAUDE.md` in de **root** van het project (naast `project-standards/`).
+> Bestaat er al een `CLAUDE.md`? Plak dan alleen het blok "Projectstandaarden" bovenaan en verwijder niets.
+> Zet de tier goed en verwijder deze instructieregels.
+
+## Projectstandaarden
+Dit project is **TIER [1 / 2 / 3]** — [reden in enkele woorden].
+(1 = brochure/MKB zonder login · 2 = app met login of opgeslagen klantdata · 3 = zorg/bijzondere
+persoonsgegevens of multi-tenant SaaS. Bij twijfel: kies de hogere.)
+
+@project-standards/WERKWIJZE.md
+
+**Hertoets de tier zodra:** [concrete trigger, bijv. "er echte gebruikersaccounts of
+persoonsgegevens bijkomen" of "een tweede klant/organisatie in dezelfde database komt"].
+
+## Projectcontext
+[Hieronder het projectspecifieke deel: stack, conventies, kernbeslissingen, openstaande punten.
+De algemene werkwijze staat in `project-standards/WERKWIJZE.md` — herhaal die hier niet.]

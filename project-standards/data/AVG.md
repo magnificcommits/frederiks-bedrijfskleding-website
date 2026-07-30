@@ -14,7 +14,7 @@ Voor Tier 2+ projecten die persoonsgegevens verwerken. Ik ben geen jurist; bij t
 - **Cookies en tracking:** alleen na toestemming (ePrivacy), niet-essentiële cookies standaard uit.
 - **Datalekken:** zie INCIDENT_RESPONSE en (Tier 3) DATA_BREACH_PLAYBOOK.
 
-## DPIA / GEB: wanneer verplicht
+## DPIA / GEB — wanneer verplicht
 Een DPIA (Gegevensbeschermingseffectbeoordeling) is verplicht zodra de verwerking "waarschijnlijk een hoog risico" oplevert. Concrete triggers (art. 35.3):
 - Grootschalige verwerking van **bijzondere categorieën** (gezondheid, ras, biometrie) of strafrechtelijke gegevens.
 - Systematische, uitgebreide **profilering** met rechtsgevolg of vergelijkbaar significant effect.

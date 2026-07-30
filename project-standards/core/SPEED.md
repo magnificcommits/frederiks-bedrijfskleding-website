@@ -6,13 +6,13 @@ Snelle sites. Snelheid is ranking-signaal én conversie-hefboom. De bottleneck i
 ## De drie Core Web Vitals (drempels, web.dev)
 | Metriek | Goed | Matig | Slecht |
 |---|---|---|---|
-| **LCP**, Largest Contentful Paint | **≤ 2,5 s** | 2,5-4,0 s | > 4,0 s |
-| **INP**, Interaction to Next Paint | **≤ 200 ms** | 200-500 ms | > 500 ms |
-| **CLS**, Cumulative Layout Shift | **≤ 0,1** | 0,1-0,25 | > 0,25 |
+| **LCP** — Largest Contentful Paint | **≤ 2,5 s** | 2,5-4,0 s | > 4,0 s |
+| **INP** — Interaction to Next Paint | **≤ 200 ms** | 200-500 ms | > 500 ms |
+| **CLS** — Cumulative Layout Shift | **≤ 0,1** | 0,1-0,25 | > 0,25 |
 
-- **INP verving FID** op 12 maart 2024 en meet álle interacties, niet alleen de eerste. Vaakst gefaalde metriek; let hier het meest op.
+- **INP verving FID** op 12 maart 2024 — meet álle interacties, niet alleen de eerste. Vaakst gefaalde metriek; let hier het meest op.
 - Beoordeeld op het **75e percentiel** van echte gebruikers, gesplitst mobiel/desktop.
-- LCP-drempel is **2,5 s**. Negeer de rondzwervende mythe dat het naar "2,0 s" is aangescherpt, dat is niet bevestigd.
+- LCP-drempel is **2,5 s**. Negeer de rondzwervende mythe dat het naar "2,0 s" is aangescherpt — dat is niet bevestigd.
 - TTFB is geen Core Web Vital maar een diagnose: goed ≤ 0,8 s.
 
 ## Veld- vs. lab-data
@@ -22,12 +22,12 @@ Snelle sites. Snelheid is ranking-signaal én conversie-hefboom. De bottleneck i
 
 ## Next.js/Vercel-hefbomen (grootste impact eerst)
 1. **Server Components als default.** `"use client"` alleen bij state, effects, event-handlers of browser-API's. Grootste hefboom voor INP.
-2. **`next/image`**: responsive maten, moderne formaten, lazy-loading. Expliciete `width`/`height` (of `fill`) tegen CLS; `priority` op de LCP-afbeelding.
-3. **`next/font`**: self-host fonts bij build; geen render-blocking font-request, geen swap-shift (nul CLS).
-4. **Streaming + Suspense**: stream above-the-fold eerst, stel trage data uit.
-5. **ISR / caching**: `revalidate` voor incrementele regeneratie; statisch/ISR vanaf de edge-CDN geeft de beste TTFB. In Next 15 is fetch-caching niet meer standaard aan, dus cache expliciet.
-6. **Bundle-grootte**: `next/dynamic` voor zware client-code, tree-shaking, vermijd grote client-libs.
-7. **Edge**: Vercels edge-netwerk + image-CDN snijden de globale TTFB.
+2. **`next/image`** — responsive maten, moderne formaten, lazy-loading. Expliciete `width`/`height` (of `fill`) tegen CLS; `priority` op de LCP-afbeelding.
+3. **`next/font`** — self-host fonts bij build; geen render-blocking font-request, geen swap-shift (nul CLS).
+4. **Streaming + Suspense** — stream above-the-fold eerst, stel trage data uit.
+5. **ISR / caching** — `revalidate` voor incrementele regeneratie; statisch/ISR vanaf de edge-CDN geeft de beste TTFB. In Next 15 is fetch-caching niet meer standaard aan — cache expliciet.
+6. **Bundle-grootte** — `next/dynamic` voor zware client-code, tree-shaking, vermijd grote client-libs.
+7. **Edge** — Vercels edge-netwerk + image-CDN snijden de globale TTFB.
 
 Op een andere stack: dezelfde principes (minimaal client-JS, dimensies reserveren, fonts self-hosten, cachen aan de rand).
 

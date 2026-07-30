@@ -1,3 +1,14 @@
+## Projectstandaarden (lees dit eerst)
+
+Dit project is **TIER 1** — brochure en leadgeneratie. LET OP: er bestaan al routes app/portaal, app/dashboard en app/kledingbeheer plus 21 Supabase-migraties. Verifieer of die live en met echte klantdata werken; zo ja, is dit TIER 2 en geldt data/ ook.
+Volg `project-standards/core/`.
+
+@project-standards/WERKWIJZE.md
+
+**Hertoets de tier zodra:** het portaal of dashboard met echte klantdata in gebruik is — dan TIER 2.
+
+---
+
 # Frederiks Bedrijfskleding — projectregel
 
 Dit project is **TIER 1** (brochure + leadgeneratie, geen login/klantdata).

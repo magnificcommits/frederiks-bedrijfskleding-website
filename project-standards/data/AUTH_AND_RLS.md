@@ -30,7 +30,19 @@ Voor Tier 2+ projecten die gebruikersdata opslaan.
 - **Rotatiebeleid:** vaste cadans + directe rotatie bij elk vermoeden van blootstelling. Niet committen alléén is niet genoeg.
 - Aparte secrets per omgeving (dev/preview/prod).
 
-## Threat modeling: STRIDE (kort, per significante feature)
+## Adminbeveiliging (hardening voor belangrijke platformen)
+MFA en RBAC zijn de basis; voor Tier 2+ met echte klant-/bedrijfsdata gaat het verder:
+- **Aparte adminaccounts** — geen adminrechten op je dagelijkse account; admin ≠ dev ≠ persoonlijk.
+- **Herauthenticatie (step-up) vóór impactvolle acties:** exports, rolwijzigingen, verwijderingen, bulk-mutaties vragen opnieuw om wachtwoord/MFA, ook binnen een lopende sessie.
+- **Korte adminsessies** met idle-timeout; geen "onbeperkt ingelogd".
+- **Audittrail van adminacties** — wie deed wat, wanneer, op welk object. Onmisbaar bij incident en aansprakelijkheid.
+- **Alert bij nieuwe/verhoogde admin** — een nieuw adminaccount of rolverhoging triggert een melding, niet stil.
+- **Break-glass-account** — één noodaccount met streng beheer (afgeschermd wachtwoord, MFA, gebruik gelogd en achteraf beoordeeld). Alleen voor als normale toegang faalt.
+- **Beperk productiebeheer tot max. 2-3 personen**; leg vast wie en waarom.
+- **Periodieke access review** (bv. per kwartaal): klopt de lijst met wie toegang heeft nog? Verwijder wat niet meer nodig is. Leg de review vast (datum + wie).
+- Eventueel **IP-beperking** voor superadmin bij hoog-risico platformen.
+
+## Threat modeling — STRIDE (kort, per significante feature)
 Loop bij een nieuwe feature de zes categorieën langs en noteer dreiging + maatregel:
 - **S**poofing → authenticatie · **T**ampering → integriteit · **R**epudiation → logging/audit-trail
 - **I**nformation disclosure → autorisatie/encryptie · **D**enial of service → rate-limit/quota · **E**levation of privilege → RBAC/RLS
@@ -44,5 +56,9 @@ Proportioneel: één korte ronde voorkomt de meeste ontwerpfouten. Voor het voll
 - [ ] `security definer` functies en storage policies gecontroleerd
 - [ ] Admin-routes role-protected
 - [ ] MFA op admin; least privilege; rolscheiding
+- [ ] Aparte adminaccounts; herauthenticatie vóór export/rolwijziging/verwijdering
+- [ ] Audittrail van adminacties aan; alert bij nieuwe admin
+- [ ] Break-glass-account ingericht; productiebeheer beperkt tot 2-3 personen
+- [ ] Access review ingepland (datum + eigenaar vastgelegd)
 - [ ] Secrets in vault/env met rotatiebeleid
 - [ ] STRIDE-ronde gedaan op de kernarchitectuur

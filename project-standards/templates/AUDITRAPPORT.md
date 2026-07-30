@@ -1,4 +1,4 @@
-# Security-/pentestrapport: [PROJECTNAAM]
+# Security-/pentestrapport — [PROJECTNAAM]
 
 **Datum:** ___  ·  **Uitgevoerd door:** ___  ·  **Scope:** ___
 **Stack-profiel:** ___  ·  **Omgeving getest:** staging / preview / ___ (niet productie)
@@ -29,11 +29,11 @@
 | DAST | OWASP ZAP / Nuclei | |
 | Typecheck / lint / build | tsc / eslint | |
 
-> **Niet geverifieerd / buiten scope:** ___ (wees expliciet: nooit "veilig" claimen zonder bewijs)
+> **Niet geverifieerd / buiten scope:** ___ (wees expliciet — nooit "veilig" claimen zonder bewijs)
 
 ## Bevindingen
 
-### [B1] Titel, Ernst: kritiek/hoog/middel/laag
+### [B1] Titel — Ernst: kritiek/hoog/middel/laag
 - **Risico:** ___
 - **Aanvalsscenario:** ___
 - **Betrokken bestand(en):** `pad:regel`

@@ -1,12 +1,13 @@
-# CI-workflows: installatie
+# CI-workflows — installatie
 
 Kant-en-klare GitHub Actions die de automatiseerbare checks **wekelijks** (en bij elke PR) draaien.
-De assistent kan dit voor je doen, zeg: *"Installeer de CI-workflows uit de project-standards in dit project."*
+De assistent kan dit voor je doen — zeg: *"Installeer de CI-workflows uit de project-standards in dit project."*
 
 ## Wat staat hier
 
 | Bestand hier | Kopieer naar | Draait | Doet |
 |---|---|---|---|
+| `ci.yml` | `.github/workflows/ci.yml` | elke PR + push main | **Blokkerende gate:** typecheck, lint, test, build |
 | `dependabot.yml` | `.github/dependabot.yml` | wekelijks | Dependency-/security-updates als PR |
 | `security-scan.yml` | `.github/workflows/security-scan.yml` | PR + ma 06:00 | Secret-scan, SAST, npm audit |
 | `quality-monitor.yml` | `.github/workflows/quality-monitor.yml` | ma 07:00 | Lighthouse: speed/SEO/a11y/best-practices |
@@ -17,25 +18,48 @@ De assistent kan dit voor je doen, zeg: *"Installeer de CI-workflows uit de proj
 
 1. Kopieer de bestanden naar de paden hierboven.
 2. Zet repo-secrets (Settings → Secrets and variables → Actions):
-   - `STAGING_URL`: de preview/staging-URL (nooit productie) voor Lighthouse + k6.
-   - `SEMGREP_APP_TOKEN`: optioneel, koppelt aan Semgrep's gratis platform voor Pro-regels.
+   - `STAGING_URL` — de preview/staging-URL (nooit productie) voor Lighthouse + k6.
+   - `SEMGREP_APP_TOKEN` — optioneel, koppelt aan Semgrep's gratis platform voor Pro-regels.
 3. Zet **Dependabot** + **secret scanning + push protection** aan in Settings → Code security.
 4. Maak in repo-settings de labels `dependencies` en `github-actions` aan (anders klaagt Dependabot).
+5. **Branch protection op `main`** (Settings → Branches → Add rule). Dit is wat een document níét kan afdwingen — zet het per repo:
+   - Require a pull request before merging (geen directe push naar `main`).
+   - Require status checks to pass → selecteer de **CI-verify** job uit `ci.yml`.
+   - Require branches to be up to date before merging.
+   - Dismiss stale approvals bij nieuwe commits.
+   - Block force pushes + block branch deletion.
+   - Geen merge bij open **Critical/High**-bevindingen.
+   - Werk je vaak alleen? Dan kun je een menselijke review niet altijd verplichten — maak de **verplichte technische checks** dan juist extra streng (CI-verify + secret scanning + Dependabot moeten groen).
+
+## Supply-chain hardening (Actions vastzetten)
+
+`actions/checkout@v4` volgt een tag; een tag kan in theorie verplaatst worden. Voor maximale hardening pin je op een volledige commit-SHA en laat je Dependabot de updates voorstellen:
+
+```yaml
+# in plaats van:  uses: actions/checkout@v4
+uses: actions/checkout@<volledige-commit-sha>  # v4.x.x
+```
+
+De `github-actions`-ecosystem-regel in `dependabot.yml` opent dan automatisch de update-PR's. Niet het grootste risico, wel het verschil tussen "goed" en "maximaal gehard".
+
+## Secretsbeheer
+
+Naast push protection + secret scanning (stap 3) houd je een inventaris bij: welke secret, waar, wie is eigenaar, wanneer geroteerd. Gebruik `templates/SECRET_REGISTER.md` — daarin zet je **nooit de waarde**, alleen naam, eigenaar, omgeving, systeem, aanmaak- en rotatiedatum.
 
 ## Gebruik je Aikido (of Snyk/vergelijkbaar)?
 
 Aikido is een all-in-one platform dat SAST (Semgrep-klasse), SCA/dependency-scan én secret-scan
-bundelt, en méér (DAST, IaC, malware). Heb je Aikido aangesloten op je repos, dan is
+bundelt — en méér (DAST, IaC, malware). Heb je Aikido aangesloten op je repos, dan is
 `security-scan.yml` **grotendeels overbodig**: laat die dan weg en gebruik Aikido als je
 security-scanner. **Houd dan wél** `quality-monitor.yml` (Lighthouse: speed/SEO/a11y) en
-`loadtest-smoke.yml` (k6): die doet Aikido niet. `dependabot.yml` mag blijven voor automatische
+`loadtest-smoke.yml` (k6) — die doet Aikido niet. `dependabot.yml` mag blijven voor automatische
 update-PR's (Aikido vindt CVE's, Dependabot opent de upgrade-PR's).
 
 > Aikido is betaald na de trial. Stop je ermee, zet dan `security-scan.yml` terug als gratis vangnet.
 
 ## Belangrijk
 
-- **Alleen staging testen.** Lighthouse en k6 wijzen naar `STAGING_URL`. Richt dit nooit op productie of direct op Supabase: dat kan als aanval worden gezien.
+- **Alleen staging testen.** Lighthouse en k6 wijzen naar `STAGING_URL`. Richt dit nooit op productie of direct op Supabase — dat kan als aanval worden gezien.
 - **Lighthouse = lab-data**, een vroege waarschuwing. De echte ranking-signalen komen uit veld-data (CrUX / Search Console). Zie `SPEED_OPTIMIZATION.md`.
 - **Eerste week Dependabot** = veel PR's. Merge één voor één, niet allemaal samen (zie `cowork-playbook.md`).
 - Andere stack dan npm/Next? Vraag de assistent de workflows te vertalen (pip/poetry, composer, go).

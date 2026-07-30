@@ -1,4 +1,4 @@
-# Golden Template: Orkest & Agency Setup
+# Golden Template — Orkest & Agency Setup
 
 ## Principe: één engine, configureerbaar
 Eén golden template. Branche-verschillen los je op met **config en content**, niet met aparte repos. Elke verbetering of security-fix doe je dan één keer, niet per branche.
@@ -56,7 +56,7 @@ De `project-standards/` map is het verschil tussen een template en een systeem. 
 9. Deploy → check `project-standards/core/SECURITY_AUDITOR.md` Fast Check
 10. Domein koppelen
 
-Daarna zit de tijd in content, foto's en SEO. Dat is je facturabele werk, niet de techniek.
+Daarna zit de tijd in content, foto's en SEO — dat is je facturabele werk, niet de techniek.
 
 ---
 
@@ -81,9 +81,9 @@ Alles in de golden template. Simpel, snel. Verbeteringen pas je handmatig toe bi
 
 **Fase 2 (pas bij ~5+ klanten, als onderhoud pijn doet):**
 Trek gedeelde logica in private npm-packages:
-- `@tim/ui`: componenten/blokken
-- `@tim/seo`: metadata + schema helpers
-- `@tim/security-config`: headers, RLS-patronen, Zod-schemas
+- `@tim/ui` — componenten/blokken
+- `@tim/seo` — metadata + schema helpers
+- `@tim/security-config` — headers, RLS-patronen, Zod-schemas
 
 Klant-repos krijgen deze als dependency. Eén fix → versie bumpen → `npm update` per klant. Fixes propageren.
 
@@ -98,6 +98,6 @@ Bouw Fase 2 niet vooruit. Het is overhead die je nu niet terugverdient.
 | Aantal templates | Eén golden template |
 | Branche-varianten | Presets in config, geen aparte repos |
 | Standaarden (security/merk/SEO) | In `project-standards/` binnen de template, geactiveerd via `.claude/CLAUDE.md` |
-| Repos koppelen per klant | Nee, standaarden reizen mee via "Use this template" |
+| Repos koppelen per klant | Nee — standaarden reizen mee via "Use this template" |
 | Package-laag | Pas bij 5+ klanten |
 | Eerste actie | Golden template afbouwen + `.claude/` vullen + op Template zetten |

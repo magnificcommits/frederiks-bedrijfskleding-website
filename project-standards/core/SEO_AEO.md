@@ -32,11 +32,11 @@ AI-antwoordmachines citeren content die een vraag direct en citeerbaar beantwoor
 - EEAT-signalen: zichtbare auteur, aantoonbare ervaring, bronnen.
 - Citeerbare feiten: concrete cijfers, jaartallen, definities.
 
-## llms.txt: nice-to-have, geen ranking-winst
+## llms.txt — nice-to-have, geen ranking-winst
 Een Markdown-bestand op `/llms.txt` (spec: llmstxt.org) dat je site samenvat voor LLM's. **Geen SEO- of ranking-voordeel**: zoek-/antwoord-crawlers negeren het grotendeels en Google heeft expliciet gezegd het niet te gebruiken. Wél nuttig voor developer-/agent-tooling (Cursor, Claude Code, Copilot, MCP). Goedkoop te leveren, maar verwacht er geen vindbaarheidswinst van. Template: `templates/llms.txt`.
 
 ## Content die rankt
-Door mensen geschreven content presteert beter dan AI-content op betrokkenheid en conversie, en zoekmachines belonen echte expertise. Volg daarom ANTI_AI_WRITING.md. Google straft content niet af omdat het door AI is gemaakt. Het oordeelt op nut en kwaliteit; wat wél wordt afgestraft is "scaled content abuse" (massaal pagina's maken om rankings te manipuleren). Generieke AI-tekst is een SEO-nadeel, geen versneller.
+Door mensen geschreven content presteert beter dan AI-content op betrokkenheid en conversie, en zoekmachines belonen echte expertise. Volg daarom ANTI_AI_WRITING.md. Google straft content niet af omdat het door AI is gemaakt — het oordeelt op nut en kwaliteit; wat wél wordt afgestraft is "scaled content abuse" (massaal pagina's maken om rankings te manipuleren). Generieke AI-tekst is een SEO-nadeel, geen versneller.
 
 ## Linkbuilding (kort, ethisch)
 Backlinks blijven een sterk signaal, maar de winst zit in kwaliteit en relevantie, niet volume.

@@ -1,4 +1,4 @@
-# Risico-register: [PROJECTNAAM]
+# Risico-register — [PROJECTNAAM]
 
 > Levend document. Kopieer naar de projectroot of `outputs/`. Werk bij elke audit en wijziging bij.
 > Ernst = Waarschijnlijkheid × Impact (Laag / Middel / Hoog / Kritiek).

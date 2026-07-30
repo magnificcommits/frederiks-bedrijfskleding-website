@@ -1,6 +1,6 @@
 # Kopieer naar .github/workflows/loadtest-smoke.yml
 # Lichte k6-rooktest tegen STAGING (nooit productie). Handmatig + wekelijks.
-# Voor een ZWARE loadtest: draai k6 lokaal/Grafana Cloud, zie LOADTEST_GUIDE.md.
+# Voor een ZWARE loadtest: draai k6 lokaal/Grafana Cloud — zie LOADTEST_GUIDE.md.
 name: Loadtest smoke
 
 on:

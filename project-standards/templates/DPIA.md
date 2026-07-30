@@ -1,4 +1,4 @@
-# DPIA / GEB: [PROJECTNAAM]
+# DPIA / GEB — [PROJECTNAAM]
 
 > Data Protection Impact Assessment (Gegevensbeschermingseffectbeoordeling). Vul dit in wanneer de
 > DPIA-trigger uit `AVG_COMPLIANCE.md §2` afgaat. Laat bij hoog risico toetsen door een DPO/jurist.

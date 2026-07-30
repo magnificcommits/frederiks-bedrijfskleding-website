@@ -7,7 +7,7 @@ Content die klinkt als een mens met expertise, niet als een AI. Geldt voor alle 
 - Door mensen geschreven content presteert beter op betrokkenheid, tijd op pagina en conversie dan AI-content.
 - Lezers en Google herkennen AI-slop. Zodra iemand doorheeft dat het AI is, daalt het vertrouwen direct.
 - Google EEAT beloont echte ervaring en expertise, niet voorspelbare tekst.
-- Google beoordeelt **kwaliteit en nut, niet auteurschap** ("gepast gebruik van AI is niet in strijd met onze richtlijnen"). Het risico is de **scaled content abuse**-policy: massaal pagina's maken om rankings te manipuleren, ongeacht hoe het is gemaakt. Menselijke stem is dus geen ranking-factor op zich, maar specificiteit en eerstehands ervaring zijn precies wat E-E-A-T beloont en wat AI-prose mist.
+- Google beoordeelt **kwaliteit en nut, niet auteurschap** ("gepast gebruik van AI is niet in strijd met onze richtlijnen"). Het risico is de **scaled content abuse**-policy: massaal pagina's maken om rankings te manipuleren, ongeacht hoe het is gemaakt. Menselijke stem is dus geen ranking-factor op zich — maar specificiteit en eerstehands ervaring zijn precies wat E-E-A-T beloont en wat AI-prose mist.
 
 ## Kernprincipe: schrijf voor de lezer, niet voor de detector
 Detector-gaming is doodlopend. Tools detecteren inmiddels ook "gehumaniseerde" tekst. Het doel is niet een score, maar tekst die een echt mens nuttig en specifiek vindt. Als de inhoud goed is, is de detector irrelevant.

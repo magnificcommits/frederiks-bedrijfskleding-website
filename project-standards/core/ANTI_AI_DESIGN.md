@@ -28,7 +28,7 @@ Betere prompts verbeteren hooguit de structuur. Een LLM is geen merkontwerper en
 5. **Voeg bewuste micro-interacties toe** die bij het merk passen, niet de standaard hover-fade.
 
 ## Craft mag de basis niet slopen
-"Ambacht" is geen vrijbrief voor zware sites. Laat custom fonts, animaties en beeld de **Core Web Vitals niet breken** (zie core/SPEED.md): LCP ≤ 2,5 s, INP ≤ 200 ms, CLS ≤ 0,1. En respecteer `prefers-reduced-motion`: schakel bewegende effecten uit voor wie daarom vraagt (toegankelijkheid, zie core/ACCESSIBILITY.md).
+"Ambacht" is geen vrijbrief voor zware sites. Laat custom fonts, animaties en beeld de **Core Web Vitals niet breken** (zie core/SPEED.md): LCP ≤ 2,5 s, INP ≤ 200 ms, CLS ≤ 0,1. En respecteer `prefers-reduced-motion` — schakel bewegende effecten uit voor wie daarom vraagt (toegankelijkheid, zie core/ACCESSIBILITY.md).
 
 ## Per-project merkspec (invullen vóór je bouwt)
 - Merkpersoonlijkheid in 3 woorden:

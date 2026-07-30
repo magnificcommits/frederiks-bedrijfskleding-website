@@ -24,11 +24,29 @@ De hele standaarden-set beantwoordt uiteindelijk één vraag: **"Kunnen we naar 
 - [ ] Supabase RLS actief op alle data-tabellen
 - [ ] Auth-flows getest (login, reset, logout, sessie)
 - [ ] Autorisatie server-side gecontroleerd (geen IDOR)
-- [ ] Rate limiting op publieke API-routes ÉN op login/admin (per-IP, 429 + Retry-After). Login zónder eigen limiter = brute-force-risico. Vertrouw niet blind op de Supabase-default. In-memory limiter (Map per instance) werkt NIET betrouwbaar op serverless/edge → gebruik gedeelde state (Supabase-RPC / Upstash / Vercel KV) en zorg dat de limiter *fail-closed* is
+- [ ] Rate limiting op publieke API-routes ÉN op login/admin (per-IP, 429 + Retry-After). Login zónder eigen limiter = brute-force-risico — vertrouw niet blind op de Supabase-default. In-memory limiter (Map per instance) werkt NIET betrouwbaar op serverless/edge → gebruik gedeelde state (Supabase-RPC / Upstash / Vercel KV) en zorg dat de limiter *fail-closed* is
 - [ ] Inputvalidatie met Zod
 - [ ] Backup + restore getest
 - [ ] AVG: bewaartermijnen, verwijder/exportproces, verwerkersovereenkomsten
 - [ ] Sentry scrubbing aan (geen PII/tokens in logs)
+- [ ] Backup + restore getest naar aparte omgeving (datum + uitkomst, zie INCIDENT_RESPONSE)
+- [ ] Branch protection op `main`: geen directe push, PR verplicht, verplichte CI-checks groen, geen merge bij open Critical/High, force-push + branch-delete geblokkeerd
+- [ ] Adminhardening: aparte adminaccounts, herauthenticatie vóór gevoelige acties, audittrail (zie AUTH_AND_RLS)
+
+## Veilige deploy (Tier 2+): één poort vóór productie
+Push-naar-Vercel is snel, maar voor projecten met data hoort er een poort tussen. Minimale volgorde:
+
+```
+PR → typecheck → lint → unit/integratietests → build
+   → dependency-scan → secret-scan → SAST → RLS-/tenant-tests
+   → preview-deploy → smoke/E2E → pas dán productie
+```
+
+- [ ] Productie en preview hebben **verschillende** databases en secrets
+- [ ] Preview is **niet** gekoppeld aan productiedata
+- [ ] DB-migraties zijn **backwards compatible** (oude code blijft werken tijdens deploy)
+- [ ] Rollback van applicatie **én** database voorbereid en beschreven
+- [ ] Geen deploy tijdens een half uitgevoerde migratie
 
 ## Zorg / multi-tenant (Tier 3)
 - [ ] PENTEST_PRE_GOLIVE volledig uitgevoerd
@@ -41,7 +59,7 @@ De hele standaarden-set beantwoordt uiteindelijk één vraag: **"Kunnen we naar 
 
 ## Eindoordeel: GO / GO-MITS / NO-GO
 
-Vul dit verdict in en geef het als slotregel. Een FAIL is geen schande. Daar is de checklist voor.
+Vul dit verdict in en geef het als slotregel. Een FAIL is geen schande — daar is de checklist voor.
 
 | Veld | Invullen |
 |---|---|
@@ -74,3 +92,23 @@ Alleen restrisico's, élk met akkoord + eigenaar + deadline → ⚠️ GO-MITS
 > **VERDICT: [GO / GO-MITS / NO-GO]** voor productie van *[project]* op *[datum]*.
 > Onderbouwing: *[1-2 zinnen: wat is geverifieerd]*. Restrisico's: *[geen / lijst met deadlines]*.
 > Niet gecontroleerd: *[expliciet benoemen]*.
+
+---
+
+## Bewijsdossier per release (aantoonbaarheid)
+
+Een verdict is zo sterk als het bewijs eronder. Sla per livegang de uitkomsten op in `outputs/`, zodat je later kunt aantonen wat je écht getest hebt in plaats van welke controle je had wíllen doen:
+
+```
+outputs/
+├── go-live-report-YYYY-MM-DD.md      ← dit ingevulde verdict
+├── security-audit-YYYY-MM-DD.md      ← DEEP AUDIT / pentestrapport (templates/AUDITRAPPORT.md)
+├── dependency-scan-YYYY-MM-DD.txt    ← npm audit-output
+├── secret-scan-YYYY-MM-DD.txt        ← gitleaks-output
+├── rls-test-YYYY-MM-DD.txt           ← pgTAP/RLS-testuitkomst (Tier 2+)
+├── e2e-test-YYYY-MM-DD.txt           ← smoke/E2E-uitkomst
+├── backup-restore-test-YYYY-MM-DD.md ← restore-test (Tier 2+)
+└── accepted-risks-YYYY-MM-DD.md      ← geaccepteerde restrisico's (RISICOREGISTER)
+```
+
+Geen bewijsbestand = de bijbehorende check telt als **niet uitgevoerd**.

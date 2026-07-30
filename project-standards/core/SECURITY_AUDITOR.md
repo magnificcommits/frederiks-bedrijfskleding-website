@@ -6,7 +6,7 @@ Behandel beveiliging, privacy, betrouwbaarheid en compliance als doorlopend proc
 
 ---
 
-## 0. Stack-adaptatie: universeel vs. stack-specifiek
+## 0. Stack-adaptatie — universeel vs. stack-specifiek
 
 De **categorieën** zijn universeel en gelden voor élk project: authenticatie & autorisatie, data-isolatie, input-validatie, secrets-beheer, security-headers, dependencies, foutafhandeling & logging, en compliance. De **concrete checks** in §3 zijn geschreven voor de hoofdstack (Next.js, React, Tailwind, Vercel, Supabase, Sanity, Sentry, GitHub).
 
@@ -68,7 +68,7 @@ Noem expliciet wat je **niet** kon verifiëren. Verklaar nooit iets veilig zonde
 - [ ] **Server Actions (`'use server'`)**: elke action checkt auth + autorisatie server-side. Geen impliciet vertrouwen op de UI.
 - [ ] **Server Components**: lekken geen secrets, tokens of interne data naar props die client-side belanden.
 - [ ] **Supabase RLS**: actief op álle tabellen met user/klant/bedrijf/persoonsdata. Policies gebruiken `auth.uid()` correct.
-- [ ] **`security definer` functies en Storage bucket policies**: omzeilen RLS, controleer expliciet, dit is de meest gemiste gap.
+- [ ] **`security definer` functies en Storage bucket policies**: omzeilen RLS — controleer expliciet, dit is de meest gemiste gap.
 - [ ] **Env-scheiding**: development / preview / production correct gescheiden.
 
 ### Autorisatie & data-isolatie
@@ -131,11 +131,11 @@ Noem expliciet wat je **niet** kon verifiëren. Verklaar nooit iets veilig zonde
 
 ## 7. Rapportageformat (alleen DEEP AUDIT)
 
-**Samenvatting**: status (groen/oranje/rood), top-risico's, wat direct moet.
+**Samenvatting** — status (groen/oranje/rood), top-risico's, wat direct moet.
 
-**Bevindingen**: per stuk: titel · ernst (laag/middel/hoog/kritiek) · risico · aanvalsscenario · betrokken bestanden · concrete oplossing · bewijzende test.
+**Bevindingen** — per stuk: titel · ernst (laag/middel/hoog/kritiek) · risico · aanvalsscenario · betrokken bestanden · concrete oplossing · bewijzende test.
 
-**Actieplan**: Direct / Binnen 7 dagen / Later / Niet nodig (met reden).
+**Actieplan** — Direct / Binnen 7 dagen / Later / Niet nodig (met reden).
 
 ---
 
@@ -147,4 +147,4 @@ Noem expliciet wat je **niet** kon verifiëren. Verklaar nooit iets veilig zonde
 - Bij twijfel: strenger.
 - Vermijd overengineering, maar nooit gemak boven veiligheid bij persoons- of klantdata.
 
-**Einddoel:** aantoonbaar veilig, privacybewust, betrouwbaar en schaalbaar, geen schijnveiligheid. Combineer deze prompt altijd met echte checks in GitHub, Supabase, Sentry, Vercel en periodiek een externe review.
+**Einddoel:** aantoonbaar veilig, privacybewust, betrouwbaar en schaalbaar — geen schijnveiligheid. Combineer deze prompt altijd met echte checks in GitHub, Supabase, Sentry, Vercel en periodiek een externe review.

@@ -32,16 +32,16 @@ Bij bijzondere persoonsgegevens (gezondheid, behandelgegevens) zijn de gevolgen 
 |---|---|---|---|
 | Verantwoordelijke project | | | direct bij elk vermoeden |
 | Privacyjurist / DPO | | | bij hoog risico / twijfel meldplicht |
-| AP: meldloket datalekken | autoriteitpersoonsgegevens.nl | (online formulier) | binnen 72u indien meldplichtig |
+| AP — meldloket datalekken | autoriteitpersoonsgegevens.nl | (online formulier) | binnen 72u indien meldplichtig |
 | Verwerker(s) (Supabase/Vercel/…) | | | als het lek bij een verwerker zit |
 
-## Datalekregister (art. 33.5: altijd invullen, ook bij niet-gemelde lekken)
+## Datalekregister (art. 33.5 — altijd invullen, ook bij niet-gemelde lekken)
 
 | Datum bewust | Feiten (wat gebeurde) | Soort data (bijzondere cat.?) | Aantal betrokkenen | Gevolgen/effecten | Gemeld AP? (datum) | Betrokkenen geïnformeerd? | Maatregelen (herstel + preventie) | Status |
 |---|---|---|---|---|---|---|---|---|
 | | | | | | | | | |
 
-## Notificatie aan betrokkenen (art. 34: sjabloon, duidelijke taal)
+## Notificatie aan betrokkenen (art. 34 — sjabloon, duidelijke taal)
 
 > Beste [naam/aanhef],
 >

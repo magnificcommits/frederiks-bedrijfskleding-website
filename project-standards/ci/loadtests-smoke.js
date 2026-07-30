@@ -21,5 +21,5 @@ export const options = {
 export default function () {
   const res = http.get(TARGET);
   check(res, { "status 200": (r) => r.status === 200 });
-  sleep(1); // pacing, niet meppen
+  sleep(1); // pacing — niet meppen
 }

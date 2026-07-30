@@ -1,4 +1,4 @@
-# Project Standards: Orkest & Trigger-systeem
+# Project Standards — Orkest & Trigger-systeem
 
 Eén map die je in elk project zet. Subfolders per risico-tier. Je activeert per project alleen wat nodig is. Een brochure-site gebruikt alleen `core/`, je zorgsoftware de volledige set.
 
@@ -19,14 +19,23 @@ Een `.md` beschrijft een controle. Hij beschermt niets. Echte beveiliging zit in
 ```
 project-standards/
 ├── README.md                    ← dit bestand (tier-selector)
+├── WERKWIJZE.md                 ← vaste sessieregels, via @-import geladen in CLAUDE.md van elk project
 ├── GOLDEN_TEMPLATE_SETUP.md     ← agency-orkest: één template, presets, uitrol
 ├── WEEKLY_MONITOR.md            ← wekelijkse cadans: CI + Cowork-agent
+├── LOADTEST_GUIDE.md            ← k6: rooktest (CI) + zware capaciteits-/piektests
 ├── cowork-playbook.md           ← praktische lessen + quick-win templates
-├── ci/                          ← GitHub Actions (security-scan, quality-monitor, Dependabot)
-├── templates/                   ← herbruikbare bestanden (o.a. llms.txt)
+├── ci/                          ← GitHub Actions (ci-verify, security-scan, quality-monitor, loadtest, Dependabot)
+├── prompts/                     ← herbruikbare opdrachten
+│   └── GOVERNANCE_AUDIT.md       repo + documentatie in overeenstemming met de code brengen
+├── templates/                   ← herbruikbare bestanden (llms.txt, SECRET_REGISTER, CLAUDE.md.example,
+│                                  ADR, TECH_DEBT, DPIA, RISICOREGISTER, AUDITRAPPORT, PRODUCT_EN_PLATFORM)
 ├── core/                        ← ALTIJD, elk project
 │   ├── SECURITY_AUDITOR.md       security/privacy/compliance auditor (tiered)
 │   ├── GO_LIVE_CHECKLIST.md      wat moet kloppen vóór live → GO/GO-MITS/NO-GO
+│   ├── ARCHITECTURE_AND_API.md   architectuurregels, techniek toevoegen, API-strategie (Tier 2+)
+│   ├── TESTING_AND_DOD.md        Definition of Done, testprioriteit, autorisatiematrix
+│   ├── DOC_GOVERNANCE.md         één bron van waarheid per onderwerp + bewijsregel
+│   ├── DATA_AND_AI_QUALITY.md    databetrouwbaarheid, AI-output naar gebruikers, evaluatie
 │   ├── AI_RULES.md               regels voor coding agents + product-LLM's
 │   ├── ANTI_AI_WRITING.md        content die klinkt als mens, niet AI
 │   ├── ANTI_AI_DESIGN.md         design dat niet op AI-slop lijkt
@@ -47,17 +56,17 @@ project-standards/
 
 ---
 
-## Tier-selector: bepaal bij projectstart
+## Tier-selector — bepaal bij projectstart
 
-**TIER 1, Brochure/MKB-site.** Geen login, hooguit contactformulier.
+**TIER 1 — Brochure/MKB-site.** Geen login, hooguit contactformulier.
 → gebruik: `core/`
 → voorbeeld: Dierenkliniek Coenen, Optiek Jansen, Eres
 
-**TIER 2, App met login.** Klantdata, CRM, facturatie, portaal.
+**TIER 2 — App met login.** Klantdata, CRM, facturatie, portaal.
 → gebruik: `core/` + `data/`
 → voorbeeld: JMGT-portaal, klantportalen, leadmanagement
 
-**TIER 3, Medische/bijzondere persoonsgegevens of multi-tenant SaaS.**
+**TIER 3 — Medische/bijzondere persoonsgegevens of multi-tenant SaaS.**
 → gebruik: `core/` + `data/` + `zorg/`
 → voorbeeld: EetIdee zorgsoftware, afspraaksysteem met behandelgegevens
 
@@ -65,13 +74,33 @@ Bij twijfel tussen twee tiers: kies de hogere.
 
 ---
 
-## Hoe je "triggert" per project
+## Hoe je "triggert" per project — 3 lagen
 
-Zet één regel bovenaan je project-instructie (Cowork of Claude Code):
+Losse regels intypen werkt, maar vergeet je. Bouw het in drie lagen zodat het steeds minder van je geheugen afhangt:
 
-> Dit project is **TIER 2**. Volg `project-standards/core/` en `project-standards/data/`.
+**Laag 1 — Minimum (handmatig, per sessie).** Zet één regel bovenaan je project-instructie (Cowork-project of chat):
 
-Claude leest dan alleen die subset. Geen ruis op een brochure-site, volle rigueur waar het telt.
+> Dit project is **TIER 2**. Volg `project-standards/core/` en `project-standards/data/`; DEEP AUDIT bij data-/auth-/route-wijzigingen; GO_LIVE_CHECKLIST vóór deploy.
+
+**Laag 2 — Automatisch (aanbevolen, altijd gelezen).** Kopieer `templates/CLAUDE.md.example` naar `CLAUDE.md` in de **root** van het project en zet de tier goed. Dat bestand laadt via `@project-standards/WERKWIJZE.md` de gedeelde sessieregels, zodat je ze op één plek onderhoudt. Claude Code én Cowork lezen `CLAUDE.md` **automatisch bij elke sessie** — je hoeft niets meer te plakken. Staat dit in je golden template, dan reist het mee bij elke "Use this template", dus élk nieuw project heeft het vanaf commit 1. Dit is het echte antwoord op "altijd naar gekeken".
+
+**Laag 3 — Afgedwongen (de enige harde garantie).** Een agent die markdown leest, is probabilistisch: soms slaat hij het over of interpreteert hij het verkeerd. CI is dat niet. Zet daarom `ci/ci.yml` + branch protection aan (zie `ci/README.md`) zodat onveilige wijzigingen **worden geblokkeerd** ook als niemand — mens of agent — de docs las. Laag 1-2 sturen; laag 3 dwingt af.
+
+Met laag 2 leest Claude alleen de juiste subset: geen ruis op een brochure-site, volle rigueur waar het telt.
+
+---
+
+## Per project: relevantie bepalen (binnen de tier)
+
+De tier bepaalt de **verplichte** set. Beoordeel bij projectstart daarbinnen welke risico's extra spelen en pas de bijbehorende dieptecheck toe. Dit is *aanvullend*, niet om controles weg te strepen:
+
+- **AI-feature** (chatbot/RAG/agent)? → `core/AI_RULES.md` §product-LLM (OWASP LLM Top 10).
+- **File uploads**? → upload-validatie + opslagbeleid in `core/SECURITY_AUDITOR.md`.
+- **Betalingen / webhooks**? → signature-verificatie + idempotency (SECURITY_AUDITOR §integraties).
+- **Multi-tenant** (meerdere klanten/organisaties)? → `zorg/MULTI_TENANT.md`, óók zonder zorgdata.
+- **Geen database / statische site**? → sla `data/` over en **benoem dat expliciet**.
+
+**Regel (niet onderhandelbaar):** een control die bij je tier hoort, sla je alleen over met een expliciete, geschreven reden — met eigenaar en datum, zoals een GO-MITS-restrisico (zie `core/GO_LIVE_CHECKLIST.md`). "Voelt niet relevant" is geen reden; zo verdwijnen controles stil. Bij twijfel: toepassen.
 
 ---
 
@@ -88,3 +117,5 @@ Bouw een tier niet vooruit voor een project dat niet bestaat. Een doc zonder bij
 ## Cadans: live blijven, niet alleen live gaan
 
 Veiligheid verloopt. Na go-live houd je het bij via twee lagen: geautomatiseerde GitHub Actions in `ci/` (per PR + wekelijks: dependency-, secret- en quality-scan) en een wekelijkse Cowork-agentronde langs alle facetten. Zie `WEEKLY_MONITOR.md`. Praktische lessen en herbruikbare prompts staan in `cowork-playbook.md`.
+
+Documentatie verloopt net zo hard. Na een grote bouwronde, vóór een livegang en verder per kwartaal draai je `prompts/GOVERNANCE_AUDIT.md`: die brengt alle `.md`-bestanden weer in overeenstemming met de echte code en config, en houdt `.claude/CLAUDE.md` actueel. De regels waaraan die audit toetst — één leidend document per onderwerp, geen claim zonder bewijs — staan in `core/DOC_GOVERNANCE.md`.

@@ -4,22 +4,22 @@
 Je kunt niet verbeteren wat je niet meet. Security/SEO/speed voorkomen risico; meting laat zien wat geld oplevert. Zet dit op dag één op, niet achteraf.
 
 ## Wat meten (begin klein)
-- **Eén north-star metric** per project: het getal dat echt succes weergeeft (betalende klanten, afgeronde boekingen, gekwalificeerde leads). Niet pageviews.
-- **De funnel ernaartoe**: de 3-5 stappen van bezoek → conversie. Meet waar mensen afhaken.
-- **Acquisitie**: welke kanalen leveren de conversies (niet alleen het verkeer).
+- **Eén north-star metric** per project — het getal dat echt succes weergeeft (betalende klanten, afgeronde boekingen, gekwalificeerde leads). Niet pageviews.
+- **De funnel ernaartoe** — de 3-5 stappen van bezoek → conversie. Meet waar mensen afhaken.
+- **Acquisitie** — welke kanalen leveren de conversies (niet alleen het verkeer).
 
 Meet outcomes (conversies, omzet), niet alleen activiteit (clicks, views).
 
-## GA4: basis
+## GA4 — basis
 GA4 is event-gebaseerd. Sinds 2024 heten "conversions" in GA4 **"key events"** (elk event dat je als belangrijk markeert); "conversions" is nu de Google Ads-zijde.
 - Definieer events voor je funnelstappen; markeer de beslissende als **key event**.
 - Bouw de funnel via het Funnel exploration-rapport.
 - Koppel Google Search Console aan GA4 voor de SEO-kant (zie core/SEO_AEO.md).
 
-## Consent Mode v2 en het verschil met de AVG
+## Consent Mode v2 — en het verschil met de AVG
 Let op het onderscheid:
 - **Consent Mode v2** is een **Google-product-eis** (verplicht sinds 6 maart 2024 voor EER-verkeer dat Google Ads-/analytics-features gebruikt). Het geeft het toestemmingssignaal door aan Google-tags.
-- De **juridische** plicht om vooraf toestemming te vragen komt uit ePrivacy + AVG (zie data/AVG.md). Een **CMP** (consent-management-platform) verzamelt die toestemming. Consent Mode is dus niet hetzelfde als de wettelijke consent: een CMP vervult die.
+- De **juridische** plicht om vooraf toestemming te vragen komt uit ePrivacy + AVG (zie data/AVG.md). Een **CMP** (consent-management-platform) verzamelt die toestemming. Consent Mode is dus niet hetzelfde als de wettelijke consent — een CMP vervult die.
 
 De vier consent-parameters:
 

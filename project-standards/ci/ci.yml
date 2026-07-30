@@ -1,0 +1,49 @@
+# Kopieer naar .github/workflows/ci.yml
+# De BLOKKERENDE poortwachter per PR: typecheck + lint + tests + build.
+# Dit is de "CI-verify" waar security-scan.yml naar verwijst. Zet deze checks
+# verplicht in branch protection (zie ci/README.md) zodat een rode build niet mergebaar is.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify (typecheck, lint, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test --if-present
+      - run: npm run build
+
+  audit:
+    name: Dependency audit (informatief)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true # informatief; security-scan.yml + Dependabot zijn de security-laag
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci --no-audit --no-fund
+      - run: npm audit --audit-level=high

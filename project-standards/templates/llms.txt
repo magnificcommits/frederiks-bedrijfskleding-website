@@ -3,7 +3,7 @@
 > [Eén of twee zinnen die kernachtig zeggen wat deze site/dit product is en voor wie. Dit is de
 > samenvatting die een LLM als eerste leest.]
 
-[Optioneel: een korte alinea context, geen heading, met wat een AI moet weten om de site goed te
+[Optioneel: een korte alinea context — geen heading — met wat een AI moet weten om de site goed te
 gebruiken of te citeren: kernfeiten, scope, belangrijkste termen.]
 
 ## Belangrijkste pagina's

@@ -23,52 +23,52 @@ Checklist die ik in ~80% van Next+Supabase projecten zie:
 
 ### Auth & sessions
 
-- [ ] **Admin-cookie ongesigneerd**: vaak een `JSON.parse(cookie).name` check zonder HMAC. Iedereen kan forge'n. Fix: `lib/adminSession.ts` met Web Crypto HMAC, twee cookies (body + sig)
-- [ ] **Klant-middleware vertrouwt op cookie-presence**: `cookie.value.length > 10` zegt niets. Echte verificatie hoort in route-handlers via `supabase.auth.getUser()`
-- [ ] **Open redirect via `?next=`**: `startsWith('/')` accepteert `//evil.com`. Fix: blokkeer `//`, `/\\`, control-chars, en optionele prefix-allowlist
-- [ ] **Single-secret admin auth**: `ADMIN_SECRET` dat zowel admin-login als share-links autoriseert. Splits in twee env vars
+- [ ] **Admin-cookie ongesigneerd** — vaak een `JSON.parse(cookie).name` check zonder HMAC. Iedereen kan forge'n. Fix: `lib/adminSession.ts` met Web Crypto HMAC, twee cookies (body + sig)
+- [ ] **Klant-middleware vertrouwt op cookie-presence** — `cookie.value.length > 10` zegt niets. Echte verificatie hoort in route-handlers via `supabase.auth.getUser()`
+- [ ] **Open redirect via `?next=`** — `startsWith('/')` accepteert `//evil.com`. Fix: blokkeer `//`, `/\\`, control-chars, en optionele prefix-allowlist
+- [ ] **Single-secret admin auth** — `ADMIN_SECRET` dat zowel admin-login als share-links autoriseert. Splits in twee env vars
 
 ### Database & RLS
 
-- [ ] **Service-role client met user-supplied IDs**: RLS wordt bypassed; ownership-check moet in app-code
-- [ ] **Mutations leunen alleen op RLS**: `update(...).eq('id', id)` zonder `.eq('user_id', user.id)`. Defense-in-depth: voeg user-filter toe naast RLS
-- [ ] **IDOR via foreign keys**: body neemt `apparatuur_id`, `locatie_id` aan. Verifieer dat de FK aan de huidige user toebehoort vóór insert
-- [ ] **RLS niet aan op alle tabellen**: check via `pg_class.relrowsecurity`; vaak missen scrape/log/cache tabellen
+- [ ] **Service-role client met user-supplied IDs** — RLS wordt bypassed; ownership-check moet in app-code
+- [ ] **Mutations leunen alleen op RLS** — `update(...).eq('id', id)` zonder `.eq('user_id', user.id)`. Defense-in-depth: voeg user-filter toe naast RLS
+- [ ] **IDOR via foreign keys** — body neemt `apparatuur_id`, `locatie_id` aan. Verifieer dat de FK aan de huidige user toebehoort vóór insert
+- [ ] **RLS niet aan op alle tabellen** — check via `pg_class.relrowsecurity`; vaak missen scrape/log/cache tabellen
 
 ### SSRF & external calls
 
-- [ ] **`fetch(userUrl)` zonder DNS-block**: kan AWS IMDS (`169.254.169.254`), localhost, interne services bereiken. Helper: `safeFetch` met DNS-resolve + private-IP-blocklist + `redirect: 'manual'`
-- [ ] **Webhook auth ontbreekt**: Resend/Stripe/Sanity webhooks zonder signature-verificatie
+- [ ] **`fetch(userUrl)` zonder DNS-block** — kan AWS IMDS (`169.254.169.254`), localhost, interne services bereiken. Helper: `safeFetch` met DNS-resolve + private-IP-blocklist + `redirect: 'manual'`
+- [ ] **Webhook auth ontbreekt** — Resend/Stripe/Sanity webhooks zonder signature-verificatie
 
 ### Input & rendering
 
-- [ ] **`dangerouslySetInnerHTML` met user-input**: alleen voor statische JSON-LD, nooit voor lead-toelichting
-- [ ] **Mail-HTML zonder `escapeHtml`**: een lead-naam `<script>` in een admin-mail = stored XSS
-- [ ] **CRLF in mail-subject**: header-injection. Strip `\r\n` uit alles dat in headers belandt
-- [ ] **PostgREST `or(...)`-injection**: user `q` met komma's kan extra OR-clauses injecteren. Strip `,` en `()` uit search-input
+- [ ] **`dangerouslySetInnerHTML` met user-input** — alleen voor statische JSON-LD, nooit voor lead-toelichting
+- [ ] **Mail-HTML zonder `escapeHtml`** — een lead-naam `<script>` in een admin-mail = stored XSS
+- [ ] **CRLF in mail-subject** — header-injection. Strip `\r\n` uit alles dat in headers belandt
+- [ ] **PostgREST `or(...)`-injection** — user `q` met komma's kan extra OR-clauses injecteren. Strip `,` en `()` uit search-input
 
 ### Cost-amplification (vergeten klasse)
 
-- [ ] **LLM-endpoints zonder rate-limit**: Opus call vanaf forged cookie = €€€/dag
-- [ ] **Image-gen endpoints** (Replicate/Sora): idem, soms €0,15/call
-- [ ] **GET-method op state-changing endpoints**: kan via `<img src>` in mail getriggerd worden, bypassed Lax-cookie protection
-- [ ] **In-memory rate-limit** in serverless is nutteloos (cold start reset). Gebruik DB-backed (Supabase tabel of Upstash)
+- [ ] **LLM-endpoints zonder rate-limit** — Opus call vanaf forged cookie = €€€/dag
+- [ ] **Image-gen endpoints** (Replicate/Sora) — idem, soms €0,15/call
+- [ ] **GET-method op state-changing endpoints** — kan via `<img src>` in mail getriggerd worden, bypassed Lax-cookie protection
+- [ ] **In-memory rate-limit** in serverless = nutteloos (cold start reset). Gebruik DB-backed (Supabase tabel of Upstash)
 
 ### Headers & config
 
-- [ ] **CSP in Report-Only**: meet je 2 weken? Anders is het dood gewicht
+- [ ] **CSP in Report-Only** — meet je 2 weken? Anders is het dood gewicht
 - [ ] **`'unsafe-inline'` en `'unsafe-eval'` in script-src** = CSP nutteloos. Migreer naar nonces
 - [ ] **`X-XSS-Protection`** = deprecated in moderne browsers, verwijderen of `0`
-- [ ] **HSTS preload**: alleen aanzetten als je echt zeker bent (irreversibel ~1 jaar)
-- [ ] **Cross-Origin headers** (COOP, CORP): ontbreken meestal volledig
+- [ ] **HSTS preload** — alleen aanzetten als je echt zeker bent (irreversibel ~1 jaar)
+- [ ] **Cross-Origin headers** (COOP, CORP) ontbreken meestal volledig
 
 ### Dependencies & monitoring
 
-- [ ] **Next.js outdated**: check via `npm ls next`. CVEs komen periodiek
+- [ ] **Next.js outdated** — check via `npm ls next`. CVEs komen periodiek
 - [ ] **Geen Dependabot** = je hoort het pas als een klant belt
 - [ ] **Geen Sentry/error-monitoring** = production-bugs blijven onzichtbaar
 - [ ] **Tests draaien niet in CI** = regressies sluipen erin
-- [ ] **`.env.local` in git?**: check `git log --all -- .env*`
+- [ ] **`.env.local` in git?** — check `git log --all -- .env*`
 
 ---
 
@@ -248,7 +248,7 @@ export function safeNext(v: string | null | undefined, fallback: string, allowed
 
 ### Bij terminal-werk
 
-- **Plak ALLEEN het commando** terug in chat, niet de output PLUS mijn instructies eromheen. PowerShell parsed mijn tekst dan als commando's, met een urenlange error-stream als gevolg
+- **Plak ALLEEN het commando** terug in chat, niet de output PLUS mijn instructies eromheen. PowerShell parsed mijn tekst als commando's → urenlange error-stream
 - **Eén commando per regel, Enter na elke regel.** Niet alles in één blok plakken
 - Bij grote rebases: **stash de uncommitted changes EERST**, dan rebase
 
@@ -263,7 +263,7 @@ export function safeNext(v: string | null | undefined, fallback: string, allowed
 
 - **Eerste week** = veel PR's tegelijk (sanity, supabase, resend, etc). Merge 1 voor 1, niet allemaal samen → makkelijker reverten
 - **`security-updates` groep** smokkelt majors mee. Voeg `exclude-patterns` toe voor next/react/vite/typescript/tailwindcss
-- **TypeScript major bumps** breken altijd (5→6, 6→7 etc), dus ignoren tot je tijd hebt
+- **TypeScript major bumps** breken altijd (5→6, 6→7 etc) — ignoren tot je tijd hebt
 - Dependabot wil **labels** die nog niet bestaan? Maak `dependencies` + `github-actions` labels in repo settings, of verwijder uit yml
 
 ### Bij Vercel deploys
@@ -298,10 +298,10 @@ Doel-score: **8,5/10 audit-grade** voor een klein team. 9,5+ vereist dedicated s
 
 ## 6. Wat NIET in deze playbook hoort
 
-- Specifieke business-logica (lead-scoring, MijnKeuken, etc.): per project anders
-- Production-credentials: die staan in Vercel, niet hier
-- Concrete CVE-nummers: verouderen snel, refer naar `npm audit` output
-- Tooling-keuzes die je al hebt: Sentry vs Datadog, Supabase vs Postgres = projectspecifiek
+- Specifieke business-logica (lead-scoring, MijnKeuken, etc.) — per project anders
+- Production-credentials — die staan in Vercel, niet hier
+- Concrete CVE-nummers — verouderen snel, refer naar `npm audit` output
+- Tooling-keuzes die je al hebt — Sentry vs Datadog, Supabase vs Postgres = projectspecifiek
 
 ---
 

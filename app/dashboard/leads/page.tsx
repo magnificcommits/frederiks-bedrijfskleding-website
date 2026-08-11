@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import { env, isLeadsDbConfigured } from '@/lib/env';
+import { isLeadsDbConfigured } from '@/lib/env';
+import { dashAuthed } from '@/lib/kms/adminClient';
 import { getLeads } from '@/lib/supabase';
 import { saveLeadEdit } from '../actions';
 import { converteerLead, bulkConverteerLeads } from './actions';
@@ -11,7 +11,6 @@ import NavigateSelect from '@/components/dashboard/NavigateSelect';
 
 export const metadata: Metadata = { title: 'Leads', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
-const DASH_COOKIE = 'fb_dash';
 
 const statusen = ['nieuw', 'offerte', 'geaccordeerd', 'afgewezen'] as const;
 const badge: Record<string, string> = {
@@ -29,8 +28,7 @@ type SP = { status?: string; q?: string; bron?: string };
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const authed = Boolean(env.dashboardPassword) && (await cookies()).get(DASH_COOKIE)?.value === env.dashboardPassword.trim();
-  if (!authed) redirect('/dashboard');
+  if (!(await dashAuthed())) redirect('/dashboard');
   if (!isLeadsDbConfigured) redirect('/dashboard');
 
   const alle = await getLeads();

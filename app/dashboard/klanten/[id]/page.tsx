@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { env, isLeadsDbConfigured } from '@/lib/env';
+import { isLeadsDbConfigured } from '@/lib/env';
+import { dashAuthed } from '@/lib/kms/adminClient';
 import { getOrganisatie, getGebruikers, listItems, listBestellingen } from '@/lib/portaalAdmin';
 import { listContactpersonen, listActiviteiten, getKlantVerkoop, ACTIVITEIT_SOORTEN } from '@/lib/kms/crm';
 import { listLogos } from '@/lib/kms/logos';
@@ -11,12 +11,12 @@ import Tabs, { type TabDef } from '@/components/dashboard/Tabs';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klant', robots: { index: false, follow: false } };
-const DASH_COOKIE = 'fb_dash';
 
 const bestelStatussen = ['aangevraagd', 'bevestigd', 'geleverd'] as const;
 
+/** Zelfde toegangsregel als de dashboard-layout: wachtwoord-cookie OF ingelogde admin. */
 async function authed() {
-  return Boolean(env.dashboardPassword) && (await cookies()).get(DASH_COOKIE)?.value === env.dashboardPassword.trim();
+  return dashAuthed();
 }
 
 function fmt(d: string) {

@@ -1,14 +1,12 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { env, isLeadsDbConfigured } from '@/lib/env';
+import { isLeadsDbConfigured } from '@/lib/env';
 import { listOrganisatiesPaged, type Organisatie } from '@/lib/portaalAdmin';
-import { kmsAdmin } from '@/lib/kms/adminClient';
+import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { nieuweOrganisatie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klanten', robots: { index: false, follow: false } };
-const DASH_COOKIE = 'fb_dash';
 const PER_PAGINA = 25;
 const inputCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 
@@ -40,8 +38,9 @@ async function zoekOrganisatiesPaged(opts: { pagina: number; perPagina: number; 
   return { rijen: (data as Organisatie[]) ?? [], totaal: count ?? 0 };
 }
 
+/** Zelfde toegangsregel als de dashboard-layout: wachtwoord-cookie OF ingelogde admin. */
 async function authed() {
-  return Boolean(env.dashboardPassword) && (await cookies()).get(DASH_COOKIE)?.value === env.dashboardPassword.trim();
+  return dashAuthed();
 }
 
 function fmt(d: string) {

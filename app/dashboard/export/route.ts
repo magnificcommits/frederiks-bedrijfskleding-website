@@ -1,6 +1,5 @@
-import { cookies } from 'next/headers';
-import { env, isLeadsDbConfigured } from '@/lib/env';
-import { eisEigenaar } from '@/lib/kms/adminClient';
+import { isLeadsDbConfigured } from '@/lib/env';
+import { dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
 import { getLeads } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -9,8 +8,7 @@ export const runtime = 'nodejs';
 const cols = ['created_at', 'name', 'company', 'email', 'phone', 'branche', 'aantal', 'bron', 'status', 'offertewaarde', 'notitie'] as const;
 
 export async function GET() {
-  const auth = (await cookies()).get('fb_dash')?.value;
-  if (!env.dashboardPassword || auth !== env.dashboardPassword.trim()) {
+  if (!(await dashAuthed())) {
     return new Response('Niet toegestaan', { status: 401 });
   }
   await eisEigenaar();

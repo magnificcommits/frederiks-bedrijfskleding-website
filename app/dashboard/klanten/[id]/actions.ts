@@ -1,7 +1,5 @@
 'use server';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { env } from '@/lib/env';
 import { addGebruiker, maakItem, zetItemActief, zetBestellingStatus, werkOrganisatieBij } from '@/lib/portaalAdmin';
 import { dashAuthed, kmsAdmin } from '@/lib/kms/adminClient';
 import { maakContactpersoon, verwijderContactpersoon, maakActiviteit, verwijderActiviteit } from '@/lib/kms/crm';
@@ -9,10 +7,10 @@ import { uploadMedia } from '@/lib/kms/storage';
 import { maakLogo, verwijderLogo } from '@/lib/kms/logos';
 import { logAudit } from '@/lib/kms/audit';
 
-const DASH_COOKIE = 'fb_dash';
 
+/** Zelfde toegangsregel als de dashboard-layout: wachtwoord-cookie OF ingelogde admin. */
 async function authed() {
-  return Boolean(env.dashboardPassword) && (await cookies()).get(DASH_COOKIE)?.value === env.dashboardPassword.trim();
+  return dashAuthed();
 }
 
 export async function werkOrganisatie(formData: FormData) {

@@ -1,6 +1,5 @@
-import { cookies } from 'next/headers';
-import { env, isLeadsDbConfigured } from '@/lib/env';
-import { DASH_COOKIE, eisEigenaar } from '@/lib/kms/adminClient';
+import { isLeadsDbConfigured } from '@/lib/env';
+import { dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
 import {
   omzetPerKlant,
   omzetPerMerk,
@@ -86,8 +85,7 @@ function esc(v: string | number): string {
 }
 
 export async function GET(request: Request) {
-  const auth = (await cookies()).get(DASH_COOKIE)?.value;
-  if (!env.dashboardPassword || auth !== env.dashboardPassword.trim()) {
+  if (!(await dashAuthed())) {
     return new Response('Niet toegestaan', { status: 401 });
   }
   await eisEigenaar();

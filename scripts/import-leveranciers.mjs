@@ -306,12 +306,16 @@ function fhb() {
       maatwerk_lengte: false,
     });
     for (const x of g) {
-      varianten.push({
-        sku: `FHB-${art}`,
-        maat: schoon(x['Variant waardes'])?.replace(/^Maat:\s*/i, '') ?? null,
-        kleur: schoon(x['Basis Kleur.1']) || schoon(x['Basis Kleur']),
-        ean: code(x.Barcode),
-      });
+      // FHB zet in 'Variant waardes' soms de maat ("Maat: 3XL") en soms de kleur
+      // ("Kleur: Wit/Antraciet 1012"). De interne referentie is wel consistent:
+      // FHB-<artikel>-<kleurcode>-<maat>, dus daar halen we de maat uit.
+      const delen = (schoon(x['Interne referentie']) ?? '').split('-');
+      const maat = delen.length > 2 ? delen[delen.length - 1] : null;
+      const vw = schoon(x['Variant waardes']) ?? '';
+      const kleur = /^kleur:/i.test(vw)
+        ? vw.replace(/^kleur:\s*/i, '')
+        : schoon(x['Basis Kleur_1']) || schoon(x['Basis Kleur']);
+      varianten.push({ sku: `FHB-${art}`, maat, kleur, ean: code(x.Barcode) });
     }
   }
 }
@@ -491,6 +495,23 @@ for (const [naam, fn] of Object.entries(MERKEN)) {
   fn();
 }
 
+// Vangnet tegen dubbele regels in een leveranciersbestand: dezelfde maat en kleur hoort
+// er maar één keer te zijn. FHB leverde er 4.116 te veel. Vóór het rapport, zodat de
+// getallen kloppen met wat er straks wordt weggeschreven.
+{
+  const gezien = new Set();
+  const uniek = varianten.filter((v) => {
+    const sleutel = `${v.sku}|${v.maat ?? ''}|${v.kleur ?? ''}`;
+    if (gezien.has(sleutel)) return false;
+    gezien.add(sleutel);
+    return true;
+  });
+  const weg = varianten.length - uniek.length;
+  varianten.length = 0;
+  varianten.push(...uniek);
+  if (weg) console.log(`\n${weg} dubbele varianten overgeslagen.`);
+}
+
 // ---------------------------------------------------------------- rapport
 const perMerk = {};
 for (const p of producten) (perMerk[p.merk] ??= { artikelen: 0, varianten: 0 }).artikelen++;
@@ -567,5 +588,12 @@ console.log(`  ${fotoRijen.length} kleurfoto's`);
 const { data: n, error: eBer } = await db.rpc('herbereken_variantprijzen', { p_merk: null });
 if (eBer) console.error('prijsberekening:', eBer.message);
 else console.log(`  ${n} variantprijzen berekend uit basisprijs, maattoeslag en korting`);
+
+// Elke leverancier hanteert zijn eigen categorie-indeling. Deze functie zet ze om naar
+// één set kledingsoorten en bewaart het origineel in subcategorie, zodat filteren over
+// merken heen werkt.
+const { data: nc, error: eCat } = await db.rpc('normaliseer_categorieen');
+if (eCat) console.error('categorieen:', eCat.message);
+else console.log(`  ${nc} categorieen genormaliseerd`);
 
 console.log('\nKlaar.');

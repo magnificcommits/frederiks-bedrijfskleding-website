@@ -12,3 +12,7 @@ next-env.d.ts
 
 # FUSE temp-bestanden (mogen weg)
 .fuse_hidden*
+
+# Leveranciersbestanden: 27 MB prijslijsten en condities. Alles onder public/ wordt
+# door Vercel als website geserveerd, en upower assortiment.xlsx bevat de inkoopkorting.
+/public/Data per merk/

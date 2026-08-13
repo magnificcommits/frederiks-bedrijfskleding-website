@@ -356,6 +356,24 @@ function hydrowear() {
  * merk, artikelnummer, kleur, maat, omschrijving, prijs ex btw en het kortingspercentage.
  * Foto's staan als losse bestanden in dezelfde submap, met het artikelnummer in de naam.
  */
+/**
+ * Mi-piace, TQ en Pfanner leveren geen productcategorie mee, terwijl de webshop en de
+ * pakketconfigurator daarop filteren. De namen zijn beschrijvend genoeg om hem af te leiden.
+ */
+function categorieUitNaam(naam) {
+  const n = (naam ?? '').toLowerCase();
+  if (n.includes('blazer')) return 'Blazers';
+  if (n.includes('gilet')) return 'Gilets';
+  if (n.includes('blouse')) return 'Blouses';
+  if (n.includes('t-shirt')) return 'T-shirts';
+  if (n.includes('overhemd') || n.includes('shirt')) return 'Overhemden';
+  if (n.startsWith('top') || n.includes(' top ')) return 'Tops';
+  if (n.includes('rok')) return 'Rokken';
+  if (n.includes('bermuda') || n.includes('korte broek')) return 'Korte broeken';
+  if (n.includes('broek')) return 'Broeken';
+  return null;
+}
+
 function eenvoudigAssortiment({ submap, zoekwoorden, merk, prefix, fotomap, basisArtikel }) {
   const f = bestand(...zoekwoorden);
   if (!f) return console.warn(`${merk}: bestand niet gevonden, overgeslagen`);
@@ -373,25 +391,32 @@ function eenvoudigAssortiment({ submap, zoekwoorden, merk, prefix, fotomap, basi
     const sku = `${prefix}-${art}`;
     // Foto per kleur: bestandsnaam bevat artikelnummer en meestal de kleur.
     const vanArtikel = plaatjes.filter((n) => n.toLowerCase().includes(art.toLowerCase()));
-    const fotoVoor = (kleur) => {
+    /**
+     * Zoekt de foto die bij deze kleur hoort. Vindt hij die niet, dan geeft hij null en
+     * niet zomaar de eerste foto van het artikel: een zwarte blouse tonen bij "dark blue"
+     * is erger dan geen foto, want dan bestelt iemand de verkeerde kleur.
+     */
+    const fotoVoorKleur = (kleur) => {
       const k = (kleur ?? '').toLowerCase().replace(/\s+/g, '');
-      const hit = vanArtikel.find((n) => n.toLowerCase().replace(/\s+/g, '').includes(k)) ?? vanArtikel[0];
+      const hit = k && vanArtikel.find((n) => n.toLowerCase().replace(/\s+/g, '').includes(k));
       return hit ? `/merken/${fotomap}/${hit}` : null;
     };
+    // Voor de hoofdfoto van het artikel volstaat de eerste; die staat los van de kleurkeuze.
+    const hoofdfoto = vanArtikel[0] ? `/merken/${fotomap}/${vanArtikel[0]}` : null;
     product({
       sku, art_nr_leverancier: art,
       naam: schoon(r.Omschrijving),
       merk,
-      categorie: null,
+      categorie: categorieUitNaam(schoon(r.Omschrijving)),
       verkoopprijs_basis: getal(r['Prijs ex btw']),
-      afbeeldingen: [fotoVoor(schoon(r.Kleur))].filter(Boolean),
+      afbeeldingen: [hoofdfoto].filter(Boolean),
       maatwerk_lengte: false,
     });
     const gezien = new Set();
     for (const x of g) {
       varianten.push({ sku, maat: schoon(x.maten), kleur: schoon(x.Kleur), ean: null });
       const kl = schoon(x.Kleur);
-      const url = fotoVoor(kl);
+      const url = fotoVoorKleur(kl);
       if (kl && url && !gezien.has(kl)) { gezien.add(kl); kleurfotos.push({ sku, kleur: kl, url }); }
     }
   }

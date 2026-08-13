@@ -62,6 +62,7 @@ export default function PasSessieFormulier({
   }
 
   function resetArtikel() {
+    setZoek(''); // anders blijft de oude zoekterm staan en typt de volgende zoekopdracht eraan vast
     setArtikel(null);
     setKeuze(null);
     setKleur(null);
@@ -192,7 +193,7 @@ export default function PasSessieFormulier({
               placeholder="Zoek op naam, merk of categorie"
               className="mt-3 w-full rounded-md border border-line px-3 py-3 text-base focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
             />
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {gevonden.map((p) => (
                 <button
                   key={p.id}
@@ -202,14 +203,14 @@ export default function PasSessieFormulier({
                 >
                   {p.afbeelding ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.afbeelding} alt="" className="h-12 w-12 rounded object-contain" />
+                    <img src={p.afbeelding} alt="" className="h-12 w-12 shrink-0 rounded object-contain" />
                   ) : (
-                    <span className="flex h-12 w-12 items-center justify-center rounded bg-line text-[10px] text-warm">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-line text-[10px] text-warm">
                       geen foto
                     </span>
                   )}
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-ink-900">{p.naam}</span>
+                    <span className="block text-sm font-semibold leading-snug text-ink-900">{p.naam}</span>
                     <span className="block truncate text-xs text-warm">{p.merk}</span>
                   </span>
                 </button>

@@ -34,47 +34,62 @@ const dropdownLink = 'block rounded-md px-3 py-2 text-sm text-ink-700 hover:bg-m
 const navTrigger = 'whitespace-nowrap rounded-md px-3 py-2.5 text-[15px] font-semibold text-ink-800 hover:bg-mist';
 
 /**
- * Toegankelijke desktop-dropdown: klikbaar (touch + toetsenbord) via useState,
- * met aria-haspopup/aria-expanded op een echte <button>. Sluit bij klik buiten
- * of Escape. Hover blijft als aanvulling op desktop (group-hover) zodat
- * muisgebruikers het gewende gedrag houden; klik werkt onafhankelijk daarvan.
+ * Desktop-dropdown.
+ *
+ * Wat er mis was: openen ging via `group-hover` én via een eigen open-state per
+ * menu. Daardoor kon er meer dan één paneel tegelijk openstaan (het aangeklikte
+ * plus het aangewezen menu), en zodra je met de muis schuin naar een item bewoog
+ * viel je even buiten de group en klapte het paneel dicht onder je cursor.
+ *
+ * Nu houdt de header één `openId` bij, dus er kan er maar één open zijn. Openen
+ * gaat direct bij aanwijzen; sluiten pas na een korte vertraging, zodat een
+ * schuine muisbeweging naar het paneel niets afbreekt. Klik en toetsenbord
+ * werken onafhankelijk van de muis, en Escape sluit.
  */
-function NavDropdown({ label, children }: { label: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+function NavDropdown({
+  id, label, openId, setOpenId, children,
+}: {
+  id: string;
+  label: string;
+  openId: string | null;
+  setOpenId: (v: string | null | ((h: string | null) => string | null)) => void;
+  children: React.ReactNode;
+}) {
+  const open = openId === id;
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function onPointer(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  const nuOpen = () => {
+    if (timer.current) clearTimeout(timer.current);
+    setOpenId(id);
+  };
+  const straksDicht = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setOpenId((h) => (h === id ? null : h)), 160);
+  };
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   return (
-    <div ref={ref} className="group relative">
+    <div className="relative" onMouseEnter={nuOpen} onMouseLeave={straksDicht}>
       <button
         type="button"
-        className={navTrigger}
+        className={`${navTrigger} ${open ? 'bg-mist' : ''}`}
         aria-haspopup="true"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpenId(open ? null : id)}
+        onFocus={nuOpen}
       >
         {label}
       </button>
-      {/* Zichtbaar bij klik (open) of bij hover op desktop (group-hover). */}
-      <div
-        className={`absolute left-0 top-full w-64 rounded-lg border border-line bg-white p-2 shadow-card transition group-hover:visible group-hover:opacity-100 ${open ? 'visible opacity-100' : 'invisible opacity-0'}`}
-      >
-        {children}
+      {/* De pt-2 is de brug tussen knop en paneel: zonder die overlap loop je er
+          met de muis tussendoor en klapt het menu dicht. */}
+      <div className={`absolute left-0 top-full pt-2 ${open ? '' : 'pointer-events-none'}`}>
+        <div
+          className={`w-64 rounded-lg border border-line bg-white p-2 shadow-card transition duration-150 ease-out ${
+            open ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-1 opacity-0'
+          }`}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -82,6 +97,24 @@ function NavDropdown({ label, children }: { label: string; children: React.React
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  // Eén open menu tegelijk, op headerniveau bijgehouden.
+  const [openId, setOpenId] = useState<string | null>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openId) return;
+    const buiten = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) setOpenId(null);
+    };
+    const opEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenId(null); };
+    document.addEventListener('mousedown', buiten);
+    document.addEventListener('keydown', opEscape);
+    return () => {
+      document.removeEventListener('mousedown', buiten);
+      document.removeEventListener('keydown', opEscape);
+    };
+  }, [openId]);
+
   return (
     <div>
       {/* Topbalk: secundaire links + direct contact */}
@@ -103,13 +136,13 @@ export function Header() {
       <header className="sticky top-0 z-40 border-b border-line bg-white">
         <div className="container-x flex h-20 items-center justify-between gap-4">
           <Logo />
-          <nav className="hidden min-w-0 items-center gap-1 lg:flex" aria-label="Hoofdnavigatie">
-            <NavDropdown label="Branches">
+          <nav ref={navRef} className="hidden min-w-0 items-center gap-1 lg:flex" aria-label="Hoofdnavigatie">
+            <NavDropdown id="branches" label="Branches" openId={openId} setOpenId={setOpenId}>
               {branches.map((b) => (
                 <Link key={b.slug} href={`/branches/${b.slug}`} className={dropdownLink}>{b.navLabel}</Link>
               ))}
             </NavDropdown>
-            <NavDropdown label="Kleding">
+            <NavDropdown id="kleding" label="Kleding" openId={openId} setOpenId={setOpenId}>
               {kledingNav.map((i) => (
                 <Link key={i.href} href={i.href} className={dropdownLink}>{i.label}</Link>
               ))}

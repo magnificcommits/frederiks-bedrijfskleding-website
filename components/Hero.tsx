@@ -52,7 +52,7 @@ export function Hero() {
               </Link>
             </div>
             <p className="mt-3 text-sm text-ink-200">
-              Meestal 5 tot 50 medewerkers. Maar één jas voor een nieuwe kracht regelen we net zo goed.
+              Van vijf man tot tweehonderdvijftig. En één jas voor een nieuwe kracht regelen we net zo goed.
             </p>
 
             <p className="mt-6 text-sm text-ink-100">

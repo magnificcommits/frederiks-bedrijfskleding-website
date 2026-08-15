@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import Image from 'next/image';
+import { listPubliekeProducten, type PubliekProduct } from '@/lib/kms/catalogus';
 
 /**
  * Homepage-band die het klantportaal/kledingbeheer als USP neerzet. Donkere
@@ -12,13 +14,27 @@ const punten = [
   { t: 'Grip met rapportages', d: 'Verbruik en budget per medewerker, afdeling en vestiging in één oogopslag.' },
 ];
 
-const mockProducten = [
-  { naam: 'Softshell jas', merk: 'Tricorp', maat: 'L' },
-  { naam: 'Polo marine', merk: 'Tricorp', maat: 'L' },
-  { naam: 'Werkbroek', merk: 'Snickers', maat: '52' },
+/**
+ * De voorbeeldkaartjes toonden een leeg grijs vlak waar de foto hoort. Dat leest
+ * niet als "voorbeeld" maar als een pagina die nog staat te laden - precies de
+ * indruk die je bij een softwarebelofte niet wilt wekken. Ze tonen nu echte
+ * artikelen uit de catalogus, met de maat als voorbeeld erbij.
+ */
+const VOORBEELD = [
+  { categorieSlug: 'jassen', maat: 'L' },
+  { categorieSlug: 't-shirts-en-polos', maat: 'L' },
+  { categorieSlug: 'broeken', maat: '52' },
 ];
 
-export function PortaalUsp() {
+export async function PortaalUsp() {
+  const perCategorie = await Promise.all(
+    VOORBEELD.map((v) => listPubliekeProducten({ categorieSlug: v.categorieSlug })),
+  );
+  const voorbeelden = VOORBEELD.map((v, i) => ({
+    maat: v.maat,
+    product: (perCategorie[i] ?? []).find((p): p is PubliekProduct => Boolean(p.foto)) ?? null,
+  })).filter((v) => v.product);
+
   return (
     <section className="bg-ink-900 text-white">
       <div className="container-x py-16 sm:py-24">
@@ -67,13 +83,21 @@ export function PortaalUsp() {
               </div>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              {mockProducten.map((p) => (
-                <div key={p.naam} className="rounded-lg border border-line p-3">
-                  <div className="h-12 rounded-md bg-mist" aria-hidden="true" />
-                  <p className="mt-2 text-sm font-semibold text-ink-900">{p.naam}</p>
-                  <p className="text-xs text-warm">{p.merk}</p>
+              {voorbeelden.map(({ product, maat }) => (
+                <div key={product!.id} className="rounded-lg border border-line p-3">
+                  <div className="relative h-20 overflow-hidden rounded-md bg-white">
+                    <Image
+                      src={product!.foto as string}
+                      alt=""
+                      fill
+                      sizes="140px"
+                      className="object-contain p-1"
+                    />
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-sm font-semibold leading-snug text-ink-900">{product!.naam}</p>
+                  <p className="text-xs text-warm">{product!.merk}</p>
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="rounded-md border border-line px-2 py-0.5 text-xs text-ink-700">maat {p.maat}</span>
+                    <span className="rounded-md border border-line px-2 py-0.5 text-xs text-ink-700">maat {maat}</span>
                     <span className="text-amber-700" aria-hidden="true">+</span>
                   </div>
                 </div>

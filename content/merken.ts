@@ -1,11 +1,24 @@
 /**
- * Logo's per merk. De sleutel is de slug zoals `slugify()` in lib/kms/catalogus.ts
- * hem maakt, zodat de merkenrij mee kan lopen met wat er écht in de catalogus zit.
+ * Merken die Jessi levert maar die (nog) niet in het KMS staan.
  *
- * Niet elk merk heeft een logobestand, en dat is geen probleem: de merkenrij valt
- * dan terug op de naam als woordmerk. Beter een eerlijk woordmerk dan een leeg
- * kader, en veel beter dan een logo tonen van een merk waarvan geen enkel artikel
- * op de site staat - dat was hier de situatie voor Mascot, Chaud Devant en De Berkel.
+ * De merkenrij op de homepage leest primair uit de catalogus, zodat er nooit meer
+ * een merk in staat waarvan geen enkel artikel te vinden is. Maar sommige merken
+ * verkoopt ze wel degelijk terwijl er nog geen artikelen van geïmporteerd zijn.
+ * Die vul je hier aan; ze verschijnen zonder doorklik.
+ *
+ * Zodra er artikelen van zo'n merk in het KMS staan, haal je de naam hier weg -
+ * anders komt hij dubbel in de rij.
+ */
+export const extraMerken: string[] = [
+  'Mascot',
+  'Chaud Devant',
+  'De Berkel',
+];
+
+/**
+ * Logobestanden per merkslug. Momenteel ongebruikt in de merkenrij: we hebben er
+ * maar van een handvol merken één, en twee logo's tussen zestien namen leest als
+ * een fout. Zodra er van alle merken een logo is, kan de rij hierop over.
  */
 export const merkLogos: Record<string, string> = {
   'snickers-workwear': '/merken/snickers.webp',

@@ -230,6 +230,33 @@ export async function catalogusOverzicht(): Promise<{ categorieen: CategorieTell
 }
 
 /** Alle URL's voor de sitemap en voor statische generatie. */
+export type MerkVermelding = { naam: string; slug: string; aantal: number; opDeSite: boolean };
+
+/**
+ * Alle merken die in het systeem staan, inclusief de merken waarvan nog geen
+ * artikel de publicatiedrempel haalt (foto én omschrijving). Die verkoopt Jessi
+ * wel degelijk - FHB en Tricorp bijvoorbeeld - en dan hoort de merkenrij op de
+ * homepage ze te noemen. `opDeSite` zegt of er een merkpagina achter zit.
+ */
+export async function alleMerken(): Promise<MerkVermelding[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+  const { data } = await sb.from('producten').select('merk').not('merk', 'is', null);
+  const totaal = new Map<string, number>();
+  for (const r of ((data as { merk: string }[]) ?? [])) {
+    const m = r.merk?.trim();
+    if (m) totaal.set(m, (totaal.get(m) ?? 0) + 1);
+  }
+  const { merken: gepubliceerd } = await catalogusOverzicht();
+  const perSlug = new Map(gepubliceerd.map((m) => [m.slug, m.aantal]));
+  return [...totaal.entries()]
+    .map(([naam, aantal]) => {
+      const slug = slugify(naam);
+      return { naam, slug, aantal, opDeSite: perSlug.has(slug) };
+    })
+    .sort((a, b) => b.aantal - a.aantal);
+}
+
 export async function alleProductPaden(): Promise<{ categorie: string; slug: string }[]> {
   const producten = await listPubliekeProducten();
   return producten

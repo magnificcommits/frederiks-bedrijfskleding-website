@@ -10,6 +10,8 @@ import { JsonLd } from '@/components/JsonLd';
 import { faqJsonLd } from '@/lib/jsonld';
 import { site } from '@/content/site';
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: 'Werkschoenen en veiligheidsschoenen',
   description: 'Veilige, comfortabele werkschoenen in de Achterhoek voor bouw, logistiek, industrie en agrarisch werk. Klassen S1 tot S7, A-merken en persoonlijk pasadvies.',

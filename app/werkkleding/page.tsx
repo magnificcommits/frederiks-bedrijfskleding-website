@@ -9,6 +9,8 @@ import { werkwijze } from '@/content/werkwijze';
 import { branches } from '@/content/branches';
 import { site } from '@/content/site';
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: 'Werkkleding',
   description: 'Hoogwaardige werkkleding in de Achterhoek voor bouw, techniek, horeca, zorg en meer. A-merken, persoonlijk advies, passen op locatie en eigen bedrukken.',

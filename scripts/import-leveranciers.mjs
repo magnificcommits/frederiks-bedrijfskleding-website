@@ -35,14 +35,15 @@ import xlsx from 'xlsx';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
-const DATA_DIR = [join(ROOT, 'data', 'leveranciers'), join(ROOT, 'public', 'Data per merk')]
-  .find((p) => existsSync(p));
+const DATA_DIRS = [join(ROOT, 'data', 'leveranciers'), join(ROOT, 'public', 'Data per merk')]
+  .filter((p) => existsSync(p));
+const DATA_DIR = DATA_DIRS[0];
 
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry');
 const ONLY = (args.find((a) => a.startsWith('--merk=')) || '').split('=')[1]?.toLowerCase() || null;
 
-if (!DATA_DIR) {
+if (!DATA_DIRS.length) {
   console.error('Geen datamap gevonden (data/leveranciers of public/Data per merk).');
   process.exit(1);
 }
@@ -101,11 +102,13 @@ const getrimd = (r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k.t
 /** Alle .xlsx in de datamap en één niveau daaronder, zodat submappen per merk meetellen. */
 function alleBestanden() {
   const uit = [];
-  for (const naam of readdirSync(DATA_DIR, { withFileTypes: true })) {
-    if (naam.isFile() && naam.name.endsWith('.xlsx')) uit.push([naam.name, join(DATA_DIR, naam.name)]);
-    else if (naam.isDirectory()) {
-      for (const sub of readdirSync(join(DATA_DIR, naam.name))) {
-        if (sub.endsWith('.xlsx')) uit.push([`${naam.name}/${sub}`, join(DATA_DIR, naam.name, sub)]);
+  for (const map of DATA_DIRS) {
+    for (const naam of readdirSync(map, { withFileTypes: true })) {
+      if (naam.isFile() && naam.name.endsWith('.xlsx')) uit.push([naam.name, join(map, naam.name)]);
+      else if (naam.isDirectory()) {
+        for (const sub of readdirSync(join(map, naam.name))) {
+          if (sub.endsWith('.xlsx')) uit.push([`${naam.name}/${sub}`, join(map, naam.name, sub)]);
+        }
       }
     }
   }
@@ -121,11 +124,22 @@ function bestand(...woorden) {
   return hit ? hit[1] : null;
 }
 
-/** Zoekt beeldbestanden in de datamap en submappen, op naamfragment. */
+/**
+ * Beeldbestanden voor een merk. Zoekt in beide datamappen en, als laatste, in
+ * public/merken/<submap> - want daar staan de foto's die al klaargezet zijn voor
+ * de site, en van sommige merken (Tricorp) is dat de enige plek.
+ */
 function plaatjesIn(submap) {
-  const map = submap ? join(DATA_DIR, submap) : DATA_DIR;
-  if (!existsSync(map)) return [];
-  return readdirSync(map).filter((n) => /\.(jpe?g|png|webp)$/i.test(n));
+  const kandidaten = [
+    ...DATA_DIRS.map((d) => (submap ? join(d, submap) : d)),
+    ...(submap ? [join(ROOT, 'public', 'merken', submap)] : []),
+  ];
+  for (const map of kandidaten) {
+    if (!existsSync(map)) continue;
+    const beelden = readdirSync(map).filter((n) => /\.(jpe?g|png|webp)$/i.test(n));
+    if (beelden.length) return beelden;
+  }
+  return [];
 }
 function lees(pad, opties = {}) {
   const wb = xlsx.readFile(pad);
@@ -465,8 +479,10 @@ const pfanner = () =>
 function xirtrum() {
   const f = bestand('xr', 'ean', 'codes');
   if (!f) return console.warn('Xirtrum: bestand niet gevonden, overgeslagen');
-  const csvPad = join(DATA_DIR, 'Xirtrum', 'xirtrum-prijzen.csv');
-  if (!existsSync(csvPad)) return console.warn('Xirtrum: xirtrum-prijzen.csv ontbreekt, overgeslagen');
+  // Ook hier beide datamappen af: het CSV staat bij de Xirtrum-bestanden, en die
+  // hoeven niet in dezelfde map te liggen als het Excel van een ander merk.
+  const csvPad = DATA_DIRS.map((d) => join(d, 'Xirtrum', 'xirtrum-prijzen.csv')).find((p) => existsSync(p));
+  if (!csvPad) return console.warn('Xirtrum: xirtrum-prijzen.csv ontbreekt, overgeslagen');
 
   const prijs = new Map();
   for (const regel of readFileSync(csvPad, 'utf8').split(/\r?\n/).slice(1)) {
@@ -750,7 +766,68 @@ function kariban() {
   }
 }
 
-const MERKEN = { snickers, wk, brook, upower, hydrowear, mipiace, tq, pfanner, xirtrum, fhb, fristads, blaklader, emma, grisport, kariban };
+/**
+ * Tricorp levert één rij per artikel/kleur/maat, met de adviesprijs én het
+ * kortingspercentage per artikel. Dat laatste is bijzonder: waar Snickers en WK
+ * één conditie voor het hele merk hebben, loopt Tricorp van 30% op de
+ * basiscollectie tot 44% op de instap-T-shirts. Daarom schrijven we de korting
+ * per artikel weg in producten.korting_pct; de prijsmotor geeft die voorrang
+ * boven de leverancierskorting.
+ *
+ * Foto's staan per artikel en kleur in public/merken/tricorp, met het
+ * artikelnummer voorop ("101009 Tricorp Navy.webp"). Let op de tikfouten in een
+ * paar bestandsnamen ("tricrop", "Denimbleu"); de vergelijking negeert daarom
+ * alles wat geen letter of cijfer is en corrigeert die twee.
+ */
+function tricorp() {
+  const f = bestand('tricorp', 'assortiment');
+  if (!f) return console.warn('Tricorp: bestand niet gevonden, overgeslagen');
+  const plaatjes = plaatjesIn('tricorp');
+  const sleutel = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '').replace('bleu', 'blue');
+
+  const perArt = new Map();
+  for (const ruw of lees(f)) {
+    const r = getrimd(ruw);
+    const art = code(r.Artikelnummer);
+    if (!art) continue;
+    if (!perArt.has(art)) perArt.set(art, []);
+    perArt.get(art).push(r);
+  }
+
+  for (const [art, g] of perArt) {
+    const r = g[0];
+    const sku = `TRI-${art}`;
+    // Kleurfoto alleen bij een exacte treffer: een zwarte polo tonen bij
+    // "darkgrey" is erger dan geen foto, want dan komt de verkeerde kleur binnen.
+    const fotoVoorKleur = (kleur) => {
+      const doel = sleutel(art + 'tricorp' + kleur);
+      const alt = sleutel(art + 'tricrop' + kleur);
+      const hit = plaatjes.find((n) => [doel, alt].includes(sleutel(n.replace(/\.[^.]+$/, ''))));
+      return hit ? `/merken/tricorp/${hit}` : null;
+    };
+    const eerste = plaatjes.find((n) => n.startsWith(art));
+
+    product({
+      sku, art_nr_leverancier: art,
+      naam: schoon(r.Artikelnaam),
+      merk: 'Tricorp',
+      verkoopprijs_basis: getal(r.Verkoopadviesprijs),
+      korting_pct: Math.round(parseFloat(r.Korting) * 1000) / 10,
+      afbeeldingen: eerste ? [`/merken/tricorp/${eerste}`] : [],
+      maatwerk_lengte: false,
+    });
+
+    const gezien = new Set();
+    for (const x of g) {
+      varianten.push({ sku, maat: schoon(x.Maat), kleur: schoon(x.Kleur), ean: null });
+      const kl = schoon(x.Kleur);
+      const url = kl ? fotoVoorKleur(kl) : null;
+      if (kl && url && !gezien.has(kl)) { gezien.add(kl); kleurfotos.push({ sku, kleur: kl, url }); }
+    }
+  }
+}
+
+const MERKEN = { snickers, wk, brook, upower, hydrowear, mipiace, tq, pfanner, xirtrum, fhb, fristads, blaklader, emma, grisport, kariban, tricorp };
 for (const [naam, fn] of Object.entries(MERKEN)) {
   if (ONLY && ONLY !== naam) continue;
   fn();

@@ -34,32 +34,32 @@ function Tabel({ groepen }: { groepen: [string, InkoopregelMetLeverancier[]][] }
   return (
     <div className="mt-4 flex flex-col gap-6">
       {groepen.map(([sleutel, regels]) => (
-        <div key={sleutel} className="overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
+        <div key={sleutel} className="panel overflow-x-auto">
           <div className="border-b border-line bg-mist px-4 py-3">
             <h3 className="font-display text-sm font-bold text-ink-900">{sleutel}</h3>
           </div>
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line text-xs uppercase tracking-wide text-warm">
+          <table className="tbl">
+            <thead>
               <tr>
-                <th className="px-4 py-3">Item</th>
-                <th className="px-4 py-3">Maat / kleur</th>
-                <th className="px-4 py-3">Aantal</th>
-                <th className="hidden px-4 py-3 sm:table-cell">Besteld op</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Actie</th>
+                <th>Item</th>
+                <th>Maat / kleur</th>
+                <th>Aantal</th>
+                <th className="hidden sm:table-cell">Besteld op</th>
+                <th>Status</th>
+                <th>Actie</th>
               </tr>
             </thead>
             <tbody>
               {regels.map((r) => (
                 <tr key={r.id} className="border-b border-line align-top">
-                  <td className="px-4 py-3 font-semibold text-ink-900">{r.item_naam || '-'}</td>
-                  <td className="px-4 py-3 text-warm">{[r.maat, r.kleur].filter(Boolean).join(' · ') || '-'}</td>
-                  <td className="px-4 py-3 text-warm">{r.aantal}x{r.geleverd_aantal ? ` (${r.geleverd_aantal} geleverd)` : ''}</td>
-                  <td className="hidden whitespace-nowrap px-4 py-3 text-warm sm:table-cell">{fmt(r.besteld_op)}</td>
-                  <td className="px-4 py-3">
+                  <td className="font-semibold text-ink-900">{r.item_naam || '-'}</td>
+                  <td className="text-warm">{[r.maat, r.kleur].filter(Boolean).join(' · ') || '-'}</td>
+                  <td className="text-warm">{r.aantal}x{r.geleverd_aantal ? ` (${r.geleverd_aantal} geleverd)` : ''}</td>
+                  <td className="hidden whitespace-nowrap text-warm sm:table-cell">{fmt(r.besteld_op)}</td>
+                  <td>
                     <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${inkoopBadge[r.status] ?? 'bg-ink-100 text-ink-600'}`}>{r.status.replace(/_/g, ' ')}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <div className="flex flex-wrap gap-2">
                       {r.status === 'te_bestellen' && (
                         <form action={markeerInkoop}>
@@ -96,9 +96,9 @@ export default async function InkoopPage({ searchParams }: { searchParams: Promi
 
   if (!sb) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Leaddatabase nog niet gekoppeld</h1>
+          <h1 className="dash-h1">Leaddatabase nog niet gekoppeld</h1>
           <p className="mt-3 text-sm text-warm">Zet <code>SUPABASE_URL</code> en <code>SUPABASE_SERVICE_ROLE_KEY</code> in de omgevingsvariabelen en draai de migraties in <code>supabase/migrations</code>.</p>
           <Link href="/dashboard" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
         </div>
@@ -111,9 +111,9 @@ export default async function InkoopPage({ searchParams }: { searchParams: Promi
   const rest = alle.filter((r) => r.status !== 'te_bestellen');
 
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Inkoop</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop flex items-center justify-between gap-4">
+        <h1 className="dash-h1">Inkoop</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 text-sm text-warm">Inkoopregels die uit orders zijn gegenereerd, gegroepeerd per merk en leverancier.</p>
@@ -123,7 +123,7 @@ export default async function InkoopPage({ searchParams }: { searchParams: Promi
       )}
 
       {perLeverancier.length > 0 && (
-        <section className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-soft">
+        <section className="mt-6 panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Bestel in een keer per leverancier</h2>
           <p className="mt-1 text-xs text-warm">Zet alle te bestellen regels van een leverancier in een keer op besteld en mail de bestelling.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

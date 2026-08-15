@@ -25,6 +25,17 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   outputFileTracingRoot: __dirname,
+  images: {
+    // Productfoto's staan bij de leveranciers op hun eigen CDN. next/image
+    // weigert externe bronnen die hier niet staan, dus elke nieuwe leverancier
+    // met een eigen beeldbank moet hier worden toegevoegd.
+    remotePatterns: [
+      { protocol: 'https', hostname: 'cdn.toptex.com' },          // WK. Designed To Work en Kariban (zelfde PIM)
+      { protocol: 'https', hostname: 'hf-hcms-staging1.azureedge.net' }, // Snickers Workwear
+      { protocol: 'https', hostname: 'www.brooktaverner.com' },   // Brook Taverner
+      { protocol: 'https', hostname: 'image-pim.fristadskansas.com' }, // Fristads
+    ],
+  },
   async headers() {
     return [
       {

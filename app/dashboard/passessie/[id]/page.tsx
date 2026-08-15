@@ -44,10 +44,10 @@ export default async function PassessieDetail({
   const gesloten = sessie.status !== 'open';
 
   return (
-    <main className="container-x py-10">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <main className="container-app py-6">
+      <div className="dash-kop flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-ink-900">{sessie.organisatie_naam}</h1>
+          <h1 className="dash-h1">{sessie.organisatie_naam}</h1>
           <p className="mt-1 text-sm text-warm">
             Passessie {new Date(sessie.datum).toLocaleDateString('nl-NL')}
             {sessie.locatie ? ` - ${sessie.locatie}` : ''}
@@ -87,7 +87,7 @@ export default async function PassessieDetail({
         />
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+          <div className="panel p-4">
             <div className="flex items-baseline justify-between">
               <h2 className="font-display text-lg font-bold text-ink-900">Vastgelegd</h2>
               <span className="text-sm text-warm">
@@ -140,7 +140,7 @@ export default async function PassessieDetail({
             )}
           </div>
 
-          <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+          <div className="panel p-4">
             {sessie.status === 'open' && (
               <form action={rondAf}>
                 <input type="hidden" name="id" value={id} />

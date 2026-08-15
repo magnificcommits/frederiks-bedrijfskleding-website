@@ -25,7 +25,7 @@ export function PortaalUsp() {
         <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-500">Inbegrepen bij je bedrijfskleding</p>
-            <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl">Je eigen online kledingbeheer, gratis erbij</h2>
+            <h2 className="mt-3 kop-2">Je eigen online kledingbeheer, gratis erbij</h2>
             <p className="mt-4 text-lg text-ink-100">
               Neem je je kleding bij Frederiks af, dan krijg je er een compleet bestelportaal bij. Je medewerkers
               bestellen zelf binnen budget, jij houdt overzicht. Geen losse mailtjes en lijstjes meer.
@@ -74,7 +74,7 @@ export function PortaalUsp() {
                   <p className="text-xs text-warm">{p.merk}</p>
                   <div className="mt-2 flex items-center justify-between">
                     <span className="rounded-md border border-line px-2 py-0.5 text-xs text-ink-700">maat {p.maat}</span>
-                    <span className="text-amber-600" aria-hidden="true">+</span>
+                    <span className="text-amber-700" aria-hidden="true">+</span>
                   </div>
                 </div>
               ))}

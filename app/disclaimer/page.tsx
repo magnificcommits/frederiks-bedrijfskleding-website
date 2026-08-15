@@ -13,7 +13,7 @@ export default function DisclaimerPage() {
   return (
     <>
       <PageHero eyebrow="Juridisch" title="Disclaimer" />
-      <section className="container-x py-16">
+      <section className="container-lees py-16">
         <div className="prose-nl">
           <p>We stellen de informatie op deze website met zorg samen. Toch kunnen we niet garanderen dat alles altijd volledig, juist en actueel is. Aan de inhoud kunnen geen rechten worden ontleend.</p>
           <h2>Informatie over normen en regels</h2>

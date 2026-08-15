@@ -4,7 +4,7 @@ import type { OfferteProductOptie } from '@/lib/kms/offertes';
 import { voegRegelActie } from './actions';
 
 const inputCls =
-  'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+  'veld';
 
 function variantLabel(v: { maat: string | null; kleur: string | null }): string {
   return [v.maat ? `maat ${v.maat}` : '', v.kleur ? v.kleur : ''].filter(Boolean).join(', ');
@@ -62,7 +62,7 @@ export default function RegelToevoegen({
   const heeftOpties = opties.length > 0;
 
   return (
-    <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+    <div className="panel p-4">
       <h3 className="font-display text-base font-bold text-ink-900">Regel toevoegen</h3>
       <p className="mt-1 text-xs text-warm">
         {heeftOpties
@@ -75,7 +75,7 @@ export default function RegelToevoegen({
         {heeftOpties && (
           <>
             <div>
-              <label className="block text-xs font-semibold text-warm">Product</label>
+              <label className="veld-label">Product</label>
               <select value={productId} onChange={(e) => kiesProduct(e.target.value)} className={inputCls}>
                 <option value="">Vrije regel (zelf typen)</option>
                 {opties.map((p) => (
@@ -88,7 +88,7 @@ export default function RegelToevoegen({
             </div>
             {product && product.varianten.length > 0 && (
               <div>
-                <label className="block text-xs font-semibold text-warm">Maat en kleur</label>
+                <label className="veld-label">Maat en kleur</label>
                 <select value={variantId} onChange={(e) => kiesVariant(e.target.value)} className={inputCls}>
                   <option value="">Kies maat en kleur</option>
                   {product.varianten.map((v) => (
@@ -104,7 +104,7 @@ export default function RegelToevoegen({
         )}
 
         <div>
-          <label className="block text-xs font-semibold text-warm">Omschrijving</label>
+          <label className="veld-label">Omschrijving</label>
           <input
             name="omschrijving"
             required
@@ -119,22 +119,22 @@ export default function RegelToevoegen({
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-warm">Aantal</label>
+            <label className="veld-label">Aantal</label>
             <input name="aantal" inputMode="decimal" value={aantal} onChange={(e) => setAantal(e.target.value)} className={inputCls} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-warm">Stukprijs</label>
+            <label className="veld-label">Stukprijs</label>
             <input name="stukprijs" inputMode="decimal" value={stukprijs} onChange={(e) => setStukprijs(e.target.value)} placeholder="bedrag" className={inputCls} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-warm">Korting %</label>
+            <label className="veld-label">Korting %</label>
             <input name="korting_pct" inputMode="decimal" value={korting} onChange={(e) => setKorting(e.target.value)} className={inputCls} />
           </div>
         </div>
         <input type="hidden" name="inkoop" value={inkoop} />
         <button
           type="submit"
-          className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800"
+          className="self-start knop-donker"
         >
           Toevoegen
         </button>

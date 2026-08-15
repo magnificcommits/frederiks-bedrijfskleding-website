@@ -7,7 +7,7 @@ import { werkProspectActie } from './actions';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Prospect', robots: { index: false, follow: false } };
 
-const inputCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+const inputCls = 'veld';
 const labelCls = 'block text-xs font-semibold text-warm';
 
 export default async function ProspectDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,9 +18,9 @@ export default async function ProspectDetailPage({ params }: { params: Promise<{
 
   if (!p) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Prospect niet gevonden</h1>
+          <h1 className="dash-h1">Prospect niet gevonden</h1>
           <p className="mt-3 text-sm text-warm">Deze prospect bestaat niet of is verwijderd.</p>
           <Link href="/dashboard/prospects" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar prospects</Link>
         </div>
@@ -29,10 +29,10 @@ export default async function ProspectDetailPage({ params }: { params: Promise<{
   }
 
   return (
-    <main className="container-x py-12">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <main className="container-app py-6">
+      <div className="dash-kop flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-ink-900">{p.bedrijfsnaam}</h1>
+          <h1 className="dash-h1">{p.bedrijfsnaam}</h1>
           <p className="mt-1 text-sm text-warm">{[p.branche, p.plaats].filter(Boolean).join(' · ') || 'Prospect'}{p.bron ? ` · bron: ${p.bron}` : ''}</p>
         </div>
         <div className="flex items-center gap-4">
@@ -43,7 +43,7 @@ export default async function ProspectDetailPage({ params }: { params: Promise<{
         </div>
       </div>
 
-      <form action={werkProspectActie} className="mt-8 max-w-3xl rounded-2xl border border-line bg-white p-6 shadow-soft">
+      <form action={werkProspectActie} className="mt-8 max-w-3xl panel p-4">
         <input type="hidden" name="id" value={p.id} />
 
         <h2 className="font-display text-base font-bold text-ink-900">Bedrijf</h2>

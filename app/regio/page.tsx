@@ -21,24 +21,24 @@ export default function RegioIndex() {
       <PageHero eyebrow="Werkgebied" title="Bedrijfskleding in de hele Achterhoek"
         intro="We zitten in Hengelo (Gld) en werken door de hele Achterhoek, de Liemers en de Oude IJsselstreek. Overal met dezelfde persoonlijke aanpak: we komen langs om te passen en brengen het logo in eigen huis aan." />
       <section className="container-x py-16">
-        <h2 className="text-2xl font-extrabold sm:text-3xl">Plaatsen waar we werken</h2>
+        <h2 className="kop-2">Plaatsen waar we werken</h2>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {plaatsen.map((p) => (
             <Link key={p.slug} href={`/regio/${p.slug}`} className="group flex items-center justify-between rounded-lg border border-line bg-white px-5 py-4 shadow-soft transition hover:border-amber-400">
               <span>
-                <span className="block font-bold text-ink-900 group-hover:text-amber-600">{p.name}</span>
+                <span className="block font-bold text-ink-900 group-hover:text-amber-800">{p.name}</span>
                 <span className="text-xs text-warm">{p.afstand}</span>
               </span>
-              <span className="text-amber-600" aria-hidden="true">&rarr;</span>
+              <span className="text-amber-700" aria-hidden="true">&rarr;</span>
             </Link>
           ))}
         </div>
-        <p className="mt-6 text-warm">Staat jouw plaats er niet bij? We werken in de hele regio. <Link href="/kledingadvies" className="font-semibold text-amber-600 hover:underline">Vraag gerust advies aan</Link>.</p>
+        <p className="mt-6 max-w-[60ch] text-warm">Staat jouw plaats er niet bij? We werken in de hele regio. <Link href="/kledingadvies" className="font-semibold text-amber-700 hover:underline">Vraag gerust advies aan</Link>.</p>
 
-        <h2 className="mt-14 text-2xl font-extrabold sm:text-3xl">Of kies je branche</h2>
+        <h2 className="mt-14 kop-2">Of kies je branche</h2>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {branches.map((b) => (
-            <Link key={b.slug} href={`/branches/${b.slug}`} className="rounded-lg border border-line bg-white px-5 py-4 font-semibold text-ink-900 shadow-soft transition hover:border-amber-400 hover:text-amber-600">{b.navLabel}</Link>
+            <Link key={b.slug} href={`/branches/${b.slug}`} className="rounded-lg border border-line bg-white px-5 py-4 font-semibold text-ink-900 shadow-soft transition hover:border-amber-400 hover:text-amber-800">{b.navLabel}</Link>
           ))}
         </div>
       </section>

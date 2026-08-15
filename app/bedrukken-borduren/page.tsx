@@ -1,145 +1,219 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import Link from 'next/link';
 import { PageHero } from '@/components/PageHero';
-import { BrandStrip } from '@/components/BrandStrip';
-import { CrossLinks } from '@/components/CrossLinks';
+import { MethodeKaarten, MethodeTabel, LogoPositieTekening } from '@/components/MethodeKaarten';
 import { ContactSectie } from '@/components/ContactSectie';
-import { Faq } from '@/components/Faq';
+import { Uitklap } from '@/components/Uitklap';
 import { JsonLd } from '@/components/JsonLd';
-import { serviceJsonLd, faqJsonLd } from '@/lib/jsonld';
+import { breadcrumbJsonLd, faqJsonLd, serviceJsonLd } from '@/lib/jsonld';
+import { stappen, logoposities } from '@/content/decoratie';
 import { site } from '@/content/site';
 
 export const metadata: Metadata = {
   title: 'Bedrukken en borduren',
-  description: 'Werkkleding, shirts en textiel laten bedrukken of borduren in de Achterhoek. Je logo strak, kleurecht en slijtvast aangebracht, in eigen huis en met persoonlijk advies.',
+  description:
+    'Je logo op werkkleding, vanaf één stuk. Borduren, transferdruk, zeefdruk en emblemen naast elkaar vergeleken, gedaan in eigen huis in Hengelo Gld. Altijd eerst een drukproef ter goedkeuring.',
   alternates: { canonical: '/bedrukken-borduren' },
 };
 
-const stappen = [
-  { nr: '01', t: 'Logo aanleveren', d: 'Stuur je logo, het liefst als vectorbestand (AI, EPS of PDF). Heb je dat niet, dan maken we het samen in orde.' },
-  { nr: '02', t: 'Techniek kiezen', d: 'We adviseren per kledingstuk: bedrukken voor kleur en grote oplagen, borduren voor een verzorgde, duurzame look.' },
-  { nr: '03', t: 'Proef en plaatsing', d: 'We bepalen positie en grootte en laten je het resultaat zien voordat de hele order de deur uit gaat.' },
-  { nr: '04', t: 'Aanbrengen in eigen huis', d: 'Omdat we het zelf doen, schakelen we snel en houden we de kwaliteit in de hand.' },
-];
-
+/**
+ * De diepgang op deze pagina zit in <Uitklap>: <details>/<summary> zonder JavaScript.
+ * Google leest de inhoud gewoon mee, de bezoeker ziet hem pas na een klik. Zo blijft
+ * de pagina kort te scannen zonder dat we informatie weggooien. Zet nieuwe uitleg
+ * dus in een uitklapblok, niet in de lopende tekst.
+ */
 const faq = [
-  { q: 'Wat is het verschil tussen bedrukken en borduren?', a: 'Bedrukken is ideaal voor kleurrijke logo’s en grotere oplagen en geeft een haarscherp, kleurecht resultaat. Borduren oogt verzorgd en luxe, heeft diepte en gaat uitstekend door de was, ook op hogere temperaturen. Per kledingstuk bekijken we wat het mooiste resultaat geeft.' },
-  { q: 'Op welk textiel kunnen jullie aanbrengen?', a: 'Op vrijwel alle bedrijfskleding: werkbroeken, jassen, softshells, polo’s, shirts, sweaters, koksbuizen en bodywarmers. We stemmen de techniek af op de stof, zodat de afwerking hecht en lang mooi blijft.' },
-  { q: 'Hoe lang gaat de bedrukking of borduring mee?', a: 'Onze prints zijn kleurecht, slijtvast en bestand tegen wassen, en borduurwerk gaat zelfs bij intensief gebruik en veelvuldig wassen lang mee. In ons kennisbankartikel over wassen lees je hoe je het zo lang mogelijk mooi houdt.' },
-  { q: 'Kan ik een kleine oplage of zelfs één stuk laten doen?', a: 'Ja. Van één jas voor een nieuwe medewerker tot een complete teamuitrusting, we draaien er onze hand niet voor om. Omdat we in eigen huis werken, kunnen we ook klein en snel leveren.' },
-  { q: 'Kunnen jullie ook kleding bedrukken die ik al heb?', a: 'In veel gevallen wel. Neem contact op met wat je hebt, dan kijken we of de stof en het type zich lenen voor bedrukken of borduren.' },
+  {
+    q: 'Kan ik ook één kledingstuk laten bedrukken of borduren?',
+    a: 'Ja. Borduren en transferdruk doen we vanaf één stuk, dus ook voor één nieuwe medewerker. Zeefdruk begint rond 25 stuks, omdat we daarvoor eerst zeven inrichten. Emblemen maken we vanaf zo’n 10 stuks per ontwerp.',
+  },
+  {
+    q: 'Zie ik het resultaat voordat alles gemaakt wordt?',
+    a: 'Altijd. Je krijgt een drukproef waarop je positie, formaat en kleur beoordeelt. Pas na jouw goedkeuring gaat de rest van de serie de machine in. Klopt er iets niet, dan passen we het aan.',
+  },
+  {
+    q: 'Ik heb geen logo als vectorbestand, kan het dan toch?',
+    a: 'Meestal wel. Een scherpe PNG van minimaal 1000 pixels breed is vaak genoeg. Heb je alleen een klein logo van een website of uit een e-mailhandtekening, laat het zien: we zeggen eerlijk of het bruikbaar is en helpen je anders aan een versie die wel goed uitkomt.',
+  },
 ];
 
-const pijlers = [
-  { t: 'Maatwerk en precisie', d: 'We brengen je logo haarscherp en op de juiste plek aan, afgestemd op het kledingstuk.' },
-  { t: 'Service en meedenken', d: 'Je hebt één aanspreekpunt dat met je meedenkt over techniek, plaatsing en kleur.' },
-  { t: 'Kwaliteit en identiteit', d: 'Een verzorgd logo maakt je team herkenbaar en straalt professionaliteit uit.' },
+const aanleveren = [
+  {
+    t: 'Liefst een vectorbestand',
+    d: 'AI, EPS, PDF of SVG. Dat schaalt van borstlogo naar ruglogo zonder onscherp te worden.',
+  },
+  {
+    t: 'Anders een scherpe PNG',
+    d: 'Minimaal 1000 pixels breed, liefst met transparante achtergrond. Voor borduren zetten we het om naar een borduurbestand.',
+  },
+  {
+    t: 'Heb je geen van beide?',
+    d: 'Stuur wat je hebt, ook een logo van de website of het oude briefpapier. Wij zeggen wat ervoor nodig is.',
+  },
 ];
 
-export default function BedrukkenPage() {
+const eigenHuis = [
+  { t: 'Eigen machines', d: 'Niet goed is opnieuw.' },
+  { t: 'Korte lijn', d: 'Geen kleding heen en weer.' },
+  { t: 'Spoed? Loop binnen', d: 'Eén jas voor maandag is bespreekbaar.' },
+];
+
+export default function BedrukkenBordurenPage() {
   return (
     <>
-      <JsonLd data={serviceJsonLd({ name: 'Bedrukken en borduren van werkkleding', description: metadata.description as string, url: `${site.url}/bedrukken-borduren` })} />
+      <JsonLd
+        data={serviceJsonLd({
+          name: 'Bedrukken en borduren van werkkleding',
+          description: metadata.description as string,
+          url: `${site.url}/bedrukken-borduren`,
+        })}
+      />
       <JsonLd data={faqJsonLd(faq)} />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', url: site.url },
+          { name: 'Bedrukken en borduren', url: `${site.url}/bedrukken-borduren` },
+        ])}
+      />
 
-      <PageHero eyebrow="Maatwerk en branding" title="Dé Achterhoekse partner voor bedrukken en borduren"
-        intro="Geef je bedrijfskleding een eigen gezicht. Met een bedrukt of geborduurd logo wordt je team herkenbaar en straalt het professionaliteit uit. We doen het in eigen huis in Hengelo, dus snel en met grip op de kwaliteit." />
+      <PageHero
+        eyebrow="In eigen huis, in Hengelo Gld"
+        title="Je logo gaat erop, vanaf één stuk"
+        intro="Borduren, transferdruk, zeefdruk en emblemen, gedaan aan de Kruisbergseweg in Hengelo Gld. Eerst een drukproef, dan de serie."
+      />
 
-      <section className="container-x py-16">
-        <div className="grid items-center gap-12 lg:grid-cols-2">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-line shadow-card">
-            <Image src="/Bedrijfskleding-bedrukken-en-borduren.jpg" alt="Bedrukte en geborduurde bedrijfskleding van Frederiks Bedrijfskleding"
-              fill sizes="(max-width: 1024px) 90vw, 45vw" className="object-cover" />
-          </div>
-          <div className="prose-nl text-lg">
-            <p>Bij Frederiks helpen we je om je bedrijfskleding een unieke, professionele uitstraling te geven. Of het nu gaat om één jas of een complete teamuitrusting, we zorgen dat je logo, bedrijfsnaam of slogan strak en duidelijk zichtbaar is.</p>
-            <p>Omdat we het bedrukken en borduren zelf doen, zie je vooraf hoe het eruitkomt en kunnen we snel schakelen, ook bij een spoedklus. Geen tussenpartij, gewoon iemand die met je meedenkt.</p>
-            <p>Wil je het nu al zien? <Link href="/pakket-samenstellen" className="font-semibold text-amber-600 hover:underline">Stel je pakket samen</Link> en plaats je eigen logo direct op de kleding.</p>
-          </div>
-        </div>
-
-        <div className="mt-14 grid gap-6 md:grid-cols-2">
-          <div className="rounded-xl border-l-2 border-dashed border-amber-500 bg-white p-6 shadow-soft">
-            <h2 className="text-xl font-extrabold text-ink-900">Bedrukken</h2>
-            <p className="mt-2 text-warm">Wil je een strak en kleurrijk logo? Met hoogwaardige druktechnieken brengen we je ontwerp haarscherp aan op uiteenlopend textiel. De prints zijn kleurecht, slijtvast en bestand tegen wassen, en het is voordelig bij grotere aantallen.</p>
-          </div>
-          <div className="rounded-xl border-l-2 border-dashed border-amber-500 bg-white p-6 shadow-soft">
-            <h2 className="text-xl font-extrabold text-ink-900">Borduren</h2>
-            <p className="mt-2 text-warm">Ga je voor een luxe en duurzame afwerking? Met onze borduurmachines brengen we je logo met precisie en diepte aan. Borduring is extra stevig en gaat lang mee, zelfs bij intensief gebruik en veel wassen. Vaak de keuze voor polo’s, jassen en horecakleding.</p>
-          </div>
-        </div>
+      <section className="container-x py-10">
+        <ul className="grid gap-4 sm:grid-cols-3">
+          {eigenHuis.map((e) => (
+            <li key={e.t} className="seam-card">
+              <p className="text-base font-bold text-ink-900">{e.t}</p>
+              <p className="mt-1 text-sm text-warm">{e.d}</p>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="border-y border-line bg-mist">
         <div className="container-x py-16">
-          <p className="eyebrow">Voor elk soort bedrijf</p>
-          <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Waarom bedrijven voor ons kiezen</h2>
-          <div className="mt-8 grid gap-6 sm:grid-cols-3">
-            {pijlers.map((p) => (
-              <div key={p.t} className="rounded-xl border border-line bg-white p-6">
-                <h3 className="text-base font-bold text-ink-900">{p.t}</h3>
-                <p className="mt-2 text-sm text-warm">{p.d}</p>
-              </div>
+          <p className="eyebrow">Vier technieken</p>
+          <h2 className="mt-3 kop-2">Wat past bij jouw kleding?</h2>
+
+          <div className="mt-10">
+            <MethodeKaarten />
+          </div>
+
+          <div className="mt-10">
+            <MethodeTabel />
+          </div>
+
+          <p className="mt-4 text-sm text-warm">
+            Aantallen en levertijden zijn indicatief: stof en voorraad bepalen mee.
+          </p>
+        </div>
+      </section>
+
+      <section className="container-x py-16">
+        <p className="eyebrow">Hoe het gaat</p>
+        <h2 className="mt-3 kop-2">Van kledingstuk naar goedgekeurd logo</h2>
+        <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {stappen.map((s) => (
+            <li key={s.nr} className="seam-card h-full">
+              <span className="font-display text-2xl font-extrabold text-amber-500">{s.nr}</span>
+              <h3 className="mt-2 text-base font-bold text-ink-900">{s.title}</h3>
+              <p className="mt-2 text-sm text-warm">{s.text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="border-y border-line bg-mist">
+        <div className="container-x py-16">
+          <p className="eyebrow">Logoposities</p>
+          <h2 className="mt-3 kop-2">Waar komt je logo te zitten?</h2>
+          <p className="mt-3 max-w-2xl text-warm">Meestal borst links plus een ruglogo. Combineren kan.</p>
+
+          <div className="mt-8">
+            <LogoPositieTekening />
+          </div>
+
+          <div className="mt-6 rounded-lg border border-line bg-white px-6">
+            <Uitklap titel="Wat kies je waar?">
+              <dl>
+                {logoposities.map((p) => (
+                  <div key={p.id} className="mb-2 last:mb-0">
+                    <dt className="inline font-semibold text-ink-900">{p.naam}: </dt>
+                    <dd className="inline">{p.tekst}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Uitklap>
+          </div>
+        </div>
+      </section>
+
+      <section className="container-x py-16">
+        <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
+          <div>
+            <p className="eyebrow">Meer weten</p>
+            <h2 className="mt-3 kop-2">Aanleveren en veelgestelde vragen</h2>
+            <p className="mt-4 text-warm">
+              Mail je logo naar{' '}
+              <a href={`mailto:${site.email}`} className="font-semibold text-amber-700 hover:underline">
+                {site.email}
+              </a>{' '}
+              of bel {site.owner.split(' ')[0]} op{' '}
+              <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-700 hover:underline">
+                {site.phone}
+              </a>
+              .
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-line bg-white px-6 shadow-card">
+            <Uitklap titel="Welk bestand lever je aan?">
+              <ul>
+                {aanleveren.map((a) => (
+                  <li key={a.t}>
+                    <strong className="text-ink-900">{a.t}</strong> {a.d}
+                  </li>
+                ))}
+              </ul>
+            </Uitklap>
+            {faq.map((f) => (
+              <Uitklap key={f.q} titel={f.q}>
+                <p>{f.a}</p>
+              </Uitklap>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="container-x py-16">
-        <h2 className="text-2xl font-extrabold sm:text-3xl">Hoe het werkt</h2>
-        <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {stappen.map((s) => (
-            <li key={s.nr} className="rounded-xl border border-line bg-white p-5 shadow-soft">
-              <span className="font-display text-2xl font-extrabold text-amber-500">{s.nr}</span>
-              <h3 className="mt-2 text-base font-bold text-ink-900">{s.t}</h3>
-              <p className="mt-2 text-sm text-warm">{s.d}</p>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-8 text-warm">Lever je logo het liefst als vectorbestand aan (AI, EPS of PDF). Heb je alleen een afbeelding, <Link href="/kledingadvies" className="font-semibold text-amber-600 hover:underline">vraag dan even advies</Link>, dan kijken we naar de beste oplossing.</p>
-      </section>
-
-      <section className="container-x pb-4">
-        <p className="eyebrow">Compleet assortiment</p>
-        <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">A-merken die we personaliseren</h2>
-        <p className="mt-3 max-w-2xl text-warm">We bedrukken en borduren op werkkleding van gerenommeerde merken, zodat functie en uitstraling allebei kloppen.</p>
-      </section>
-      <BrandStrip />
-
       <section className="border-y border-line bg-mist">
-        <div className="container-x py-16">
-          <p className="eyebrow">In 3 stappen</p>
-          <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Van logo naar herkenbaar team</h2>
-          <ol className="mt-8 grid gap-6 sm:grid-cols-3">
-            <li className="rounded-xl border-l-2 border-dashed border-amber-500 bg-white p-6 shadow-soft">
-              <span className="font-display text-2xl font-extrabold text-amber-500">1</span>
-              <h3 className="mt-2 text-base font-bold text-ink-900">Vraag gratis advies aan</h3>
-              <p className="mt-2 text-sm text-warm">Stuur je logo of vertel wat je zoekt. {site.owner.split(' ')[0]} neemt binnen 1 werkdag persoonlijk contact op.</p>
-            </li>
-            <li className="rounded-xl border-l-2 border-dashed border-amber-500 bg-white p-6 shadow-soft">
-              <span className="font-display text-2xl font-extrabold text-amber-500">2</span>
-              <h3 className="mt-2 text-base font-bold text-ink-900">We komen langs en passen op locatie</h3>
-              <p className="mt-2 text-sm text-warm">Samen kiezen we techniek, plaatsing en kleur, en bepalen we de juiste maten voor je team.</p>
-            </li>
-            <li className="rounded-xl border-l-2 border-dashed border-amber-500 bg-white p-6 shadow-soft">
-              <span className="font-display text-2xl font-extrabold text-amber-500">3</span>
-              <h3 className="mt-2 text-base font-bold text-ink-900">Wij regelen bedrukking en levering</h3>
-              <p className="mt-2 text-sm text-warm">Je logo brengen we in eigen huis aan. Je ziet vooraf het resultaat en nabestellen gaat met een belletje.</p>
-            </li>
-          </ol>
-          <p className="mt-6 max-w-2xl text-warm">Je offerte is vrijblijvend en op maat. Of het nu om één jas of een compleet team gaat, we denken mee over techniek én budget. Geen kleine lettertjes, gewoon een eerlijk voorstel.</p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/kledingadvies" className="btn-primary">Vraag gratis kledingadvies aan</Link>
-            <Link href="/pakket-samenstellen" className="btn-outline">Zie je logo direct op de kleding</Link>
+        <div className="container-x py-14">
+          <div className="grid items-center gap-6 lg:grid-cols-[1.4fr_1fr]">
+            <div>
+              <p className="eyebrow">Zelf zien</p>
+              <h2 className="mt-3 kop-2">Zet je logo live op de kleding</h2>
+              <p className="mt-3 max-w-2xl text-warm">
+Upload je logo in de pakketsamensteller en zie het meteen op het kledingstuk staan.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 lg:justify-end">
+              <Link href="/pakket-samenstellen" className="btn-primary">
+                Stel je pakket samen
+              </Link>
+              <Link href="/contact" className="btn-outline">
+                Even overleggen
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      <Faq items={faq} />
-      <CrossLinks exclude="/bedrukken-borduren" />
-      <ContactSectie title="Je logo op de kleding? Laten we het bespreken"
-        intro="Stuur je logo of vertel wat je zoekt. We laten je zien wat het mooiste resultaat geeft en maken een vrijblijvende offerte op maat." />
+      <ContactSectie
+        title="Je logo erop? Stuur het even op"
+        intro="Mail je logo of vertel wat je zoekt. Wij zeggen welke techniek past."
+      />
     </>
   );
 }

@@ -47,14 +47,14 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
         <div className="container-x grid items-center gap-10 py-14 lg:grid-cols-2 lg:py-20">
           <div>
             <nav className="text-xs text-warm" aria-label="Kruimelpad">
-              <Link href="/" className="hover:text-amber-600">Home</Link>
+              <Link href="/" className="hover:text-amber-800">Home</Link>
               <span className="px-1.5">/</span>
-              <Link href="/werkkleding" className="hover:text-amber-600">Branches</Link>
+              <Link href="/werkkleding" className="hover:text-amber-800">Branches</Link>
               <span className="px-1.5">/</span>
               <span className="text-ink-700">{b.navLabel}</span>
             </nav>
             <h1 className="mt-4 text-3xl font-extrabold text-balance sm:text-4xl lg:text-5xl">{b.name}</h1>
-            <p className="mt-4 text-lg text-warm">{b.heroIntro}</p>
+            <p className="mt-4 max-w-[52ch] text-lg text-warm">{b.heroIntro}</p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href={`/kledingadvies?branche=${encodeURIComponent(b.navLabel)}`} className="btn-primary">Gratis kledingadvies</Link>
               <a href={`tel:${site.phoneIntl}`} className="btn-outline">Bel {site.phone}</a>
@@ -69,8 +69,8 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
 
       {/* Body + sticky lead */}
       <section className="container-x py-16">
-        <div className="grid gap-12 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div>
             <div className="prose-nl text-lg">
               {b.body.map((p, i) => <p key={i}>{p}</p>)}
             </div>
@@ -116,11 +116,11 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
             )}
           </div>
 
-          <aside className="lg:col-span-1">
+          <aside>
             <div className="sticky top-24 space-y-4">
               <div className="rounded-xl border-2 border-amber-500 bg-white p-6 shadow-card">
                 <h3 className="text-lg font-extrabold text-ink-900">Advies voor {b.navLabel.toLowerCase()}</h3>
-                <p className="mt-2 text-sm text-warm">Vertel ons in een minuut wat je zoekt. We bellen je binnen een werkdag terug en komen graag langs om te passen.</p>
+                <p className="mt-2 text-sm text-warm">Vertel ons in een minuut wat je zoekt. We bellen je binnen 24 uur terug en komen graag langs om te passen.</p>
                 <Link href={`/kledingadvies?branche=${encodeURIComponent(b.navLabel)}`} className="btn-primary mt-4 w-full">Start kledingadvies</Link>
                 <Link href={`/pakket-samenstellen?branche=${encodeURIComponent(b.navLabel)}`} className="btn-outline mt-2 w-full">Stel je pakket samen</Link>
                 <a href={`tel:${site.phoneIntl}`} className="btn-outline mt-2 w-full">Bel {site.phone}</a>
@@ -140,7 +140,7 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
       <section className="border-y border-line bg-mist">
         <div className="container-x py-16">
           <p className="eyebrow">Zo werken we</p>
-          <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Van eerste gesprek tot nabestelling</h2>
+          <h2 className="mt-3 kop-2">Van eerste gesprek tot nabestelling</h2>
           <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {werkwijze.map((s) => (
               <li key={s.nr} className="rounded-xl border border-line bg-white p-5">
@@ -159,7 +159,7 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
         <p className="text-sm text-warm">Andere branches:{' '}
           {branches.filter((x) => x.slug !== b.slug).map((x, i, arr) => (
             <span key={x.slug}>
-              <Link href={`/branches/${x.slug}`} className="text-amber-600 hover:underline">{x.navLabel}</Link>{i < arr.length - 1 ? ', ' : ''}
+              <Link href={`/branches/${x.slug}`} className="text-amber-700 hover:underline">{x.navLabel}</Link>{i < arr.length - 1 ? ', ' : ''}
             </span>
           ))}
         </p>

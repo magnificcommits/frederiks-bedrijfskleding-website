@@ -83,7 +83,7 @@ export default async function Medewerkers({
   if (!magBeheren) {
     return (
       <main className="container-x py-12">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
         <h1 className="font-display text-3xl font-extrabold text-ink-900">Medewerkers</h1>
         <PortaalNav rol={toegang.rol} actief="/portaal/medewerkers" />
         <div className="mt-8 max-w-xl rounded-2xl border border-line bg-white p-6 shadow-soft">
@@ -134,7 +134,7 @@ export default async function Medewerkers({
             <input type="hidden" name="email" value={m.email ?? ''} />
             <ConfirmSubmit
               message={`Verwijdering van ${m.naam} aanvragen? Jessi keurt dit verzoek eerst goed; daarna gaan de maten en het budget verloren.`}
-              className="py-1 text-xs font-semibold text-warm hover:text-amber-700"
+              className="py-1 text-xs font-semibold text-warm hover:text-amber-800"
             >
               Verwijdering aanvragen
             </ConfirmSubmit>
@@ -219,7 +219,7 @@ export default async function Medewerkers({
                   <input type="hidden" name="email" value={m.toegang.email} />
                   <ConfirmSubmit
                     message={`Toegang van ${m.naam} intrekken? De persoon en maten blijven bestaan, maar inloggen kan niet meer.`}
-                    className="py-2 text-xs font-semibold text-warm hover:text-amber-700"
+                    className="py-2 text-xs font-semibold text-warm hover:text-amber-800"
                   >
                     Toegang intrekken
                   </ConfirmSubmit>
@@ -268,7 +268,7 @@ export default async function Medewerkers({
     <main className="container-x py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
           <h1 className="font-display text-3xl font-extrabold text-ink-900">Medewerkers</h1>
         </div>
       </div>

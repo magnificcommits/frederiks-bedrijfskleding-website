@@ -35,7 +35,7 @@ export default async function KlantenservicePage() {
 
       <section className="container-x py-12 sm:py-16">
         <p className="eyebrow">Direct contact</p>
-        <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Even iemand spreken?</h2>
+        <h2 className="mt-3 kop-2">Even iemand spreken?</h2>
         <p className="mt-4 max-w-2xl text-warm">
           Liever meteen contact dan zelf zoeken? Bel of app ons gerust. Je krijgt antwoord van iemand die je bedrijf kent.
         </p>
@@ -46,7 +46,7 @@ export default async function KlantenservicePage() {
           >
             <h3 className="text-base font-bold text-ink-900">Bellen</h3>
             <p className="mt-2 text-sm text-warm">Op werkdagen tussen 09:00 en 17:00 uur.</p>
-            <span className="mt-3 inline-block font-bold text-amber-600">{site.phone}</span>
+            <span className="mt-3 inline-block font-bold text-amber-700">{site.phone}</span>
           </a>
           <a
             href={`mailto:${site.email}`}
@@ -54,7 +54,7 @@ export default async function KlantenservicePage() {
           >
             <h3 className="text-base font-bold text-ink-900">E-mailen</h3>
             <p className="mt-2 text-sm text-warm">We reageren meestal nog dezelfde werkdag.</p>
-            <span className="mt-3 inline-block break-all font-semibold text-amber-600">{site.email}</span>
+            <span className="mt-3 inline-block break-all font-semibold text-amber-700">{site.email}</span>
           </a>
           <a
             href={`https://wa.me/${waNummer}`}
@@ -64,7 +64,7 @@ export default async function KlantenservicePage() {
           >
             <h3 className="text-base font-bold text-ink-900">WhatsApp</h3>
             <p className="mt-2 text-sm text-warm">Snel een korte vraag stellen? Stuur ons een bericht.</p>
-            <span className="mt-3 inline-block font-semibold text-amber-600">Open WhatsApp &rarr;</span>
+            <span className="mt-3 inline-block font-semibold text-amber-700">Open WhatsApp &rarr;</span>
           </a>
         </div>
       </section>
@@ -72,13 +72,13 @@ export default async function KlantenservicePage() {
       <section className="border-y border-line bg-mist">
         <div className="container-x py-12">
           <p className="eyebrow">Zelf snel regelen</p>
-          <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Veelgevraagde onderwerpen</h2>
+          <h2 className="mt-3 kop-2">Veelgevraagde onderwerpen</h2>
           <ul className="mt-6 flex flex-wrap gap-3">
             {serviceOnderwerpen.map((o) => (
               <li key={o.href}>
                 <a
                   href={o.href}
-                  className="inline-flex rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink-800 transition hover:border-amber-500 hover:text-amber-600"
+                  className="inline-flex rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink-800 transition hover:border-amber-500 hover:text-amber-800"
                 >
                   {o.label}
                 </a>
@@ -95,19 +95,19 @@ export default async function KlantenservicePage() {
       <section id="retourbeleid" className="scroll-mt-24 border-t border-line bg-mist">
         <div className="container-x py-16">
           <p className="eyebrow">Service</p>
-          <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Retourbeleid</h2>
+          <h2 className="mt-3 kop-2">Retourbeleid</h2>
           <div className="mt-6 grid gap-10 lg:grid-cols-2">
             <div>
               <p className="rounded-2xl border-l-2 border-amber-500 bg-white p-5 text-lg font-semibold text-ink-900 shadow-soft">
                 Je kunt tot {retourtermijn} dagen na ontvangst retourneren.
               </p>
               <p className="mt-4 text-warm">{retourbeleid.intro}</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link href="/klantenservice/retourneren" className="btn-primary">Retour aanmelden</Link>
+                <Link href="/portaal/retouren" className="btn-outline">Ik heb een portaalaccount</Link>
+              </div>
               <p className="mt-4 text-sm text-warm">
-                Heb je een inlog voor het klantportaal? Dan meld je een retour het makkelijkst aan via{' '}
-                <Link href="/portaal/retouren" className="font-semibold text-amber-600 hover:underline">
-                  het portaal
-                </Link>
-                .
+                Aanmelden kan zonder account: je hebt alleen je ordernummer en het e-mailadres van de bestelling nodig.
               </p>
             </div>
             <ol className="space-y-4">
@@ -127,7 +127,7 @@ export default async function KlantenservicePage() {
 
       <section id="garantie" className="scroll-mt-24 container-x py-16">
         <p className="eyebrow">Service</p>
-        <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Garantie</h2>
+        <h2 className="mt-3 kop-2">Garantie</h2>
         <div className="mt-6 max-w-3xl">
           <p className="text-lg text-warm">{garantie.intro}</p>
           <p className="mt-4 text-warm">{garantie.tekst}</p>
@@ -135,11 +135,11 @@ export default async function KlantenservicePage() {
             <h3 className="text-base font-bold text-ink-900">Een garantieclaim melden</h3>
             <p className="mt-2 text-sm text-warm">{garantie.hoe}</p>
             <p className="mt-3 text-sm">
-              <a href={`tel:${site.phoneIntl}`} className="font-bold text-ink-900 hover:text-amber-600">
+              <a href={`tel:${site.phoneIntl}`} className="font-bold text-ink-900 hover:text-amber-800">
                 {site.phone}
               </a>
               <span className="text-warm"> of </span>
-              <a href={`mailto:${site.email}`} className="font-semibold text-amber-600 hover:underline">
+              <a href={`mailto:${site.email}`} className="font-semibold text-amber-700 hover:underline">
                 {site.email}
               </a>
             </p>
@@ -150,7 +150,7 @@ export default async function KlantenservicePage() {
       <section id="levertijd-en-bezorging" className="scroll-mt-24 border-t border-line bg-mist">
         <div className="container-x py-16">
           <p className="eyebrow">Service</p>
-          <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Levertijd en bezorging</h2>
+          <h2 className="mt-3 kop-2">Levertijd en bezorging</h2>
           <div className="mt-6 max-w-3xl">
             <p className="text-warm">{levering.intro}</p>
             <ul className="mt-6 space-y-3">

@@ -28,9 +28,9 @@ export default async function RapportagesPage() {
 
   if (!sb) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Leaddatabase nog niet gekoppeld</h1>
+          <h1 className="dash-h1">Leaddatabase nog niet gekoppeld</h1>
           <p className="mt-3 text-sm text-warm">Zet <code>SUPABASE_URL</code> en <code>SUPABASE_SERVICE_ROLE_KEY</code> in de omgevingsvariabelen en draai de migraties in <code>supabase/migrations</code>.</p>
           <Link href="/dashboard" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
         </div>
@@ -70,9 +70,9 @@ export default async function RapportagesPage() {
   ];
 
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Rapportages</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop flex items-center justify-between gap-4">
+        <h1 className="dash-h1">Rapportages</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 text-sm text-warm">Cijfers over omzet, merken, budget, verstrekkingen en verbruik per vestiging, afdeling en functiegroep. Live berekend uit orders en facturen.</p>
@@ -88,7 +88,7 @@ export default async function RapportagesPage() {
 
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {kpis.map((k) => (
-          <div key={k.label} className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+          <div key={k.label} className="panel p-4">
             <p className="text-xs uppercase tracking-wide text-warm">{k.label}</p>
             <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{k.waarde}</p>
           </div>
@@ -101,19 +101,19 @@ export default async function RapportagesPage() {
         {perKlant.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen betaalde facturen.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+          <div className="mt-4 overflow-x-auto panel">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Klant</th>
-                  <th className="px-4 py-3 text-right">Omzet</th>
+                  <th>Klant</th>
+                  <th className="text-right">Omzet</th>
                 </tr>
               </thead>
               <tbody>
                 {perKlant.map((r) => (
                   <tr key={r.naam} className="border-b border-line">
-                    <td className="px-4 py-3 font-semibold text-ink-900">{r.naam}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{euro(r.bedrag)}</td>
+                    <td className="font-semibold text-ink-900">{r.naam}</td>
+                    <td className="whitespace-nowrap text-right text-ink-900">{euro(r.bedrag)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -128,19 +128,19 @@ export default async function RapportagesPage() {
         {perMerk.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen orderregels om te tonen.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+          <div className="mt-4 overflow-x-auto panel">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Merk</th>
-                  <th className="px-4 py-3 text-right">Omzet</th>
+                  <th>Merk</th>
+                  <th className="text-right">Omzet</th>
                 </tr>
               </thead>
               <tbody>
                 {perMerk.map((r) => (
                   <tr key={r.merk} className="border-b border-line">
-                    <td className="px-4 py-3 font-semibold text-ink-900">{r.merk}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{euro(r.bedrag)}</td>
+                    <td className="font-semibold text-ink-900">{r.merk}</td>
+                    <td className="whitespace-nowrap text-right text-ink-900">{euro(r.bedrag)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -155,25 +155,25 @@ export default async function RapportagesPage() {
         {budget.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen medewerkers met budget.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+          <div className="mt-4 overflow-x-auto panel">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Medewerker</th>
-                  <th className="px-4 py-3">Klant</th>
-                  <th className="px-4 py-3 text-right">Budget</th>
-                  <th className="px-4 py-3 text-right">Verbruik</th>
-                  <th className="px-4 py-3 text-right">Percentage</th>
+                  <th>Medewerker</th>
+                  <th>Klant</th>
+                  <th className="text-right">Budget</th>
+                  <th className="text-right">Verbruik</th>
+                  <th className="text-right">Percentage</th>
                 </tr>
               </thead>
               <tbody>
                 {budget.map((m) => (
                   <tr key={m.id} className="border-b border-line">
-                    <td className="px-4 py-3 font-semibold text-ink-900">{m.naam}</td>
-                    <td className="px-4 py-3 text-warm">{m.organisatie_naam || '-'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-warm">{m.budget > 0 ? euro(m.budget) : '-'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-warm">{euro(m.verbruik)}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
+                    <td className="font-semibold text-ink-900">{m.naam}</td>
+                    <td className="text-warm">{m.organisatie_naam || '-'}</td>
+                    <td className="whitespace-nowrap text-right text-warm">{m.budget > 0 ? euro(m.budget) : '-'}</td>
+                    <td className="whitespace-nowrap text-right text-warm">{euro(m.verbruik)}</td>
+                    <td className="whitespace-nowrap text-right">
                       {m.budget > 0 ? (
                         <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${m.percentage >= 100 ? 'bg-amber-100 text-amber-800' : m.percentage >= 80 ? 'bg-amber-50 text-amber-700' : 'bg-green-100 text-green-800'}`}>{m.percentage}%</span>
                       ) : (
@@ -194,21 +194,21 @@ export default async function RapportagesPage() {
         {verstrekkingen.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen verstrekkingen geregistreerd.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+          <div className="mt-4 overflow-x-auto panel">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Medewerker</th>
-                  <th className="px-4 py-3">Klant</th>
-                  <th className="px-4 py-3 text-right">Aantal stuks</th>
+                  <th>Medewerker</th>
+                  <th>Klant</th>
+                  <th className="text-right">Aantal stuks</th>
                 </tr>
               </thead>
               <tbody>
                 {verstrekkingen.map((m) => (
                   <tr key={m.id} className="border-b border-line">
-                    <td className="px-4 py-3 font-semibold text-ink-900">{m.naam}</td>
-                    <td className="px-4 py-3 text-warm">{m.organisatie_naam || '-'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{m.aantal}</td>
+                    <td className="font-semibold text-ink-900">{m.naam}</td>
+                    <td className="text-warm">{m.organisatie_naam || '-'}</td>
+                    <td className="whitespace-nowrap text-right text-ink-900">{m.aantal}</td>
                   </tr>
                 ))}
               </tbody>
@@ -223,21 +223,21 @@ export default async function RapportagesPage() {
         {perVestiging.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen orders om te tonen.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+          <div className="mt-4 overflow-x-auto panel">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Vestiging</th>
-                  <th className="px-4 py-3 text-right">Aantal orders</th>
-                  <th className="px-4 py-3 text-right">Verbruik</th>
+                  <th>Vestiging</th>
+                  <th className="text-right">Aantal orders</th>
+                  <th className="text-right">Verbruik</th>
                 </tr>
               </thead>
               <tbody>
                 {perVestiging.map((r) => (
                   <tr key={r.naam} className="border-b border-line">
-                    <td className="px-4 py-3 font-semibold text-ink-900">{r.naam}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-warm">{r.aantalOrders}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{euro(r.bedrag)}</td>
+                    <td className="font-semibold text-ink-900">{r.naam}</td>
+                    <td className="whitespace-nowrap text-right text-warm">{r.aantalOrders}</td>
+                    <td className="whitespace-nowrap text-right text-ink-900">{euro(r.bedrag)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -252,21 +252,21 @@ export default async function RapportagesPage() {
         {perAfdeling.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen orders om te tonen.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+          <div className="mt-4 overflow-x-auto panel">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Afdeling</th>
-                  <th className="px-4 py-3 text-right">Aantal orders</th>
-                  <th className="px-4 py-3 text-right">Verbruik</th>
+                  <th>Afdeling</th>
+                  <th className="text-right">Aantal orders</th>
+                  <th className="text-right">Verbruik</th>
                 </tr>
               </thead>
               <tbody>
                 {perAfdeling.map((r) => (
                   <tr key={r.naam} className="border-b border-line">
-                    <td className="px-4 py-3 font-semibold text-ink-900">{r.naam}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-warm">{r.aantalOrders}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{euro(r.bedrag)}</td>
+                    <td className="font-semibold text-ink-900">{r.naam}</td>
+                    <td className="whitespace-nowrap text-right text-warm">{r.aantalOrders}</td>
+                    <td className="whitespace-nowrap text-right text-ink-900">{euro(r.bedrag)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -281,21 +281,21 @@ export default async function RapportagesPage() {
         {perFunctie.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen orders om te tonen.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+          <div className="mt-4 overflow-x-auto panel">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Functiegroep</th>
-                  <th className="px-4 py-3 text-right">Aantal orders</th>
-                  <th className="px-4 py-3 text-right">Verbruik</th>
+                  <th>Functiegroep</th>
+                  <th className="text-right">Aantal orders</th>
+                  <th className="text-right">Verbruik</th>
                 </tr>
               </thead>
               <tbody>
                 {perFunctie.map((r) => (
                   <tr key={r.naam} className="border-b border-line">
-                    <td className="px-4 py-3 font-semibold text-ink-900">{r.naam}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-warm">{r.aantalOrders}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{euro(r.bedrag)}</td>
+                    <td className="font-semibold text-ink-900">{r.naam}</td>
+                    <td className="whitespace-nowrap text-right text-warm">{r.aantalOrders}</td>
+                    <td className="whitespace-nowrap text-right text-ink-900">{euro(r.bedrag)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -310,21 +310,21 @@ export default async function RapportagesPage() {
         {inBezit.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen geleverde verstrekkingen.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+          <div className="mt-4 overflow-x-auto panel">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Medewerker</th>
-                  <th className="px-4 py-3">Klant</th>
-                  <th className="px-4 py-3 text-right">Stuks in bezit</th>
+                  <th>Medewerker</th>
+                  <th>Klant</th>
+                  <th className="text-right">Stuks in bezit</th>
                 </tr>
               </thead>
               <tbody>
                 {inBezit.map((m) => (
                   <tr key={m.id} className="border-b border-line">
-                    <td className="px-4 py-3 font-semibold text-ink-900">{m.naam}</td>
-                    <td className="px-4 py-3 text-warm">{m.organisatie_naam || '-'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{m.aantal}</td>
+                    <td className="font-semibold text-ink-900">{m.naam}</td>
+                    <td className="text-warm">{m.organisatie_naam || '-'}</td>
+                    <td className="whitespace-nowrap text-right text-ink-900">{m.aantal}</td>
                   </tr>
                 ))}
               </tbody>
@@ -339,27 +339,27 @@ export default async function RapportagesPage() {
         {mutaties.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen budgetmutaties geregistreerd.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+          <div className="mt-4 overflow-x-auto panel">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Datum</th>
-                  <th className="px-4 py-3">Medewerker</th>
-                  <th className="px-4 py-3">Soort</th>
-                  <th className="px-4 py-3">Omschrijving</th>
-                  <th className="px-4 py-3 text-right">Bedrag</th>
-                  <th className="px-4 py-3 text-right">Saldo na</th>
+                  <th>Datum</th>
+                  <th>Medewerker</th>
+                  <th>Soort</th>
+                  <th>Omschrijving</th>
+                  <th className="text-right">Bedrag</th>
+                  <th className="text-right">Saldo na</th>
                 </tr>
               </thead>
               <tbody>
                 {mutaties.map((m) => (
                   <tr key={m.id} className="border-b border-line">
-                    <td className="whitespace-nowrap px-4 py-3 text-warm">{datumKort(m.datum)}</td>
-                    <td className="px-4 py-3 font-semibold text-ink-900">{m.medewerker_naam}</td>
-                    <td className="px-4 py-3 text-warm">{m.soort}</td>
-                    <td className="px-4 py-3 text-warm">{m.omschrijving || '-'}</td>
+                    <td className="whitespace-nowrap text-warm">{datumKort(m.datum)}</td>
+                    <td className="font-semibold text-ink-900">{m.medewerker_naam}</td>
+                    <td className="text-warm">{m.soort}</td>
+                    <td className="text-warm">{m.omschrijving || '-'}</td>
                     <td className={`whitespace-nowrap px-4 py-3 text-right ${m.bedrag < 0 ? 'text-amber-700' : 'text-ink-900'}`}>{euro(m.bedrag)}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{euro(m.saldo_na)}</td>
+                    <td className="whitespace-nowrap text-right text-ink-900">{euro(m.saldo_na)}</td>
                   </tr>
                 ))}
               </tbody>

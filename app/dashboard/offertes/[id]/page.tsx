@@ -16,12 +16,13 @@ import {
   voegPakketActie,
 } from './actions';
 import RegelToevoegen from './RegelToevoegen';
+import TotaalKaart from '@/components/dashboard/TotaalKaart';
 import { listPakketten } from '@/lib/kms/pakketten';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Offerte', robots: { index: false, follow: false } };
 
-const inputCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+const inputCls = 'veld';
 
 const statusBadge: Record<string, string> = {
   concept: 'bg-ink-100 text-ink-600',
@@ -45,9 +46,9 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
 
   if (!sb) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Leaddatabase nog niet gekoppeld</h1>
+          <h1 className="dash-h1">Leaddatabase nog niet gekoppeld</h1>
           <p className="mt-3 text-sm text-warm">Zet <code>SUPABASE_URL</code> en <code>SUPABASE_SERVICE_ROLE_KEY</code> in de omgevingsvariabelen en draai de migraties in <code>supabase/migrations</code>.</p>
           <Link href="/dashboard/offertes" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar offertes</Link>
         </div>
@@ -58,9 +59,9 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
   const [offerte, organisaties] = await Promise.all([getOfferte(id), listOrganisaties()]);
   if (!offerte) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Offerte niet gevonden</h1>
+          <h1 className="dash-h1">Offerte niet gevonden</h1>
           <p className="mt-3 text-sm text-warm">Deze offerte bestaat niet of is verwijderd.</p>
           <Link href="/dashboard/offertes" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar offertes</Link>
         </div>
@@ -74,128 +75,76 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
   const verlopen = !!offerte.geldig_tot && offerte.status !== 'geaccepteerd' && offerte.status !== 'afgewezen' && new Date(offerte.geldig_tot) < new Date(new Date().toDateString());
 
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
+    <main className="container-app py-6">
+      <div className="dash-kop justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-ink-900">Offerte {offerte.offertenummer != null ? `#${offerte.offertenummer}` : 'concept'}</h1>
-          <p className="mt-1 text-sm text-warm">{offerte.organisatie_naam || 'Geen klant gekoppeld'} · {formatDatum(offerte.created_at)}</p>
+          <h1 className="dash-h1">Offerte {offerte.offertenummer != null ? `#${offerte.offertenummer}` : 'concept'}</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <Link href={`/dashboard/offertes/${id}/afdruk`} className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink-700 hover:bg-mist">Afdrukken / PDF</Link>
-          <Link href="/dashboard/offertes" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar offertes</Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/dashboard/offertes/${id}/afdruk`} className="knop-stil">Afdrukken / PDF</Link>
+          <Link href="/dashboard/offertes" className="knop-tekst">Terug naar offertes</Link>
         </div>
       </div>
+      <p className="mt-2 text-[13px] text-warm">{offerte.organisatie_naam || 'Geen klant gekoppeld'} · {formatDatum(offerte.created_at)}</p>
 
-
-      <section className="mt-8 grid gap-6 lg:grid-cols-3">
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-soft lg:col-span-2">
-          <h2 className="font-display text-base font-bold text-ink-900">Kopgegevens</h2>
-          <form action={werkOfferteActie} className="mt-4 grid gap-3 sm:grid-cols-2">
-            <input type="hidden" name="offerteId" value={offerte.id} />
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-warm">Klant</label>
-              <select name="organisatie_id" className={inputCls} defaultValue={offerte.organisatie_id ?? ''}>
-                <option value="">Geen klant gekoppeld</option>
-                {organisaties.map((o) => <option key={o.id} value={o.id}>{o.naam}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-warm">Contactpersoon</label>
-              <input name="contactpersoon" defaultValue={offerte.contactpersoon ?? ''} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-warm">Geldig tot</label>
-              <input type="date" name="geldig_tot" defaultValue={dateInputWaarde(offerte.geldig_tot)} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-warm">Btw %</label>
-              <input name="btw_pct" inputMode="decimal" defaultValue={String(offerte.btw_pct ?? 21)} className={inputCls} />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-warm">Notitie</label>
-              <textarea name="notitie" rows={2} defaultValue={offerte.notitie ?? ''} className={inputCls} />
-            </div>
-            <div className="sm:col-span-2">
-              <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Kopgegevens opslaan</button>
-            </div>
-          </form>
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
-            <h2 className="font-display text-base font-bold text-ink-900">Status</h2>
-            <p className="mt-2"><span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[offerte.status] ?? 'bg-ink-100 text-ink-600'}`}>{offerte.status}</span></p>
-            <form action={wijzigStatusActie} className="mt-4 flex flex-wrap items-end gap-2">
+      {/* Werkblad links, financiën en acties in een meelopend spoor rechts. */}
+      <div className="mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0 space-y-6">
+          <div className="panel p-4">
+            <h2 className="font-display text-base font-bold text-ink-900">Kopgegevens</h2>
+            <form action={werkOfferteActie} className="mt-3 grid gap-3 sm:grid-cols-2">
               <input type="hidden" name="offerteId" value={offerte.id} />
-              <div className="flex-1">
-                <label className="block text-xs font-semibold text-warm">Wijzig status</label>
-                <select name="status" defaultValue={offerte.status} className={inputCls}>
-                  {OFFERTE_STATUSSEN.map((s) => <option key={s} value={s}>{s}</option>)}
+              <div className="sm:col-span-2">
+                <label className="veld-label">Klant</label>
+                <select name="organisatie_id" className={inputCls} defaultValue={offerte.organisatie_id ?? ''}>
+                  <option value="">Geen klant gekoppeld</option>
+                  {organisaties.map((o) => <option key={o.id} value={o.id}>{o.naam}</option>)}
                 </select>
               </div>
-              <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Opslaan</button>
+              <div>
+                <label className="veld-label">Contactpersoon</label>
+                <input name="contactpersoon" defaultValue={offerte.contactpersoon ?? ''} className={inputCls} />
+              </div>
+              <div>
+                <label className="veld-label">Geldig tot</label>
+                <input type="date" name="geldig_tot" defaultValue={dateInputWaarde(offerte.geldig_tot)} className={inputCls} />
+              </div>
+              <div>
+                <label className="veld-label">Btw %</label>
+                <input name="btw_pct" inputMode="decimal" defaultValue={String(offerte.btw_pct ?? 21)} className={inputCls} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="veld-label">Notitie</label>
+                <textarea name="notitie" rows={2} defaultValue={offerte.notitie ?? ''} className={inputCls} />
+              </div>
+              <div className="sm:col-span-2">
+                <button type="submit" className="knop-donker">Kopgegevens opslaan</button>
+              </div>
             </form>
           </div>
 
-          <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
-            <h2 className="font-display text-base font-bold text-ink-900">Versturen en omzetten</h2>
-            {verlopen && <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">Deze offerte is verlopen ({formatDatum(offerte.geldig_tot)}).</p>}
-            <form action={mailOfferteActie} className="mt-3">
-              <input type="hidden" name="offerteId" value={offerte.id} />
-              <label className="block text-xs font-semibold text-warm">Mail offerte naar</label>
-              <input name="to" type="email" defaultValue={offerte.organisatie_email ?? ''} placeholder="klant@bedrijf.nl" className={inputCls} />
-              <button type="submit" className="mt-2 w-full rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Mail naar klant</button>
-            </form>
-            <form action={maakOrderVanOfferteActie} className="mt-4 border-t border-line pt-4">
-              <input type="hidden" name="offerteId" value={offerte.id} />
-              <button type="submit" disabled={!offerte.organisatie_id} className="w-full rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50">Omzetten naar order</button>
-              {!offerte.organisatie_id && <p className="mt-1 text-xs text-warm">Koppel eerst een klant om een order te maken.</p>}
-            </form>
-          </div>
-
-          <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
-            <h2 className="font-display text-base font-bold text-ink-900">Totalen</h2>
-            <dl className="mt-3 space-y-1.5 text-sm">
-              {korting > 0 && <div className="flex justify-between gap-3"><dt className="text-warm">Korting</dt><dd className="text-ink-900">- {formatEuro(korting)}</dd></div>}
-              <div className="flex justify-between gap-3"><dt className="text-warm">Subtotaal</dt><dd className="text-ink-900">{formatEuro(subtotaal)}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-warm">Btw ({offerte.btw_pct ?? 21}%)</dt><dd className="text-ink-900">{formatEuro(btw)}</dd></div>
-              <div className="flex justify-between gap-3 border-t border-line pt-1.5 font-extrabold text-ink-900"><dt>Totaal</dt><dd>{formatEuro(totaal)}</dd></div>
-              {marge !== 0 && <div className="flex justify-between gap-3 border-t border-line pt-1.5 text-xs"><dt className="text-warm">Marge (indicatie)</dt><dd className="font-semibold text-ink-700">{formatEuro(marge)}</dd></div>}
-            </dl>
-          </div>
-
-          <form action={verwijderOfferteActie} className="rounded-2xl border border-red-200 bg-red-50 p-6">
-            <input type="hidden" name="offerteId" value={offerte.id} />
-            <h2 className="font-display text-base font-bold text-red-800">Offerte verwijderen</h2>
-            <p className="mt-1 text-xs text-red-700">Inclusief alle regels. Dit kan niet ongedaan worden gemaakt.</p>
-            <ConfirmSubmit message="Deze offerte en alle regels verwijderen?" className="mt-3 rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100">Verwijderen</ConfirmSubmit>
-          </form>
-        </div>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="font-display text-xl font-bold text-ink-900">Offerteregels</h2>
-        <div className="mt-4 grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+          <div>
+            <h2 className="font-display text-base font-bold text-ink-900">Offerteregels</h2>
             {offerte.regels.length === 0 ? (
-              <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen regels op deze offerte.</p>
+              <p className="mt-3 rounded-lg border border-dashed border-line bg-mist px-5 py-6 text-center text-[13px] text-warm">Nog geen regels op deze offerte. Voeg er hieronder een toe.</p>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+              <div className="panel mt-3">
+                <table className="tbl">
+                  <thead>
                     <tr>
-                      <th className="px-3 py-3">Omschrijving</th>
-                      <th className="px-3 py-3">Aantal</th>
-                      <th className="px-3 py-3">Stukprijs</th>
-                      <th className="px-3 py-3 text-right">Regeltotaal</th>
-                      <th className="px-3 py-3"></th>
+                      <th>Omschrijving</th>
+                      <th className="w-20">Aantal</th>
+                      <th className="w-28">Stukprijs</th>
+                      <th className="w-20">Korting</th>
+                      <th className="num w-28">Regeltotaal</th>
+                      <th className="w-28"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {offerte.regels.map((r) => (
-                      <tr key={r.id} className="border-b border-line align-top">
-                        <td colSpan={5} className="px-3 py-3">
-                          <form action={werkRegelActie} className="grid grid-cols-12 items-end gap-2">
+                      <tr key={r.id}>
+                        <td colSpan={6}>
+                          <form action={werkRegelActie} className="grid grid-cols-12 items-center gap-2">
                             <input type="hidden" name="offerteId" value={offerte.id} />
                             <input type="hidden" name="regelId" value={r.id} />
                             <div className="col-span-12 sm:col-span-5">
@@ -210,49 +159,97 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
                             <div className="col-span-2 sm:col-span-1">
                               <input name="korting_pct" inputMode="decimal" defaultValue={String(r.korting_pct ?? 0)} aria-label="Korting %" title="Korting %" className={inputCls} />
                             </div>
-                            <div className="col-span-3 sm:col-span-2 text-right text-sm font-medium text-ink-900">{formatEuro((Number(r.aantal) || 0) * (Number(r.stukprijs) || 0) * (1 - (Number(r.korting_pct) || 0) / 100))}</div>
-                            <div className="col-span-12 sm:col-span-1 flex gap-2">
-                              <button type="submit" className="rounded-md bg-ink-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-ink-800">Opslaan</button>
+                            <div className="col-span-3 sm:col-span-2 text-right text-[13px] font-semibold tabular-nums text-ink-900">{formatEuro((Number(r.aantal) || 0) * (Number(r.stukprijs) || 0) * (1 - (Number(r.korting_pct) || 0) / 100))}</div>
+                            <div className="col-span-12 flex items-center gap-3 sm:col-span-1 sm:justify-end">
+                              <button type="submit" className="knop-stil">Opslaan</button>
                             </div>
                           </form>
                           <form action={verwijderRegelActie} className="mt-1">
                             <input type="hidden" name="offerteId" value={offerte.id} />
                             <input type="hidden" name="regelId" value={r.id} />
-                            <ConfirmSubmit message="Deze regel verwijderen?" className="text-xs font-semibold text-warm hover:text-ink-800">Verwijderen</ConfirmSubmit>
+                            <ConfirmSubmit message="Deze regel verwijderen?" className="text-[11px] font-semibold text-warm hover:text-ink-900">Verwijderen</ConfirmSubmit>
                           </form>
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-mist"><td colSpan={5} className="px-3 py-2 text-right text-sm font-semibold text-warm">Subtotaal: <span className="text-ink-900">{formatEuro(subtotaal)}</span></td></tr>
-                    <tr className="bg-mist"><td colSpan={5} className="px-3 py-2 text-right text-sm font-semibold text-warm">Btw ({offerte.btw_pct ?? 21}%): <span className="text-ink-900">{formatEuro(btw)}</span></td></tr>
-                    <tr className="bg-mist"><td colSpan={5} className="px-3 py-2 text-right text-sm font-extrabold text-ink-900">Totaal: {formatEuro(totaal)}</td></tr>
-                  </tfoot>
                 </table>
               </div>
             )}
           </div>
 
-          <div className="flex flex-col gap-6">
+          <div className="grid gap-6 sm:grid-cols-2">
+            <RegelToevoegen offerteId={offerte.id} opties={opties} />
             {pakketten.length > 0 && (
-              <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+              <div className="panel p-4">
                 <h3 className="font-display text-base font-bold text-ink-900">Vast pakket toevoegen</h3>
-                <p className="mt-1 text-xs text-warm">Voeg in een keer alle producten van een klant-pakket toe als regels.</p>
+                <p className="veld-hint">Voeg in een keer alle producten van een klant-pakket toe als regels.</p>
                 <form action={voegPakketActie} className="mt-3">
                   <input type="hidden" name="offerteId" value={offerte.id} />
                   <select name="pakketId" required defaultValue="" className={inputCls}>
                     <option value="">Kies een pakket</option>
                     {pakketten.map((p) => <option key={p.id} value={p.id}>{p.naam}</option>)}
                   </select>
-                  <button type="submit" className="mt-2 w-full rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Pakket toevoegen</button>
+                  <button type="submit" className="knop-donker mt-2 w-full">Pakket toevoegen</button>
                 </form>
               </div>
             )}
-            <RegelToevoegen offerteId={offerte.id} opties={opties} />
           </div>
         </div>
-      </section>
+
+        <aside className="space-y-4 lg:sticky lg:top-16">
+          <TotaalKaart
+            regels={[
+              ...(korting > 0 ? [{ label: 'Korting', waarde: korting, mindering: true }] : []),
+              { label: 'Subtotaal', waarde: subtotaal },
+              { label: `Btw (${offerte.btw_pct ?? 21}%)`, waarde: btw },
+            ]}
+            totaal={totaal}
+            marge={marge !== 0 ? marge : null}
+            toelichting="Indicatie op basis van de inkoopprijs per regel."
+          />
+
+          <div className="panel p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-display text-base font-bold text-ink-900">Status</h2>
+              <span className={`badge ${statusBadge[offerte.status] ?? 'bg-ink-100 text-ink-600'}`}>{offerte.status}</span>
+            </div>
+            <form action={wijzigStatusActie} className="mt-3 flex items-end gap-2">
+              <input type="hidden" name="offerteId" value={offerte.id} />
+              <div className="flex-1">
+                <label className="veld-label">Wijzig status</label>
+                <select name="status" defaultValue={offerte.status} className={inputCls}>
+                  {OFFERTE_STATUSSEN.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <button type="submit" className="knop-stil">Opslaan</button>
+            </form>
+          </div>
+
+          <div className="panel p-4">
+            <h2 className="font-display text-base font-bold text-ink-900">Versturen en omzetten</h2>
+            {verlopen && <p className="badge-actie mt-2 block px-3 py-2">Deze offerte is verlopen ({formatDatum(offerte.geldig_tot)}).</p>}
+            <form action={mailOfferteActie} className="mt-3">
+              <input type="hidden" name="offerteId" value={offerte.id} />
+              <label className="veld-label">Mail offerte naar</label>
+              <input name="to" type="email" defaultValue={offerte.organisatie_email ?? ''} placeholder="klant@bedrijf.nl" className={inputCls} />
+              <button type="submit" className="knop-donker mt-2 w-full">Mail naar klant</button>
+            </form>
+            <form action={maakOrderVanOfferteActie} className="mt-4 border-t border-line pt-4">
+              <input type="hidden" name="offerteId" value={offerte.id} />
+              <button type="submit" disabled={!offerte.organisatie_id} className="knop-primair w-full">Omzetten naar order</button>
+              {!offerte.organisatie_id && <p className="veld-hint">Koppel eerst een klant om een order te maken.</p>}
+            </form>
+          </div>
+
+          <form action={verwijderOfferteActie} className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <input type="hidden" name="offerteId" value={offerte.id} />
+            <h2 className="font-display text-base font-bold text-red-800">Offerte verwijderen</h2>
+            <p className="mt-1 text-[12px] text-red-700">Inclusief alle regels. Dit kan niet ongedaan worden gemaakt.</p>
+            <ConfirmSubmit message="Deze offerte en alle regels verwijderen?" className="knop mt-3 border border-red-300 bg-white text-red-700 hover:bg-red-100">Verwijderen</ConfirmSubmit>
+          </form>
+        </aside>
+      </div>
     </main>
   );
 }

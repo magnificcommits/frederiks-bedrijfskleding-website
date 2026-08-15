@@ -33,7 +33,7 @@ export default function ReferentiesPage() {
         <div className="container-x pt-16">
           <div className="grid gap-5 sm:grid-cols-3">
             {stats.map((s) => (
-              <div key={s.label} className="rounded-lg border-l-2 border-dashed border-amber-500 bg-white/5 p-6 text-center">
+              <div key={s.label} className="rounded-lg border-l-2 border-amber-500 bg-white/5 p-6 text-center">
                 <p className="font-display text-3xl font-extrabold text-amber-500">{s.value}</p>
                 <p className="mt-1 text-sm text-ink-200">{s.label}</p>
               </div>

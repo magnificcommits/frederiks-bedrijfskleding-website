@@ -14,7 +14,7 @@ export function CrossLinks({ exclude = '', title = 'Bekijk ook' }: { exclude?: s
   const tiles = all.filter((t) => t.href !== exclude).slice(0, 3);
   return (
     <section className="container-x py-14">
-      <h2 className="text-xl font-extrabold sm:text-2xl">{title}</h2>
+      <h2 className="kop-2">{title}</h2>
       <div className="mt-6 grid gap-5 sm:grid-cols-3">
         {tiles.map((t) => (
           <Link key={t.label} href={t.href} className="group relative overflow-hidden rounded-xl border border-line shadow-card">

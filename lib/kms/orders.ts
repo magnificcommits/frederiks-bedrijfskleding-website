@@ -43,6 +43,12 @@ export type Order = {
   notitie: string | null;
   interne_notitie: string | null;
   created_at: string;
+  // Staan al in de tabel en komen mee met select('*'); hier getypeerd
+  // zodat de orderlijst ze kan tonen.
+  referentienr: string | null;
+  track_trace_code: string | null;
+  vervoerder: string | null;
+  vestiging_id: string | null;
 };
 
 export type Orderregel = {
@@ -100,7 +106,7 @@ export async function listOrders(status?: string): Promise<OrderMetKlant[]> {
 const SORTEERKOLOMMEN = ['ordernummer', 'besteldatum', 'bedrag', 'status', 'goedkeuring_status'] as const;
 
 /** Eén pagina orders met optioneel statusfilter en sortering, plus het totaal aantal rijen voor paginering. */
-export async function listOrdersPaged(opts: { pagina: number; perPagina: number; status?: string; sort?: string; dir?: 'asc' | 'desc' }): Promise<{ rijen: OrderMetKlant[]; totaal: number }> {
+export async function listOrdersPaged(opts: { pagina: number; perPagina: number; status?: string; zoek?: string; sort?: string; dir?: 'asc' | 'desc' }): Promise<{ rijen: OrderMetKlant[]; totaal: number }> {
   const sb = kmsAdmin(); if (!sb) return { rijen: [], totaal: 0 };
   const pagina = Math.max(1, opts.pagina);
   const from = (pagina - 1) * opts.perPagina;
@@ -112,6 +118,19 @@ export async function listOrdersPaged(opts: { pagina: number; perPagina: number;
     .select('*, organisaties(naam), medewerkers(naam)', { count: 'exact' })
     .order(kolom, { ascending: oplopend });
   if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
+  // Zoeken op klantnaam of op nummer. De klant zit in een join, en PostgREST kan
+  // daar niet zonder meer op filteren; daarom eerst de organisatie-ids ophalen.
+  if (opts.zoek && opts.zoek.trim()) {
+    const term = opts.zoek.trim().replace(/[%,()]/g, ' ');
+    const { data: orgRijen } = await sb.from('organisaties').select('id').ilike('naam', `%${term}%`);
+    const orgIds = ((orgRijen as { id: string }[]) ?? []).map((o) => o.id);
+    const delen: string[] = [];
+    if (orgIds.length) delen.push(`organisatie_id.in.(${orgIds.join(',')})`);
+    if (/^\d+$/.test(term)) delen.push(`ordernummer.eq.${Number(term)}`);
+    // Niets dat kan matchen: dan liever nul rijen dan de hele lijst.
+    q = delen.length ? q.or(delen.join(',')) : q.eq('id', '00000000-0000-0000-0000-000000000000');
+  }
+
   const { data, count } = await q.range(from, to);
   const rows = (data as unknown as (Order & { organisaties: { naam: string } | null; medewerkers: { naam: string } | null })[]) ?? [];
   const rijen = rows.map((r) => {

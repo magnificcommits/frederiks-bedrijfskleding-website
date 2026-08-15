@@ -50,34 +50,34 @@ export default function WerkschoenenPage() {
           </div>
         </div>
 
-        <h2 className="mt-16 text-2xl font-extrabold sm:text-3xl">De klassen op een rij</h2>
+        <h2 className="mt-16 kop-2">De klassen op een rij</h2>
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           {klassen.map((c) => (
             <div key={c.k} className="rounded-lg border border-line bg-white p-5 shadow-soft">
-              <h3 className="font-display text-lg font-extrabold text-amber-600">{c.k}</h3>
+              <h3 className="font-display text-lg font-extrabold text-amber-700">{c.k}</h3>
               <p className="mt-2 text-sm text-warm">{c.d}</p>
             </div>
           ))}
         </div>
-        <p className="mt-6 text-sm text-warm">Onze schoenen voldoen aan EN ISO 20345:2022. Twijfel je over de juiste klasse? <Link href="/kennisbank/veiligheidsklasse-werkschoenen-kiezen" className="font-semibold text-amber-600 hover:underline">Lees ons artikel over schoenklassen</Link> of <Link href="/kledingadvies" className="font-semibold text-amber-600 hover:underline">vraag advies aan</Link>.</p>
+        <p className="mt-6 text-sm text-warm">Onze schoenen voldoen aan EN ISO 20345:2022. Twijfel je over de juiste klasse? <Link href="/kennisbank/veiligheidsklasse-werkschoenen-kiezen" className="font-semibold text-amber-700 hover:underline">Lees ons artikel over schoenklassen</Link> of <Link href="/kledingadvies" className="font-semibold text-amber-700 hover:underline">vraag advies aan</Link>.</p>
       </section>
 
       <section className="border-y border-line bg-mist">
         <div className="container-x py-16">
           <p className="eyebrow">In 3 stappen</p>
-          <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Zo kies je samen met ons de juiste schoen</h2>
+          <h2 className="mt-3 kop-2">Zo kies je samen met ons de juiste schoen</h2>
           <ol className="mt-8 grid gap-6 sm:grid-cols-3">
-            <li className="rounded-xl border-l-2 border-dashed border-amber-500 bg-white p-6 shadow-soft">
+            <li className="rounded-xl border-l-2 border-amber-500 bg-white p-6 shadow-soft">
               <span className="font-display text-2xl font-extrabold text-amber-500">1</span>
               <h3 className="mt-2 text-base font-bold text-ink-900">Vraag gratis advies aan</h3>
-              <p className="mt-2 text-sm text-warm">Vertel ons over je werk. {site.owner.split(' ')[0]} neemt binnen 1 werkdag persoonlijk contact op.</p>
+              <p className="mt-2 text-sm text-warm">Vertel ons over je werk. {site.owner.split(' ')[0]} neemt binnen 24 uur persoonlijk contact op.</p>
             </li>
-            <li className="rounded-xl border-l-2 border-dashed border-amber-500 bg-white p-6 shadow-soft">
+            <li className="rounded-xl border-l-2 border-amber-500 bg-white p-6 shadow-soft">
               <span className="font-display text-2xl font-extrabold text-amber-500">2</span>
               <h3 className="mt-2 text-base font-bold text-ink-900">We komen langs en passen op locatie</h3>
               <p className="mt-2 text-sm text-warm">Goed passende schoenen zijn het halve werk. We laten je passen, ook bredere modellen of met eigen inlegzolen.</p>
             </li>
-            <li className="rounded-xl border-l-2 border-dashed border-amber-500 bg-white p-6 shadow-soft">
+            <li className="rounded-xl border-l-2 border-amber-500 bg-white p-6 shadow-soft">
               <span className="font-display text-2xl font-extrabold text-amber-500">3</span>
               <h3 className="mt-2 text-base font-bold text-ink-900">Wij regelen de juiste klasse en levering</h3>
               <p className="mt-2 text-sm text-warm">Precies de bescherming die je nodig hebt, niet meer. Nabestellen gaat daarna met een belletje.</p>

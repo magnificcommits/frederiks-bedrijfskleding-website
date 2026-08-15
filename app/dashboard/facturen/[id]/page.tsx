@@ -4,12 +4,13 @@ import { kmsAdmin, dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
 import { getFactuur, getFactuurMailLog } from '@/lib/kms/facturen';
 import { voegRegel, werkRegel, verwijderRegel, wijzigStatus } from './actions';
 import PrintKnop from './PrintKnop';
+import TotaalKaart from '@/components/dashboard/TotaalKaart';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Factuur', robots: { index: false, follow: false } };
 
-const inputCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+const inputCls = 'veld';
 const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
 function fmt(d: string | null) {
   if (!d) return '-';
@@ -42,9 +43,9 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
 
   if (!sb) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Leaddatabase nog niet gekoppeld</h1>
+          <h1 className="dash-h1">Leaddatabase nog niet gekoppeld</h1>
           <p className="mt-3 text-sm text-warm">Zet <code>SUPABASE_URL</code> en <code>SUPABASE_SERVICE_ROLE_KEY</code> in de omgevingsvariabelen en draai de migraties in <code>supabase/migrations</code>.</p>
           <Link href="/dashboard/facturen" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar facturen</Link>
         </div>
@@ -55,9 +56,9 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
   const [factuur, mailLog] = await Promise.all([getFactuur(id), getFactuurMailLog(id)]);
   if (!factuur) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Factuur niet gevonden</h1>
+          <h1 className="dash-h1">Factuur niet gevonden</h1>
           <p className="mt-3 text-sm text-warm">Deze factuur bestaat niet of is verwijderd.</p>
           <Link href="/dashboard/facturen" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar facturen</Link>
         </div>
@@ -71,12 +72,12 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
   const incl = Number(factuur.bedrag_incl) || 0;
 
   return (
-    <main className="container-x py-12">
+    <main className="container-app py-6">
       <style>{`@media print { body * { visibility: hidden; } #factuur-print, #factuur-print * { visibility: visible; } #factuur-print { position: absolute; left: 0; top: 0; width: 100%; } }`}</style>
 
-      <div className="flex items-center justify-between gap-4 print:hidden">
+      <div className="dash-kop justify-between gap-4 print:hidden">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-ink-900">Factuur {factuur.factuurnummer || 'concept'}</h1>
+          <h1 className="dash-h1">Factuur {factuur.factuurnummer || 'concept'}</h1>
           <p className="mt-1 text-sm text-warm">{org?.naam || 'Onbekende klant'} · {fmt(factuur.factuurdatum)}</p>
         </div>
         <div className="flex items-center gap-4">
@@ -88,8 +89,124 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <section className="mt-8 grid gap-6 lg:grid-cols-3 print:hidden">
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+
+      {/* Werkblad links, totalen en gegevens in een meelopend spoor rechts. */}
+      <div className="mt-4 grid items-start gap-6 print:hidden lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="min-w-0 space-y-6">
+      <section className="print:hidden">
+        <h2 className="font-display text-xl font-bold text-ink-900">Factuurregels</h2>
+          {factuur.regels.length === 0 ? (
+            <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen regels op deze factuur.</p>
+          ) : (
+            <div className="panel overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+                  <tr>
+                    <th className="px-3 py-2">Omschrijving</th>
+                    <th className="px-3 py-2">Aantal</th>
+                    <th className="px-3 py-2">Stukprijs</th>
+                    <th className="px-3 py-2">Btw %</th>
+                    <th className="px-3 py-2">Bedrag</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {factuur.regels.map((r) => (
+                    <tr key={r.id} className="border-b border-line align-top">
+                      <td colSpan={6} className="px-3 py-2">
+                        <form action={werkRegel} className="grid grid-cols-12 items-end gap-2">
+                          <input type="hidden" name="factuurId" value={factuur.id} />
+                          <input type="hidden" name="regelId" value={r.id} />
+                          <div className="col-span-12 sm:col-span-5">
+                            <input name="omschrijving" required defaultValue={r.omschrijving} className={inputCls} />
+                          </div>
+                          <div className="col-span-3 sm:col-span-1">
+                            <input name="aantal" inputMode="decimal" defaultValue={String(r.aantal ?? 0)} className={inputCls} />
+                          </div>
+                          <div className="col-span-4 sm:col-span-2">
+                            <input name="stukprijs" inputMode="decimal" defaultValue={String(r.stukprijs ?? 0)} className={inputCls} />
+                          </div>
+                          <div className="col-span-3 sm:col-span-1">
+                            <input name="btw_pct" inputMode="decimal" defaultValue={String(r.btw_pct ?? 21)} className={inputCls} />
+                          </div>
+                          <div className="col-span-2 sm:col-span-2 text-right text-sm font-medium text-ink-900">{euro(Number(r.bedrag) || 0)}</div>
+                          <div className="col-span-12 sm:col-span-1 flex gap-2">
+                            <button type="submit" className="rounded-md bg-ink-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-ink-800">Opslaan</button>
+                          </div>
+                        </form>
+                        <form action={verwijderRegel} className="mt-1">
+                          <input type="hidden" name="factuurId" value={factuur.id} />
+                          <input type="hidden" name="regelId" value={r.id} />
+                          <ConfirmSubmit message="Deze factuurregel verwijderen?" className="text-xs font-semibold text-warm hover:text-ink-800">Verwijderen</ConfirmSubmit>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-mist"><td colSpan={6} className="px-3 py-2 text-right text-sm font-semibold text-warm">Subtotaal excl. btw: <span className="text-ink-900">{euro(excl)}</span></td></tr>
+                  <tr className="bg-mist"><td colSpan={6} className="px-3 py-2 text-right text-sm font-semibold text-warm">Btw: <span className="text-ink-900">{euro(btw)}</span></td></tr>
+                  <tr className="bg-mist"><td colSpan={6} className="px-3 py-2 text-right text-sm font-extrabold text-ink-900">Totaal incl. btw: {euro(incl)}</td></tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+
+
+        <div className="panel p-4">
+          <h3 className="font-display text-base font-bold text-ink-900">Regel toevoegen</h3>
+          <form action={voegRegel} className="mt-4 flex flex-col gap-3">
+            <input type="hidden" name="factuurId" value={factuur.id} />
+            <div>
+              <label className="veld-label">Omschrijving</label>
+              <input name="omschrijving" required placeholder="Bijv. Softshell jas met logo" className={inputCls} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="veld-label">Aantal</label>
+                <input name="aantal" inputMode="decimal" defaultValue="1" className={inputCls} />
+              </div>
+              <div>
+                <label className="veld-label">Stukprijs</label>
+                <input name="stukprijs" inputMode="decimal" placeholder="bedrag" className={inputCls} />
+              </div>
+            </div>
+            <div>
+              <label className="veld-label">Btw %</label>
+              <input name="btw_pct" inputMode="decimal" defaultValue="21" className={inputCls} />
+            </div>
+            <button type="submit" className="self-start knop-donker">Toevoegen</button>
+          </form>
+        </div>
+      </section>
+
+      <section className="print:hidden">
+        <h2 className="font-display text-xl font-bold text-ink-900">Verzendlogboek boekhouder</h2>
+        <div className="mt-4 max-w-2xl panel p-4">
+          {mailLog.length === 0 ? (
+            <p className="text-sm text-warm">Nog niet naar de boekhouder gemaild.</p>
+          ) : (
+            <ul className="divide-y divide-line text-sm">
+              {mailLog.map((log, i) => (
+                <li key={i} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <span className="text-ink-900">{fmtTijd(log.verzonden_op)}</span>
+                  <span className="text-warm">{log.naar_email}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+
+      </div>
+
+      <aside className="space-y-4 lg:sticky lg:top-16">
+        <TotaalKaart
+          regels={[{ label: 'Subtotaal excl. btw', waarde: excl }, { label: 'Btw', waarde: btw }]}
+          totaalLabel="Totaal incl. btw"
+          totaal={incl}
+        />
+        <div className="panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Factuurgegevens</h2>
           <dl className="mt-3 space-y-1.5 text-sm">
             <div className="flex justify-between gap-3"><dt className="text-warm">Factuurnummer</dt><dd className="font-medium text-ink-900">{factuur.factuurnummer || 'concept'}</dd></div>
@@ -100,7 +217,7 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
           </dl>
         </div>
 
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+        <div className="panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Klant</h2>
           <dl className="mt-3 space-y-1.5 text-sm">
             <div className="flex justify-between gap-3"><dt className="text-warm">Naam</dt><dd className="font-medium text-ink-900">{org?.naam || '-'}</dd></div>
@@ -110,7 +227,7 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
           </dl>
         </div>
 
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+        <div className="panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Status</h2>
           <p className="mt-2"><span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[factuur.status] ?? 'bg-ink-100 text-ink-600'}`}>{factuur.status}</span></p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -132,117 +249,10 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
           </div>
           <p className="mt-3 text-xs text-warm">Bij Verzonden wordt de vervaldatum op factuurdatum plus 30 dagen gezet. Bij Betaald wordt de betaaldatum op vandaag gezet.</p>
         </div>
-      </section>
+      </aside>
+      </div>
 
-      <section className="mt-10 print:hidden">
-        <h2 className="font-display text-xl font-bold text-ink-900">Factuurregels</h2>
-        <div className="mt-4 grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            {factuur.regels.length === 0 ? (
-              <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen regels op deze factuur.</p>
-            ) : (
-              <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
-                    <tr>
-                      <th className="px-3 py-3">Omschrijving</th>
-                      <th className="px-3 py-3">Aantal</th>
-                      <th className="px-3 py-3">Stukprijs</th>
-                      <th className="px-3 py-3">Btw %</th>
-                      <th className="px-3 py-3">Bedrag</th>
-                      <th className="px-3 py-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {factuur.regels.map((r) => (
-                      <tr key={r.id} className="border-b border-line align-top">
-                        <td colSpan={6} className="px-3 py-3">
-                          <form action={werkRegel} className="grid grid-cols-12 items-end gap-2">
-                            <input type="hidden" name="factuurId" value={factuur.id} />
-                            <input type="hidden" name="regelId" value={r.id} />
-                            <div className="col-span-12 sm:col-span-5">
-                              <input name="omschrijving" required defaultValue={r.omschrijving} className={inputCls} />
-                            </div>
-                            <div className="col-span-3 sm:col-span-1">
-                              <input name="aantal" inputMode="decimal" defaultValue={String(r.aantal ?? 0)} className={inputCls} />
-                            </div>
-                            <div className="col-span-4 sm:col-span-2">
-                              <input name="stukprijs" inputMode="decimal" defaultValue={String(r.stukprijs ?? 0)} className={inputCls} />
-                            </div>
-                            <div className="col-span-3 sm:col-span-1">
-                              <input name="btw_pct" inputMode="decimal" defaultValue={String(r.btw_pct ?? 21)} className={inputCls} />
-                            </div>
-                            <div className="col-span-2 sm:col-span-2 text-right text-sm font-medium text-ink-900">{euro(Number(r.bedrag) || 0)}</div>
-                            <div className="col-span-12 sm:col-span-1 flex gap-2">
-                              <button type="submit" className="rounded-md bg-ink-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-ink-800">Opslaan</button>
-                            </div>
-                          </form>
-                          <form action={verwijderRegel} className="mt-1">
-                            <input type="hidden" name="factuurId" value={factuur.id} />
-                            <input type="hidden" name="regelId" value={r.id} />
-                            <ConfirmSubmit message="Deze factuurregel verwijderen?" className="text-xs font-semibold text-warm hover:text-ink-800">Verwijderen</ConfirmSubmit>
-                          </form>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-mist"><td colSpan={6} className="px-3 py-2 text-right text-sm font-semibold text-warm">Subtotaal excl. btw: <span className="text-ink-900">{euro(excl)}</span></td></tr>
-                    <tr className="bg-mist"><td colSpan={6} className="px-3 py-2 text-right text-sm font-semibold text-warm">Btw: <span className="text-ink-900">{euro(btw)}</span></td></tr>
-                    <tr className="bg-mist"><td colSpan={6} className="px-3 py-2 text-right text-sm font-extrabold text-ink-900">Totaal incl. btw: {euro(incl)}</td></tr>
-                  </tfoot>
-                </table>
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
-            <h3 className="font-display text-base font-bold text-ink-900">Regel toevoegen</h3>
-            <form action={voegRegel} className="mt-4 flex flex-col gap-3">
-              <input type="hidden" name="factuurId" value={factuur.id} />
-              <div>
-                <label className="block text-xs font-semibold text-warm">Omschrijving</label>
-                <input name="omschrijving" required placeholder="Bijv. Softshell jas met logo" className={inputCls} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-warm">Aantal</label>
-                  <input name="aantal" inputMode="decimal" defaultValue="1" className={inputCls} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-warm">Stukprijs</label>
-                  <input name="stukprijs" inputMode="decimal" placeholder="bedrag" className={inputCls} />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-warm">Btw %</label>
-                <input name="btw_pct" inputMode="decimal" defaultValue="21" className={inputCls} />
-              </div>
-              <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Toevoegen</button>
-            </form>
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-10 print:hidden">
-        <h2 className="font-display text-xl font-bold text-ink-900">Verzendlogboek boekhouder</h2>
-        <div className="mt-4 max-w-2xl rounded-2xl border border-line bg-white p-6 shadow-soft">
-          {mailLog.length === 0 ? (
-            <p className="text-sm text-warm">Nog niet naar de boekhouder gemaild.</p>
-          ) : (
-            <ul className="divide-y divide-line text-sm">
-              {mailLog.map((log, i) => (
-                <li key={i} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                  <span className="text-ink-900">{fmtTijd(log.verzonden_op)}</span>
-                  <span className="text-warm">{log.naar_email}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
-
-      <section id="factuur-print" className="mt-12 rounded-2xl border border-line bg-white p-8 shadow-soft print:mt-0 print:border-0 print:shadow-none">
+      <section id="factuur-print" className="mt-12 panel p-8 print:mt-0 print:border-0 print:shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div>
             <p className="font-display text-2xl font-extrabold text-ink-900">{BEDRIJF.naam}</p>

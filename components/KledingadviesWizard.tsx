@@ -63,7 +63,7 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
     return (
       <div className="rounded-2xl border-2 border-amber-500 bg-white p-8 shadow-card">
         <p className="font-display text-2xl font-extrabold text-ink-900">Bedankt, {contact.name.split(' ')[0]}.</p>
-        <p className="mt-3 text-warm">We hebben je aanvraag binnen. We bellen je binnen een werkdag terug om je wensen door te nemen. Je krijgt ook een bevestiging in je mail.</p>
+        <p className="mt-3 text-warm">We hebben je aanvraag binnen. We bellen je binnen 24 uur terug om je wensen door te nemen. Je krijgt ook een bevestiging in je mail.</p>
         <p className="mt-4 text-sm text-warm">Liever meteen contact? Bel of WhatsApp ons.</p>
       </div>
     );

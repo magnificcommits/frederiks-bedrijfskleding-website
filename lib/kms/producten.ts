@@ -78,7 +78,7 @@ export async function listProducten(zoek?: string, merk?: string): Promise<Produ
 }
 
 /** Eén pagina producten (standaard gesorteerd op naam oplopend) met dezelfde zoek/merk-filters, plus het totaal aantal rijen voor paginering. Met optionele sort/dir voor sorteerbare kolomkoppen. */
-export async function listProductenPaged(opts: { pagina: number; perPagina: number; zoek?: string; merk?: string; sort?: string; dir?: 'asc' | 'desc' }): Promise<{ rijen: ProductMetTelling[]; totaal: number }> {
+export async function listProductenPaged(opts: { pagina: number; perPagina: number; zoek?: string; merk?: string; zonderFoto?: boolean; sort?: string; dir?: 'asc' | 'desc' }): Promise<{ rijen: ProductMetTelling[]; totaal: number }> {
   const sb = kmsAdmin(); if (!sb) return { rijen: [], totaal: 0 };
   const pagina = Math.max(1, opts.pagina);
   const from = (pagina - 1) * opts.perPagina;
@@ -93,6 +93,9 @@ export async function listProductenPaged(opts: { pagina: number; perPagina: numb
     q = q.or(`naam.ilike.${term},sku.ilike.${term},merk.ilike.${term},categorie.ilike.${term}`);
   }
   if (opts.merk && opts.merk.trim()) q = q.eq('merk', opts.merk.trim());
+  // Producten zonder foto: een lege array telt in Postgres niet als NULL,
+  // dus beide gevallen apart afvangen.
+  if (opts.zonderFoto) q = q.or('afbeeldingen.is.null,afbeeldingen.eq.{}');
   const { data, count } = await q.range(from, to);
   const rows = (data as (Product & { product_varianten: { count: number }[] })[]) ?? [];
   const rijen = rows.map((r) => {

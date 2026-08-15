@@ -15,14 +15,14 @@ export default function ContactPage() {
       <PageHero eyebrow="Contact" title="Kom gerust langs of neem contact op"
         intro={`${site.address.locationNote} Showroombezoek op afspraak. We komen ook graag bij je langs.`} />
       <section className="container-x py-16">
-        <div className="grid gap-10 lg:grid-cols-2">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,24rem)_minmax(0,48rem)] lg:justify-between">
           <div>
             <h2 className="text-2xl font-bold">{site.name}</h2>
             <address className="mt-4 not-italic text-warm">
               {site.address.street}<br />
               {site.address.postalCode} {site.address.city}<br /><br />
-              Tel/WhatsApp: <a href={`tel:${site.phoneIntl}`} className="text-amber-600 hover:underline">{site.phone}</a><br />
-              E-mail: <a href={`mailto:${site.email}`} className="text-amber-600 hover:underline">{site.email}</a>
+              Tel/WhatsApp: <a href={`tel:${site.phoneIntl}`} className="text-amber-700 hover:underline">{site.phone}</a><br />
+              E-mail: <a href={`mailto:${site.email}`} className="text-amber-700 hover:underline">{site.email}</a>
             </address>
             <h3 className="mt-8 text-lg font-semibold text-ink-800">Openingstijden</h3>
             <ul className="mt-3 space-y-1 text-sm text-warm">

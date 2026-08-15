@@ -7,7 +7,8 @@ function admin(): SupabaseClient | null {
   return createClient(env.supabaseUrl, env.supabaseServiceKey, { auth: { persistSession: false } });
 }
 
-export type Organisatie = { id: string; naam: string; plaats: string | null; telefoon: string | null; adres: string | null; postcode: string | null; created_at: string };
+export type Organisatie = { id: string; naam: string; plaats: string | null; telefoon: string | null; adres: string | null; postcode: string | null; created_at: string; // Kolommen die al in de tabel staan en door select('*') worden meegeleverd; hier getypeerd zodat de klantenlijst ze kan tonen.
+  klantnummer: string | null; branche: string | null; contactpersoon: string | null; actief: boolean | null };
 export type OrgVelden = { naam: string; plaats?: string | null; telefoon?: string | null; adres?: string | null; postcode?: string | null };
 export type Gebruiker = { id: string; organisatie_id: string; email: string; naam: string | null; rol: string };
 export type KledingItem = { id: string; organisatie_id: string; naam: string; merk: string | null; kleur: string | null; logopositie: string | null; techniek: string | null; richtprijs: number | null; actief: boolean };

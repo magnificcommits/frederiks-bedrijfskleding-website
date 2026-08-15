@@ -8,8 +8,8 @@ export function BrancheGrid() {
       <div className="container-x py-16 sm:py-24">
         <div className="max-w-2xl">
           <p className="eyebrow">Voor elke branche</p>
-          <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl">Kleding afgestemd op jouw sector</h2>
-          <p className="mt-3 text-lg text-warm">We kleden elke sector. Samen kiezen we een pakket dat past bij het werk en bij je uitstraling.</p>
+          <h2 className="mt-3 kop-2">Kleding afgestemd op jouw sector</h2>
+          <p className="mt-3 max-w-[52ch] text-lg text-warm">We kleden elke sector. Samen kiezen we een pakket dat past bij het werk en bij je uitstraling.</p>
         </div>
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {branches.map((b) => (
@@ -20,9 +20,9 @@ export function BrancheGrid() {
                   className={b.fit === 'contain' ? 'object-contain p-2' : 'object-cover transition duration-500 group-hover:scale-105'} />
               </div>
               <div className="flex grow flex-col p-5">
-                <h3 className="text-lg font-bold text-ink-900 group-hover:text-amber-600">{b.navLabel}</h3>
+                <h3 className="text-lg font-bold text-ink-900 group-hover:text-amber-800">{b.navLabel}</h3>
                 <p className="mt-2 grow text-sm text-warm line-clamp-2">{b.heroIntro}</p>
-                <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wide text-amber-600">
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wide text-amber-700">
                   Bekijk <span aria-hidden="true">→</span>
                 </span>
               </div>

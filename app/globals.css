@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --font-display: 'Archivo', Georgia, serif;
+    --font-display: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
     --font-body: 'Inter', system-ui, sans-serif;
   }
   html { scroll-behavior: smooth; }
@@ -12,7 +12,9 @@
     @apply bg-white text-ink antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
-  h1, h2, h3, h4 { @apply font-display font-extrabold text-ink-900 tracking-tight; }
+  /* Bewust geen kleur hier: een element-regel verslaat overerving, en dan
+     wordt elke kop in een donkere sectie antraciet op antraciet. */
+  h1, h2, h3, h4 { @apply font-display font-extrabold tracking-tight; }
   ::selection { @apply bg-amber-200 text-ink-900; }
 
   /* Toegankelijkheid: respecteer voorkeur voor minder beweging */
@@ -31,38 +33,170 @@
 }
 
 @layer components {
-  .container-x { @apply mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-8; }
+  /* --- Paginakader ----------------------------------------------------
+     Eén kader voor de hele publieke site, met dezelfde meeschalende marge als
+     de hero. Zo begint de tekst op elke pagina op precies dezelfde plek als op
+     de homepage, in plaats van 200 px verder naar binnen.
 
-  /* Eyebrow als gestikt kledinglabel: oranje stippellijn-rand, geen los streepje. */
+     Let op het onderscheid: dit is de breedte van het PAGINAKADER, niet van een
+     tekstkolom. Een regel lopende tekst blijft gebonden aan `.prose-nl` of aan
+     een expliciete `max-w-*`; boven ongeveer 75 tekens per regel raakt het oog
+     bij de terugsprong de volgende regel kwijt en gaat de leesbaarheid juist
+     achteruit. Breder kader, even smalle tekstkolom, meer ruimte voor beeld,
+     kolommen en formulieren - dat is de winst. */
+  .container-x { @apply mx-auto w-full max-w-[110rem] px-5 sm:px-6 lg:px-[clamp(2rem,5.5vw,6rem)]; }
+
+  /* Voor pagina's die alléén lopende tekst zijn (voorwaarden, privacy, artikelen).
+     Daar is een breed kader zinloos: dan staat er een smalle kolom links met een
+     halve schermbreedte leegte ernaast. Deze centreert de tekst gewoon. */
+  .container-lees { @apply mx-auto w-full max-w-3xl px-5 sm:px-6; }
+
+  /* --- KMS-dashboard -------------------------------------------------
+     container-x (max-w-6xl) blijft de leesbreedte van de publieke site.
+     container-app is de werkbreedte van het dashboard. */
+  .container-app { @apply mx-auto w-full max-w-[1600px] px-5 sm:px-6 lg:px-8; }
+  /* Smalle werkbreedte voor dashboarddetailpagina's (formulieren, één record).
+     Was container-x; die is nu het brede kader van de publieke site. */
+  .container-smal { @apply mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-8; }
+
+  /* Paginakop die blijft staan. De negatieve marges laten de balk tot de
+     rand van de container lopen, zodat er niets langs de zijkant doorschijnt. */
+  .dash-kop {
+    @apply sticky top-0 z-30 -mx-5 flex min-h-[3.5rem] items-center border-b border-line bg-white/95 px-5 py-2
+           backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8;
+  }
+
+  /* Filterbalk direct onder de kop. */
+  .dash-filter {
+    @apply sticky top-[3.5rem] z-20 -mx-5 flex min-h-[3.25rem] items-center border-b border-line bg-white px-5 py-2
+           sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8;
+  }
+
+  /* Tabelkop die blijft staan. Werkt alleen als de tabelwrapper geen
+     overflow-container is; daarom is overflow-x-auto daar weggehaald. */
+  .thead-sticky { @apply sticky top-[3.25rem] z-10 bg-mist; }
+  .thead-sticky-filter { @apply sticky top-[6.25rem] z-10 bg-mist; }
+
+  /* === Dashboard-designlaag =========================================
+     Werktool, geen brochure. Neutraal grijs is de basis; amber is
+     gereserveerd voor de primaire actie en voor "hier moet iets".
+     Dichte maatvoering: 13px tekst, rijhoogte 32px. */
+
+  .dash-h1 { @apply font-display text-xl font-bold tracking-tight text-ink-900; }
+  .dash-sub { @apply text-[13px] leading-snug text-warm; }
+
+  /* Vlak zonder slagschaduw: een 1px-rand is genoeg en oogt rustiger. */
+  .panel { @apply rounded-lg border border-line bg-white; }
+
+  /* Dichte tabel. Lijnen alleen tussen rijen, niet tussen kolommen. */
+  .tbl { @apply w-full border-collapse text-left text-[13px]; }
+  .tbl thead th {
+    @apply whitespace-nowrap border-b border-line bg-mist px-3 py-2
+           text-[11px] font-semibold uppercase tracking-wide text-warm;
+  }
+  .tbl tbody td { @apply border-b border-line px-3 py-1.5 align-middle text-ink-800; }
+  .tbl tbody tr:last-child td { @apply border-b-0; }
+  .tbl tbody tr:hover td { @apply bg-mist; }
+  .tbl .rij-link { @apply font-semibold text-ink-900 underline-offset-2 hover:text-amber-700 hover:underline; }
+  .tbl .num { @apply whitespace-nowrap text-right tabular-nums; }
+  .tbl .stil { @apply text-warm; }
+
+  /* Status. Kleur betekent iets: amber = actie nodig, groen = klaar, grijs = rust. */
+  .badge { @apply inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-semibold; }
+  .badge-rust { @apply badge bg-ink-100 text-ink-600; }
+  .badge-actie { @apply badge bg-amber-100 text-amber-800; }
+  .badge-klaar { @apply badge bg-green-100 text-green-800; }
+
+  /* Filterchip met aantal. */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1
+           text-[13px] font-medium text-ink-700 transition-colors hover:border-ink-300 hover:bg-mist;
+  }
+  .chip-aan { @apply border-ink-900 bg-ink-900 text-white hover:border-ink-900 hover:bg-ink-900; }
+  .chip-tel { @apply rounded bg-ink-100 px-1.5 text-[11px] font-semibold tabular-nums text-ink-600; }
+  .chip-aan .chip-tel { @apply bg-white/25 text-white; }
+
+  /* Knoppen in het dashboard: compact, geen uppercase, geen lift. */
+  .knop {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-semibold
+           transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400
+           focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  /* Donkere tekst op oranje, niet wit: wit op amber-500 haalt maar 3,2:1 en
+     zakt daarmee onder de WCAG-AA-eis van 4,5:1. Met ink-900 is het 5,3:1,
+     en het sluit aan op de actieve link in de zijbalk. */
+  .knop-primair { @apply knop bg-amber-500 text-ink-900 hover:bg-amber-400; }
+  .knop-stil { @apply knop border border-line bg-white text-ink-700 hover:bg-mist; }
+  .knop-donker { @apply knop bg-ink-900 text-white hover:bg-ink-800; }
+  .knop-tekst { @apply knop px-2 font-medium text-warm hover:bg-mist hover:text-ink-900; }
+
+  /* Invoer. */
+  .veld {
+    @apply w-full rounded-md border border-line bg-white px-2.5 py-1.5 text-[13px] text-ink-900
+           placeholder:text-ink-300 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200;
+  }
+  .veld-label { @apply mb-1 block text-[11px] font-semibold uppercase tracking-wide text-warm; }
+  .veld-hint { @apply mt-1 text-[12px] leading-snug text-warm; }
+
+  /* Lade rechts. */
+  .drawer-overlay { @apply absolute inset-0 cursor-default bg-ink-900/30; animation: drawer-overlay-in 0.18s ease-out; }
+  .drawer-paneel { animation: drawer-paneel-in 0.18s ease-out; }
+
+
+  /* Sectielabel, bewust kaal. Het gestippelde oranje kadertje eromheen stond op
+     37 plekken en maakte het accent daarmee betekenisloos. */
   .eyebrow {
-    @apply inline-block rounded-[3px] border border-dashed border-amber-500 px-2.5 py-1
-           text-[0.68rem] font-bold uppercase tracking-[0.16em] text-amber-600;
+    @apply inline-block text-[0.7rem] font-bold uppercase tracking-[0.16em] text-warm;
   }
 
   /* Naad-accent: dunne stippellijn als stiksel. */
   .seam { @apply border-dashed border-amber-400; }
 
+  /* Geen uppercase: Nederlandse knoplabels zijn lang, en uppercase kost ~12%
+     breedte plus nog eens 3% door tracking-wide. Op een telefoon werden dat
+     knoppen van twee tot drie regels hoog. */
   .btn {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md px-6 py-3 text-sm font-bold uppercase tracking-wide
-           transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md px-6 py-3 text-[15px] font-semibold
+           transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
            focus-visible:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed;
   }
-  .btn-primary { @apply btn bg-amber-500 text-white shadow-soft hover:bg-amber-600 hover:-translate-y-0.5; }
-  .btn-secondary { @apply btn bg-ink-800 text-white hover:bg-ink-900 hover:-translate-y-0.5; }
+    /* Donkere tekst op oranje: wit haalt 3,2:1 en zakt onder de WCAG-AA-eis
+     van 4,5:1. Met ink-900 is het 5,3:1, en het sluit aan op het logo. */
+.btn-primary { @apply btn bg-amber-500 text-ink-900 shadow-soft hover:bg-amber-400; }
+  .btn-secondary { @apply btn bg-ink-800 text-white hover:bg-ink-900; }
   .btn-outline { @apply btn border-2 border-ink-200 text-ink-800 hover:border-ink-800; }
   .btn-ghost { @apply btn text-ink-700 hover:bg-mist; }
 
   .card { @apply rounded-lg border border-line bg-white p-6 shadow-card; }
 
-  /* Feature-kaart met gestikte (stippel) linkernaad in plaats van massieve balk. */
-  .seam-card { @apply rounded-lg border-l-2 border-dashed border-amber-500 bg-white p-5 shadow-soft; }
+  /* --- Kopschaal --------------------------------------------------------
+     Eén reeks voor de hele publieke site. Er liepen twee h2-maten door elkaar
+     en de PageHero-h1 was even groot als een homepage-h2; dan leest het niet
+     meer als hiërarchie. */
+  .kop-1 { @apply font-display text-[2.25rem] font-extrabold leading-[1.08] tracking-tight sm:text-5xl; }
+  .kop-2 { @apply font-display text-[1.75rem] font-extrabold leading-[1.15] tracking-tight sm:text-[2.125rem]; }
+  .kop-3 { @apply font-display text-lg font-semibold leading-snug sm:text-xl; }
+
+  /* --- Verticaal ritme --------------------------------------------------
+     Er stonden zeven verschillende sectiepaddings door elkaar. Drie is genoeg. */
+  .sec    { @apply py-16 sm:py-24; }
+  .sec-md { @apply py-12 sm:py-16; }
+  .sec-sm { @apply py-8 sm:py-10; }
+
+  /* Feature-kaart. De gestikte oranje linkernaad die hier stond, stond ook op elk
+     ander vlak; dan valt niets meer op. Nadruk leg je met .kaart-nadruk. */
+  .seam-card { @apply rounded-lg border border-line bg-white p-5; }
+  .kaart-nadruk { @apply rounded-lg border border-line border-l-2 border-l-amber-500 bg-white p-5; }
 
   .prose-nl { @apply max-w-prose text-warm leading-relaxed; }
   .prose-nl p { @apply mb-4; }
-  .prose-nl a { @apply text-amber-600 underline underline-offset-2 hover:text-amber-700; }
+  .prose-nl a { @apply text-amber-700 underline underline-offset-2 hover:text-amber-800; }
   .prose-nl ul { @apply mb-4 list-disc space-y-1 pl-5; }
 }
 
 @layer utilities {
   .text-balance { text-wrap: balance; }
 }
+
+@keyframes drawer-paneel-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes drawer-overlay-in { from { opacity: 0; } to { opacity: 1; } }

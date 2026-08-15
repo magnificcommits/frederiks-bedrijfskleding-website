@@ -13,7 +13,7 @@ function Kop() {
   return (
     <div className="text-center">
       <div className="font-display text-2xl font-extrabold tracking-wide text-ink-900">FREDERIKS</div>
-      <div className="mt-1 text-[11px] font-bold tracking-[0.32em] text-amber-600">BEDRIJFSKLEDING</div>
+      <div className="mt-1 text-[11px] font-bold tracking-[0.32em] text-amber-700">BEDRIJFSKLEDING</div>
     </div>
   );
 }

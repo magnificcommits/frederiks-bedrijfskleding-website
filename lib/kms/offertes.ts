@@ -112,6 +112,7 @@ export async function listOffertesPaged(opts: {
   pagina: number;
   perPagina: number;
   status?: string;
+  zoek?: string;
   sort?: string;
   dir?: 'asc' | 'desc';
 }): Promise<{ rijen: OfferteMetTotaal[]; totaal: number }> {
@@ -128,6 +129,18 @@ export async function listOffertesPaged(opts: {
     .select('*, organisaties(naam)', { count: 'exact' })
     .order(kolom, { ascending: oplopend });
   if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
+  // Zoeken op klantnaam of offertenummer. De klant zit in een join, en PostgREST
+  // kan daar niet zonder meer op filteren; daarom eerst de organisatie-ids ophalen.
+  if (opts.zoek && opts.zoek.trim()) {
+    const term = opts.zoek.trim().replace(/[%,()]/g, ' ');
+    const { data: orgRijen } = await sb.from('organisaties').select('id').ilike('naam', `%${term}%`);
+    const orgIds = ((orgRijen as { id: string }[]) ?? []).map((o) => o.id);
+    const delen: string[] = [];
+    if (orgIds.length) delen.push(`organisatie_id.in.(${orgIds.join(',')})`);
+    if (/^\d+$/.test(term)) delen.push(`offertenummer.eq.${Number(term)}`);
+    q = delen.length ? q.or(delen.join(',')) : q.eq('id', '00000000-0000-0000-0000-000000000000');
+  }
+
   const { data, count } = await q.range(from, to);
   const rows = (data as unknown as (Offerte & { organisaties: { naam: string } | null })[]) ?? [];
 

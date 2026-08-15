@@ -13,7 +13,7 @@ export default function VoorwaardenPage() {
   return (
     <>
       <PageHero eyebrow="Juridisch" title="Algemene voorwaarden" />
-      <section className="container-x py-16">
+      <section className="container-lees py-16">
         <div className="prose-nl">
           <p>Dit is een werkversie van de algemene voorwaarden. Laat deze voor livegang controleren en aanvullen door een jurist, of gebruik de voorwaarden van je brancheorganisatie.</p>
           <h2>Toepasselijkheid</h2>

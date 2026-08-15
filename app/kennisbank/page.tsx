@@ -20,14 +20,14 @@ export default function KennisbankPage() {
         if (!items.length) return null;
         return (
           <section key={cat} className="container-x py-10">
-            <h2 className="text-xl font-extrabold sm:text-2xl">{cat}</h2>
+            <h2 className="kop-2">{cat}</h2>
             <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {items.map((a) => (
                 <Link key={a.slug} href={`/kennisbank/${a.slug}`}
                   className="group flex flex-col rounded-lg border border-line bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-amber-400">
-                  <h3 className="text-base font-bold text-ink-900 group-hover:text-amber-600">{a.title}</h3>
+                  <h3 className="text-base font-bold text-ink-900 group-hover:text-amber-800">{a.title}</h3>
                   <p className="mt-2 grow text-sm text-warm line-clamp-3">{a.intro}</p>
-                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wide text-amber-600">Lees meer <span aria-hidden="true">&rarr;</span></span>
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wide text-amber-700">Lees meer <span aria-hidden="true">&rarr;</span></span>
                 </Link>
               ))}
             </div>

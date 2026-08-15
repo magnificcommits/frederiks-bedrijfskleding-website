@@ -47,9 +47,9 @@ export default async function ArtikelPage({ params }: { params: Promise<{ slug: 
       <section className="border-b border-line bg-mist">
         <div className="container-x py-12 sm:py-16">
           <nav className="text-xs text-warm" aria-label="Kruimelpad">
-            <Link href="/" className="hover:text-amber-600">Home</Link>
+            <Link href="/" className="hover:text-amber-800">Home</Link>
             <span className="px-1.5">/</span>
-            <Link href="/kennisbank" className="hover:text-amber-600">Kennisbank</Link>
+            <Link href="/kennisbank" className="hover:text-amber-800">Kennisbank</Link>
           </nav>
           <p className="eyebrow mt-4">{a.category}</p>
           <h1 className="mt-3 max-w-3xl text-3xl font-extrabold text-balance sm:text-4xl">{a.title}</h1>
@@ -57,19 +57,19 @@ export default async function ArtikelPage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
 
-      <article className="container-x grid gap-12 py-14 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <article className="container-x grid gap-12 py-14 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div>
           <p className="text-lg font-medium leading-relaxed text-ink-800">{a.intro}</p>
           {a.sections.map((s) => (
             <div key={s.h} className="mt-8">
-              <h2 className="text-xl font-extrabold sm:text-2xl">{s.h}</h2>
+              <h2 className="kop-2">{s.h}</h2>
               <div className="prose-nl mt-3">
                 {s.p.map((par, i) => <p key={i}>{par}</p>)}
               </div>
             </div>
           ))}
         </div>
-        <aside className="lg:col-span-1">
+        <aside>
           <div className="sticky top-24 space-y-4">
             <div className="rounded-xl border-2 border-amber-500 bg-white p-6 shadow-card">
               <h2 className="text-lg font-extrabold text-ink-900">Vraag advies aan {site.owner.split(' ')[0]}</h2>
@@ -79,7 +79,7 @@ export default async function ArtikelPage({ params }: { params: Promise<{ slug: 
             </div>
             {branche && (
               <Link href={`/branches/${branche.slug}`} className="block rounded-xl bg-mist p-5 hover:bg-ink-50">
-                <span className="text-xs font-bold uppercase tracking-wide text-amber-600">Bekijk ook</span>
+                <span className="text-xs font-bold uppercase tracking-wide text-amber-700">Bekijk ook</span>
                 <span className="mt-1 block font-bold text-ink-900">{branche.name}</span>
               </Link>
             )}
@@ -90,12 +90,12 @@ export default async function ArtikelPage({ params }: { params: Promise<{ slug: 
       {meer.length > 0 && (
         <section className="border-t border-line bg-mist">
           <div className="container-x py-12">
-            <h2 className="text-xl font-extrabold sm:text-2xl">Meer over {a.category.toLowerCase()}</h2>
+            <h2 className="kop-2">Meer over {a.category.toLowerCase()}</h2>
             <div className="mt-5 grid gap-4 sm:grid-cols-3">
               {meer.map((x) => (
                 <Link key={x.slug} href={`/kennisbank/${x.slug}`} className="group rounded-lg border border-line bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-amber-400">
-                  <h3 className="text-base font-bold text-ink-900 group-hover:text-amber-600">{x.title}</h3>
-                  <span className="mt-3 inline-block text-sm font-bold uppercase tracking-wide text-amber-600">Lees meer &rarr;</span>
+                  <h3 className="text-base font-bold text-ink-900 group-hover:text-amber-800">{x.title}</h3>
+                  <span className="mt-3 inline-block text-sm font-bold uppercase tracking-wide text-amber-700">Lees meer &rarr;</span>
                 </Link>
               ))}
             </div>

@@ -16,6 +16,9 @@ export const site = {
   phoneIntl: '+31615215029',
   whatsapp: '+31615215029',
   rating: { value: 5.0, count: 8 },
+  /** Eén formulering voor de reactietijd; overal vandaan lezen, nergens overtypen. */
+  belofte: 'Binnen 24 uur reactie, op werkdagen',
+  beloftKort: 'binnen 24 uur',
   address: {
     street: 'Kruisbergseweg 9',
     postalCode: '7255 AG',

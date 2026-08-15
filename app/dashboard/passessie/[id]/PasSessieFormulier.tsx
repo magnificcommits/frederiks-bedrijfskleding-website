@@ -129,7 +129,7 @@ export default function PasSessieFormulier({
       )}
 
       {/* 1. Wie past er */}
-      <section className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+      <section className="panel p-4">
         <h3 className="text-sm font-bold uppercase tracking-wide text-warm">1. Wie past er</h3>
         <div className="mt-3 flex flex-wrap gap-2">
           {medewerkers.map((m) => (
@@ -169,7 +169,7 @@ export default function PasSessieFormulier({
       </section>
 
       {/* 2. Artikel */}
-      <section className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+      <section className="panel p-4">
         <h3 className="text-sm font-bold uppercase tracking-wide text-warm">2. Artikel</h3>
         {artikel ? (
           <div className="mt-3 flex items-center gap-4">
@@ -225,7 +225,7 @@ export default function PasSessieFormulier({
 
       {/* 3. Kleur en maat */}
       {artikel && (
-        <section className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+        <section className="panel p-4">
           <h3 className="text-sm font-bold uppercase tracking-wide text-warm">3. Kleur en maat</h3>
           {!keuze ? (
             <p className="mt-3 text-sm text-warm">Kleuren en maten laden...</p>

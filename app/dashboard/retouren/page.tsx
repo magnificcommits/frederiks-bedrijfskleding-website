@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import Drawer from '@/components/dashboard/Drawer';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
+import StatusChips from '@/components/dashboard/StatusChips';
+import { telPerStatus } from '@/lib/kms/tellingen';
 import {
   listRetouren,
   listOrganisaties,
@@ -59,9 +62,9 @@ export default async function RetourenPage({
 
   if (!sb) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Leaddatabase nog niet gekoppeld</h1>
+          <h1 className="dash-h1">Leaddatabase nog niet gekoppeld</h1>
           <p className="mt-3 text-sm text-warm">Zet <code>SUPABASE_URL</code> en <code>SUPABASE_SERVICE_ROLE_KEY</code> in de omgevingsvariabelen en draai de migraties in <code>supabase/migrations</code>.</p>
           <Link href="/dashboard" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
         </div>
@@ -83,11 +86,36 @@ export default async function RetourenPage({
     ((regelData as { id: string; regels: unknown }[]) ?? []).map((r) => [r.id, leesRegels(r.regels)]),
   );
 
+  const perStatus = await telPerStatus('retouren');
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Retouren</h1>
-        <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
+    <main className="container-app py-6">
+      <div className="dash-kop flex items-center justify-between gap-4">
+        <h1 className="dash-h1">Retouren</h1>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard" className="knop-tekst">Terug naar dashboard</Link>
+          <Drawer
+            knop="Retour aanmelden"
+            titel="Retour aanmelden"
+            beschrijving="Meld hier handmatig een retour aan. Medewerkers kunnen dit straks zelf vanuit het portaal doen."
+            >
+            <form action={nieuwRetour} className="mt-4 flex flex-col gap-3">
+                <div>
+                  <label className="veld-label">Klant</label>
+                  <select name="organisatie_id" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200">
+                    <option value="">Geen klant gekoppeld</option>
+                    {orgs.map((o) => (
+                      <option key={o.id} value={o.id}>{o.naam}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="veld-label">Reden</label>
+                  <textarea name="reden" rows={3} placeholder="Bijvoorbeeld: verkeerde maat geleverd" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
+                </div>
+                <button type="submit" className="self-start knop-donker">Retour aanmelden</button>
+            </form>
+          </Drawer>
+        </div>
       </div>
       <p className="mt-2 text-sm text-warm">Aangemelde retouren beoordeel je hier en je legt het retouradres en de instructie voor de klant vast.</p>
 
@@ -98,7 +126,7 @@ export default async function RetourenPage({
       )}
 
 
-      <div className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-soft">
+      <div className="mt-6 panel p-4">
         <h2 className="font-display text-lg font-bold text-ink-900">Retourbeleid</h2>
         <p className="mt-1 text-xs text-warm">Tot zoveel dagen na de besteldatum kunnen klanten retourneren. Daarna kunnen ze geen retour meer aanmelden.</p>
         <form action={zetRetourbeleid} className="mt-4 flex flex-wrap items-end gap-3">
@@ -113,70 +141,33 @@ export default async function RetourenPage({
               className="mt-1 w-32 rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
             />
           </div>
-          <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Opslaan</button>
+          <button type="submit" className="knop-donker">Opslaan</button>
         </form>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-warm">Filter</span>
-        <Link
-          href="/dashboard/retouren"
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${actief === '' ? 'bg-ink-900 text-white' : 'bg-mist text-warm hover:text-ink-800'}`}
-        >
-          Alle
-        </Link>
-        {RETOUR_STATUSSEN.map((s) => (
-          <Link
-            key={s}
-            href={`/dashboard/retouren?status=${s}`}
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${actief === s ? 'bg-ink-900 text-white' : 'bg-mist text-warm hover:text-ink-800'}`}
-          >
-            {statusLabel(s)}
-          </Link>
-        ))}
-      </div>
+      <StatusChips
+        basePath="/dashboard/retouren"
+        huidig={actief}
+        statussen={RETOUR_STATUSSEN}
+        aantallen={perStatus}
+      />
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          {retouren.length === 0 ? (
-            <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Geen retouren in deze weergave.</p>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {retouren.map((r) => (
-                <RetourKaart key={r.id} r={r} regels={regelsPerRetour.get(r.id) ?? []} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
-          <h2 className="font-display text-lg font-bold text-ink-900">Retour aanmelden</h2>
-          <p className="mt-1 text-xs text-warm">Meld hier handmatig een retour aan. Medewerkers kunnen dit straks zelf vanuit het portaal doen.</p>
-          <form action={nieuwRetour} className="mt-4 flex flex-col gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-warm">Klant</label>
-              <select name="organisatie_id" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200">
-                <option value="">Geen klant gekoppeld</option>
-                {orgs.map((o) => (
-                  <option key={o.id} value={o.id}>{o.naam}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-warm">Reden</label>
-              <textarea name="reden" rows={3} placeholder="Bijvoorbeeld: verkeerde maat geleverd" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
-            </div>
-            <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Retour aanmelden</button>
-          </form>
-        </div>
-      </div>
+        {retouren.length === 0 ? (
+          <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Geen retouren in deze weergave.</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {retouren.map((r) => (
+              <RetourKaart key={r.id} r={r} regels={regelsPerRetour.get(r.id) ?? []} />
+            ))}
+          </div>
+        )}
     </main>
   );
 }
 
 function RetourKaart({ r, regels }: { r: RetourMetLabels; regels: RetourRegel[] }) {
   return (
-    <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+    <div className="panel p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-display text-base font-bold text-ink-900">{r.organisatie_naam || 'Onbekende klant'}</p>
@@ -221,11 +212,11 @@ function RetourKaart({ r, regels }: { r: RetourMetLabels; regels: RetourRegel[] 
       <form action={wijzigRetourInstructie} className="mt-4 flex flex-col gap-3 border-t border-line pt-4">
         <input type="hidden" name="retourId" value={r.id} />
         <div>
-          <label className="block text-xs font-semibold text-warm">Retouradres</label>
+          <label className="veld-label">Retouradres</label>
           <input name="retouradres" defaultValue={r.retouradres ?? ''} placeholder="Adres waar de klant naartoe stuurt" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-warm">Instructie voor de klant</label>
+          <label className="veld-label">Instructie voor de klant</label>
           <textarea name="instructie" rows={2} defaultValue={r.instructie ?? ''} placeholder="Bijvoorbeeld: stuur in originele verpakking, vermeld het ordernummer" className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
         </div>
         <button type="submit" className="self-start rounded-md bg-ink-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-ink-800">Opslaan</button>

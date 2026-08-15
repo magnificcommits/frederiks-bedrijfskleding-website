@@ -7,7 +7,7 @@ import { medewerkersImport, productenImport, productenLijstImport } from './acti
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Bulk-import', robots: { index: false, follow: false } };
 
-const inputCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+const inputCls = 'veld';
 const textareaCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 font-mono text-xs focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 
 type Zoek = {
@@ -26,9 +26,9 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
 
   if (!sb) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Leaddatabase nog niet gekoppeld</h1>
+          <h1 className="dash-h1">Leaddatabase nog niet gekoppeld</h1>
           <p className="mt-3 text-sm text-warm">Zet <code>SUPABASE_URL</code> en <code>SUPABASE_SERVICE_ROLE_KEY</code> in de omgevingsvariabelen en draai de migraties in <code>supabase/migrations</code>.</p>
           <Link href="/dashboard" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
         </div>
@@ -45,15 +45,15 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
   const resultaatLabel = soort === 'medewerkers' ? 'Medewerkers' : soort === 'producten' ? 'Producten' : soort === 'lijst' ? 'Productenlijst' : '';
 
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Bulk-import</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop flex items-center justify-between gap-4">
+        <h1 className="dash-h1">Bulk-import</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 text-sm text-warm">Plak een CSV-lijst om medewerkers of producten in één keer toe te voegen. Scheidingsteken mag puntkomma of komma zijn. De eerste regel zijn de kolomkoppen.</p>
 
       {heeftResultaat && (
-        <div className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-soft">
+        <div className="mt-6 panel p-4">
           <h2 className="font-display text-lg font-bold text-ink-900">Resultaat import {resultaatLabel.toLowerCase()}</h2>
           {isLijst ? (
             <p className="mt-2 text-sm text-warm">
@@ -86,19 +86,19 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
       )}
 
       <div className="mt-8 grid gap-8 lg:grid-cols-2">
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+        <div className="panel p-4">
           <h2 className="font-display text-lg font-bold text-ink-900">Medewerkers importeren</h2>
           <p className="mt-1 text-xs text-warm">Kies eerst de klant. Verwachte kolommen: <code>naam;email;functie;personeelsnummer</code>. De volgorde mag anders, zolang de koppen kloppen. Staat er alleen een naam, dan splitsen we die zelf in voornaam en achternaam.</p>
           <form action={medewerkersImport} className="mt-4 flex flex-col gap-3">
             <div>
-              <label className="block text-xs font-semibold text-warm">Klant</label>
+              <label className="veld-label">Klant</label>
               <select name="organisatie_id" required className={inputCls}>
                 <option value="">Kies een klant</option>
                 {orgs.map((o) => <option key={o.id} value={o.id}>{o.naam}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-warm">CSV plakken</label>
+              <label className="veld-label">CSV plakken</label>
               <textarea
                 name="csv"
                 required
@@ -107,16 +107,16 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
                 className={textareaCls}
               />
             </div>
-            <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Medewerkers importeren</button>
+            <button type="submit" className="self-start knop-donker">Medewerkers importeren</button>
           </form>
         </div>
 
-        <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+        <div className="panel p-4">
           <h2 className="font-display text-lg font-bold text-ink-900">Producten importeren</h2>
           <p className="mt-1 text-xs text-warm">Verwachte kolommen: <code>naam;merk;categorie;sku</code>. Btw staat standaard op 21 procent. De volgorde mag anders, zolang de koppen kloppen.</p>
           <form action={productenImport} className="mt-4 flex flex-col gap-3">
             <div>
-              <label className="block text-xs font-semibold text-warm">CSV plakken</label>
+              <label className="veld-label">CSV plakken</label>
               <textarea
                 name="csv"
                 required
@@ -125,12 +125,12 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
                 className={textareaCls}
               />
             </div>
-            <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Producten importeren</button>
+            <button type="submit" className="self-start knop-donker">Producten importeren</button>
           </form>
         </div>
       </div>
 
-      <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-soft">
+      <div className="mt-8 panel p-4">
         <h2 className="font-display text-lg font-bold text-ink-900">Productenlijst importeren (CSV)</h2>
         <p className="mt-1 text-xs text-warm">
           Voor leverancierslijsten zoals die van FHB, geexporteerd uit Odoo. Elke regel is een variant (een maat) van een artikel. We groeperen per <code>Artikelnr.</code> zodat een artikel een product wordt met meerdere varianten. Exporteer de Excel eerst naar CSV en plak die hieronder, of upload het bestand.
@@ -140,7 +140,7 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
         </p>
         <form action={productenLijstImport} className="mt-4 flex flex-col gap-3">
           <div>
-            <label className="block text-xs font-semibold text-warm">CSV plakken</label>
+            <label className="veld-label">CSV plakken</label>
             <textarea
               name="csv"
               rows={10}
@@ -149,7 +149,7 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-warm">Of upload een CSV-bestand</label>
+            <label className="veld-label">Of upload een CSV-bestand</label>
             <input
               type="file"
               name="bestand"
@@ -158,7 +158,7 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
             />
             <p className="mt-1 text-xs text-warm">Als beide gevuld zijn, gebruiken we het tekstveld.</p>
           </div>
-          <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Productenlijst importeren</button>
+          <button type="submit" className="self-start knop-donker">Productenlijst importeren</button>
         </form>
       </div>
     </main>

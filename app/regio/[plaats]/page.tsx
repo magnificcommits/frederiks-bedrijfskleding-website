@@ -59,7 +59,7 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
       <section className="border-b border-line bg-white">
         <div className="container-x grid gap-4 py-8 sm:grid-cols-3">
           {stats.map((s) => (
-            <div key={s.l} className="rounded-lg border-l-2 border-dashed border-amber-500 bg-mist px-5 py-4">
+            <div key={s.l} className="rounded-lg border-l-2 border-amber-500 bg-mist px-5 py-4">
               <p className="font-display text-lg font-extrabold text-ink-900">{s.v}</p>
               <p className="text-sm text-warm">{s.l}</p>
             </div>
@@ -86,17 +86,17 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
             <div className="mt-5 grid gap-4 sm:grid-cols-3">
               {populair.map((b) => (
                 <Link key={b.slug} href={`/branches/${b.slug}`} className="group rounded-lg border border-line bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-amber-400">
-                  <h3 className="text-base font-bold text-ink-900 group-hover:text-amber-600">{b.navLabel}</h3>
+                  <h3 className="text-base font-bold text-ink-900 group-hover:text-amber-800">{b.navLabel}</h3>
                   <p className="mt-2 text-sm text-warm line-clamp-2">{b.heroIntro}</p>
                 </Link>
               ))}
             </div>
 
             <div className="mt-10 rounded-xl bg-mist p-6">
-              <p className="text-sm font-bold uppercase tracking-wide text-amber-600">Handig om te weten</p>
+              <p className="text-sm font-bold uppercase tracking-wide text-amber-700">Handig om te weten</p>
               <ul className="mt-3 space-y-2">
                 {tips.map((a) => (
-                  <li key={a.slug}><Link href={`/kennisbank/${a.slug}`} className="font-semibold text-ink-800 hover:text-amber-600">{a.title}</Link></li>
+                  <li key={a.slug}><Link href={`/kennisbank/${a.slug}`} className="font-semibold text-ink-800 hover:text-amber-800">{a.title}</Link></li>
                 ))}
               </ul>
             </div>
@@ -110,7 +110,7 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
                 <p className="mt-2 text-sm text-warm">Vraag vrijblijvend advies aan. We nemen snel persoonlijk contact op.</p>
                 <Link href={`/kledingadvies`} className="btn-primary mt-4 w-full">Gratis kledingadvies</Link>
                 <Link href="/pakket-samenstellen" className="btn-outline mt-2 w-full">Stel je pakket samen</Link>
-                <a href={`tel:${site.phoneIntl}`} className="mt-2 block text-center text-sm font-bold text-ink-900 hover:text-amber-600">{site.phone}</a>
+                <a href={`tel:${site.phoneIntl}`} className="mt-2 block text-center text-sm font-bold text-ink-900 hover:text-amber-800">{site.phone}</a>
               </div>
             </div>
           </aside>
@@ -121,7 +121,7 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
       <section className="border-y border-line bg-mist">
         <div className="container-x py-16">
           <p className="eyebrow">Zo werken we</p>
-          <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Van eerste gesprek tot nabestelling</h2>
+          <h2 className="mt-3 kop-2">Van eerste gesprek tot nabestelling</h2>
           <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {werkwijze.map((s) => (
               <li key={s.nr} className="rounded-xl border border-line bg-white p-5">
@@ -142,7 +142,7 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
         <p className="text-sm text-warm">We werken door de hele Achterhoek. Ook actief in:{' '}
           {andere.map((x, i, arr) => (
             <span key={x.slug}>
-              <Link href={`/regio/${x.slug}`} className="text-amber-600 hover:underline">{x.name}</Link>{i < arr.length - 1 ? ', ' : ''}
+              <Link href={`/regio/${x.slug}`} className="text-amber-700 hover:underline">{x.name}</Link>{i < arr.length - 1 ? ', ' : ''}
             </span>
           ))}
         </p>

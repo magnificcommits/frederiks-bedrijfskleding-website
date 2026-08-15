@@ -21,7 +21,7 @@ export default async function PicklijstPage({ params }: { params: Promise<{ id: 
   const data = await getMagazijnData(id);
   if (!data) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
           <h1 className="font-display text-2xl font-extrabold text-ink-900">Order niet gevonden</h1>
           <p className="mt-3 text-sm text-warm">Deze order bestaat niet of is verwijderd.</p>
@@ -34,7 +34,7 @@ export default async function PicklijstPage({ params }: { params: Promise<{ id: 
   const totaalStuks = data.regels.reduce((t, r) => t + (Number(r.aantal) || 0), 0);
 
   return (
-    <main className="container-x py-12">
+    <main className="container-smal py-12">
       <style>{`@media print { .print\\:hidden { display: none !important; } .print\\:block { display: block !important; } body { background: #fff; } }`}</style>
 
       <div className="print:hidden flex items-center justify-between gap-4">
@@ -49,7 +49,7 @@ export default async function PicklijstPage({ params }: { params: Promise<{ id: 
       </div>
 
       <section className="mt-8">
-        <div className="rounded-2xl border border-line bg-white p-8 shadow-soft">
+        <div className="panel p-8">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-warm">Verzamellijst magazijn</p>

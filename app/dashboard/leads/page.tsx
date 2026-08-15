@@ -62,17 +62,19 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   };
 
   return (
-    <main className="container-x py-12">
-      <h1 className="font-display text-3xl font-extrabold text-ink-900">Leads</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop">
+        <h1 className="dash-h1">Leads</h1>
+      </div>
       <p className="mt-1 text-sm text-warm">Aanvragen vanuit de website en andere kanalen. Een gewonnen lead zet je met een klik om naar een klant.</p>
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <div className="rounded-xl border border-line bg-white p-4 shadow-soft">
+        <div className="panel p-4">
           <p className="font-display text-2xl font-extrabold text-ink-900">{alle.length}</p>
           <p className="text-xs uppercase tracking-wide text-warm">totaal</p>
         </div>
         {telling.map(({ s, n }) => (
-          <div key={s} className="rounded-xl border border-line bg-white p-4 shadow-soft">
+          <div key={s} className="panel p-4">
             <p className="font-display text-2xl font-extrabold text-ink-900">{n}</p>
             <p className="text-xs uppercase tracking-wide text-warm">{s}</p>
           </div>
@@ -88,7 +90,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         {/* De select-filters navigeren automatisch (geen aparte "Filter"-knop meer); de zoekterm en het
             andere filter reizen mee via param-injectie in NavigateSelect. Op "Alle" wordt dat filter gewist. */}
         <div>
-          <label className="block text-xs font-semibold text-warm">Status</label>
+          <label className="veld-label">Status</label>
           <NavigateSelect
             basePath="/dashboard/leads"
             param={statusBehalveParam('status')}
@@ -99,7 +101,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-warm">Herkomst</label>
+          <label className="veld-label">Herkomst</label>
           <NavigateSelect
             basePath="/dashboard/leads"
             param={statusBehalveParam('bron')}
@@ -112,12 +114,12 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         {/* Zoeken blijft een tekstveld met submit; status en bron reizen mee als hidden velden. */}
         <form method="get" className="flex items-end gap-3">
           <div>
-            <label className="block text-xs font-semibold text-warm">Zoek (naam, bedrijf, e-mail)</label>
+            <label className="veld-label">Zoek (naam, bedrijf, e-mail)</label>
             <input name="q" defaultValue={sp.q ?? ''} placeholder="zoeken" className="mt-1 rounded-md border border-line px-3 py-2 text-sm" />
           </div>
           {sp.status && <input type="hidden" name="status" value={sp.status} />}
           {sp.bron && <input type="hidden" name="bron" value={sp.bron} />}
-          <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Zoeken</button>
+          <button type="submit" className="knop-donker">Zoeken</button>
         </form>
         {(sp.status || sp.bron || sp.q) && <Link href="/dashboard/leads" className="py-2 text-sm font-semibold text-warm hover:text-ink-800">Wis filters</Link>}
       </div>
@@ -128,43 +130,43 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         <>
         <form id="bulkleads" action={bulkConverteerLeads} className="mb-3 flex justify-end">
           <input type="hidden" name="terug" value={terug} />
-          <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Converteer geselecteerde naar klant</button>
+          <button type="submit" className="knop-donker">Converteer geselecteerde naar klant</button>
         </form>
-        <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+        <div className="panel">
+          <table className="tbl">
+            <thead className="thead-sticky">
               <tr>
-                <th className="px-4 py-3"><span className="sr-only">Selecteren</span></th>
-                <th className="px-4 py-3">Datum</th>
-                <th className="px-4 py-3">Contact</th>
-                <th className="px-4 py-3">Branche / herkomst</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Beheer</th>
+                <th><span className="sr-only">Selecteren</span></th>
+                <th>Datum</th>
+                <th>Contact</th>
+                <th>Branche / herkomst</th>
+                <th>Status</th>
+                <th>Beheer</th>
               </tr>
             </thead>
             <tbody>
               {leads.map((l) => (
                 <tr key={l.id} className="border-b border-line align-top">
-                  <td className="px-4 py-3">
+                  <td>
                     <input type="checkbox" name="lead_ids" value={l.id} form="bulkleads" className="h-4 w-4 rounded border-line text-amber-600 focus:ring-amber-200" aria-label={`Selecteer lead ${l.name}`} />
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-warm">{fmt(l.created_at)}</td>
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap text-warm">{fmt(l.created_at)}</td>
+                  <td>
                     <p className="font-semibold text-ink-900">{l.name}{l.company ? ` · ${l.company}` : ''}</p>
                     <p className="text-warm">{l.email}{l.phone ? ` · ${l.phone}` : ''}</p>
                     {l.bericht && (
                       <p className="mt-1 whitespace-pre-wrap text-xs text-warm">{l.bericht}</p>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-warm">
+                  <td className="text-xs text-warm">
                     <p className="text-sm text-ink-700">{l.branche || '-'}</p>
                     <p className="mt-1 max-w-[14rem]">{l.bron || '-'}</p>
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${badge[l.status] ?? 'bg-ink-100 text-ink-600'}`}>{l.status}</span>
                     {l.offertewaarde != null && <p className="mt-1 text-xs font-semibold text-ink-700">{euro(Number(l.offertewaarde))}</p>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <div className="w-56 rounded-lg border border-line bg-mist p-3">
                       <form action={saveLeadEdit} className="flex flex-col gap-2.5">
                         <input type="hidden" name="id" value={l.id} />

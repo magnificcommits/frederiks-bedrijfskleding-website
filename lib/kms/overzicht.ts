@@ -8,6 +8,12 @@ export type Overzicht = {
   teBestellen: number;
   openFacturenBedrag: number;
   omzetMaand: number;
+  // Vergelijkingen: een kaal getal zegt niets zonder de vorige periode ernaast.
+  leadsDezeMaand: number;
+  leadsVorigeMaand: number;
+  omzetVorigeMaand: number;
+  ordersLangerDanTweeWeken: number;
+  vervallenFacturenBedrag: number;
   recenteLeads: RecenteLead[];
 };
 
@@ -40,7 +46,27 @@ export async function getOverzicht(): Promise<Overzicht | null> {
     .reduce((t, f) => t + (Number(f.bedrag_incl) || 0), 0);
   const recenteLeads = leads.slice(0, 6).map((l) => ({ id: l.id, name: l.name, company: l.company, status: l.status, created_at: l.created_at }));
 
-  return { nieuweLeads, openOffertewaarde, openOrders, teBestellen, openFacturenBedrag, omzetMaand, recenteLeads };
+  const maandVan = (d: Date) => d.getFullYear() * 12 + d.getMonth();
+  const dezeMaand = maandVan(nu);
+  const leadsDezeMaand = leads.filter((l) => l.created_at && maandVan(new Date(l.created_at)) === dezeMaand).length;
+  const leadsVorigeMaand = leads.filter((l) => l.created_at && maandVan(new Date(l.created_at)) === dezeMaand - 1).length;
+  const omzetVorigeMaand = facturen
+    .filter((f) => f.status === 'betaald' && f.betaaldatum && maandVan(new Date(f.betaaldatum)) === dezeMaand - 1)
+    .reduce((t, f) => t + (Number(f.bedrag_incl) || 0), 0);
+
+  // Twee losse tellingen die de kale getallen hierboven duiding geven.
+  const grens = new Date(nu.getTime() - 14 * 86_400_000).toISOString();
+  const { data: oudeData } = await sb
+    .from('orders').select('id').neq('status', 'afgerond').lt('besteldatum', grens);
+  const ordersLangerDanTweeWeken = ((oudeData as { id: string }[]) ?? []).length;
+  const vandaagIso = nu.toISOString().slice(0, 10);
+  const { data: vervallenData } = await sb
+    .from('facturen').select('bedrag_incl').not('status', 'in', '(betaald,concept)').lt('vervaldatum', vandaagIso);
+  const vervallenFacturenBedrag = ((vervallenData as { bedrag_incl: number | null }[]) ?? [])
+    .reduce((t, f) => t + (Number(f.bedrag_incl) || 0), 0);
+
+  return { nieuweLeads, openOffertewaarde, openOrders, teBestellen, openFacturenBedrag, omzetMaand,
+    leadsDezeMaand, leadsVorigeMaand, omzetVorigeMaand, ordersLangerDanTweeWeken, vervallenFacturenBedrag, recenteLeads };
 }
 
 export type VandaagSignalen = {
@@ -95,4 +121,47 @@ export async function getVandaagSignalen(): Promise<VandaagSignalen | null> {
   }).length;
 
   return { openTaken, verlopenTaken, ordersWachtGoedkeuring, retourenTeBeoordelen, vervallenFacturen, voorraadOnderMinimum };
+}
+
+
+export type WerklijstRij = {
+  id: string;
+  ordernummer: number | null;
+  klant: string | null;
+  status: string;
+  goedkeuring_status: string;
+  bedrag: number | null;
+  besteldatum: string | null;
+  dagenOpen: number;
+};
+
+/**
+ * Wat er nu loopt: alle niet-afgeronde orders, oudste eerst.
+ * `dagenOpen` telt vanaf de besteldatum en is het signaal waar het om gaat —
+ * een order die twee weken stilstaat is een order waar iemand op wacht.
+ */
+export async function getWerklijst(limiet = 12): Promise<WerklijstRij[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+  const { data } = await sb
+    .from('orders')
+    .select('id, ordernummer, status, goedkeuring_status, bedrag, besteldatum, organisaties(naam)')
+    .neq('status', 'afgerond')
+    .order('besteldatum', { ascending: true })
+    .limit(limiet);
+  const rijen = (data as unknown as {
+    id: string; ordernummer: number | null; status: string; goedkeuring_status: string;
+    bedrag: number | null; besteldatum: string | null; organisaties: { naam: string } | null;
+  }[]) ?? [];
+  const nu = Date.now();
+  return rijen.map((r) => ({
+    id: r.id,
+    ordernummer: r.ordernummer,
+    klant: r.organisaties?.naam ?? null,
+    status: r.status,
+    goedkeuring_status: r.goedkeuring_status,
+    bedrag: r.bedrag,
+    besteldatum: r.besteldatum,
+    dagenOpen: r.besteldatum ? Math.max(0, Math.floor((nu - new Date(r.besteldatum).getTime()) / 86_400_000)) : 0,
+  }));
 }

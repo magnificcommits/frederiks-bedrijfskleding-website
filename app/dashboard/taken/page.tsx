@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Taken', robots: { index: false, follow: false } };
 
 const inputCls =
-  'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+  'veld';
 
 const okBoodschap: Record<string, string> = {
   aangemaakt: 'Taak toegevoegd.',
@@ -54,9 +54,9 @@ export default async function TakenPage({
     t.status === 'open' && !!t.vervaldatum && t.vervaldatum < vandaag;
 
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Taken</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop flex items-center justify-between gap-4">
+        <h1 className="dash-h1">Taken</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">
           Terug naar dashboard
         </Link>
@@ -171,11 +171,11 @@ export default async function TakenPage({
 
         {/* Nieuwe taak */}
         <aside>
-          <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+          <div className="panel p-4">
             <h2 className="font-display text-lg font-bold text-ink-900">Nieuwe taak</h2>
             <form action={maakTaakActie} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-warm">Titel</label>
+                <label className="veld-label">Titel</label>
                 <input
                   type="text"
                   name="titel"
@@ -185,11 +185,11 @@ export default async function TakenPage({
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-warm">Omschrijving</label>
+                <label className="veld-label">Omschrijving</label>
                 <textarea name="omschrijving" rows={3} className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-warm">Klant (optioneel)</label>
+                <label className="veld-label">Klant (optioneel)</label>
                 <select name="organisatie_id" defaultValue="" className={inputCls}>
                   <option value="">Geen klant</option>
                   {organisaties.map((o) => (
@@ -200,7 +200,7 @@ export default async function TakenPage({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-warm">Prioriteit</label>
+                <label className="veld-label">Prioriteit</label>
                 <select name="prioriteit" defaultValue="normaal" className={inputCls}>
                   <option value="laag">Laag</option>
                   <option value="normaal">Normaal</option>
@@ -208,16 +208,16 @@ export default async function TakenPage({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-warm">Vervaldatum (optioneel)</label>
+                <label className="veld-label">Vervaldatum (optioneel)</label>
                 <input type="date" name="vervaldatum" className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-warm">Toegewezen aan (optioneel)</label>
+                <label className="veld-label">Toegewezen aan (optioneel)</label>
                 <input type="text" name="toegewezen_aan" placeholder="Bijv. Jessi" className={inputCls} />
               </div>
               <button
                 type="submit"
-                className="w-full rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800"
+                className="w-full knop-donker"
               >
                 Taak toevoegen
               </button>

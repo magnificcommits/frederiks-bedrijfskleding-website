@@ -29,7 +29,7 @@ export default async function WerkbonPage({ params }: { params: Promise<{ id: st
   const werkbon = await getOrderVoorWerkbon(id);
   if (!werkbon) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
           <h1 className="font-display text-2xl font-extrabold text-ink-900">Order niet gevonden</h1>
           <p className="mt-3 text-sm text-warm">Deze order bestaat niet of is verwijderd.</p>
@@ -42,7 +42,7 @@ export default async function WerkbonPage({ params }: { params: Promise<{ id: st
   const logos = await logosVoorOrder(id);
 
   return (
-    <main className="container-x py-12">
+    <main className="container-smal py-12">
       <style>{`@media print { .print\\:hidden { display: none !important; } .print\\:block { display: block !important; } body { background: #fff; } }`}</style>
 
       <div className="print:hidden flex items-center justify-between gap-4">
@@ -61,7 +61,7 @@ export default async function WerkbonPage({ params }: { params: Promise<{ id: st
         <p className="mt-1 text-sm text-warm">Koppel per orderregel een logo met techniek, positie en afmeting.</p>
         <div className="mt-4 flex flex-col gap-6">
           {werkbon.regels.map((r) => (
-            <div key={r.id} className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+            <div key={r.id} className="panel p-8">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 className="font-display text-base font-bold text-ink-900">{r.item_naam}</h3>
                 <p className="text-sm text-warm">{[r.maat ? `maat ${r.maat}` : null, r.kleur, `${r.aantal}x`].filter(Boolean).join(' · ')}</p>
@@ -128,7 +128,7 @@ export default async function WerkbonPage({ params }: { params: Promise<{ id: st
       </section>
 
       <section className="mt-10">
-        <div className="rounded-2xl border border-line bg-white p-8 shadow-soft">
+        <div className="panel p-8">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-warm">Werkbon bedrukken / borduren</p>

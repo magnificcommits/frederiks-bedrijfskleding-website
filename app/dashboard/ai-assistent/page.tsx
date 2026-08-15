@@ -36,8 +36,10 @@ export default function AiAssistentPage() {
   }, [router]);
 
   return (
-    <main className="container-x py-8">
-      <h1 className="font-display text-2xl font-extrabold text-ink-900">AI-assistent</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop">
+        <h1 className="dash-h1">AI-assistent</h1>
+      </div>
       <p className="mt-0.5 max-w-2xl text-sm text-warm">
         Laat de assistent een eerste opzet maken: een kennisbankartikel, een productbeschrijving,
         een klant-e-mail of een korte rapportage-samenvatting. Kies een soort, geef een onderwerp of
@@ -95,7 +97,7 @@ export default function AiAssistentPage() {
       )}
 
       {state?.tekst && (
-        <section className="mt-5 max-w-2xl rounded-xl border border-line bg-white p-4 shadow-soft">
+        <section className="mt-5 max-w-2xl panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Resultaat</h2>
           <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink-800">
             {state.tekst}

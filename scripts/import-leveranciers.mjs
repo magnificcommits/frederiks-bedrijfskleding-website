@@ -78,6 +78,25 @@ const getal = (v) => {
 };
 const code = (v) => schoon(v)?.replace(/\.0$/, '') ?? null;
 const https = (u) => (!u ? null : /^https?:\/\//i.test(u) ? u : `https://${u}`);
+/**
+ * Blåkläder levert de commerciële tekst als HTML-opsomming: "· regel<br>·regel".
+ * Op de site is dat één alinea, dus zet de bullets om naar losse zinnen.
+ */
+const opsomming = (v) => {
+  const t = schoon(v);
+  if (!t) return null;
+  return t
+    .replace(/<br\s*\/?>/gi, ' ')
+    .split('·')
+    .map((d) => d.trim())
+    .filter(Boolean)
+    .map((d) => (/[.!?]$/.test(d) ? d : `${d}.`))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+/** Kolomkoppen met spaties eromheen komen in meerdere leveranciersbestanden voor. */
+const getrimd = (r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k.trim(), v]));
 
 /** Alle .xlsx in de datamap en één niveau daaronder, zodat submappen per merk meetellen. */
 function alleBestanden() {
@@ -489,7 +508,249 @@ function xirtrum() {
   }
 }
 
-const MERKEN = { snickers, wk, brook, upower, hydrowear, mipiace, tq, pfanner, xirtrum, fhb };
+/**
+ * Fristads levert één rij per artikel/kleur/maat, met de adviesprijs en het kortingspercentage
+ * (35%) in het bestand zelf. De foto's staan niet lokaal maar in het PIM van Fristads; die URL
+ * is per kleur exact ("109424-171-F171_front01.png"), dus we bewaren de link in plaats van het
+ * bestand. Kolomnamen worden getrimd omdat 'Kleurcode' in het Excelbestand op een newline eindigt.
+ */
+function fristads() {
+  const f = bestand('fristads');
+  if (!f) return console.warn('Fristads: bestand niet gevonden, overgeslagen');
+
+  const perArt = new Map();
+  for (const ruw of lees(f)) {
+    const r = {};
+    for (const [k, v] of Object.entries(ruw)) r[k.trim()] = v;
+    const art = code(r.Artikelnummer);
+    if (!art) continue;
+    if (!perArt.has(art)) perArt.set(art, []);
+    perArt.get(art).push(r);
+  }
+
+  for (const [art, g] of perArt) {
+    const r = g[0];
+    const sku = `FR-${art}`;
+    // Eerste foto per kleur, in volgorde van voorkomen: de eerste daarvan is de hoofdfoto.
+    const perKleur = new Map();
+    for (const x of g) {
+      const kl = schoon(x.Kleur);
+      const url = https(schoon(x['Link picture 1']));
+      if (kl && url && !perKleur.has(kl)) perKleur.set(kl, url);
+    }
+    const eerste = [...perKleur.values()][0] ?? null;
+
+    product({
+      sku,
+      art_nr_leverancier: art,
+      naam: schoon(r['Artikelnaam NL']),
+      omschrijving: schoon(r['Commerciële tekst']),
+      merk: 'Fristads',
+      categorie: schoon(r.Artikelsoort),
+      normeringen: schoon(r['EN ISO normen']),
+      materiaal: schoon(r.Samenstelling),
+      verkoopprijs_basis: getal(r.Adviesprijs),
+      afbeeldingen: eerste ? [eerste] : [],
+      maatwerk_lengte: false,
+    });
+
+    for (const x of g) {
+      varianten.push({ sku, maat: schoon(x.Maten), kleur: schoon(x.Kleur), ean: null });
+    }
+    for (const [kleur, url] of perKleur) kleurfotos.push({ sku, kleur, url });
+  }
+}
+
+/**
+ * Blåkläder: één rij per maat. De prijs in het bestand is de bruto adviesprijs;
+ * de foto's staan als losse bestanden met het artikelnummer in de naam.
+ */
+function blaklader() {
+  const f = bestand('blaklader', 'assortiment');
+  if (!f) return console.warn('Blåkläder: bestand niet gevonden, overgeslagen');
+  const plaatjes = plaatjesIn('Blaklader');
+  const perArt = new Map();
+  for (const ruw of lees(f)) {
+    const r = getrimd(ruw);
+    const art = schoon(r.Artikelnummer);
+    if (!art) continue;
+    if (!perArt.has(art)) perArt.set(art, []);
+    perArt.get(art).push(r);
+  }
+  for (const [art, g] of perArt) {
+    const r = g[0];
+    const sku = `BL-${art}`;
+    const foto = plaatjes.find((n) => n.includes(art));
+    const url = foto ? `/merken/blaklader/${foto}` : null;
+    product({
+      sku, art_nr_leverancier: art,
+      naam: schoon(r['Artikel naam']),
+      omschrijving: opsomming(r.Omschrijving),
+      merk: 'Blåkläder',
+      categorie: schoon(r.Soort),
+      verkoopprijs_basis: getal(r.Prijs),
+      afbeeldingen: [url].filter(Boolean),
+      maatwerk_lengte: false,
+    });
+    const gezien = new Set();
+    for (const x of g) {
+      varianten.push({ sku, maat: schoon(x.Maat), kleur: schoon(x.Kleur), ean: null });
+      const kl = schoon(x.Kleur);
+      if (kl && url && !gezien.has(kl)) { gezien.add(kl); kleurfotos.push({ sku, kleur: kl, url }); }
+    }
+  }
+}
+
+/**
+ * Emma Safety Footwear levert geen lopende tekst maar wél alle normdata los in kolommen:
+ * klasse, antislip, antistatisch, neusbescherming, binnenzool, metaalvrij. Daar is een
+ * betere omschrijving van te maken dan de leverancier zelf aanlevert ("S3 ZWART HOOG
+ * MODEL PUR ESD"), dus die stellen we hier samen.
+ */
+function emma() {
+  const f = bestand('emma', 'assortiment');
+  if (!f) return console.warn('Emma: bestand niet gevonden, overgeslagen');
+  const plaatjes = plaatjesIn('Emma');
+  const perArt = new Map();
+  for (const ruw of lees(f)) {
+    const r = getrimd(ruw);
+    const art = schoon(r['Artikel nummer']);
+    if (!art) continue;
+    if (!perArt.has(art)) perArt.set(art, []);
+    perArt.get(art).push(r);
+  }
+  for (const [art, g] of perArt) {
+    const r = g[0];
+    const sku = `EM-${art}`;
+    const model = schoon(r['Hultafors Artikel']) ?? art;
+    const hoogLaag = (schoon(r.Model) ?? '').toLowerCase();
+    const norm = schoon(r.Norm);
+    // Foto zoeken op modelnaam, en anders op het artikelnummer zonder de MM-prefix.
+    const nr = art.replace(/^MM/i, '');
+    const foto =
+      plaatjes.find((n) => n.toLowerCase().includes(model.toLowerCase())) ??
+      plaatjes.find((n) => n.includes(nr)) ?? null;
+    const url = foto ? `/merken/emma/${foto}` : null;
+
+    const maten = [...new Set(g.map((x) => schoon(x.Maat)).filter(Boolean))];
+    const zinnen = [
+      `De ${model} van Emma Safety Footwear is een veiligheidsschoen in klasse ${norm ?? 'S3'}${hoogLaag ? `, ${hoogLaag} model` : ''}.`,
+      schoon(r['Metaal vrij'])?.toUpperCase() === 'JA' ? 'Volledig metaalvrij, dus geen gepiep bij de detectiepoort.' : null,
+      schoon(r.Neusbescherming) ? `Neusbescherming: ${schoon(r.Neusbescherming)}.` : null,
+      schoon(r.Binnenzool) ? `Binnenzool: ${schoon(r.Binnenzool)}.` : null,
+      schoon(r['Antistatische eigenschappen']) ? `Antistatisch: ${schoon(r['Antistatische eigenschappen'])}.` : null,
+      schoon(r.Antislip) ? `Slipweerstand ${schoon(r.Antislip)}.` : null,
+      maten.length ? `Leverbaar in ${maten.length} maten, van ${maten[0]} tot ${maten[maten.length - 1]}.` : null,
+      'Werkschoenen koop je op pasvorm, niet op maatnummer — kom ze in Hengelo Gld even passen.',
+    ].filter(Boolean);
+
+    product({
+      sku, art_nr_leverancier: art,
+      naam: `${model} ${norm ?? ''} veiligheidsschoen${hoogLaag ? ` ${hoogLaag}` : ''}`.replace(/\s+/g, ' ').trim(),
+      omschrijving: zinnen.join(' '),
+      merk: 'Emma Safety Footwear',
+      categorie: 'Werkschoenen',
+      normeringen: norm ? `EN ISO 20345 ${norm}${schoon(r.Antislip) ? ` ${schoon(r.Antislip)}` : ''}` : null,
+      verkoopprijs_basis: getal(r.Prijs),
+      afbeeldingen: [url].filter(Boolean),
+      maatwerk_lengte: false,
+    });
+    const gezien = new Set();
+    for (const x of g) {
+      varianten.push({ sku, maat: schoon(x.Maat), kleur: schoon(x.Kleur), ean: null });
+      const kl = schoon(x.Kleur);
+      if (kl && url && !gezien.has(kl)) { gezien.add(kl); kleurfotos.push({ sku, kleur: kl, url }); }
+    }
+  }
+}
+
+/**
+ * Grisport levert de omschrijving compleet aan. De foto's staan los, met het modelnummer
+ * en de Nederlandse kleur in de bestandsnaam ("Grisport 72457C Bruin.jpg").
+ */
+function grisport() {
+  const f = bestand('grisport', 'assortiment');
+  if (!f) return console.warn('Grisport: bestand niet gevonden, overgeslagen');
+  const plaatjes = plaatjesIn('Grisport');
+  const perArt = new Map();
+  for (const ruw of lees(f)) {
+    const r = getrimd(ruw);
+    const art = code(r.Artikelnummer);
+    if (!art) continue;
+    if (!perArt.has(art)) perArt.set(art, []);
+    perArt.get(art).push(r);
+  }
+  for (const [art, g] of perArt) {
+    const r = g[0];
+    const sku = `GS-${art}`;
+    const naam = schoon(r.Naam) ?? art;
+    // "Grisport 903L" -> 903, "Grisport 72457C Brown" -> 72457c, "Enduro Cross ..." -> enduro
+    const kern = naam.replace(/grisport/gi, '').trim().split(/\s+/)[0].toLowerCase().replace(/l$/, '');
+    const kleur = (schoon(r.Kleur) ?? '').toLowerCase();
+    const kandidaten = plaatjes.filter((n) => n.toLowerCase().includes(kern));
+    const foto = kandidaten.find((n) => n.toLowerCase().includes(kleur)) ?? kandidaten[0] ?? null;
+    const url = foto ? `/merken/grisport/${foto}` : null;
+    product({
+      sku, art_nr_leverancier: art,
+      naam,
+      omschrijving: schoon(r.Omschrijving),
+      merk: 'Grisport',
+      categorie: 'Werkschoenen',
+      normeringen: schoon(r.Classe) ? `EN ISO 20345 ${schoon(r.Classe)}` : null,
+      verkoopprijs_basis: getal(r.Verkoopprijs),
+      afbeeldingen: [url].filter(Boolean),
+      maatwerk_lengte: false,
+    });
+    const gezien = new Set();
+    for (const x of g) {
+      varianten.push({ sku, maat: code(x.Maat), kleur: schoon(x.Kleur), ean: null });
+      const kl = schoon(x.Kleur);
+      if (kl && url && !gezien.has(kl)) { gezien.add(kl); kleurfotos.push({ sku, kleur: kl, url }); }
+    }
+  }
+}
+
+/**
+ * Kariban komt uit hetzelfde PIM als WK (TopTex), dus dezelfde kolomnamen en dezelfde
+ * packshot-URL's op cdn.toptex.com. Geen lokale foto's nodig: die staan al online, per kleur.
+ */
+function kariban() {
+  const f = bestand('kariban');
+  if (!f) return console.warn('Kariban: bestand niet gevonden, overgeslagen');
+  const perArt = new Map();
+  for (const ruw of lees(f)) {
+    const r = getrimd(ruw);
+    const art = schoon(r.Artikelnummer);
+    if (!art) continue;
+    if (!perArt.has(art)) perArt.set(art, []);
+    perArt.get(art).push(r);
+  }
+  for (const [art, g] of perArt) {
+    const r = g[0];
+    const sku = `KB-${art}`;
+    const perKleur = new Map();
+    for (const x of g) {
+      const kl = schoon(x.Colors);
+      const u = https(schoon(x.URL_Packshots_Face));
+      if (kl && u && !perKleur.has(kl)) perKleur.set(kl, u);
+    }
+    product({
+      sku, art_nr_leverancier: art,
+      naam: schoon(r.Designation_nl),
+      omschrijving: schoon(r.Description_nl),
+      merk: 'Kariban',
+      categorie: schoon(r.Family_nl),
+      materiaal: schoon(r.Composition_nl),
+      verkoopprijs_basis: getal(r.Price),
+      afbeeldingen: [...perKleur.values()].slice(0, 1),
+      maatwerk_lengte: false,
+    });
+    for (const x of g) varianten.push({ sku, maat: schoon(x.Size_Manufacturer), kleur: schoon(x.Colors), ean: null });
+    for (const [kleur, url] of perKleur) kleurfotos.push({ sku, kleur, url });
+  }
+}
+
+const MERKEN = { snickers, wk, brook, upower, hydrowear, mipiace, tq, pfanner, xirtrum, fhb, fristads, blaklader, emma, grisport, kariban };
 for (const [naam, fn] of Object.entries(MERKEN)) {
   if (ONLY && ONLY !== naam) continue;
   fn();
@@ -535,13 +796,41 @@ if (fouten.length) {
   }
 }
 
+/**
+ * --json=<pad> schrijft wat er gevonden is naar een bestand in plaats van naar Supabase.
+ * Bedoeld voor omgevingen zonder netwerktoegang naar de database; de inhoud is precies
+ * wat de upsert hieronder ook zou wegschrijven.
+ */
+const JSON_UIT = (args.find((a) => a.startsWith('--json=')) || '').split('=')[1] || null;
+if (JSON_UIT) {
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(JSON_UIT, JSON.stringify({ producten, varianten, kleurfotos }, null, 1));
+  console.log(`\n--json: ${producten.length} producten weggeschreven naar ${JSON_UIT}`);
+  process.exit(0);
+}
+
 if (DRY) { console.log('\n--dry: niets weggeschreven.'); process.exit(0); }
 
 // ---------------------------------------------------------------- wegschrijven
 const brokken = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));
 
 console.log('\nWegschrijven...');
-for (const deel of brokken(producten, 200)) {
+/**
+ * Per merk wegschrijven, niet in één grote hoop.
+ *
+ * PostgREST bouwt de kolomlijst van een upsert op uit alle sleutels die in de batch
+ * voorkomen. Zit er één merk in de batch dat wél een omschrijving meelevert, dan komt
+ * `omschrijving` in die lijst en krijgen alle andere rijen in dezelfde batch daar null.
+ * Zo wiste een volledige import eerder de met de hand geschreven teksten van merken die
+ * hun omschrijving niet uit het leveranciersbestand halen. Per merk chunken houdt de
+ * kolomlijst per batch gelijk, en dan blijft wat niet meegestuurd wordt gewoon staan.
+ */
+const perMerkProducten = new Map();
+for (const p of producten) {
+  if (!perMerkProducten.has(p.merk)) perMerkProducten.set(p.merk, []);
+  perMerkProducten.get(p.merk).push(p);
+}
+for (const deel of [...perMerkProducten.values()].flatMap((rij) => brokken(rij, 200))) {
   const { error } = await db.from('producten').upsert(
     deel.map((p) => ({ ...p, bron: 'leveranciersimport', laatst_geimporteerd: new Date().toISOString() })),
     { onConflict: 'sku', ignoreDuplicates: false },

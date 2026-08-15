@@ -32,7 +32,7 @@ export function ConsentBanner() {
     <div className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-2xl rounded-xl border border-line bg-white p-5 shadow-card lg:inset-x-auto lg:left-6 lg:right-auto lg:bottom-6">
       <p className="text-sm text-ink-800">
         We gebruiken anonieme statistieken om de site te verbeteren. Geen advertentiecookies.
-        Lees meer in onze <Link href="/privacy" className="font-semibold text-amber-600 hover:underline">privacyverklaring</Link>.
+        Lees meer in onze <Link href="/privacy" className="font-semibold text-amber-700 hover:underline">privacyverklaring</Link>.
       </p>
       <div className="mt-3 flex gap-2">
         <button onClick={() => choose(true)} className="btn-primary px-4 py-2 text-[13px]">Accepteren</button>

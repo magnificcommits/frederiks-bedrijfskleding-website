@@ -8,6 +8,8 @@ import { site } from '@/content/site';
 
 // Kledingpagina's gebundeld onder één dropdown zodat de balk overzichtelijk blijft
 const kledingNav = [
+  { href: '/assortiment', label: 'Assortiment' },
+  { href: '/normen', label: 'Normen en klassen' },
   { href: '/werkkleding', label: 'Werkkleding' },
   { href: '/werkschoenen', label: 'Werkschoenen' },
   { href: '/bedrukken-borduren', label: 'Bedrukken en borduren' },
@@ -16,6 +18,7 @@ const kledingNav = [
 ];
 // Losse hoofditems
 const hoofdNav = [
+  { href: '/voor', label: 'Voor jouw vak' },
   { href: '/kledingbeheer', label: 'Kledingbeheer' },
   { href: '/kennisbank', label: 'Kennisbank' },
   { href: '/referenties', label: 'Referenties' },
@@ -23,6 +26,7 @@ const hoofdNav = [
 const topNav = [
   { href: '/over-ons', label: 'Over ons' },
   { href: '/klantenservice', label: 'Klantenservice' },
+  { href: '/klantenservice/retourneren', label: 'Retourneren' },
   { href: '/contact', label: 'Contact' },
 ];
 
@@ -82,7 +86,7 @@ export function Header() {
     <div>
       {/* Topbalk: secundaire links + direct contact */}
       <div className="hidden bg-ink-900 text-ink-200 lg:block">
-        <div className="mx-auto flex h-9 w-full max-w-7xl items-center justify-between px-5 text-[13px] sm:px-6 lg:px-8">
+        <div className="container-x flex h-9 items-center justify-between text-[13px]">
           <span className="text-ink-300">Bedrijfskleding met persoonlijke aandacht in de Achterhoek</span>
           <div className="flex items-center gap-5">
             {topNav.map((i) => (
@@ -97,7 +101,7 @@ export function Header() {
 
       {/* Hoofdbalk: logo + primaire navigatie + CTA */}
       <header className="sticky top-0 z-40 border-b border-line bg-white">
-        <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between gap-4 px-5 sm:px-6 lg:px-8">
+        <div className="container-x flex h-20 items-center justify-between gap-4">
           <Logo />
           <nav className="hidden min-w-0 items-center gap-1 lg:flex" aria-label="Hoofdnavigatie">
             <NavDropdown label="Branches">
@@ -134,7 +138,7 @@ export function Header() {
         </div>
         {open && (
           <div className="border-t border-line bg-white lg:hidden">
-            <nav className="mx-auto flex w-full max-w-7xl flex-col gap-1 px-5 py-4 sm:px-6 lg:px-8" aria-label="Mobiele navigatie">
+            <nav className="container-x flex flex-col gap-1 py-4" aria-label="Mobiele navigatie">
               <p className="px-3 pt-1 text-xs font-bold uppercase tracking-wide text-warm">Kleding</p>
               {kledingNav.map((i) => (
                 <Link key={i.href} href={i.href} className="rounded-md px-3 py-2.5 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{i.label}</Link>

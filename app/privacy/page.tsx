@@ -13,7 +13,7 @@ export default function PrivacyPage() {
   return (
     <>
       <PageHero eyebrow="Juridisch" title="Privacyverklaring" />
-      <section className="container-x py-16">
+      <section className="container-lees py-16">
         <div className="prose-nl">
           <p>Frederiks Bedrijfskleding hecht waarde aan je privacy. We verwerken alleen de gegevens die nodig zijn om je vraag of aanvraag te beantwoorden, en gaan daar zorgvuldig mee om. Laat deze tekst voor livegang nog even controleren door een specialist.</p>
           <h2>Wie zijn wij</h2>

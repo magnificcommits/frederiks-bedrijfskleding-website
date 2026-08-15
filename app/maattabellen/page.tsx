@@ -35,7 +35,7 @@ export default function MaattabellenPage() {
           <p>
             Twijfel je over de maat? Wij komen langs om te passen, ook in grote maten. Zo
             zit elke collega in de juiste maat zonder gedoe.{' '}
-            <Link href="/kledingadvies" className="font-semibold text-amber-600 hover:underline">
+            <Link href="/kledingadvies" className="font-semibold text-amber-700 hover:underline">
               Vraag advies aan
             </Link>
             .
@@ -51,7 +51,7 @@ export default function MaattabellenPage() {
         >
           <div className="container-x py-16">
             <p className="eyebrow">Maattabel</p>
-            <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">{tabel.titel}</h2>
+            <h2 className="mt-3 kop-2">{tabel.titel}</h2>
             <p className="mt-3 max-w-2xl text-warm">{tabel.intro}</p>
 
             <div className="mt-8 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
@@ -93,7 +93,7 @@ export default function MaattabellenPage() {
               </table>
             </div>
 
-            <div className="mt-4 rounded-xl border-l-2 border-dashed border-amber-500 bg-white p-5 shadow-soft">
+            <div className="mt-4 rounded-xl border-l-2 border-amber-500 bg-white p-5 shadow-soft">
               <h3 className="text-sm font-bold text-ink-900">Hoe meet je?</h3>
               <p className="mt-2 text-sm text-warm">{tabel.hoeMeten}</p>
             </div>

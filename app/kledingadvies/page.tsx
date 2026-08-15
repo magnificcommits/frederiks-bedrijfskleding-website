@@ -4,7 +4,7 @@ import { site } from '@/content/site';
 
 export const metadata: Metadata = {
   title: 'Gratis kledingadvies aanvragen',
-  description: 'Stel in een minuut samen waar je naar zoekt. Frederiks Bedrijfskleding belt je binnen een werkdag terug met passend advies en komt graag langs om te passen.',
+  description: 'Stel in een minuut samen waar je naar zoekt. Frederiks Bedrijfskleding belt je binnen 24 uur terug met passend advies en komt graag langs om te passen.',
   alternates: { canonical: '/kledingadvies' },
 };
 
@@ -19,8 +19,8 @@ export default async function KledingadviesPage({ searchParams }: { searchParams
   const { branche } = await searchParams;
   return (
     <section className="bg-ink-900">
-      <div className="container-x grid gap-12 py-14 sm:py-20 lg:grid-cols-5">
-        <div className="text-white lg:col-span-2">
+      <div className="container-x grid gap-12 py-14 sm:py-20 lg:grid-cols-[minmax(0,24rem)_minmax(0,44rem)] lg:justify-between">
+        <div className="text-white">
           <p className="eyebrow text-amber-400">Kledingadvies in 1 minuut</p>
           <h1 className="mt-3 text-3xl font-extrabold text-white sm:text-4xl">Vertel ons wat je zoekt</h1>
           <p className="mt-4 text-lg text-ink-100">
@@ -35,13 +35,13 @@ export default async function KledingadviesPage({ searchParams }: { searchParams
             ))}
           </ul>
           <p className="mt-8 text-sm text-ink-300">Liever bellen? <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-400 hover:underline">{site.phone}</a></p>
-          <div className="mt-8 rounded-xl border-l-2 border-dashed border-amber-500 bg-white/10 px-5 py-4">
+          <div className="mt-8 rounded-xl border-l-2 border-amber-500 bg-white/10 px-5 py-4">
             <p className="text-sm text-white">
-              <strong className="text-amber-300">{site.owner.split(' ')[0]}</strong> neemt je aanvraag persoonlijk op. Vrijblijvend en binnen 1 werkdag contact.
+              <strong className="text-amber-300">{site.owner.split(' ')[0]}</strong> neemt je aanvraag persoonlijk op. Vrijblijvend en binnen 24 uur contact.
             </p>
           </div>
         </div>
-        <div className="lg:col-span-3">
+        <div>
           <KledingadviesWizard defaultBranche={branche ?? ''} />
         </div>
       </div>

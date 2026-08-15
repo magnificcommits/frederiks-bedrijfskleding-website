@@ -7,7 +7,8 @@ import { getHerkomst } from '@/lib/herkomst';
 import { site } from '@/content/site';
 
 type Status = 'idle' | 'sending' | 'ok' | 'error';
-type Item = { id: number; type: string; kleur: number; positie: string; aantal: string };
+type Item = { id: number; type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string };
+type Artikel = { id: string; naam: string; merk: string | null; foto: string | null; kleurTreffer: boolean };
 
 const extrasOpties = [
   { id: 'schoenen', label: 'Veiligheidsschoenen' },
@@ -47,7 +48,9 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   const [logoNaam, setLogoNaam] = useState<string | null>(null);
   const [techniek, setTechniek] = useState<'borduren' | 'bedrukken'>('borduren');
   const [defPositie, setDefPositie] = useState('borst-links');
-  const [draft, setDraft] = useState<{ type: string; kleur: number; positie: string; aantal: string }>({ type: 'polo', kleur: 0, positie: 'borst-links', aantal: '' });
+  const [draft, setDraft] = useState<{ type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string }>({ type: 'polo', kleur: 0, positie: 'borst-links', aantal: '' });
+  const [artikelen, setArtikelen] = useState<Artikel[]>([]);
+  const [artikelenBezig, setArtikelenBezig] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [lastAdded, setLastAdded] = useState<string | null>(null);
   const [extras, setExtras] = useState<Record<string, { on: boolean; aantal: string }>>({});
@@ -62,6 +65,28 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   const [mailStatus, setMailStatus] = useState<Status>('idle');
   const [mailError, setMailError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Echte artikelen uit het assortiment ophalen bij het gekozen type en de kleur.
+  // Faalt dit (of staat de database uit), dan blijft de configurator gewoon werken
+  // met de generieke kledingtypes — de suggestie is een plus, geen voorwaarde.
+  useEffect(() => {
+    let afgebroken = false;
+    setArtikelenBezig(true);
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const q = new URLSearchParams({ type: draft.type, kleur: kleuren[draft.kleur].name });
+        const res = await fetch(`/api/pakket/artikelen?${q}`, { signal: ctrl.signal });
+        const data = (await res.json()) as { artikelen: Artikel[] };
+        if (!afgebroken) setArtikelen(data.artikelen ?? []);
+      } catch {
+        if (!afgebroken) setArtikelen([]);
+      } finally {
+        if (!afgebroken) setArtikelenBezig(false);
+      }
+    }, 150);
+    return () => { afgebroken = true; ctrl.abort(); clearTimeout(t); };
+  }, [draft.type, draft.kleur]);
 
   const allePosities = [...logoposities, ...broekposities];
   const typeLabel = (id: string) => kledingtypes.find((t) => t.id === id)?.label ?? id;
@@ -111,13 +136,13 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     setLastAdded(null);
     setDraft((d) => {
       const valid = positiesVoor(id).some((p) => p.id === d.positie);
-      return { ...d, type: id, positie: valid ? d.positie : positiesVoor(id)[0].id };
+      return { ...d, type: id, positie: valid ? d.positie : positiesVoor(id)[0].id, artikelId: undefined, artikelNaam: undefined };
     });
   }
   function addItem() {
     setItems((p) => [...p, { id: Date.now(), ...draft }]);
     setLastAdded(typeLabel(draft.type));
-    setDraft((d) => ({ ...d, aantal: '' }));
+    setDraft((d) => ({ ...d, aantal: '', artikelId: undefined, artikelNaam: undefined }));
   }
   function removeItem(id: number) { setItems((p) => p.filter((i) => i.id !== id)); }
   function toggleExtra(id: string) { setExtras((p) => ({ ...p, [id]: { on: !p[id]?.on, aantal: p[id]?.aantal ?? '' } })); }
@@ -136,7 +161,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
 
   function buildBericht(): string {
     const kledingLijst = items.length
-      ? items.map((i) => `- ${typeLabel(i.type)}, ${kleuren[i.kleur].name}, logo ${posLabel(i.positie).toLowerCase()}${i.aantal ? `, ${i.aantal}x` : ''}`).join('\n')
+      ? items.map((i) => `- ${typeLabel(i.type)}, ${kleuren[i.kleur].name}, logo ${posLabel(i.positie).toLowerCase()}${i.aantal ? `, ${i.aantal}x` : ''}${i.artikelNaam ? ` — voorkeur: ${i.artikelNaam}` : ''}`).join('\n')
       : '- (nog geen kledingstukken toegevoegd)';
     const extraLijst = extrasOpties.filter((e) => extras[e.id]?.on).map((e) => `- ${e.label}${extras[e.id].aantal ? ` (${extras[e.id].aantal}x)` : ''}`).join('\n');
     return [
@@ -227,7 +252,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
 
   function buildRegels(): { item_naam: string; kleur: string | null; aantal: number }[] {
     const kleding = items.map((i) => ({
-      item_naam: `${typeLabel(i.type)}, logo ${posLabel(i.positie).toLowerCase()} (${techniek})`,
+      item_naam: `${i.artikelNaam ?? typeLabel(i.type)}, logo ${posLabel(i.positie).toLowerCase()} (${techniek})`,
       kleur: kleuren[i.kleur].name,
       aantal: Math.max(1, parseInt(i.aantal || '1', 10) || 1),
     }));
@@ -305,7 +330,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         ) : (
           <>
             <p className="font-display text-2xl font-extrabold text-ink-900">Bedankt, {contact.name.split(' ')[0]}.</p>
-            <p className="mt-3 text-warm">We hebben je samengestelde pakket binnen. We bellen je binnen een werkdag terug om het door te nemen en maken een offerte op maat. Je krijgt ook een bevestiging per e-mail.</p>
+            <p className="mt-3 text-warm">We hebben je samengestelde pakket binnen. We bellen je binnen 24 uur terug om het door te nemen en maken een offerte op maat. Je krijgt ook een bevestiging per e-mail.</p>
           </>
         )}
       </div>
@@ -327,7 +352,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         {Array.from({ length: totaalStappen }).map((_, i) => (
           <div key={i} className="flex-1">
             <div className={`h-1.5 rounded-full ${i <= step ? 'bg-amber-500' : 'bg-line'}`} />
-            <p className={`mt-2 text-xs font-bold uppercase tracking-wide ${i === step ? 'text-amber-600' : 'text-warm'}`}>{i + 1}. {stapTitels[i]}</p>
+            <p className={`mt-2 text-xs font-bold uppercase tracking-wide ${i === step ? 'text-amber-700' : 'text-warm'}`}>{i + 1}. {stapTitels[i]}</p>
           </div>
         ))}
       </div>
@@ -389,9 +414,9 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
             <div>
               <h3 className="text-xl font-extrabold text-ink-900">Stel je kleding samen</h3>
               <ol className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-warm">
-                <li><span className="text-amber-600">1.</span> Stel een stuk samen</li>
-                <li><span className="text-amber-600">2.</span> Voeg het toe</li>
-                <li><span className="text-amber-600">3.</span> Herhaal of ga verder</li>
+                <li><span className="text-amber-700">1.</span> Stel een stuk samen</li>
+                <li><span className="text-amber-700">2.</span> Voeg het toe</li>
+                <li><span className="text-amber-700">3.</span> Herhaal of ga verder</li>
               </ol>
               <div className="relative mt-4 rounded-xl border border-line bg-mist p-4">
                 <span className="absolute right-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-ink-600 shadow-sm">{kant}</span>
@@ -406,9 +431,49 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               <p className="mt-4 text-sm font-semibold text-ink-800">Kleur: <span className="text-warm">{kleuren[draft.kleur].name}</span></p>
               <div className="mt-2 flex flex-wrap gap-2.5">
                 {kleuren.map((k, i) => (
-                  <button key={k.name} type="button" aria-label={k.name} onClick={() => setDraft((d) => ({ ...d, kleur: i }))} className={`${swatch} ${i === draft.kleur ? 'border-amber-500 ring-2 ring-amber-200' : 'border-line'}`} style={{ background: k.hex }} />
+                  <button key={k.name} type="button" aria-label={k.name} onClick={() => setDraft((d) => ({ ...d, kleur: i, artikelId: undefined, artikelNaam: undefined }))} className={`${swatch} ${i === draft.kleur ? 'border-amber-500 ring-2 ring-amber-200' : 'border-line'}`} style={{ background: k.hex }} />
                 ))}
               </div>
+              {(artikelen.length > 0 || artikelenBezig) && (
+                <div className="mt-5">
+                  <p className="text-sm font-semibold text-ink-800">
+                    Uit ons assortiment <span className="font-normal text-warm">— optioneel, je hoeft nu nog niets te kiezen</span>
+                  </p>
+                  {artikelenBezig && artikelen.length === 0 ? (
+                    <p className="mt-2 text-sm text-warm">Even zoeken…</p>
+                  ) : (
+                    <div className="mt-2 flex gap-2.5 overflow-x-auto pb-1">
+                      {artikelen.map((a) => {
+                        const aan = draft.artikelId === a.id;
+                        return (
+                          <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => setDraft((d) => (aan ? { ...d, artikelId: undefined, artikelNaam: undefined } : { ...d, artikelId: a.id, artikelNaam: `${a.merk ? a.merk + ' ' : ''}${a.naam}` }))}
+                            aria-pressed={aan}
+                            className={`w-36 shrink-0 rounded-lg border-2 p-2 text-left transition ${aan ? 'border-amber-500 bg-amber-50' : 'border-line hover:border-ink-300'}`}
+                          >
+                            <span className="block h-20 w-full overflow-hidden rounded bg-mist">
+                              {a.foto ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img src={a.foto} alt="" className="h-full w-full object-contain" loading="lazy" />
+                              ) : (
+                                <span className="flex h-full items-center justify-center text-[11px] text-warm">geen foto</span>
+                              )}
+                            </span>
+                            {a.merk && <span className="mt-1.5 block text-[10px] font-bold uppercase tracking-wide text-amber-700">{a.merk}</span>}
+                            <span className="block text-xs font-semibold leading-tight text-ink-900">{a.naam}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="mt-1.5 text-xs text-warm">
+                    Kies je niets, dan zoeken wij er een passend artikel bij. De prijs krijg je in je offerte, inclusief staffel en bedrukking.
+                  </p>
+                </div>
+              )}
+
               <div className="mt-4 flex flex-wrap items-end gap-4">
                 <div>
                   <p className="text-sm font-semibold text-ink-800">Logo-positie</p>
@@ -430,15 +495,15 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Jouw pakket ({items.length})</p>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Jouw pakket ({items.length})</p>
               {starter && items.length === 0 && (
-                <button type="button" onClick={vulMetStarter} className="mt-3 w-full rounded-lg border-2 border-dashed border-amber-400 bg-amber-50 px-4 py-3 text-left text-sm font-semibold text-amber-800 transition hover:bg-amber-100">
+                <button type="button" onClick={vulMetStarter} className="mt-3 w-full rounded-lg border-2 border-amber-400 bg-amber-50 px-4 py-3 text-left text-sm font-semibold text-amber-800 transition hover:bg-amber-100">
                   Begin met een voorbeeldpakket voor {branche}
                   <span className="mt-0.5 block text-xs font-normal text-amber-700">Een paar veelgekozen stukken als startpunt. Je past het daarna naar wens aan.</span>
                 </button>
               )}
               {items.length === 0 && (
-                <div className="mt-3 rounded-lg border border-dashed border-line bg-mist p-4 text-sm text-warm">
+                <div className="mt-3 rounded-lg border border-line bg-mist p-4 text-sm text-warm">
                   Nog leeg. Stel links een kledingstuk samen en klik op <span className="font-semibold text-ink-700">Voeg toe aan je pakket</span>. Je kunt zoveel verschillende stukken toevoegen als je wilt.
                 </div>
               )}
@@ -449,8 +514,9 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
                     <div className="min-w-0 grow text-sm">
                       <p className="font-bold text-ink-900">{typeLabel(i.type)}{i.aantal ? ` · ${i.aantal}x` : ''}</p>
                       <p className="text-warm">{kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}</p>
+                      {i.artikelNaam && <p className="truncate text-xs font-semibold text-amber-700">{i.artikelNaam}</p>}
                     </div>
-                    <button type="button" onClick={() => removeItem(i.id)} className="shrink-0 text-sm text-warm hover:text-amber-700">Verwijder</button>
+                    <button type="button" onClick={() => removeItem(i.id)} className="shrink-0 text-sm text-warm hover:text-amber-800">Verwijder</button>
                   </li>
                 ))}
               </ul>
@@ -503,7 +569,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
             ) : (
             <div className="no-print rounded-2xl border-2 border-amber-500 bg-white p-6 shadow-card">
               <h3 className="text-lg font-extrabold text-ink-900">Vraag je pakket als offerte aan</h3>
-              <p className="mt-1 text-sm text-warm">We bellen je binnen een werkdag terug en denken vrijblijvend mee.</p>
+              <p className="mt-1 text-sm text-warm">We bellen je binnen 24 uur terug en denken vrijblijvend mee.</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <input className={field} placeholder="Naam *" value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} autoComplete="name" />
                 <input className={field} placeholder="Bedrijf" value={contact.company} onChange={(e) => setContact({ ...contact, company: e.target.value })} autoComplete="organization" />
@@ -529,7 +595,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         {error && step !== 3 && <p className="no-print mt-4 text-sm font-medium text-amber-700" role="alert">{error}</p>}
 
         {!portaal && step < totaalStappen - 1 && (
-          <div className="no-print mt-8 rounded-xl border border-dashed border-line bg-mist p-4">
+          <div className="no-print mt-8 rounded-xl border border-line bg-mist p-4">
             {mailStatus === 'ok' ? (
               <p className="text-sm font-medium text-ink-800">Gelukt. Je ontwerp staat in je mail, met een link om later verder te gaan.</p>
             ) : (
@@ -566,7 +632,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         <div className="flex items-end justify-between border-b-2 border-dashed border-amber-500 pb-3">
           <div>
             <p className="font-display text-2xl font-extrabold tracking-wide text-ink-900">FREDERIKS</p>
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-amber-600">Bedrijfskleding</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-amber-700">Bedrijfskleding</p>
           </div>
           <div className="text-right text-xs text-warm">
             <p className="font-semibold text-ink-900">Jouw werkkledingontwerp</p>
@@ -591,7 +657,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
 
         {extrasOpties.some((e) => extras[e.id]?.on) && (
           <div className="mt-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Aanvullend</p>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Aanvullend</p>
             <ul className="mt-1 text-sm text-ink-800">
               {extrasOpties.filter((e) => extras[e.id]?.on).map((e) => <li key={e.id}>{e.label}{extras[e.id].aantal ? `, ${extras[e.id].aantal}x` : ''}</li>)}
             </ul>

@@ -44,7 +44,7 @@ export default function AiBeschrijving({ naam, merk, categorie, materiaal, norme
           <button
             type="submit"
             disabled={bezig}
-            className="shrink-0 rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800 disabled:opacity-60"
+            className="shrink-0 knop-donker disabled:opacity-60"
           >
             {bezig ? 'Bezig…' : 'Genereer beschrijving met AI'}
           </button>

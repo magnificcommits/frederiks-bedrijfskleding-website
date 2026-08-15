@@ -231,7 +231,7 @@ export default function Grafieken({ stuksPerMaand, omzetPerMaand, stuksGroei, om
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+        <section className="panel p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div>
               <h3 className="font-display text-lg font-bold text-ink-900">Verkochte stuks per maand</h3>
@@ -249,7 +249,7 @@ export default function Grafieken({ stuksPerMaand, omzetPerMaand, stuksGroei, om
           </div>
         </section>
 
-        <section className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+        <section className="panel p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div>
               <h3 className="font-display text-lg font-bold text-ink-900">Omzet per maand</h3>

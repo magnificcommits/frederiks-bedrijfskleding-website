@@ -103,7 +103,7 @@ export default function VoorraadLijst({ producten }: { producten: VoorraadProduc
             onChange={(e) => setZoek(e.target.value)}
             placeholder="Zoek op product, merk, maat of kleur"
             aria-label="Zoek in voorraad"
-            className="w-full rounded-2xl border border-line bg-white px-4 py-2.5 text-sm text-ink-900 shadow-soft outline-none placeholder:text-warm focus:border-amber-400 focus:ring-2 focus:ring-amber-200"
+            className="w-full panel px-4 py-2.5 text-sm text-ink-900 outline-none placeholder:text-warm focus:border-amber-400 focus:ring-2 focus:ring-amber-200"
           />
         </div>
 
@@ -150,7 +150,7 @@ export default function VoorraadLijst({ producten }: { producten: VoorraadProduc
             return (
               <section
                 key={g.merk}
-                className="overflow-hidden rounded-2xl border border-line bg-white shadow-soft"
+                className="overflow-hidden panel"
               >
                 <button
                   type="button"
@@ -277,22 +277,22 @@ function ProductRij({ product: p, forceOpen = false }: { product: VoorraadProduc
             </p>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-line">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+              <table className="tbl">
+                <thead>
                   <tr>
-                    <th className="px-4 py-3">Maat</th>
-                    <th className="px-4 py-3">Kleur</th>
-                    <th className="px-4 py-3">Voorraad</th>
-                    <th className="px-4 py-3">Status</th>
+                    <th>Maat</th>
+                    <th>Kleur</th>
+                    <th>Voorraad</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {p.varianten.map((v) => (
                     <tr key={v.id} className="border-b border-line last:border-b-0">
-                      <td className="px-4 py-3 text-warm">{v.maat || '-'}</td>
-                      <td className="px-4 py-3 text-warm">{v.kleur || '-'}</td>
-                      <td className="px-4 py-3"><VoorraadCel variantId={v.id} voorraad={v.voorraad} /></td>
-                      <td className="px-4 py-3">
+                      <td className="text-warm">{v.maat || '-'}</td>
+                      <td className="text-warm">{v.kleur || '-'}</td>
+                      <td><VoorraadCel variantId={v.id} voorraad={v.voorraad} /></td>
+                      <td>
                         <span
                           className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${
                             v.actief ? 'bg-green-100 text-green-800' : 'bg-ink-100 text-ink-500'

@@ -33,7 +33,7 @@ export function PortaalPreview() {
   return (
     <section className="container-x py-16">
       <p className="eyebrow">Zo ziet het eruit</p>
-      <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">Een rondje door het portaal</h2>
+      <h2 className="mt-3 kop-2">Een rondje door het portaal</h2>
       <p className="mt-3 max-w-2xl text-warm">Links bestelt een medewerker binnen het eigen budget. Rechts houdt de beheerder grip met cijfers per afdeling.</p>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">

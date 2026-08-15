@@ -6,7 +6,7 @@ import { maakDrukproefActie } from './actions';
 import DrukproefPreview from './DrukproefPreview';
 
 const inputCls =
-  'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+  'veld';
 
 /**
  * Formulier waarmee Jessi een drukproef voor een klant maakt. Links beweegt een live
@@ -21,7 +21,7 @@ export default function DrukproefMaker({ orgId, klantLogoUrl, orderId }: { orgId
   const [logoUrl, setLogoUrl] = useState<string>(klantLogoUrl ?? '');
 
   return (
-    <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
+    <div className="panel p-4">
       <h2 className="font-display text-lg font-bold text-ink-900">Nieuwe drukproef</h2>
       <p className="mt-1 text-xs text-warm">
         Stel het kledingstuk samen of upload een eigen afbeelding als definitieve proef. Het voorbeeld beweegt mee met je keuzes.
@@ -42,12 +42,12 @@ export default function DrukproefMaker({ orgId, klantLogoUrl, orderId }: { orgId
         <input type="hidden" name="logo_url" value={logoUrl} />
 
         <div>
-          <label className="block text-xs font-semibold text-warm">Naam</label>
+          <label className="veld-label">Naam</label>
           <input name="naam" required placeholder="Bijv. Polo borduren borst links" className={inputCls} />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-warm">Kledingstuk</label>
+          <label className="veld-label">Kledingstuk</label>
           <select value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
             {kledingtypes.map((t) => (
               <option key={t.id} value={t.id}>
@@ -58,7 +58,7 @@ export default function DrukproefMaker({ orgId, klantLogoUrl, orderId }: { orgId
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-warm">Kleur</label>
+          <label className="veld-label">Kleur</label>
           <select value={kleur} onChange={(e) => setKleur(Number(e.target.value))} className={inputCls}>
             {kleuren.map((k, i) => (
               <option key={k.name} value={i}>
@@ -69,7 +69,7 @@ export default function DrukproefMaker({ orgId, klantLogoUrl, orderId }: { orgId
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-warm">Logopositie</label>
+          <label className="veld-label">Logopositie</label>
           <select value={positie} onChange={(e) => setPositie(e.target.value)} className={inputCls}>
             {logoposities.map((p) => (
               <option key={p.id} value={p.id}>
@@ -80,7 +80,7 @@ export default function DrukproefMaker({ orgId, klantLogoUrl, orderId }: { orgId
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-warm">Techniek</label>
+          <label className="veld-label">Techniek</label>
           <select value={techniek} onChange={(e) => setTechniek(e.target.value)} className={inputCls}>
             <option value="borduren">Borduren</option>
             <option value="bedrukken">Bedrukken</option>
@@ -88,7 +88,7 @@ export default function DrukproefMaker({ orgId, klantLogoUrl, orderId }: { orgId
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-warm">Logo (URL)</label>
+          <label className="veld-label">Logo (URL)</label>
           <input
             value={logoUrl}
             onChange={(e) => setLogoUrl(e.target.value)}
@@ -99,7 +99,7 @@ export default function DrukproefMaker({ orgId, klantLogoUrl, orderId }: { orgId
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-warm">Omschrijving</label>
+          <label className="veld-label">Omschrijving</label>
           <textarea
             name="omschrijving"
             rows={3}
@@ -109,7 +109,7 @@ export default function DrukproefMaker({ orgId, klantLogoUrl, orderId }: { orgId
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-warm">Eigen afbeelding (optioneel)</label>
+          <label className="veld-label">Eigen afbeelding (optioneel)</label>
           <input
             type="file"
             name="afbeelding"
@@ -119,7 +119,7 @@ export default function DrukproefMaker({ orgId, klantLogoUrl, orderId }: { orgId
           <p className="mt-1 text-[11px] text-warm">Upload je een afbeelding, dan wordt die de definitieve proef in plaats van de render.</p>
         </div>
 
-        <button type="submit" className="self-start rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">
+        <button type="submit" className="self-start knop-donker">
           Drukproef aanmaken
         </button>
       </form>

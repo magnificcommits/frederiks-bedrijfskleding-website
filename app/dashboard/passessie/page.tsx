@@ -16,7 +16,7 @@ const statusBadge: Record<string, string> = {
 const statusLabel: Record<string, string> = { open: 'Open', afgerond: 'Afgerond', omgezet: 'Order gemaakt' };
 
 const inputCls =
-  'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+  'veld';
 
 function fmt(d: string) {
   try {
@@ -35,9 +35,9 @@ export default async function PassessiesPage({ searchParams }: { searchParams: P
   const sessies = await listPassessies();
 
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Passessies</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop flex items-center justify-between gap-4">
+        <h1 className="dash-h1">Passessies</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">
           Terug naar dashboard
         </Link>
@@ -53,7 +53,7 @@ export default async function PassessiesPage({ searchParams }: { searchParams: P
         </p>
       )}
 
-      <section className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-soft">
+      <section className="mt-8 panel p-4">
         <h2 className="font-display text-xl font-bold text-ink-900">Nieuwe sessie starten</h2>
         <form action={startPassessie} className="mt-4 grid gap-4 sm:grid-cols-3">
           <label className="block text-sm font-medium text-ink-800">
@@ -97,30 +97,30 @@ export default async function PassessiesPage({ searchParams }: { searchParams: P
           </p>
         ) : (
           <div className="mt-3 overflow-x-auto rounded-xl border border-line bg-white">
-            <table className="w-full text-sm">
-              <thead className="bg-mist text-left text-xs uppercase tracking-wide text-warm">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Datum</th>
-                  <th className="px-4 py-3">Klant</th>
-                  <th className="px-4 py-3">Locatie</th>
-                  <th className="px-4 py-3">Regels</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3" />
+                  <th>Datum</th>
+                  <th>Klant</th>
+                  <th>Locatie</th>
+                  <th>Regels</th>
+                  <th>Status</th>
+                  <th />
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {sessies.map((s) => (
                   <tr key={s.id}>
-                    <td className="px-4 py-3 whitespace-nowrap">{fmt(s.datum)}</td>
-                    <td className="px-4 py-3 font-medium text-ink-900">{s.organisatie_naam ?? '-'}</td>
-                    <td className="px-4 py-3 text-warm">{s.locatie ?? '-'}</td>
-                    <td className="px-4 py-3">{s.regels}</td>
-                    <td className="px-4 py-3">
+                    <td className="whitespace-nowrap">{fmt(s.datum)}</td>
+                    <td className="font-medium text-ink-900">{s.organisatie_naam ?? '-'}</td>
+                    <td className="text-warm">{s.locatie ?? '-'}</td>
+                    <td>{s.regels}</td>
+                    <td>
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge[s.status]}`}>
                         {statusLabel[s.status]}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="text-right">
                       <Link href={`/dashboard/passessie/${s.id}`} className="font-semibold text-warm hover:text-ink-800">
                         Openen
                       </Link>

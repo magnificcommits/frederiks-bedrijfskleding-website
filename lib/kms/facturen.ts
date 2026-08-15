@@ -120,7 +120,7 @@ export async function listFacturen(statusFilter?: string): Promise<FactuurMetKla
 const FACTUUR_SORTKOLOMMEN = ['factuurnummer', 'factuurdatum', 'vervaldatum', 'bedrag_incl', 'status', 'created_at'] as const;
 
 /** Eén pagina facturen (standaard nieuwste eerst) met optioneel statusfilter, plus het totaal aantal rijen voor paginering. */
-export async function listFacturenPaged(opts: { pagina: number; perPagina: number; status?: string; sort?: string; dir?: 'asc' | 'desc' }): Promise<{ rijen: FactuurMetKlant[]; totaal: number }> {
+export async function listFacturenPaged(opts: { pagina: number; perPagina: number; status?: string; zoek?: string; sort?: string; dir?: 'asc' | 'desc' }): Promise<{ rijen: FactuurMetKlant[]; totaal: number }> {
   const sb = kmsAdmin(); if (!sb) return { rijen: [], totaal: 0 };
   const pagina = Math.max(1, opts.pagina);
   const from = (pagina - 1) * opts.perPagina;
@@ -132,6 +132,19 @@ export async function listFacturenPaged(opts: { pagina: number; perPagina: numbe
     .select('*, organisaties(naam)', { count: 'exact' })
     .order(kolom, { ascending: oplopend });
   if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
+  // Zoeken op klantnaam of op nummer. De klant zit in een join, en PostgREST kan
+  // daar niet zonder meer op filteren; daarom eerst de organisatie-ids ophalen.
+  if (opts.zoek && opts.zoek.trim()) {
+    const term = opts.zoek.trim().replace(/[%,()]/g, ' ');
+    const { data: orgRijen } = await sb.from('organisaties').select('id').ilike('naam', `%${term}%`);
+    const orgIds = ((orgRijen as { id: string }[]) ?? []).map((o) => o.id);
+    const delen: string[] = [];
+    if (orgIds.length) delen.push(`organisatie_id.in.(${orgIds.join(',')})`);
+    delen.push(`factuurnummer.ilike.%${term}%`);
+    // Niets dat kan matchen: dan liever nul rijen dan de hele lijst.
+    q = delen.length ? q.or(delen.join(',')) : q.eq('id', '00000000-0000-0000-0000-000000000000');
+  }
+
   const { data, count } = await q.range(from, to);
   const rows = (data as unknown as (Factuur & { organisaties: { naam: string } | null })[]) ?? [];
   const rijen = rows.map((r) => {

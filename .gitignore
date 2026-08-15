@@ -16,3 +16,14 @@ next-env.d.ts
 # Leveranciersbestanden: 27 MB prijslijsten en condities. Alles onder public/ wordt
 # door Vercel als website geserveerd, en upower assortiment.xlsx bevat de inkoopkorting.
 /public/Data per merk/
+
+.vercel
+.env*
+_review-bundle.txt
+
+# Bronbestanden met klant- en inkoopgegevens. Nooit in git, en zeker niet onder
+# public/: Vercel serveert alles onder public/ één-op-één als website.
+/data/
+
+# Werkbestanden van deze sessie; map mag weg.
+_to_delete/

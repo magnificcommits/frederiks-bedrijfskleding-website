@@ -31,9 +31,9 @@ export default async function AuditPage() {
   const regels = await listAudit(100);
 
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Logboek</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop flex items-center justify-between gap-4">
+        <h1 className="dash-h1">Logboek</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 text-sm text-warm">Overzicht van de laatste wijzigingen in het dashboard: wie deed wat en wanneer.</p>
@@ -41,22 +41,22 @@ export default async function AuditPage() {
       {regels.length === 0 ? (
         <p className="mt-6 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Er zijn nog geen acties vastgelegd.</p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+        <div className="mt-6 overflow-x-auto panel">
+          <table className="tbl">
+            <thead>
               <tr>
-                <th className="px-4 py-3">Datum en tijd</th>
-                <th className="px-4 py-3">Actie</th>
-                <th className="px-4 py-3">Entiteit</th>
-                <th className="px-4 py-3">Door</th>
+                <th>Datum en tijd</th>
+                <th>Actie</th>
+                <th>Entiteit</th>
+                <th>Door</th>
               </tr>
             </thead>
             <tbody>
               {regels.map((r) => (
                 <tr key={r.id} className="border-b border-line">
-                  <td className="whitespace-nowrap px-4 py-3 text-warm">{formatTijdstip(r.created_at)}</td>
-                  <td className="px-4 py-3 font-semibold text-ink-900">{formatStatus(r.actie)}</td>
-                  <td className="px-4 py-3 text-warm">
+                  <td className="whitespace-nowrap text-warm">{formatTijdstip(r.created_at)}</td>
+                  <td className="font-semibold text-ink-900">{formatStatus(r.actie)}</td>
+                  <td className="text-warm">
                     {r.entiteit ? (
                       <span>
                         {formatStatus(r.entiteit)}
@@ -66,7 +66,7 @@ export default async function AuditPage() {
                       <span className="text-warm/60">&ndash;</span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-warm">{r.actor || 'dashboard'}</td>
+                  <td className="whitespace-nowrap text-warm">{r.actor || 'dashboard'}</td>
                 </tr>
               ))}
             </tbody>

@@ -49,7 +49,7 @@ export const retourbeleid = {
   stappen: [
     {
       t: 'Meld je retour',
-      d: 'Laat ons weten welke bestelling en welke artikelen het betreft en waarom. Werk je met het klantportaal, dan meld je de retour daar aan. Anders bel of mail je ons even.',
+      d: 'Online in twee minuten: je vult je ordernummer en e-mailadres in, wij mailen een link en daarin kies je wat er terug moet. Een account heb je er niet voor nodig.',
     },
     {
       t: 'Stuur terug of geef mee',
@@ -84,6 +84,7 @@ export const levering = {
 /** Ankerlinks voor het 'zelf regelen'-blok bovenaan de pagina. */
 export const serviceOnderwerpen: { label: string; href: string }[] = [
   { label: 'Veelgestelde vragen', href: '#veelgestelde-vragen' },
+  { label: 'Retour aanmelden', href: '/klantenservice/retourneren' },
   { label: 'Retourbeleid', href: '#retourbeleid' },
   { label: 'Garantie', href: '#garantie' },
   { label: 'Levertijd en bezorging', href: '#levertijd-en-bezorging' },

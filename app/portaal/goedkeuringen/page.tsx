@@ -57,7 +57,7 @@ export default async function Goedkeuringen({
   if (!magKeuren) {
     return (
       <main className="container-x py-12">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
         <h1 className="font-display text-3xl font-extrabold text-ink-900">Goedkeuringen</h1>
         <PortaalNav rol={toegang.rol} actief="/portaal/goedkeuringen" />
         <div className="mt-8 max-w-xl rounded-2xl border border-line bg-white p-6 shadow-soft">
@@ -81,7 +81,7 @@ export default async function Goedkeuringen({
     <main className="container-x py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
           <h1 className="font-display text-3xl font-extrabold text-ink-900">Goedkeuringen</h1>
         </div>
       </div>

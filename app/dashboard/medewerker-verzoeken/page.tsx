@@ -36,9 +36,9 @@ export default async function MedewerkerVerzoekenPage({ searchParams }: { search
   const behandeld = alle.filter((v) => v.status !== 'wacht');
 
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Medewerker-verzoeken</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop flex items-center justify-between gap-4">
+        <h1 className="dash-h1">Medewerker-verzoeken</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 max-w-2xl text-sm text-warm">
@@ -60,7 +60,7 @@ export default async function MedewerkerVerzoekenPage({ searchParams }: { search
         ) : (
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             {wachtend.map((v) => (
-              <article key={v.id} className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+              <article key={v.id} className="panel p-4">
                 <div className="flex items-center justify-between gap-3">
                   <span className="inline-block rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
                     {typeLabel(v.type)}
@@ -106,7 +106,7 @@ export default async function MedewerkerVerzoekenPage({ searchParams }: { search
                   <div className="flex flex-wrap items-start gap-3">
                     <form action={keurGoedActie}>
                       <input type="hidden" name="id" value={v.id} />
-                      <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">
+                      <button type="submit" className="knop-donker">
                         Goedkeuren
                       </button>
                     </form>
@@ -137,7 +137,7 @@ export default async function MedewerkerVerzoekenPage({ searchParams }: { search
             <EmptyState tekst="Nog niets behandeld." />
           </div>
         ) : (
-          <ul className="mt-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white shadow-soft">
+          <ul className="mt-4 divide-y divide-line overflow-hidden panel">
             {behandeld.map((v: VerzoekMetKlant) => (
               <li key={v.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">
                 <div className="min-w-0">

@@ -16,7 +16,7 @@ export default async function OfferteAfdrukPage({ params }: { params: Promise<{ 
   const offerte = await getOfferte(id);
   if (!offerte) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
           <h1 className="font-display text-2xl font-extrabold text-ink-900">Offerte niet gevonden</h1>
           <p className="mt-3 text-sm text-warm">Deze offerte bestaat niet of is verwijderd.</p>
@@ -31,7 +31,7 @@ export default async function OfferteAfdrukPage({ params }: { params: Promise<{ 
   const nummer = offerte.offertenummer != null ? `${offerte.offertenummer}` : 'concept';
 
   return (
-    <main className="container-x py-12">
+    <main className="container-smal py-12">
       <style>{`@media print { .print\\:hidden { display: none !important; } #offerte-print { box-shadow: none !important; border: 0 !important; padding: 0 !important; margin: 0 !important; } body { background: #fff; } }`}</style>
 
       <div className="print:hidden flex items-center justify-between gap-4">
@@ -46,7 +46,7 @@ export default async function OfferteAfdrukPage({ params }: { params: Promise<{ 
       </div>
 
       <section className="mt-8">
-        <div id="offerte-print" className="rounded-2xl border border-line bg-white p-8 shadow-soft">
+        <div id="offerte-print" className="panel p-8">
           <div className="flex flex-wrap items-start justify-between gap-6 border-b border-line pb-6">
             <div>
               <p className="font-display text-2xl font-extrabold text-ink-900">{site.name}</p>

@@ -43,9 +43,9 @@ export default async function AnalysePage() {
 
   if (!sb) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Leaddatabase nog niet gekoppeld</h1>
+          <h1 className="dash-h1">Leaddatabase nog niet gekoppeld</h1>
           <p className="mt-3 text-sm text-warm">
             Zet <code>SUPABASE_URL</code> en <code>SUPABASE_SERVICE_ROLE_KEY</code> in de omgevingsvariabelen en draai
             de migraties in <code>supabase/migrations</code>.
@@ -74,9 +74,9 @@ export default async function AnalysePage() {
   const maxMerkStuks = Math.max(1, ...merken.map((m) => m.stuks));
 
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Analyse</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop flex items-center justify-between gap-4">
+        <h1 className="dash-h1">Analyse</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">
           Terug naar dashboard
         </Link>
@@ -87,22 +87,22 @@ export default async function AnalysePage() {
       </p>
 
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+        <div className="panel p-4">
           <p className="text-xs uppercase tracking-wide text-warm">Totaal medewerkers</p>
           <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{formatGetal(cijfers.totaalMedewerkers)}</p>
         </div>
-        <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+        <div className="panel p-4">
           <p className="text-xs uppercase tracking-wide text-warm">Totaal bedrijven</p>
           <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{formatGetal(cijfers.totaalBedrijven)}</p>
         </div>
-        <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+        <div className="panel p-4">
           <p className="text-xs uppercase tracking-wide text-warm">Stuks deze maand</p>
           <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{formatGetal(cijfers.stuks.huidig)}</p>
           <p className="mt-1">
             <GroeiPijl groei={cijfers.stuks} soort="stuks" />
           </p>
         </div>
-        <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+        <div className="panel p-4">
           <p className="text-xs uppercase tracking-wide text-warm">Omzet deze maand</p>
           <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{formatEuro(cijfers.omzet.huidig, 0)}</p>
           <p className="mt-1">
@@ -111,7 +111,7 @@ export default async function AnalysePage() {
         </div>
       </div>
 
-      <section className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-soft">
+      <section className="mt-8 panel p-4">
         <h2 className="font-display text-xl font-bold text-ink-900">AI-samenvatting</h2>
         <p className="mt-1 text-sm text-warm">Wat moet je deze maand weten?</p>
         <div className="mt-4">
@@ -139,20 +139,20 @@ export default async function AnalysePage() {
         {perBedrijf.lijst.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen medewerkers.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+          <div className="mt-4 overflow-x-auto panel">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Bedrijf</th>
-                  <th className="px-4 py-3">Verdeling</th>
-                  <th className="px-4 py-3 text-right">Medewerkers</th>
+                  <th>Bedrijf</th>
+                  <th>Verdeling</th>
+                  <th className="text-right">Medewerkers</th>
                 </tr>
               </thead>
               <tbody>
                 {perBedrijf.lijst.map((b) => (
                   <tr key={b.organisatie} className="border-b border-line">
-                    <td className="px-4 py-3 font-semibold text-ink-900">{b.organisatie}</td>
-                    <td className="px-4 py-3">
+                    <td className="font-semibold text-ink-900">{b.organisatie}</td>
+                    <td>
                       <span className="block h-2.5 w-full max-w-xs rounded-full bg-mist">
                         <span
                           className="block h-2.5 rounded-full bg-amber-600"
@@ -160,15 +160,15 @@ export default async function AnalysePage() {
                         />
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{formatGetal(b.aantal)}</td>
+                    <td className="whitespace-nowrap text-right text-ink-900">{formatGetal(b.aantal)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t border-line bg-mist">
-                  <td className="px-4 py-3 font-semibold text-ink-900">Totaal</td>
-                  <td className="px-4 py-3" />
-                  <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-ink-900">
+                  <td className="font-semibold text-ink-900">Totaal</td>
+                  <td />
+                  <td className="whitespace-nowrap text-right font-semibold text-ink-900">
                     {formatGetal(perBedrijf.totaal)}
                   </td>
                 </tr>
@@ -182,19 +182,19 @@ export default async function AnalysePage() {
         <h2 className="font-display text-xl font-bold text-ink-900">Voorraad en marge</h2>
         <p className="mt-1 text-sm text-warm">Waarde van de huidige voorraad en de potentiële marge bij verkoop.</p>
         <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+          <div className="panel p-4">
             <p className="text-xs uppercase tracking-wide text-warm">Stuks op voorraad</p>
             <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{formatGetal(voorraad.stuks)}</p>
           </div>
-          <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+          <div className="panel p-4">
             <p className="text-xs uppercase tracking-wide text-warm">Inkoopwaarde</p>
             <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{formatEuro(voorraad.inkoopwaarde, 0)}</p>
           </div>
-          <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+          <div className="panel p-4">
             <p className="text-xs uppercase tracking-wide text-warm">Verkoopwaarde</p>
             <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{formatEuro(voorraad.verkoopwaarde, 0)}</p>
           </div>
-          <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+          <div className="panel p-4">
             <p className="text-xs uppercase tracking-wide text-warm">Marge potentieel</p>
             <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{formatEuro(voorraad.margePotentieel, 0)}</p>
           </div>
@@ -207,21 +207,21 @@ export default async function AnalysePage() {
         {top.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen verkochte producten.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+          <div className="mt-4 overflow-x-auto panel">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3">Verdeling</th>
-                  <th className="px-4 py-3 text-right">Stuks</th>
-                  <th className="hidden px-4 py-3 text-right sm:table-cell">Omzet</th>
+                  <th>Product</th>
+                  <th>Verdeling</th>
+                  <th className="text-right">Stuks</th>
+                  <th className="hidden text-right sm:table-cell">Omzet</th>
                 </tr>
               </thead>
               <tbody>
                 {top.map((t) => (
                   <tr key={t.naam} className="border-b border-line">
-                    <td className="px-4 py-3 font-semibold text-ink-900">{t.naam}</td>
-                    <td className="px-4 py-3">
+                    <td className="font-semibold text-ink-900">{t.naam}</td>
+                    <td>
                       <span className="block h-2.5 w-full max-w-xs rounded-full bg-mist">
                         <span
                           className="block h-2.5 rounded-full bg-amber-600"
@@ -229,8 +229,8 @@ export default async function AnalysePage() {
                         />
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{formatGetal(t.stuks)}</td>
-                    <td className="hidden whitespace-nowrap px-4 py-3 text-right text-warm sm:table-cell">{formatEuro(t.omzet, 0)}</td>
+                    <td className="whitespace-nowrap text-right text-ink-900">{formatGetal(t.stuks)}</td>
+                    <td className="hidden whitespace-nowrap text-right text-warm sm:table-cell">{formatEuro(t.omzet, 0)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -245,21 +245,21 @@ export default async function AnalysePage() {
         {merken.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen verkochte merken.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+          <div className="mt-4 overflow-x-auto panel">
+            <table className="tbl">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Merk</th>
-                  <th className="px-4 py-3">Verdeling</th>
-                  <th className="px-4 py-3 text-right">Stuks</th>
-                  <th className="hidden px-4 py-3 text-right sm:table-cell">Omzet</th>
+                  <th>Merk</th>
+                  <th>Verdeling</th>
+                  <th className="text-right">Stuks</th>
+                  <th className="hidden text-right sm:table-cell">Omzet</th>
                 </tr>
               </thead>
               <tbody>
                 {merken.map((m) => (
                   <tr key={m.merk} className="border-b border-line">
-                    <td className="px-4 py-3 font-semibold text-ink-900">{m.merk}</td>
-                    <td className="px-4 py-3">
+                    <td className="font-semibold text-ink-900">{m.merk}</td>
+                    <td>
                       <span className="block h-2.5 w-full max-w-xs rounded-full bg-mist">
                         <span
                           className="block h-2.5 rounded-full bg-amber-600"
@@ -267,8 +267,8 @@ export default async function AnalysePage() {
                         />
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right text-ink-900">{formatGetal(m.stuks)}</td>
-                    <td className="hidden whitespace-nowrap px-4 py-3 text-right text-warm sm:table-cell">{formatEuro(m.omzet, 0)}</td>
+                    <td className="whitespace-nowrap text-right text-ink-900">{formatGetal(m.stuks)}</td>
+                    <td className="hidden whitespace-nowrap text-right text-warm sm:table-cell">{formatEuro(m.omzet, 0)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -281,20 +281,20 @@ export default async function AnalysePage() {
         <h2 className="font-display text-xl font-bold text-ink-900">Leadconversie</h2>
         <p className="mt-1 text-sm text-warm">Van aanvraag tot gewonnen opdracht. Conversie = gewonnen ÷ afgehandelde leads.</p>
         <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+          <div className="panel p-4">
             <p className="text-xs uppercase tracking-wide text-warm">Nieuw</p>
             <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{formatGetal(conversie.nieuw)}</p>
           </div>
-          <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+          <div className="panel p-4">
             <p className="text-xs uppercase tracking-wide text-warm">Offerte</p>
             <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{formatGetal(conversie.offerte)}</p>
           </div>
-          <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+          <div className="panel p-4">
             <p className="text-xs uppercase tracking-wide text-warm">Gewonnen</p>
             <p className="mt-1 font-display text-2xl font-extrabold text-green-700">{formatGetal(conversie.gewonnen)}</p>
             <p className="mt-1 text-xs text-warm">{formatEuro(conversie.gewonnenWaarde, 0)}</p>
           </div>
-          <div className="rounded-2xl border border-line bg-white p-5 shadow-soft">
+          <div className="panel p-4">
             <p className="text-xs uppercase tracking-wide text-warm">Conversie</p>
             <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">
               {conversie.conversiePct === null

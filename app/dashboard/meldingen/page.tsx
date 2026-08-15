@@ -19,9 +19,9 @@ export default async function MeldingenPage() {
 
   if (!sb) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Leaddatabase nog niet gekoppeld</h1>
+          <h1 className="dash-h1">Leaddatabase nog niet gekoppeld</h1>
           <p className="mt-3 text-sm text-warm">Zet <code>SUPABASE_URL</code> en <code>SUPABASE_SERVICE_ROLE_KEY</code> in de omgevingsvariabelen en draai de migraties in <code>supabase/migrations</code>.</p>
           <Link href="/dashboard" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
         </div>
@@ -68,14 +68,14 @@ export default async function MeldingenPage() {
   );
 
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Meldingen</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop flex items-center justify-between gap-4">
+        <h1 className="dash-h1">Meldingen</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 text-sm text-warm">Signalen die nu aandacht vragen. Live berekend uit de actuele cijfers.</p>
 
-      <section className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-soft">
+      <section className="mt-8 panel p-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-display text-lg font-bold text-ink-900">Budget bijna op <span className="text-warm">({budgetBijnaOp.length})</span></h2>
           <Link href="/dashboard/klanten" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Naar klanten</Link>
@@ -98,7 +98,7 @@ export default async function MeldingenPage() {
         )}
       </section>
 
-      <section className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-soft">
+      <section className="mt-6 panel p-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-display text-lg font-bold text-ink-900">Te bestellen <span className="text-warm">({teBestellenRegels.length})</span></h2>
           <Link href="/dashboard/inkoop" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Naar inkoop</Link>
@@ -118,7 +118,7 @@ export default async function MeldingenPage() {
         )}
       </section>
 
-      <section className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-soft">
+      <section className="mt-6 panel p-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-display text-lg font-bold text-ink-900">Facturen over vervaldatum <span className="text-warm">({overVervaldatum.length})</span></h2>
           <Link href="/dashboard/facturen" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Naar facturen</Link>
@@ -141,7 +141,7 @@ export default async function MeldingenPage() {
         )}
       </section>
 
-      <section className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-soft">
+      <section className="mt-6 panel p-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-display text-lg font-bold text-ink-900">Offertes opvolgen <span className="text-warm">({opvolgen.length})</span></h2>
           <Link href="/dashboard/leads" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Naar leads</Link>

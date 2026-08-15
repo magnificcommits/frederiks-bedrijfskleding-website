@@ -22,7 +22,7 @@ export default function EmptyState({
       {actieHref && actieLabel && (
         <Link
           href={actieHref}
-          className="mt-4 inline-block rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800"
+          className="mt-4 inline-block knop-donker"
         >
           {actieLabel}
         </Link>

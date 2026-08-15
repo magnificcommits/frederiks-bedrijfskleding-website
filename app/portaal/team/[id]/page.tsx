@@ -58,7 +58,7 @@ export default async function MedewerkerInstellingen({
   if (!medewerker) {
     return (
       <main className="container-x py-12">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
         <h1 className="font-display text-3xl font-extrabold text-ink-900">Medewerker niet gevonden</h1>
         <PortaalNav rol={toegang.rol} actief="/portaal/team" />
         <div className="mt-8 max-w-xl rounded-2xl border border-line bg-white p-6 shadow-soft">
@@ -87,7 +87,7 @@ export default async function MedewerkerInstellingen({
     <main className="container-x py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Klantportaal</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
           <h1 className="font-display text-3xl font-extrabold text-ink-900">{medewerker.naam}</h1>
           <p className="mt-1 text-sm text-warm">
             {[medewerker.functie, medewerker.email].filter(Boolean).join(' · ') || 'Geen contactgegevens'}
@@ -174,7 +174,7 @@ export default async function MedewerkerInstellingen({
                 type="checkbox"
                 name="buiten_budget_toegestaan"
                 defaultChecked={medewerker.buitenBudgetToegestaan}
-                className="mt-0.5 h-4 w-4 rounded border-line text-amber-600 focus:ring-amber-200"
+                className="mt-0.5 h-4 w-4 rounded border-line text-amber-700 focus:ring-amber-200"
               />
               <span>Bestellen boven het budget toestaan (met goedkeuring)</span>
             </label>
@@ -208,7 +208,7 @@ export default async function MedewerkerInstellingen({
                   type="checkbox"
                   name="behoud_restbudget"
                   defaultChecked={medewerker.behoudRestbudget}
-                  className="mt-0.5 h-4 w-4 rounded border-line text-amber-600 focus:ring-amber-200"
+                  className="mt-0.5 h-4 w-4 rounded border-line text-amber-700 focus:ring-amber-200"
                 />
                 <span>Restbudget meenemen naar de volgende periode</span>
               </label>
@@ -278,7 +278,7 @@ export default async function MedewerkerInstellingen({
                           type="checkbox"
                           name="plus_minus_toegestaan"
                           defaultChecked={huidig?.plusMinusToegestaan ?? false}
-                          className="h-4 w-4 rounded border-line text-amber-600 focus:ring-amber-200"
+                          className="h-4 w-4 rounded border-line text-amber-700 focus:ring-amber-200"
                         />
                         <span>1 maat groter of kleiner toegestaan</span>
                       </label>
@@ -295,7 +295,7 @@ export default async function MedewerkerInstellingen({
                           formAction={verwijderVoorkeursmaatAction}
                           name="maat_id"
                           value={huidig.id}
-                          className="text-xs font-semibold text-warm hover:text-amber-700"
+                          className="text-xs font-semibold text-warm hover:text-amber-800"
                         >
                           Voorkeur verwijderen
                         </button>

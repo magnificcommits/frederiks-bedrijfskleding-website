@@ -16,7 +16,7 @@ export default async function StickerPage({ params }: { params: Promise<{ id: st
   const data = await getMagazijnData(id);
   if (!data) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
           <h1 className="font-display text-2xl font-extrabold text-ink-900">Order niet gevonden</h1>
           <p className="mt-3 text-sm text-warm">Deze order bestaat niet of is verwijderd.</p>
@@ -27,7 +27,7 @@ export default async function StickerPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <main className="container-x py-12">
+    <main className="container-smal py-12">
       <style>{`@media print { .print\\:hidden { display: none !important; } body { background: #fff; } .sticker-kaart { box-shadow: none !important; border-width: 2px !important; } }`}</style>
 
       <div className="print:hidden flex items-center justify-between gap-4">

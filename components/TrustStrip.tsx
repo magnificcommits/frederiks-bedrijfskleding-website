@@ -7,7 +7,7 @@ export function TrustStrip() {
     'Passen op locatie',
     'Eigen bedrukkerij',
     'Gratis online kledingbeheer',
-    'Binnen 1 werkdag reactie',
+    'Binnen 24 uur reactie',
   ];
   return (
     <section className="bg-ink-900 text-white">

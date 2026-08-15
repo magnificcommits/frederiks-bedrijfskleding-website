@@ -28,9 +28,9 @@ export default async function DrukproevenPage({ searchParams }: { searchParams: 
 
   if (!sb) {
     return (
-      <main className="container-x py-20">
+      <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Leaddatabase nog niet gekoppeld</h1>
+          <h1 className="dash-h1">Leaddatabase nog niet gekoppeld</h1>
           <p className="mt-3 text-sm text-warm">Zet <code>SUPABASE_URL</code> en <code>SUPABASE_SERVICE_ROLE_KEY</code> in de omgevingsvariabelen en draai de migraties in <code>supabase/migrations</code>.</p>
           <Link href="/dashboard" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
         </div>
@@ -51,9 +51,9 @@ export default async function DrukproevenPage({ searchParams }: { searchParams: 
   }
 
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Drukproeven</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop flex items-center justify-between gap-4">
+        <h1 className="dash-h1">Drukproeven</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 text-sm text-warm">
@@ -61,9 +61,9 @@ export default async function DrukproevenPage({ searchParams }: { searchParams: 
       </p>
 
       <section className="mt-8">
-        <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-white p-6 shadow-soft">
+        <div className="flex flex-wrap items-end gap-3 panel p-4">
           <div className="min-w-[16rem]">
-            <label className="block text-xs font-semibold text-warm">Klant</label>
+            <label className="veld-label">Klant</label>
             <div className="mt-1">
               <NavigateSelect options={orgs.map((o) => ({ value: o.id, label: o.naam }))} value={gekozen} basePath="/dashboard/drukproeven" param="org" placeholder="Kies een klant" />
             </div>
@@ -89,7 +89,7 @@ export default async function DrukproevenPage({ searchParams }: { searchParams: 
             ) : (
               <ul className="mt-4 grid gap-4 sm:grid-cols-2">
                 {drukproeven.map((d) => (
-                  <li key={d.id} className="flex flex-col rounded-2xl border border-line bg-white p-4 shadow-soft">
+                  <li key={d.id} className="flex flex-col panel p-4">
                     <div className="rounded-lg border border-line bg-mist p-3">
                       <div className="mx-auto w-full max-w-[180px]">
                         <DrukproefPreview
@@ -119,7 +119,7 @@ export default async function DrukproevenPage({ searchParams }: { searchParams: 
                       <form action={verstuurDrukproefActie} className="mt-3 border-t border-line pt-3">
                         <input type="hidden" name="id" value={d.id} />
                         <input type="hidden" name="org_id" value={gekozen} />
-                        <label className="block text-xs font-semibold text-warm">Versturen naar klant (e-mail)</label>
+                        <label className="veld-label">Versturen naar klant (e-mail)</label>
                         <div className="mt-1 flex gap-2">
                           <input
                             type="email"

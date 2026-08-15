@@ -33,11 +33,11 @@ export default function SortableTh({
   }
 
   return (
-    <th className={`px-4 py-3 ${className}`}>
+    <th className={className}>
       <button
         type="button"
         onClick={sorteer}
-        className="inline-flex items-center gap-1 font-semibold uppercase tracking-wide hover:text-ink-800"
+        className="inline-flex items-center gap-1 font-semibold uppercase tracking-wide hover:text-ink-900"
         aria-label={`Sorteer op ${label}`}
       >
         {label}

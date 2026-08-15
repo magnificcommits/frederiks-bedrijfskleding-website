@@ -2,16 +2,22 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Hero } from '@/components/Hero';
 import { BrandStrip } from '@/components/BrandStrip';
-import { TrustStrip } from '@/components/TrustStrip';
 import { BrancheGrid } from '@/components/BrancheGrid';
 import { Reviews } from '@/components/Reviews';
 import { CtaBand } from '@/components/CtaBand';
 import { Faq } from '@/components/Faq';
 import { KledingadviesWizard } from '@/components/KledingadviesWizard';
 import { PortaalUsp } from '@/components/PortaalUsp';
+import { BewijsBalk } from '@/components/BewijsBalk';
+import { HoeWerktHet } from '@/components/HoeWerktHet';
+import { vakgebieden } from '@/content/vakgebieden';
 import { site } from '@/content/site';
 import { JsonLd } from '@/components/JsonLd';
 import { faqJsonLd } from '@/lib/jsonld';
+
+// De bewijsbalk leest het aantal merken en artikelen uit de catalogus; met ISR
+// is dat een query per uur in plaats van een per bezoeker.
+export const revalidate = 3600;
 
 const homeFaq = [
   { q: 'Leveren jullie ook aan zzp’ers?', a: 'Ja. Van zzp’er tot bedrijven met meer dan vijftig medewerkers, iedereen is welkom. We denken ook mee bij kleine aantallen.' },
@@ -26,24 +32,26 @@ const aanbod = [
   { t: 'Bedrukken en borduren', d: 'Je logo strak en slijtvast, in eigen huis aangebracht.', href: '/bedrukken-borduren' },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
   return (
     <>
       <Hero />
-      <TrustStrip />
+      <BewijsBalk />
+      <HoeWerktHet />
+      <PortaalUsp />
       <BrandStrip />
 
       <section className="container-x py-16 sm:py-24">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <div>
             <p className="eyebrow">Bedrijfskleding met persoonlijke aandacht</p>
-            <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl">We komen langs, passen op de zaak en kennen de Achterhoek</h2>
+            <h2 className="kop-2 mt-3">We komen langs, passen op de zaak en kennen de Achterhoek</h2>
             <div className="prose-nl mt-4 text-lg">
               <p>Zoek je een vaste partner voor bedrijfskleding in de Achterhoek? Bij {site.name} regel je alles op één plek: van advies en maatvoering tot bedrukken en nalevering.</p>
               <p>Je krijgt één vast aanspreekpunt dat je bedrijf kent. Samen kiezen we een kledingpakket dat past bij je branche, je eisen en je uitstraling.</p>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/kledingadvies" className="btn-primary">Gratis kledingadvies</Link>
+              <Link href="/kledingadvies" className="btn-primary">Vraag kledingadvies</Link>
               <Link href="/werkkleding" className="btn-outline">Bekijk werkkleding</Link>
             </div>
           </div>
@@ -63,20 +71,45 @@ export default function HomePage() {
       </section>
 
       <BrancheGrid />
-      <PortaalUsp />
+
+      {/* Vakgebied x streek: hier win je van landelijke webshops, die alleen
+          op plaatsnaam schalen en niets met beroepen doen. */}
+      <section className="border-t border-line bg-mist">
+        <div className="container-x py-16 sm:py-20">
+          <p className="eyebrow">Voor jouw vak</p>
+          <h2 className="kop-2 mt-3">We weten wat jouw werk met kleding doet</h2>
+          <p className="mt-4 max-w-2xl text-lg text-warm">
+            Een hovenier sleept door de doornstruiken, een schilder zit op zijn knieen en een lasser heeft
+            met vonken te maken. Wat er dan misgaat verschilt per vak, en dat bepaalt wat je moet hebben.
+          </p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {vakgebieden.map((v) => (
+              <Link
+                key={v.slug}
+                href={`/voor/${v.slug}`}
+                className="group flex items-center justify-between gap-3 rounded-xl border border-line bg-white px-5 py-4 transition hover:border-amber-400 hover:shadow-card"
+              >
+                <span className="font-semibold text-ink-900">{v.naam}</span>
+                <span aria-hidden="true" className="text-amber-700 transition group-hover:translate-x-0.5">&rarr;</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <Reviews limit={6} />
 
       <section className="container-x py-16 sm:py-24">
         <div className="max-w-2xl">
           <p className="eyebrow">Ons aanbod</p>
-          <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl">Alles voor je bedrijfskleding onder één dak</h2>
+          <h2 className="kop-2 mt-3">Alles voor je bedrijfskleding onder één dak</h2>
         </div>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
           {aanbod.map((c) => (
-            <Link key={c.href} href={c.href} className="group flex flex-col rounded-xl border border-line bg-white p-6 shadow-card transition hover:-translate-y-1 hover:border-amber-400">
-              <h3 className="text-xl font-bold text-ink-900 group-hover:text-amber-600">{c.t}</h3>
+            <Link key={c.href} href={c.href} className="group flex flex-col rounded-xl border border-line bg-white p-6 transition hover:border-ink-900">
+              <h3 className="text-xl font-bold text-ink-900 group-hover:text-amber-800">{c.t}</h3>
               <p className="mt-2 grow text-sm text-warm">{c.d}</p>
-              <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wide text-amber-600">Lees meer <span aria-hidden="true">→</span></span>
+              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-amber-700">Lees meer <span aria-hidden="true" className="transition group-hover:translate-x-1">&rarr;</span></span>
             </Link>
           ))}
         </div>
@@ -87,12 +120,12 @@ export default function HomePage() {
         <div className="container-x grid items-center gap-10 py-16 sm:py-24 lg:grid-cols-2">
           <div>
             <p className="eyebrow text-amber-500">Pakketsamensteller</p>
-            <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl">Stel je pakket samen en zie je logo meteen op de kleding</h2>
-            <p className="mt-4 text-lg text-white/80">Kies de kleding en kleuren die bij je werk passen. Upload je logo en bekijk live hoe het op de polo, jas of broek staat. Geen webshop, geen verplichtingen.</p>
+            <h2 className="kop-2 mt-3">Stel je pakket samen en zie je logo meteen op de kleding</h2>
+            <p className="mt-4 max-w-[54ch] text-lg text-white/80">Kies de kleding en kleuren die bij je werk passen. Upload je logo en bekijk live hoe het op de polo, jas of broek staat. Geen webshop, geen verplichtingen.</p>
             <p className="mt-4 text-white/80">Tevreden over je pakket? Vraag het in één klik vrijblijvend als offerte aan. Jessi kijkt mee, denkt mee over maten en aantallen en belt je terug.</p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/pakket-samenstellen" className="btn-primary">Stel je pakket samen</Link>
-              <Link href="/bedrukken-borduren" className="btn-outline border-white/40 text-white hover:bg-white hover:text-ink-900">Zo brengen we je logo aan</Link>
+              <Link href="/bedrukken-borduren" className="btn-outline border-white/40 text-white hover:bg-white hover:text-ink-900">Over ons logowerk</Link>
             </div>
           </div>
           <div className="rounded-2xl border border-white/15 bg-white/5 p-6">
@@ -119,9 +152,9 @@ export default function HomePage() {
         <div className="container-x grid gap-10 py-16 sm:py-24 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <p className="eyebrow">Kledingadvies in 1 minuut</p>
-            <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl">Niet zeker wat je nodig hebt?</h2>
-            <p className="mt-4 text-lg text-warm">Beantwoord vier korte vragen. We bellen je binnen een werkdag terug met advies dat past bij je werk. Vrijblijvend.</p>
-            <p className="mt-4 text-sm text-warm">Liever bellen? <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-600 hover:underline">{site.phone}</a></p>
+            <h2 className="kop-2 mt-3">Niet zeker wat je nodig hebt?</h2>
+            <p className="mt-4 max-w-[54ch] text-lg text-warm">Beantwoord vier korte vragen. We bellen je binnen 24 uur terug met advies dat past bij je werk. Vrijblijvend.</p>
+            <p className="mt-4 text-sm text-warm">Liever bellen? <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-700 hover:underline">{site.phone}</a></p>
           </div>
           <div className="lg:col-span-3">
             <KledingadviesWizard />

@@ -13,9 +13,9 @@ export default async function NieuwsbriefPage() {
   const inschrijvingen = await listInschrijvingen();
 
   return (
-    <main className="container-x py-12">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Nieuwsbrief</h1>
+    <main className="container-app py-6">
+      <div className="dash-kop flex items-center justify-between gap-4">
+        <h1 className="dash-h1">Nieuwsbrief</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 text-sm text-warm">
@@ -29,23 +29,23 @@ export default async function NieuwsbriefPage() {
           Er zijn nog geen inschrijvingen. Zodra bezoekers zich via de footer inschrijven, verschijnen ze hier.
         </p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line bg-mist text-xs uppercase tracking-wide text-warm">
+        <div className="mt-6 overflow-x-auto panel">
+          <table className="tbl">
+            <thead>
               <tr>
-                <th className="px-4 py-3">E-mail</th>
-                <th className="px-4 py-3">Naam</th>
-                <th className="px-4 py-3">Bron</th>
-                <th className="px-4 py-3">Datum</th>
+                <th>E-mail</th>
+                <th>Naam</th>
+                <th>Bron</th>
+                <th>Datum</th>
               </tr>
             </thead>
             <tbody>
               {inschrijvingen.map((r) => (
                 <tr key={r.id} className="border-b border-line">
-                  <td className="px-4 py-3 text-ink-900">{r.email}</td>
-                  <td className="px-4 py-3 text-warm">{r.naam || '-'}</td>
-                  <td className="px-4 py-3 text-warm">{r.bron || '-'}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-warm">{formatDatum(r.created_at)}</td>
+                  <td className="text-ink-900">{r.email}</td>
+                  <td className="text-warm">{r.naam || '-'}</td>
+                  <td className="text-warm">{r.bron || '-'}</td>
+                  <td className="whitespace-nowrap text-warm">{formatDatum(r.created_at)}</td>
                 </tr>
               ))}
             </tbody>

@@ -4,10 +4,10 @@ import { notFound } from 'next/navigation';
 import { PageHero } from '@/components/PageHero';
 import { ProductMozaiek } from '@/components/ProductMozaiek';
 import { ContactSectie } from '@/components/ContactSectie';
-import { ProductKaart } from '@/components/ProductKaart';
+import { Assortimentslijst } from '@/components/Assortimentslijst';
 import { JsonLd } from '@/components/JsonLd';
 import { breadcrumbJsonLd } from '@/lib/jsonld';
-import { CATEGORIEEN, categorieVanSlug, listPubliekeProducten, slugify } from '@/lib/kms/catalogus';
+import { CATEGORIEEN, categorieVanSlug, listPubliekeProducten, naarKaart } from '@/lib/kms/catalogus';
 
 export const revalidate = 3600;
 export function generateStaticParams() {
@@ -32,8 +32,6 @@ export default async function CategoriePagina({ params }: { params: Promise<{ ca
   const producten = await listPubliekeProducten({ categorieSlug: categorie });
   if (producten.length === 0) notFound();
 
-  const merken = [...new Set(producten.map((p) => p.merk).filter((m): m is string => !!m))].sort();
-
   return (
     <>
       <JsonLd
@@ -52,26 +50,7 @@ export default async function CategoriePagina({ params }: { params: Promise<{ ca
       />
 
       <section className="container-x py-12">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="text-sm text-warm">{producten.length} artikelen</p>
-          {merken.length > 1 && (
-            <div className="flex flex-wrap gap-2">
-              {merken.map((m) => (
-                <Link
-                  key={m}
-                  href={`/merk/${slugify(m)}`}
-                  className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-ink-700 hover:border-amber-400"
-                >
-                  {m}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {producten.map((p) => <ProductKaart key={p.id} p={p} />)}
-        </div>
+        <Assortimentslijst producten={producten.map(naarKaart)} />
 
         <p className="mt-8 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">
           Prijzen staan niet online. Klanten zien hun eigen prijzen in het{' '}

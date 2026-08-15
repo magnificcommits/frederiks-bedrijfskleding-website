@@ -11,6 +11,7 @@ import { Analytics } from '@/components/Analytics';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { ConsentBanner } from '@/components/ConsentBanner';
 import { JsonLd } from '@/components/JsonLd';
+import { OfferteSelectieProvider, OfferteBalk } from '@/components/OfferteSelectie';
 import { localBusinessJsonLd } from '@/lib/jsonld';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' });
@@ -48,10 +49,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:shadow-soft">
           Naar hoofdinhoud
         </a>
-        <ChromeGate><Header /></ChromeGate>
-        <main id="main">{children}</main>
-        <ChromeGate><Footer /></ChromeGate>
-        <ChromeGate><MobileActionBar /></ChromeGate>
+        <OfferteSelectieProvider>
+          <ChromeGate><Header /></ChromeGate>
+          <main id="main">{children}</main>
+          <ChromeGate><Footer /></ChromeGate>
+          <ChromeGate><MobileActionBar /></ChromeGate>
+          {/* Verschijnt pas zodra er artikelen gekozen zijn. */}
+          <OfferteBalk />
+        </OfferteSelectieProvider>
         <WhatsAppButton />
         <Analytics />
         <ConsentBanner />

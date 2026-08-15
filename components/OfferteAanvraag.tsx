@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { branches } from '@/content/branches';
 import { getHerkomst } from '@/lib/herkomst';
 import { site } from '@/content/site';
+import { useOfferteSelectie } from '@/components/OfferteSelectie';
 
 type Status = 'idle' | 'sending' | 'ok' | 'error';
 
@@ -39,6 +40,7 @@ export function OfferteAanvraag({
   defaultProduct?: string;
 }) {
   const uid = useId();
+  const { items: gekozenArtikelen, verwijder, leegmaken } = useOfferteSelectie();
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
   const [fouten, setFouten] = useState<Record<string, string>>({});
@@ -77,6 +79,12 @@ export function OfferteAanvraag({
     setError('');
 
     const extra: string[] = [];
+    if (gekozenArtikelen.length > 0) {
+      extra.push(
+        `Gekozen artikelen (${gekozenArtikelen.length}):\n` +
+          gekozenArtikelen.map((a) => `- ${[a.merk, a.naam].filter(Boolean).join(' ')}`).join('\n'),
+      );
+    }
     if (behoeften.length > 0) extra.push(`Nodig: ${behoeften.join(', ')}`);
     if (alKlant) extra.push(`Al klant bij Frederiks: ${alKlant}`);
     const bericht = [lees('bericht'), extra.join('\n')].filter(Boolean).join('\n\n').slice(0, 2000);
@@ -108,6 +116,7 @@ export function OfferteAanvraag({
         event_category: 'lead', event_label: String(payload.branche ?? ''),
       });
       setStatus('ok');
+      leegmaken();
     } catch (err) {
       setStatus('error');
       setError(err instanceof Error ? err.message : 'Onbekende fout');
@@ -248,6 +257,44 @@ export function OfferteAanvraag({
           ))}
         </div>
       </fieldset>
+
+      {gekozenArtikelen.length > 0 && (
+        <div className="rounded-xl border border-line bg-mist p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-sm font-semibold text-ink-900">
+              {gekozenArtikelen.length} {gekozenArtikelen.length === 1 ? 'artikel' : 'artikelen'} in deze aanvraag
+            </p>
+            <button
+              type="button"
+              onClick={leegmaken}
+              className="text-xs font-semibold text-amber-700 underline underline-offset-2"
+            >
+              Alles verwijderen
+            </button>
+          </div>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {gekozenArtikelen.map((a) => (
+              <li
+                key={a.id}
+                className="inline-flex items-center gap-2 rounded-md border border-line bg-white py-1 pl-3 pr-1 text-sm text-ink-800"
+              >
+                <span>{[a.merk, a.naam].filter(Boolean).join(' ')}</span>
+                <button
+                  type="button"
+                  onClick={() => verwijder(a.id)}
+                  aria-label={`${a.naam} uit de aanvraag halen`}
+                  className="rounded px-1.5 text-warm hover:bg-mist hover:text-ink-900"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-xs text-warm">
+            We rekenen ze allemaal door in één voorstel, met jouw staffel en bedrukking erbij.
+          </p>
+        </div>
+      )}
 
       <div>
         <label className={label} htmlFor={`${uid}-bericht`}>Vertel kort waar het om gaat</label>

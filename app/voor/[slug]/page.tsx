@@ -11,7 +11,7 @@ import { RegioKaart } from '@/components/RegioKaart';
 import { Uitklap } from '@/components/Uitklap';
 import { NormIcoon, type NormSoort } from '@/components/NormIcoon';
 import { breadcrumbJsonLd, faqJsonLd } from '@/lib/jsonld';
-import { listPubliekeProducten, categorieVanSlug, type PubliekProduct } from '@/lib/kms/catalogus';
+import { listPubliekeProducten, categorieVanSlug, type PubliekProduct, naarKaart } from '@/lib/kms/catalogus';
 
 export const revalidate = 3600;
 
@@ -286,7 +286,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
           <h2 className="kop-2">Artikelen die hierbij passen</h2>
           <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {producten.map((p) => (
-              <ProductKaart key={p.id} p={p} />
+              <ProductKaart key={p.id} p={naarKaart(p)} />
             ))}
           </div>
           {categorieen.length > 0 && (

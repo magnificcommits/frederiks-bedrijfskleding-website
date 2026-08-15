@@ -71,7 +71,7 @@ export default async function OffertePage({
       />
 
       <section className="container-x py-16">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,44rem)_minmax(0,22rem)] lg:justify-between">
+        <div className="mx-auto grid max-w-[72rem] gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <div>
             <OfferteAanvraag defaultBranche={branche ?? ''} defaultProduct={product ?? ''} />
           </div>

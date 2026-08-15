@@ -230,6 +230,23 @@ export async function catalogusOverzicht(): Promise<{ categorieen: CategorieTell
 }
 
 /** Alle URL's voor de sitemap en voor statische generatie. */
+/** Wat een productkaart en de filters nodig hebben, en verder niets. */
+export type KaartProduct = Pick<
+  PubliekProduct,
+  'id' | 'slug' | 'naam' | 'merk' | 'categorieSlug' | 'geslacht' | 'foto' | 'maten' | 'kleuren'
+>;
+
+/**
+ * De lijst en de kaart draaien in de browser. Alles wat je aan een client
+ * component meegeeft gaat als JSON mee in de pagina - inclusief omschrijvingen
+ * van vijfhonderd tekens en alle fotolinks. Bij 155 artikelen tikt dat hard aan,
+ * dus hier een uitgeklede vorm.
+ */
+export const naarKaart = (p: PubliekProduct): KaartProduct => ({
+  id: p.id, slug: p.slug, naam: p.naam, merk: p.merk, categorieSlug: p.categorieSlug,
+  geslacht: p.geslacht, foto: p.foto, maten: p.maten, kleuren: p.kleuren,
+});
+
 export type MerkVermelding = { naam: string; slug: string; aantal: number; opDeSite: boolean };
 
 /**

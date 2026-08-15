@@ -4,11 +4,12 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ContactSectie } from '@/components/ContactSectie';
 import { ProductKaart } from '@/components/ProductKaart';
+import { SelectieKnop } from '@/components/OfferteSelectie';
 import { PrijsBlok } from '@/components/PrijsBlok';
 import { JsonLd } from '@/components/JsonLd';
 import { breadcrumbJsonLd } from '@/lib/jsonld';
 import { env } from '@/lib/env';
-import { categorieVanSlug, getPubliekProduct, listPubliekeProducten, alleProductPaden } from '@/lib/kms/catalogus';
+import { categorieVanSlug, getPubliekProduct, listPubliekeProducten, alleProductPaden, naarKaart } from '@/lib/kms/catalogus';
 
 export const revalidate = 3600;
 
@@ -143,10 +144,17 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
               </dl>
             )}
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-7 flex flex-wrap items-center gap-3">
               <Link href={`/offerte?product=${encodeURIComponent(`${p.merk ? p.merk + ' ' : ''}${p.naam}`)}`} className="btn-primary">
                 Vraag offerte aan
               </Link>
+              {/* Meerdere artikelen verzamelen en er in één keer een offerte voor
+                  vragen; de balk onderin telt mee wat je hebt gekozen. */}
+              <SelectieKnop
+                className="h-11 px-4 text-sm"
+                labels={{ uit: 'Meenemen in mijn offerte', aan: 'Staat in je offerte' }}
+                item={{ id: p.id, naam: p.naam, merk: p.merk, categorieSlug: p.categorieSlug, slug: p.slug, foto: p.foto }}
+              />
               <Link href="/pakket-samenstellen" className="btn-outline">Zet je logo erop</Link>
             </div>
             <p className="mt-3 text-xs text-warm">
@@ -161,7 +169,7 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
           <div className="container-x py-12">
             <h2 className="text-xl font-extrabold">Ook uit deze categorie</h2>
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {verwant.map((v) => <ProductKaart key={v.id} p={v} />)}
+              {verwant.map((v) => <ProductKaart key={v.id} p={naarKaart(v)} />)}
             </div>
           </div>
         </section>

@@ -7,7 +7,7 @@ import { JsonLd } from '@/components/JsonLd';
 import { NormIcoon } from '@/components/NormIcoon';
 import { Uitklap } from '@/components/Uitklap';
 import { breadcrumbJsonLd, faqJsonLd } from '@/lib/jsonld';
-import { listPubliekeProducten, type PubliekProduct } from '@/lib/kms/catalogus';
+import { listPubliekeProducten, type PubliekProduct, naarKaart } from '@/lib/kms/catalogus';
 import { site } from '@/content/site';
 import { normen, normenBySlug, voldoetAanNorm, type Norm } from '@/content/normen';
 
@@ -284,7 +284,7 @@ export default async function NormPagina({ params }: { params: Promise<{ slug: s
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {lijst.map((p) => (
-                <ProductKaart key={p.id} p={p} />
+                <ProductKaart key={p.id} p={naarKaart(p)} />
               ))}
             </div>
 

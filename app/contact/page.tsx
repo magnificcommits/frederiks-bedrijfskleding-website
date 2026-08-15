@@ -15,7 +15,7 @@ export default function ContactPage() {
       <PageHero eyebrow="Contact" title="Kom gerust langs of neem contact op"
         intro={`${site.address.locationNote} Showroombezoek op afspraak. We komen ook graag bij je langs.`} />
       <section className="container-x py-16">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,24rem)_minmax(0,48rem)] lg:justify-between">
+        <div className="mx-auto grid max-w-[72rem] gap-12 lg:grid-cols-[22rem_minmax(0,1fr)]">
           <div>
             <h2 className="text-2xl font-bold">{site.name}</h2>
             <address className="mt-4 not-italic text-warm">

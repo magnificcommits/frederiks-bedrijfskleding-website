@@ -3,10 +3,10 @@ import { notFound } from 'next/navigation';
 import { PageHero } from '@/components/PageHero';
 import { ProductMozaiek } from '@/components/ProductMozaiek';
 import { ContactSectie } from '@/components/ContactSectie';
-import { ProductKaart } from '@/components/ProductKaart';
+import { Assortimentslijst } from '@/components/Assortimentslijst';
 import { JsonLd } from '@/components/JsonLd';
 import { breadcrumbJsonLd } from '@/lib/jsonld';
-import { catalogusOverzicht, listPubliekeProducten } from '@/lib/kms/catalogus';
+import { catalogusOverzicht, listPubliekeProducten, naarKaart } from '@/lib/kms/catalogus';
 
 export const revalidate = 3600;
 
@@ -55,9 +55,7 @@ export default async function MerkPagina({ params }: { params: Promise<{ merk: s
         beeld={<ProductMozaiek producten={producten} />}
       />
       <section className="container-x py-12">
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {producten.map((p) => <ProductKaart key={p.id} p={p} />)}
-        </div>
+        <Assortimentslijst producten={producten.map(naarKaart)} toonMerkfilter={false} />
       </section>
       <ContactSectie title={`Vraag over ${m.naam}?`} />
     </>

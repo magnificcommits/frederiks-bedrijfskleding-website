@@ -319,6 +319,18 @@ function upower() {
 function fhb() {
   const f = bestand('fhb');
   if (!f) return console.warn('FHB: bestand niet gevonden, overgeslagen');
+  // FHB levert zelf geen beeld aan; Jessi zoekt de foto's er met de hand bij en
+  // zet ze in public/merken/fhb. De modelnaam is de sleutel ("Florian.jpg"), een
+  // kleurvariant mag erachter ("Florian - Marine 16.jpg"). Hoofdletters, spaties
+  // en streepjes maken niet uit.
+  const plaatjes = plaatjesIn('fhb');
+  const sleutel = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const zonderExt = (n) => n.replace(/\.[^.]+$/, '');
+  const fotoVoorKleur = (art, kleur) => {
+    const doel = sleutel(art + kleur);
+    const hit = plaatjes.find((n) => sleutel(zonderExt(n)) === doel);
+    return hit ? `/merken/fhb/${hit}` : null;
+  };
   const perArt = new Map();
   for (const r of lees(f)) {
     const art = schoon(r['Artikelnr.']);
@@ -331,13 +343,22 @@ function fhb() {
     product({
       sku: `FHB-${art}`, art_nr_leverancier: art,
       naam: schoon(r.Naam),
-      omschrijving: schoon(r['Omschrijving ']),
+      // Alleen meesturen als FHB zelf tekst levert. Een lege kolom zou als null
+      // in de kolomlijst van de upsert belanden en de met de hand geschreven
+      // omschrijvingen bij de volgende import wissen.
+      ...(schoon(r['Omschrijving ']) ? { omschrijving: schoon(r['Omschrijving ']) } : {}),
       merk: 'FHB',
       categorie: schoon(r.Productcategorie),
       verkoopprijs_basis: getal(r['Verkoopprijs ex btw']),
-      afbeeldingen: [schoon(r.Afbeelding)].filter(Boolean),
+      // Eigen bestand gaat voor: de kolom Afbeelding is in de praktijk leeg.
+      afbeeldingen: [
+        plaatjes.find((n) => sleutel(zonderExt(n)).startsWith(sleutel(art)))
+          ? `/merken/fhb/${plaatjes.find((n) => sleutel(zonderExt(n)).startsWith(sleutel(art)))}`
+          : schoon(r.Afbeelding),
+      ].filter(Boolean),
       maatwerk_lengte: false,
     });
+    const gezienFHB = new Set();
     for (const x of g) {
       // FHB zet in 'Variant waardes' soms de maat ("Maat: 3XL") en soms de kleur
       // ("Kleur: Wit/Antraciet 1012"). De interne referentie is wel consistent:
@@ -349,6 +370,11 @@ function fhb() {
         ? vw.replace(/^kleur:\s*/i, '')
         : schoon(x['Basis Kleur_1']) || schoon(x['Basis Kleur']);
       varianten.push({ sku: `FHB-${art}`, maat, kleur, ean: code(x.Barcode) });
+      const url = kleur ? fotoVoorKleur(art, kleur) : null;
+      if (kleur && url && !gezienFHB.has(kleur)) {
+        gezienFHB.add(kleur);
+        kleurfotos.push({ sku: `FHB-${art}`, kleur, url });
+      }
     }
   }
 }
@@ -484,6 +510,18 @@ function xirtrum() {
   const csvPad = DATA_DIRS.map((d) => join(d, 'Xirtrum', 'xirtrum-prijzen.csv')).find((p) => existsSync(p));
   if (!csvPad) return console.warn('Xirtrum: xirtrum-prijzen.csv ontbreekt, overgeslagen');
 
+  // Zelfde afspraak als bij FHB: foto's met de hand in public/merken/xirtrum,
+  // met het artikelnummer als bestandsnaam ("X3382.jpg"), kleur er eventueel
+  // achter ("X3380 - Indigo.jpg").
+  const plaatjes = plaatjesIn('xirtrum');
+  const sleutel = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const zonderExt = (n) => n.replace(/\.[^.]+$/, '');
+  const fotoVoorKleur = (art, kleur) => {
+    const doel = sleutel(art + kleur);
+    const hit = plaatjes.find((n) => sleutel(zonderExt(n)) === doel);
+    return hit ? `/merken/xirtrum/${hit}` : null;
+  };
+
   const prijs = new Map();
   for (const regel of readFileSync(csvPad, 'utf8').split(/\r?\n/).slice(1)) {
     const [art, , bedrag] = regel.split(';');
@@ -510,16 +548,18 @@ function xirtrum() {
       geslacht: schoon(r['DAMES/HEREN']),
       materiaal: schoon(r.STOFCONSTRUCTIE),
       verkoopprijs_basis: prijs.get(key) ?? null,
-      afbeeldingen: [],
+      afbeeldingen: (() => {
+        const hit = plaatjes.find((n) => sleutel(zonderExt(n)).startsWith(sleutel(art)));
+        return hit ? [`/merken/xirtrum/${hit}`] : [];
+      })(),
       maatwerk_lengte: false,
     });
+    const gezienXR = new Set();
     for (const x of g) {
-      varianten.push({
-        sku,
-        maat: code(x.MAAT),
-        kleur: schoon(x['HOOFDKLEUR OMSCHRIJVING']) ?? code(x.KLEUR),
-        ean: code(x.EAN),
-      });
+      const kleur = schoon(x['HOOFDKLEUR OMSCHRIJVING']) ?? code(x.KLEUR);
+      varianten.push({ sku, maat: code(x.MAAT), kleur, ean: code(x.EAN) });
+      const url = kleur ? fotoVoorKleur(art, kleur) : null;
+      if (kleur && url && !gezienXR.has(kleur)) { gezienXR.add(kleur); kleurfotos.push({ sku, kleur, url }); }
     }
   }
 }

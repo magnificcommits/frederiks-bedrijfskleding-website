@@ -1,0 +1,11 @@
+FOTO'S XIRTRUM
+==============
+Zet hier de productfoto's neer. De importer koppelt ze automatisch.
+
+Hoofdfoto (verplicht om het artikel op de site te krijgen):
+  <artikelnummer>.jpg  ->  X3382.jpg, X17544.jpg, X01520.jpg
+
+Extra foto per kleur (optioneel, mag later):
+  <artikelnummer> - <kleur>.jpg  ->  X3380 - Indigo.jpg
+
+Hoofdletters, spaties en streepjes maken niet uit. .jpg, .png en .webp mogen.

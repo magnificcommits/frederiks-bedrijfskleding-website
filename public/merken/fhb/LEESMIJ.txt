@@ -1,0 +1,14 @@
+FOTO'S FHB
+==========
+Zet hier de productfoto's neer. De importer koppelt ze automatisch.
+
+Hoofdfoto (verplicht om het artikel op de site te krijgen):
+  <modelnaam>.jpg      ->  Florian.jpg, Georg.jpg, Bennet.jpg
+
+Extra foto per kleur (optioneel, mag later):
+  <modelnaam> - <kleur precies zoals in het systeem>.jpg
+  ->  Florian - Marine/Zwart 1620.jpg  wordt  "Florian - Marine Zwart 1620.jpg"
+      (schuine streep mag niet in een bestandsnaam; laat hem gewoon weg)
+
+Hoofdletters, spaties, streepjes en punten maken niet uit: de importer
+vergelijkt alleen letters en cijfers. .jpg, .png en .webp mogen allemaal.

@@ -1,7 +1,7 @@
 'use server';
 import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
-import { maakTaak, zetTaakStatus, verwijderTaak } from '@/lib/kms/taken';
+import { maakTaak, zetTaakStatus, zetTaakWerkstatus, verwijderTaak } from '@/lib/kms/taken';
 import { logAudit } from '@/lib/kms/audit';
 
 export async function maakTaakActie(formData: FormData) {
@@ -14,6 +14,7 @@ export async function maakTaakActie(formData: FormData) {
     omschrijving: String(formData.get('omschrijving') ?? ''),
     organisatie_id: String(formData.get('organisatie_id') ?? '') || null,
     prioriteit: String(formData.get('prioriteit') ?? 'normaal'),
+    werkstatus: String(formData.get('werkstatus') ?? ''),
     vervaldatum: String(formData.get('vervaldatum') ?? '') || null,
     toegewezen_aan: String(formData.get('toegewezen_aan') ?? '') || null,
   });
@@ -34,6 +35,22 @@ export async function zetTaakStatusActie(formData: FormData) {
     details: { status },
   });
   redirect(`/dashboard/taken?ok=${status === 'klaar' ? 'afgerond' : 'heropend'}`);
+}
+
+export async function zetTaakWerkstatusActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('id') ?? '').trim();
+  const werkstatus = String(formData.get('werkstatus') ?? '');
+
+  const gelukt = await zetTaakWerkstatus(id, werkstatus);
+  if (gelukt) {
+    await logAudit('taak_werkstatus_gewijzigd', {
+      entiteit: 'taak',
+      entiteitId: id,
+      details: { werkstatus },
+    });
+  }
+  redirect(`/dashboard/taken?ok=${gelukt ? 'stap' : 'geen_stap'}`);
 }
 
 export async function verwijderTaakActie(formData: FormData) {

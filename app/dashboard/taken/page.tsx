@@ -2,11 +2,11 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { formatDatum } from '@/lib/format';
-import { listTaken, type Taak } from '@/lib/kms/taken';
+import { listTaken, TAAK_WERKSTATUSSEN, type Taak } from '@/lib/kms/taken';
 import { listOrganisaties } from '@/lib/portaalAdmin';
 import NavigateSelect from '@/components/dashboard/NavigateSelect';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
-import { maakTaakActie, zetTaakStatusActie, verwijderTaakActie } from './actions';
+import { maakTaakActie, zetTaakStatusActie, zetTaakWerkstatusActie, verwijderTaakActie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Taken', robots: { index: false, follow: false } };
@@ -19,8 +19,23 @@ const okBoodschap: Record<string, string> = {
   afgerond: 'Taak gemarkeerd als klaar.',
   heropend: 'Taak heropend.',
   verwijderd: 'Taak verwijderd.',
+  stap: 'Stap bijgewerkt.',
+  geen_stap: 'Die stap ken ik niet, er is niets gewijzigd.',
   geen_titel: 'Geef de taak eerst een titel.',
 };
+
+/**
+ * De stap staat als los label bij de taak. Bewust een andere kleur dan de
+ * prioriteit, anders vechten twee badges naast elkaar om dezelfde aandacht.
+ */
+function stapBadge(werkstatus: string | null) {
+  if (!werkstatus || werkstatus === 'Niet gestart') return null;
+  return (
+    <span className="inline-block rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-ink-900">
+      {werkstatus}
+    </span>
+  );
+}
 
 function prioriteitBadge(prioriteit: string) {
   const stijl =
@@ -115,6 +130,7 @@ export default async function TakenPage({
                             {t.titel}
                           </h3>
                           {prioriteitBadge(t.prioriteit)}
+                          {stapBadge(t.werkstatus)}
                           {klaar && (
                             <span className="inline-block rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">
                               Klaar
@@ -140,7 +156,31 @@ export default async function TakenPage({
                         </div>
                       </div>
 
-                      <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                        <form action={zetTaakWerkstatusActie}>
+                          <input type="hidden" name="id" value={t.id} />
+                          <label className="sr-only" htmlFor={`stap-${t.id}`}>
+                            Stap in de werkstroom
+                          </label>
+                          <select
+                            id={`stap-${t.id}`}
+                            name="werkstatus"
+                            defaultValue={t.werkstatus ?? "Niet gestart"}
+                            className="rounded-md border border-line bg-white px-2 py-1.5 text-sm font-semibold text-ink-800"
+                          >
+                            {TAAK_WERKSTATUSSEN.map((w) => (
+                              <option key={w} value={w}>
+                                {w}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="submit"
+                            className="ml-1 rounded-md border border-line bg-mist px-2.5 py-1.5 text-sm font-semibold text-ink-800 hover:bg-white"
+                          >
+                            Opslaan
+                          </button>
+                        </form>
                         <form action={zetTaakStatusActie}>
                           <input type="hidden" name="id" value={t.id} />
                           <input type="hidden" name="status" value={klaar ? 'open' : 'klaar'} />
@@ -205,6 +245,16 @@ export default async function TakenPage({
                   <option value="laag">Laag</option>
                   <option value="normaal">Normaal</option>
                   <option value="hoog">Hoog</option>
+                </select>
+              </div>
+              <div>
+                <label className="veld-label">Stap</label>
+                <select name="werkstatus" defaultValue="Niet gestart" className={inputCls}>
+                  {TAAK_WERKSTATUSSEN.map((w) => (
+                    <option key={w} value={w}>
+                      {w}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>

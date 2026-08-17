@@ -8,12 +8,53 @@ import { kmsAdmin } from '@/lib/kms/adminClient';
  * achter dashAuthed().
  */
 
+
+/**
+ * Stappen in de werkstroom, in de volgorde die Jessi aanhoudt. Dit staat los van
+ * status (open/klaar): een taak kan bij de borduurder liggen en nog gewoon open
+ * zijn. 'Afgerond' zetten sluit de taak wel meteen af.
+ */
+export const TAAK_WERKSTATUSSEN = [
+  'Niet gestart',
+  'Benaderen',
+  'Afspraak maken',
+  'Afspraak staat',
+  'Pasafspraak plannen',
+  'Passerie bestellen',
+  'Passerie afleveren',
+  'Passerie bij klant',
+  'Offerte sturen',
+  'Offerte gestuurd',
+  'Nog bestellen',
+  'Al besteld nog niet geleverd',
+  "Logo's bestellen",
+  "Logo's ophalen",
+  "Logo's printen",
+  'Coupeuse',
+  'Opsturen naar borduurder',
+  'Bij borduurder',
+  'Nog bedrukken',
+  'In uitvoering',
+  'Afleveren',
+  'Naar herenzaak',
+  'Factuur sturen',
+  'Afgerond',
+] as const;
+export type TaakWerkstatus = (typeof TAAK_WERKSTATUSSEN)[number];
+
+/** Alleen waardes uit de lijst toelaten; al het andere wordt null. */
+export function schoneWerkstatus(v: unknown): TaakWerkstatus | null {
+  const s = String(v ?? '').trim();
+  return (TAAK_WERKSTATUSSEN as readonly string[]).includes(s) ? (s as TaakWerkstatus) : null;
+}
+
 export type Taak = {
   id: string;
   titel: string;
   omschrijving: string | null;
   organisatie_id: string | null;
   status: string;
+  werkstatus: string | null;
   prioriteit: string;
   vervaldatum: string | null;
   toegewezen_aan: string | null;
@@ -39,7 +80,7 @@ export async function listTaken(filter: 'open' | 'klaar' | 'alle' = 'open'): Pro
   let query = sb
     .from('taken')
     .select(
-      'id, titel, omschrijving, organisatie_id, status, prioriteit, vervaldatum, toegewezen_aan, created_at, afgerond_op, organisaties(naam)',
+      'id, titel, omschrijving, organisatie_id, status, werkstatus, prioriteit, vervaldatum, toegewezen_aan, created_at, afgerond_op, organisaties(naam)',
     );
   if (filter === 'open' || filter === 'klaar') {
     query = query.eq('status', filter);
@@ -54,6 +95,7 @@ export async function listTaken(filter: 'open' | 'klaar' | 'alle' = 'open'): Pro
     omschrijving: r.omschrijving,
     organisatie_id: r.organisatie_id,
     status: r.status,
+    werkstatus: r.werkstatus ?? null,
     prioriteit: r.prioriteit,
     vervaldatum: r.vervaldatum,
     toegewezen_aan: r.toegewezen_aan,
@@ -84,6 +126,7 @@ export async function maakTaak(input: {
   omschrijving?: string;
   organisatie_id?: string | null;
   prioriteit?: string;
+  werkstatus?: string | null;
   vervaldatum?: string | null;
   toegewezen_aan?: string | null;
 }): Promise<boolean> {
@@ -97,6 +140,7 @@ export async function maakTaak(input: {
     omschrijving: input.omschrijving?.trim() || null,
     organisatie_id: input.organisatie_id?.trim() || null,
     prioriteit: input.prioriteit?.trim() || 'normaal',
+    werkstatus: schoneWerkstatus(input.werkstatus) ?? 'Niet gestart',
     vervaldatum: input.vervaldatum?.trim() || null,
     toegewezen_aan: input.toegewezen_aan?.trim() || null,
   });
@@ -115,6 +159,26 @@ export async function zetTaakStatus(id: string, status: 'open' | 'klaar'): Promi
     .update({
       status,
       afgerond_op: status === 'klaar' ? new Date().toISOString() : null,
+    })
+    .eq('id', id);
+  return !error;
+}
+
+/**
+ * Werkstap zetten. 'Afgerond' rondt de taak meteen af, zodat Jessi hem niet
+ * twee keer hoeft aan te raken; elke andere stap zet hem juist weer open.
+ */
+export async function zetTaakWerkstatus(id: string, werkstatus: string): Promise<boolean> {
+  const sb = kmsAdmin();
+  const schoon = schoneWerkstatus(werkstatus);
+  if (!sb || !id || !schoon) return false;
+  const klaar = schoon === 'Afgerond';
+  const { error } = await sb
+    .from('taken')
+    .update({
+      werkstatus: schoon,
+      status: klaar ? 'klaar' : 'open',
+      afgerond_op: klaar ? new Date().toISOString() : null,
     })
     .eq('id', id);
   return !error;

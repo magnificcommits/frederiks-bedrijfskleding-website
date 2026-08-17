@@ -331,6 +331,16 @@ function fhb() {
     const hit = plaatjes.find((n) => sleutel(zonderExt(n)) === doel);
     return hit ? `/merken/fhb/${hit}` : null;
   };
+  // Exacte naam gaat vóór een beginnend-met-treffer: "Andre" en "Andrea" zijn
+  // allebei FHB-modellen, en zonder die volgorde pakt Andre het bestand van
+  // Andrea zodra de leesvolgorde van de map wijzigt.
+  const hoofdfoto = (art) => {
+    const doel = sleutel(art);
+    const hit =
+      plaatjes.find((n) => sleutel(zonderExt(n)) === doel) ??
+      plaatjes.find((n) => sleutel(zonderExt(n)).startsWith(doel));
+    return hit ? `/merken/fhb/${hit}` : null;
+  };
   const perArt = new Map();
   for (const r of lees(f)) {
     const art = schoon(r['Artikelnr.']);
@@ -351,11 +361,7 @@ function fhb() {
       categorie: schoon(r.Productcategorie),
       verkoopprijs_basis: getal(r['Verkoopprijs ex btw']),
       // Eigen bestand gaat voor: de kolom Afbeelding is in de praktijk leeg.
-      afbeeldingen: [
-        plaatjes.find((n) => sleutel(zonderExt(n)).startsWith(sleutel(art)))
-          ? `/merken/fhb/${plaatjes.find((n) => sleutel(zonderExt(n)).startsWith(sleutel(art)))}`
-          : schoon(r.Afbeelding),
-      ].filter(Boolean),
+      afbeeldingen: [hoofdfoto(art) ?? schoon(r.Afbeelding)].filter(Boolean),
       maatwerk_lengte: false,
     });
     const gezienFHB = new Set();
@@ -549,7 +555,10 @@ function xirtrum() {
       materiaal: schoon(r.STOFCONSTRUCTIE),
       verkoopprijs_basis: prijs.get(key) ?? null,
       afbeeldingen: (() => {
-        const hit = plaatjes.find((n) => sleutel(zonderExt(n)).startsWith(sleutel(art)));
+        const doel = sleutel(art);
+        const hit =
+          plaatjes.find((n) => sleutel(zonderExt(n)) === doel) ??
+          plaatjes.find((n) => sleutel(zonderExt(n)).startsWith(doel));
         return hit ? [`/merken/xirtrum/${hit}`] : [];
       })(),
       maatwerk_lengte: false,

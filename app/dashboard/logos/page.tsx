@@ -2,10 +2,11 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import Drawer from '@/components/dashboard/Drawer';
 import { dashAuthed } from '@/lib/kms/adminClient';
-import { listOrganisaties, listLogos } from '@/lib/kms/logos';
+import { listOrganisaties, listLogos, logoBestanden } from '@/lib/kms/logos';
 import { nieuwLogo, verwijderLogoActie } from './actions';
 import NavigateSelect from '@/components/dashboard/NavigateSelect';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
+import BestandPreview from './BestandPreview';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Logobibliotheek', robots: { index: false, follow: false } };
@@ -13,18 +14,27 @@ export const metadata = { title: 'Logobibliotheek', robots: { index: false, foll
 const inputCls = 'veld';
 const fileCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-mist file:px-3 file:py-1 file:text-xs file:font-semibold file:text-ink-700 hover:file:bg-line focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 
-function bestandLink(label: string, url: string | null) {
-  if (!url) return null;
-  return (
-    <a key={label} href={url} target="_blank" rel="noreferrer" className="inline-block rounded-md border border-line px-2 py-0.5 text-xs font-semibold text-amber-700 hover:bg-mist">
-      {label}
-    </a>
-  );
-}
+/** PDF en vectorformaten horen er net zo goed bij als een gewone afbeelding. */
+const toegestaneBestanden = 'application/pdf,image/*,.pdf,.ai,.eps,.svg,.dst,.emb';
 
-export default async function LogosPage({ searchParams }: { searchParams: Promise<{ org?: string }> }) {
+const okBoodschap: Record<string, string> = {
+  toegevoegd: 'Logo toegevoegd.',
+  verwijderd: 'Logo verwijderd.',
+  mislukt: 'Opslaan is niet gelukt. Probeer het nog een keer.',
+  geen_klant: 'Kies eerst een klant, dan kan het logo bij de juiste bibliotheek.',
+  geen_naam: 'Geef het logo eerst een naam.',
+};
+
+/**
+ * Meldingen die melden dat er iets misging. Ze horen in een rood vlak: een
+ * groene balk met "Opslaan is niet gelukt" leest als goed nieuws en dan klikt
+ * Jessi door zonder dat het logo bewaard is.
+ */
+const foutMeldingen = new Set(['mislukt', 'geen_klant', 'geen_naam']);
+
+export default async function LogosPage({ searchParams }: { searchParams: Promise<{ org?: string; ok?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
-  const { org } = await searchParams;
+  const { org, ok } = await searchParams;
 
   const orgs = await listOrganisaties();
   const gekozen = org && orgs.some((o) => o.id === org) ? org : '';
@@ -37,51 +47,70 @@ export default async function LogosPage({ searchParams }: { searchParams: Promis
         <h1 className="dash-h1">Logobibliotheek</h1>
         <div className="flex items-center gap-2">
           <Link href="/dashboard" className="knop-tekst">Terug naar dashboard</Link>
+          {/* Zonder gekozen klant weet de actie niet bij welke bibliotheek het
+              logo hoort; dan is een invulformulier tonen een doodlopende weg. */}
+          {gekozen ? (
           <Drawer
             knop="Nieuw logo"
             titel="Nieuw logo"
             beschrijving="Upload de bestanden, of plak een URL als alternatief."
-            >
+          >
             <form action={nieuwLogo} className="mt-4 flex flex-col gap-3">
               <input type="hidden" name="orgId" value={gekozen} />
               <div>
-                <label className="veld-label">Naam</label>
-                <input name="naam" required placeholder="Bijv. Bedrijfslogo borst" className={inputCls} />
+                <label className="veld-label" htmlFor="logo-naam">Naam</label>
+                <input id="logo-naam" name="naam" required placeholder="Bijv. Bedrijfslogo borst" className={inputCls} />
               </div>
               <div>
-                <label className="veld-label">Logo-bestand</label>
-                <input type="file" name="logo_bestand" accept="image/*" className={fileCls} />
-                <input name="logo_bestand_url" placeholder="of plak een URL" className={`${inputCls} mt-2`} />
+                <label className="veld-label" htmlFor="logo-bestand">Logo-bestand</label>
+                <input id="logo-bestand" type="file" name="logo_bestand" accept={toegestaneBestanden} className={fileCls} />
+                <input name="logo_bestand_url" placeholder="of plak een URL" className={`${inputCls} mt-2`} aria-label="URL van het logo-bestand" />
               </div>
               <div>
-                <label className="veld-label">Vectorbestand</label>
-                <input type="file" name="vectorbestand" accept="image/*" className={fileCls} />
-                <input name="vectorbestand_url" placeholder="of plak een URL" className={`${inputCls} mt-2`} />
+                <label className="veld-label" htmlFor="vector-bestand">Vectorbestand</label>
+                <input id="vector-bestand" type="file" name="vectorbestand" accept={toegestaneBestanden} className={fileCls} />
+                <input name="vectorbestand_url" placeholder="of plak een URL" className={`${inputCls} mt-2`} aria-label="URL van het vectorbestand" />
               </div>
               <div>
-                <label className="veld-label">Borduurbestand</label>
-                <input type="file" name="borduurbestand" accept="image/*" className={fileCls} />
-                <input name="borduurbestand_url" placeholder="of plak een URL" className={`${inputCls} mt-2`} />
+                <label className="veld-label" htmlFor="borduur-bestand">Borduurbestand</label>
+                <input id="borduur-bestand" type="file" name="borduurbestand" accept={toegestaneBestanden} className={fileCls} />
+                <input name="borduurbestand_url" placeholder="of plak een URL" className={`${inputCls} mt-2`} aria-label="URL van het borduurbestand" />
               </div>
+              <p className="veld-hint">PDF mag ook. De originele bestandsnaam blijft bewaard, dus je krijgt hem straks onder dezelfde naam weer terug.</p>
               <div>
-                <label className="veld-label">Opmerkingen</label>
-                <textarea name="opmerkingen" rows={3} placeholder="Bijv. kleurcodes of plaatsing" className={inputCls} />
+                <label className="veld-label" htmlFor="logo-opmerkingen">Opmerkingen</label>
+                <textarea id="logo-opmerkingen" name="opmerkingen" rows={3} placeholder="Bijv. kleurcodes of plaatsing" className={inputCls} />
               </div>
               <button type="submit" className="self-start knop-donker">Logo opslaan</button>
             </form>
           </Drawer>
+          ) : null}
         </div>
       </div>
       <p className="mt-2 text-sm text-warm">Per klant bewaar je hier de logo&apos;s met de bijbehorende bestanden voor bedrukken en borduren.</p>
 
+      {ok && okBoodschap[ok] && (
+        <p
+          className={`mt-4 rounded-xl border px-5 py-3 text-sm font-semibold ${
+            foutMeldingen.has(ok)
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-green-200 bg-green-50 text-green-800'
+          }`}
+        >
+          {okBoodschap[ok]}
+        </p>
+      )}
+
       <section className="mt-8">
         <div className="flex flex-wrap items-end gap-3 panel p-4">
-          <div className="min-w-[16rem]">
-            <label className="veld-label">Klant</label>
-            <div className="mt-1">
+          {/* Het label omsluit de keuzelijst: NavigateSelect kent geen id, dus
+              zonder deze omhulling hangt het opschrift nergens aan vast. */}
+          <label className="block min-w-[16rem]">
+            <span className="veld-label">Klant</span>
+            <span className="mt-1 block">
               <NavigateSelect options={orgs.map((o) => ({ value: o.id, label: o.naam }))} value={gekozen} basePath="/dashboard/logos" param="org" placeholder="Kies een klant" />
-            </div>
-          </div>
+            </span>
+          </label>
         </div>
       </section>
 
@@ -89,7 +118,7 @@ export default async function LogosPage({ searchParams }: { searchParams: Promis
         <p className="mt-8 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Kies eerst een klant om de logobibliotheek te tonen.</p>
       ) : (
         <>
-          <h2 className="font-display text-xl font-bold text-ink-900">Logo&apos;s van {gekozenNaam}</h2>
+          <h2 className="mt-8 font-display text-xl font-bold text-ink-900">Logo&apos;s van {gekozenNaam}</h2>
           {logos.length === 0 ? (
             <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen logo&apos;s voor deze klant. Voeg er rechtsboven een toe.</p>
           ) : (
@@ -105,16 +134,20 @@ export default async function LogosPage({ searchParams }: { searchParams: Promis
                 </thead>
                 <tbody>
                   {logos.map((l) => {
-                    const links = [
-                      bestandLink('Logo', l.logo_bestand_url),
-                      bestandLink('Vector', l.vectorbestand_url),
-                      bestandLink('Borduur', l.borduurbestand_url),
-                    ].filter(Boolean);
+                    const bestanden = logoBestanden(l);
                     return (
                       <tr key={l.id} className="border-b border-line align-top">
                         <td className="font-semibold text-ink-900">{l.naam}</td>
                         <td>
-                          {links.length === 0 ? <span className="text-warm">-</span> : <div className="flex flex-wrap gap-1.5">{links}</div>}
+                          {bestanden.length === 0 ? (
+                            <span className="text-warm">Nog geen bestand bij dit logo.</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-3 py-1">
+                              {bestanden.map((b) => (
+                                <BestandPreview key={b.sleutel} bestand={b} logoNaam={l.naam} />
+                              ))}
+                            </div>
+                          )}
                         </td>
                         <td className="text-warm">{l.opmerkingen || '-'}</td>
                         <td>

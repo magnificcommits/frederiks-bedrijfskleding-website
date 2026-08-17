@@ -2,7 +2,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
-import { getPassessie, listRegels, listMedewerkers, listCatalogus } from '@/lib/kms/passessies';
+import {
+  getPassessie,
+  listRegels,
+  listMedewerkers,
+  listAssortimentArtikelen,
+  naamPerMedewerker,
+} from '@/lib/kms/passessies';
 import PasSessieFormulier from './PasSessieFormulier';
 import { verwijderRegel, rondAf, heropen, maakOrder } from '../actions';
 
@@ -11,6 +17,22 @@ export const dynamic = 'force-dynamic';
 
 const euro = (n: number | null) =>
   n === null ? '-' : new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n);
+
+const okBoodschap: Record<string, string> = {
+  afgerond: 'Sessie afgerond. Je kunt er nu een order van maken.',
+  heropend: 'Sessie weer open. Je kunt verder met vastleggen.',
+};
+
+/**
+ * Elke redirect uit actions.ts komt hier als leesbare zin terug. Zonder deze regels
+ * springt het scherm terug zonder uitleg en denkt Jessi dat haar tik niet aankwam.
+ */
+const foutBoodschap: Record<string, string> = {
+  leeg: 'Er staan nog geen regels in deze sessie, dus er valt nog geen order van te maken.',
+  order: 'De order kon niet worden aangemaakt. De sessie staat er nog, probeer het zo opnieuw.',
+  orderregels: 'De order is aangemaakt, maar de regels konden er niet bij. Controleer de order voordat je verder gaat.',
+  onbekend: 'Deze passessie is niet gevonden.',
+};
 
 export default async function PassessieDetail({
   params,
@@ -26,19 +48,26 @@ export default async function PassessieDetail({
   const sessie = await getPassessie(id);
   if (!sessie) redirect('/dashboard/passessie?fout=onbekend');
 
-  const [regels, medewerkers, catalogus] = await Promise.all([
+  const [regels, medewerkers, assortiment, alleNamen] = await Promise.all([
     listRegels(id),
     listMedewerkers(sessie.organisatie_id),
-    listCatalogus(),
+    listAssortimentArtikelen(sessie.organisatie_id),
+    // Bewust de volledige namenlijst, inclusief wie inmiddels uit dienst is: wie al gepast
+    // heeft moet met naam in het overzicht blijven staan, ook als hij later inactief wordt.
+    naamPerMedewerker(sessie.organisatie_id),
   ]);
 
-  const naamVan = new Map(medewerkers.map((m) => [m.id, m.naam]));
-  const perPersoon = new Map<string, typeof regels>();
+  // Groeperen op id en niet op naam, anders vallen twee naamgenoten bij dezelfde klant
+  // samen in één blokje en lijkt het alsof één iemand alles heeft gepast.
+  const perPersoon = new Map<string, { naam: string; lijst: typeof regels }>();
   for (const r of regels) {
-    const sleutel = r.medewerker_id ? naamVan.get(r.medewerker_id) ?? 'Onbekend' : r.medewerker_naam ?? 'Onbekend';
+    const sleutel = r.medewerker_id ?? `los:${r.medewerker_naam ?? 'onbekend'}`;
+    const naam = r.medewerker_id
+      ? alleNamen.get(r.medewerker_id) ?? 'Onbekende medewerker'
+      : r.medewerker_naam ?? 'Onbekende medewerker';
     const bestaand = perPersoon.get(sleutel);
-    if (bestaand) bestaand.push(r);
-    else perPersoon.set(sleutel, [r]);
+    if (bestaand) bestaand.lijst.push(r);
+    else perPersoon.set(sleutel, { naam, lijst: [r] });
   }
   const totaal = regels.reduce((t, r) => t + (r.stukprijs ?? 0) * r.aantal, 0);
   const gesloten = sessie.status !== 'open';
@@ -59,14 +88,12 @@ export default async function PassessieDetail({
         </Link>
       </div>
 
-      {ok === 'afgerond' && (
-        <p className="mt-4 rounded-md bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
-          Sessie afgerond. Je kunt er nu een order van maken.
-        </p>
+      {ok && okBoodschap[ok] && (
+        <p className="mt-4 rounded-md bg-green-50 px-4 py-3 text-sm font-medium text-green-800">{okBoodschap[ok]}</p>
       )}
-      {fout === 'leeg' && (
+      {fout && (
         <p className="mt-4 rounded-md bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
-          Er staan nog geen regels in deze sessie.
+          {foutBoodschap[fout] ?? 'Er ging iets mis. Er is niets opgeslagen, probeer het opnieuw.'}
         </p>
       )}
       {sessie.order_id && (
@@ -81,8 +108,9 @@ export default async function PassessieDetail({
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         <PasSessieFormulier
           passessieId={id}
+          organisatieId={sessie.organisatie_id}
           medewerkers={medewerkers}
-          catalogus={catalogus}
+          assortiment={assortiment}
           gesloten={gesloten}
         />
 
@@ -99,11 +127,11 @@ export default async function PassessieDetail({
               <p className="mt-3 text-sm text-warm">Nog niets vastgelegd.</p>
             ) : (
               <div className="mt-4 space-y-5">
-                {[...perPersoon.entries()].map(([persoon, lijst]) => (
-                  <div key={persoon}>
-                    <p className="text-sm font-bold text-ink-900">{persoon}</p>
+                {[...perPersoon.entries()].map(([sleutel, groep]) => (
+                  <div key={sleutel}>
+                    <p className="text-sm font-bold text-ink-900">{groep.naam}</p>
                     <ul className="mt-2 space-y-2">
-                      {lijst.map((r) => (
+                      {groep.lijst.map((r) => (
                         <li key={r.id} className="flex items-start justify-between gap-3 rounded-lg bg-mist p-3">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-ink-900">{r.item_naam}</p>

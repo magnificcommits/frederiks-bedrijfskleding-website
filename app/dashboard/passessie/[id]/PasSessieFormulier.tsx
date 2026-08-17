@@ -1,31 +1,43 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
-import type { CatalogusItem, VariantKeuze } from '@/lib/kms/passessies';
-import { haalVarianten, voegRegelToe } from '../actions';
-
-type Medewerker = { id: string; naam: string; functie: string | null; personeelsnummer: string | null };
+import Link from 'next/link';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import type { AssortimentArtikel, CatalogusItem, PasMedewerker, VariantKeuze } from '@/lib/kms/passessies';
+import { haalCatalogus, haalVarianten, voegRegelToe } from '../actions';
 
 /**
  * Het pasformulier zoals je het op een tablet gebruikt: eerst de medewerker die voor je
- * staat, dan het artikel, dan kleur en maat. Grote raakvlakken, geen dropdowns waar een
- * rij knoppen kan. Na opslaan blijft de medewerker staan, want in de praktijk pas je er
- * meerdere stuks achter elkaar op.
+ * staat, dan het artikel, dan kleur en maat. Grote raakvlakken, geen keuzelijsten waar
+ * een rij knoppen kan. Na opslaan blijft de medewerker staan, want in de praktijk pas je
+ * er meerdere stuks achter elkaar op.
+ *
+ * Het artikel begint bij het assortiment van deze klant, met foto en kleuren. Zoeken door
+ * de hele catalogus kan nog steeds, maar staat bewust achter een knop: dat is de
+ * uitzondering (iets nieuws meegenomen), niet het gebruikelijke pad. Die catalogus wordt
+ * dan ook pas opgehaald zodra ze hem openklapt.
  */
 export default function PasSessieFormulier({
   passessieId,
+  organisatieId,
   medewerkers,
-  catalogus,
+  assortiment,
   gesloten,
 }: {
   passessieId: string;
-  medewerkers: Medewerker[];
-  catalogus: CatalogusItem[];
+  organisatieId: string;
+  medewerkers: PasMedewerker[];
+  assortiment: AssortimentArtikel[];
   gesloten: boolean;
 }) {
   const [medewerkerId, setMedewerkerId] = useState<string>('');
   const [losseNaam, setLosseNaam] = useState('');
+  const [filter, setFilter] = useState('');
   const [zoek, setZoek] = useState('');
+  // Heeft de klant nog geen assortiment, dan meteen de catalogus tonen; anders zou het
+  // scherm leeg lijken.
+  const [buitenAssortiment, setBuitenAssortiment] = useState(assortiment.length === 0);
+  const [catalogus, setCatalogus] = useState<CatalogusItem[] | null>(null);
+  const [catalogusMislukt, setCatalogusMislukt] = useState(false);
   const [artikel, setArtikel] = useState<CatalogusItem | null>(null);
   const [keuze, setKeuze] = useState<VariantKeuze | null>(null);
   const [kleur, setKleur] = useState<string | null>(null);
@@ -38,15 +50,40 @@ export default function PasSessieFormulier({
   const [melding, setMelding] = useState<{ soort: 'ok' | 'fout'; tekst: string } | null>(null);
   const [bezig, start] = useTransition();
 
+  // Pas ophalen als ze de catalogus openklapt, en daarna één keer bewaren. Filteren doet
+  // de browser zelf: dat loopt gelijk met wat ze typt, ook op een matige verbinding.
+  useEffect(() => {
+    if (!buitenAssortiment || catalogus !== null) return;
+    let levend = true;
+    setCatalogusMislukt(false);
+    haalCatalogus()
+      .then((lijst) => {
+        if (levend) setCatalogus(lijst);
+      })
+      .catch(() => {
+        if (levend) setCatalogusMislukt(true);
+      });
+    return () => {
+      levend = false;
+    };
+  }, [buitenAssortiment, catalogus]);
+
+  const uitAssortiment = useMemo(() => {
+    const t = filter.trim().toLowerCase();
+    if (!t) return assortiment;
+    return assortiment.filter((p) => `${p.naam} ${p.merk ?? ''} ${p.categorie ?? ''}`.toLowerCase().includes(t));
+  }, [filter, assortiment]);
+
   const gevonden = useMemo(() => {
     const t = zoek.trim().toLowerCase();
-    if (t.length < 2) return [];
+    if (t.length < 2 || catalogus === null) return [];
     return catalogus
       .filter((p) => `${p.naam} ${p.merk ?? ''} ${p.categorie ?? ''}`.toLowerCase().includes(t))
       .slice(0, 24);
   }, [zoek, catalogus]);
 
-  function kiesArtikel(p: CatalogusItem) {
+  function kiesArtikel(p: CatalogusItem, voorkeurKleur?: string) {
+    setMelding(null);
     setArtikel(p);
     setKeuze(null);
     setKleur(null);
@@ -57,11 +94,14 @@ export default function PasSessieFormulier({
     start(async () => {
       const k = await haalVarianten(p.id);
       setKeuze(k);
-      if (k.kleuren.length === 1) setKleur(k.kleuren[0].kleur);
+      // Kleur die ze al op de tegel aantikte meteen doorzetten, dat scheelt een handeling.
+      if (voorkeurKleur && k.kleuren.some((x) => x.kleur === voorkeurKleur)) setKleur(voorkeurKleur);
+      else if (k.kleuren.length === 1) setKleur(k.kleuren[0].kleur);
     });
   }
 
   function resetArtikel() {
+    setFilter('');
     setZoek(''); // anders blijft de oude zoekterm staan en typt de volgende zoekopdracht eraan vast
     setArtikel(null);
     setKeuze(null);
@@ -79,7 +119,12 @@ export default function PasSessieFormulier({
     if (!medewerkerId && !naam) return setMelding({ soort: 'fout', tekst: 'Kies eerst wie er past.' });
     if (!artikel) return setMelding({ soort: 'fout', tekst: 'Kies eerst een artikel.' });
     if (!maat) return setMelding({ soort: 'fout', tekst: 'Kies een maat.' });
-    if (artikel.maatwerk_lengte && !lengte) return setMelding({ soort: 'fout', tekst: 'Kies een broeklengte.' });
+    // Alleen om een lengte vragen als er ook lengtes te kiezen zijn. Staat het merk niet
+    // in de lengtetabel, dan bleef Jessi anders hangen op "Kies een broeklengte" terwijl
+    // er geen enkele knop stond om aan te tikken.
+    if (artikel.maatwerk_lengte && (keuze?.lengtes.length ?? 0) > 0 && !lengte) {
+      return setMelding({ soort: 'fout', tekst: 'Kies een broeklengte.' });
+    }
 
     start(async () => {
       const res = await voegRegelToe({
@@ -99,7 +144,6 @@ export default function PasSessieFormulier({
       if (res.ok) {
         setMelding({ soort: 'ok', tekst: `${artikel.naam} - maat ${maat} vastgelegd.` });
         resetArtikel();
-        setZoek('');
       } else {
         setMelding({ soort: 'fout', tekst: res.fout ?? 'Opslaan mislukt.' });
       }
@@ -136,9 +180,11 @@ export default function PasSessieFormulier({
             <button
               key={m.id}
               type="button"
+              aria-pressed={medewerkerId === m.id}
               onClick={() => {
                 setMedewerkerId(m.id === medewerkerId ? '' : m.id);
                 setLosseNaam('');
+                setMelding(null);
               }}
               className={`min-h-[52px] rounded-xl border px-4 py-2 text-left text-sm font-semibold transition ${
                 medewerkerId === m.id
@@ -187,36 +233,147 @@ export default function PasSessieFormulier({
           </div>
         ) : (
           <>
-            <input
-              value={zoek}
-              onChange={(e) => setZoek(e.target.value)}
-              placeholder="Zoek op naam, merk of categorie"
-              className="mt-3 w-full rounded-md border border-line px-3 py-3 text-base focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
-            />
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {gevonden.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => kiesArtikel(p)}
-                  className="flex min-h-[64px] items-center gap-3 rounded-xl border border-line bg-mist p-2 text-left hover:border-amber-300"
-                >
-                  {p.afbeelding ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.afbeelding} alt="" className="h-12 w-12 shrink-0 rounded object-contain" />
-                  ) : (
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-line text-[10px] text-warm">
-                      geen foto
-                    </span>
+            {assortiment.length > 0 ? (
+              <>
+                <p className="mt-1 text-sm text-warm">
+                  Uit het assortiment van deze klant. Tik het artikel aan, of meteen de kleur.
+                </p>
+                {assortiment.length > 6 && (
+                  <label className="mt-3 block">
+                    <span className="sr-only">Filter het assortiment van deze klant</span>
+                    <input
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      placeholder="Filter op naam, merk of categorie"
+                      className="w-full rounded-md border border-line px-3 py-3 text-base focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    />
+                  </label>
+                )}
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {uitAssortiment.map((p) => (
+                    <div key={p.id} className="rounded-xl border border-line bg-mist p-3">
+                      <button
+                        type="button"
+                        onClick={() => kiesArtikel(p)}
+                        className="flex w-full min-h-[64px] items-center gap-3 text-left"
+                      >
+                        {p.afbeelding ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.afbeelding} alt="" className="h-14 w-14 shrink-0 rounded object-contain" />
+                        ) : (
+                          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded bg-line text-[10px] text-warm">
+                            geen foto
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold leading-snug text-ink-900">{p.naam}</span>
+                          <span className="block truncate text-xs text-warm">{p.merk}</span>
+                        </span>
+                      </button>
+                      {p.kleuren.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {p.kleuren.map((k) => (
+                            <button
+                              key={k.kleur}
+                              type="button"
+                              onClick={() => kiesArtikel(p, k.kleur)}
+                              className="flex min-h-[40px] items-center gap-1.5 rounded-md border border-line bg-white px-2 py-1 text-xs font-medium text-ink-800 hover:border-amber-300"
+                            >
+                              {k.afbeelding && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={k.afbeelding} alt="" className="h-6 w-6 rounded object-cover" />
+                              )}
+                              {k.kleur}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {uitAssortiment.length === 0 && (
+                    <p className="text-sm text-warm">
+                      Geen artikel in het assortiment dat past bij &ldquo;{filter}&rdquo;. Zoek hieronder in de hele
+                      catalogus.
+                    </p>
                   )}
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold leading-snug text-ink-900">{p.naam}</span>
-                    <span className="block truncate text-xs text-warm">{p.merk}</span>
-                  </span>
+                </div>
+              </>
+            ) : (
+              <p className="mt-3 rounded-xl border border-dashed border-line bg-mist p-4 text-sm text-warm">
+                Voor deze klant staat nog geen assortiment klaar. Zoek hieronder in de hele catalogus, of leg de vaste
+                artikelen eerst vast op het tabblad Assortiment bij{' '}
+                <Link
+                  href={`/dashboard/klanten/${organisatieId}`}
+                  className="font-semibold text-amber-700 underline hover:text-amber-800"
+                >
+                  deze klant
+                </Link>
+                .
+              </p>
+            )}
+
+            <div className="mt-5 border-t border-line pt-4">
+              {assortiment.length > 0 && (
+                <button
+                  type="button"
+                  aria-expanded={buitenAssortiment}
+                  onClick={() => setBuitenAssortiment((v) => !v)}
+                  className="text-sm font-semibold text-warm hover:text-ink-800"
+                >
+                  {buitenAssortiment ? 'Catalogus sluiten' : 'Iets meegenomen dat hier niet bij staat'}
                 </button>
-              ))}
-              {zoek.trim().length >= 2 && gevonden.length === 0 && (
-                <p className="text-sm text-warm">Niets gevonden voor &ldquo;{zoek}&rdquo;.</p>
+              )}
+              {buitenAssortiment && (
+                <>
+                  <label className="mt-3 block">
+                    <span className="sr-only">Zoek in de hele catalogus</span>
+                    <input
+                      value={zoek}
+                      onChange={(e) => setZoek(e.target.value)}
+                      placeholder="Zoek op naam, merk of categorie"
+                      className="w-full rounded-md border border-line px-3 py-3 text-base focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    />
+                  </label>
+                  {catalogusMislukt ? (
+                    <p className="mt-3 text-sm text-red-800">
+                      De catalogus kon niet worden geladen. Ververs de pagina en probeer het opnieuw.
+                    </p>
+                  ) : catalogus === null ? (
+                    <p className="mt-3 text-sm text-warm">Catalogus laden...</p>
+                  ) : (
+                    zoek.trim().length < 2 && (
+                      <p className="mt-3 text-sm text-warm">
+                        Typ minstens twee letters van de naam, het merk of de categorie.
+                      </p>
+                    )
+                  )}
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {gevonden.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => kiesArtikel(p)}
+                        className="flex min-h-[64px] items-center gap-3 rounded-xl border border-line bg-mist p-2 text-left hover:border-amber-300"
+                      >
+                        {p.afbeelding ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.afbeelding} alt="" className="h-12 w-12 shrink-0 rounded object-contain" />
+                        ) : (
+                          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-line text-[10px] text-warm">
+                            geen foto
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold leading-snug text-ink-900">{p.naam}</span>
+                          <span className="block truncate text-xs text-warm">{p.merk}</span>
+                        </span>
+                      </button>
+                    ))}
+                    {catalogus !== null && zoek.trim().length >= 2 && gevonden.length === 0 && (
+                      <p className="text-sm text-warm">Niets gevonden voor &ldquo;{zoek}&rdquo;.</p>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </>
@@ -237,22 +394,34 @@ export default function PasSessieFormulier({
                     <button
                       key={k.kleur}
                       type="button"
+                      aria-pressed={kleur === k.kleur}
                       onClick={() => {
                         setKleur(k.kleur);
                         setMaat(null);
                         setVariantId(null);
                         setPrijs(null);
                       }}
-                      className={`min-h-[48px] rounded-xl border px-3 py-2 text-sm font-medium ${
+                      className={`flex min-h-[48px] items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium ${
                         kleur === k.kleur
                           ? 'border-amber-500 bg-amber-500 text-ink-900'
                           : 'border-line bg-mist text-ink-800 hover:border-amber-300'
                       }`}
                     >
+                      {k.afbeelding && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={k.afbeelding} alt="" className="h-8 w-8 rounded object-cover" />
+                      )}
                       {k.kleur}
                     </button>
                   ))}
                 </div>
+              )}
+
+              {keuze.kleuren.length === 0 && (
+                <p className="mt-3 text-sm text-warm">
+                  Bij dit artikel staan nog geen kleuren en maten in de catalogus, dus je kunt het hier niet vastleggen.
+                  Kies een ander artikel en laat de maten later bij het product zetten.
+                </p>
               )}
 
               {kleur && (
@@ -261,6 +430,7 @@ export default function PasSessieFormulier({
                     <button
                       key={m.variant_id}
                       type="button"
+                      aria-pressed={variantId === m.variant_id}
                       onClick={() => {
                         setMaat(m.maat);
                         setVariantId(m.variant_id);
@@ -275,7 +445,19 @@ export default function PasSessieFormulier({
                       {m.maat}
                     </button>
                   ))}
+                  {maten.length === 0 && (
+                    <p className="text-sm text-warm">
+                      Er staan geen maten bij deze kleur. Kies een andere kleur of een ander artikel.
+                    </p>
+                  )}
                 </div>
+              )}
+
+              {artikel.maatwerk_lengte && keuze.lengtes.length === 0 && (
+                <p className="mt-4 text-sm text-warm">
+                  Dit artikel kan op lengte worden gemaakt, maar voor dit merk staan er geen lengtes klaar. Zet de
+                  gewenste lengte bij de opmerking, dan pakt de coupeuse dat op.
+                </p>
               )}
 
               {artikel.maatwerk_lengte && keuze.lengtes.length > 0 && (
@@ -288,6 +470,7 @@ export default function PasSessieFormulier({
                       <button
                         key={l}
                         type="button"
+                        aria-pressed={lengte === l}
                         onClick={() => setLengte(l)}
                         className={`min-h-[44px] min-w-[52px] rounded-xl border px-3 py-2 text-sm font-bold ${
                           lengte === l

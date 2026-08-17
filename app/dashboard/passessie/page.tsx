@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { dashAuthed, kmsAdmin } from '@/lib/kms/adminClient';
-import { listPassessies } from '@/lib/kms/passessies';
+import { dashAuthed } from '@/lib/kms/adminClient';
+import { listKlantKeuze, listPassessies } from '@/lib/kms/passessies';
 import { startPassessie } from './actions';
 
 export const metadata: Metadata = { title: 'Passessies', robots: { index: false, follow: false } };
@@ -14,6 +14,17 @@ const statusBadge: Record<string, string> = {
   omgezet: 'bg-green-100 text-green-800',
 };
 const statusLabel: Record<string, string> = { open: 'Open', afgerond: 'Afgerond', omgezet: 'Order gemaakt' };
+
+/**
+ * Elke redirect met ?fout= komt hier als leesbare zin terug. Een kale code als
+ * "geen-db" zegt Jessi niets; ze moet lezen wat er misging en wat ze kan doen.
+ */
+const foutBoodschap: Record<string, string> = {
+  'geen-db': 'Geen verbinding met de database. Probeer het zo opnieuw.',
+  'geen-klant': 'Kies eerst een klant, dan kan de sessie starten.',
+  aanmaken: 'De sessie kon niet worden aangemaakt. Probeer het opnieuw.',
+  onbekend: 'Die passessie bestaat niet meer.',
+};
 
 const inputCls =
   'veld';
@@ -30,9 +41,7 @@ export default async function PassessiesPage({ searchParams }: { searchParams: P
   if (!(await dashAuthed())) redirect('/dashboard');
   const { fout } = await searchParams;
 
-  const sb = kmsAdmin();
-  const { data: klanten } = (await sb?.from('organisaties').select('id, naam, plaats').order('naam')) ?? { data: [] };
-  const sessies = await listPassessies();
+  const [klanten, sessies] = await Promise.all([listKlantKeuze(), listPassessies()]);
 
   return (
     <main className="container-app py-6">
@@ -49,7 +58,7 @@ export default async function PassessiesPage({ searchParams }: { searchParams: P
 
       {fout && (
         <p className="mt-4 rounded-md bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
-          Er ging iets mis ({fout}). Probeer het opnieuw.
+          {foutBoodschap[fout] ?? 'Er ging iets mis. Probeer het opnieuw.'}
         </p>
       )}
 
@@ -62,7 +71,7 @@ export default async function PassessiesPage({ searchParams }: { searchParams: P
               <option value="" disabled>
                 Kies een klant
               </option>
-              {((klanten as { id: string; naam: string; plaats: string | null }[]) ?? []).map((k) => (
+              {klanten.map((k) => (
                 <option key={k.id} value={k.id}>
                   {k.naam}
                   {k.plaats ? ` - ${k.plaats}` : ''}
@@ -116,8 +125,12 @@ export default async function PassessiesPage({ searchParams }: { searchParams: P
                     <td className="text-warm">{s.locatie ?? '-'}</td>
                     <td>{s.regels}</td>
                     <td>
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge[s.status]}`}>
-                        {statusLabel[s.status]}
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          statusBadge[s.status] ?? 'bg-mist text-warm'
+                        }`}
+                      >
+                        {statusLabel[s.status] ?? s.status}
                       </span>
                     </td>
                     <td className="text-right">

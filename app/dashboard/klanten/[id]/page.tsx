@@ -5,10 +5,12 @@ import { dashAuthed } from '@/lib/kms/adminClient';
 import { getOrganisatie, getGebruikers, listItems, listBestellingen } from '@/lib/portaalAdmin';
 import { listContactpersonen, listActiviteiten, getKlantVerkoop, ACTIVITEIT_SOORTEN } from '@/lib/kms/crm';
 import { listLogos } from '@/lib/kms/logos';
+import { listKlantAssortiment } from '@/lib/kms/assortiment';
 import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus, nieuwContact, verwijderContactActie, nieuweActiviteit, verwijderActiviteitActie, nieuwLogoActie, verwijderLogoActie, zetRetourenActiefActie } from './actions';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import Tabs, { type TabDef } from '@/components/dashboard/Tabs';
 import Drawer from '@/components/dashboard/Drawer';
+import AssortimentBeheer from './AssortimentBeheer';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klant', robots: { index: false, follow: false } };
@@ -68,7 +70,7 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
   }
   const retourenAan = (org as { retouren_actief?: boolean | null }).retouren_actief !== false;
 
-  const [gebruikers, items, bestellingen, contactpersonen, activiteiten, verkoop, logos] = await Promise.all([
+  const [gebruikers, items, bestellingen, contactpersonen, activiteiten, verkoop, logos, assortiment] = await Promise.all([
     getGebruikers(id),
     listItems(id),
     listBestellingen(id),
@@ -76,6 +78,7 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
     listActiviteiten(id),
     getKlantVerkoop(id),
     listLogos(id),
+    listKlantAssortiment(id),
   ]);
 
   const vandaag = new Date(); vandaag.setHours(0, 0, 0, 0);
@@ -425,79 +428,120 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
     </>
   );
 
-  const kledinglijnTab = (
+  const assortimentTab = (
     <>
       <section>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-xl font-bold text-ink-900">Kledinglijn</h2>
-          <Drawer knop="Item toevoegen" titel="Item toevoegen">
-            <form action={voegItemToe} className="mt-4 flex flex-col gap-3">
-              <input type="hidden" name="orgId" value={id} />
-              <div>
-                <label className="veld-label">Naam</label>
-                <input name="naam" required placeholder="Bijv. Softshell jas" className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Merk</label>
-                <input name="merk" placeholder="Merk" className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Kleur</label>
-                <input name="kleur" placeholder="Kleur" className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Logopositie</label>
-                <input name="logopositie" placeholder="Bijv. borst links" className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Techniek</label>
-                <input name="techniek" placeholder="Bijv. borduren" className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Richtprijs (mag leeg)</label>
-                <input name="richtprijs" inputMode="decimal" placeholder="bedrag" className={inputCls} />
-              </div>
-              <button type="submit" className="self-start knop-donker">Toevoegen</button>
-            </form>
-          </Drawer>
+        <div className="max-w-3xl">
+          <h2 className="font-display text-xl font-bold text-ink-900">Assortiment</h2>
+          <p className="mt-1 text-[13px] text-warm">
+            De artikelen die {org.naam} mag bestellen, met de kleur erbij en hoe de medewerker ze krijgt:
+            van het budget, met punten of een aantal gratis per periode. Dit is de lijst die het portaal en
+            de passessie gebruiken, dus foto, maten en prijs komen recht uit de catalogus.
+          </p>
         </div>
+        <AssortimentBeheer orgId={id} regels={assortiment} />
+        <p className="mt-6 max-w-3xl text-[13px] text-warm">
+          Wat je hier toevoegt geldt voor de hele klant. Moet een artikel alleen voor één afdeling of één
+          medewerker openstaan, dan stel je dat in bij{' '}
+          <Link
+            href={`/dashboard/klanten/${id}/assortiment`}
+            className="font-semibold text-amber-700 hover:text-amber-800"
+          >
+            assortiment per afdeling
+          </Link>
+          . Zulke regels herken je in de lijst hierboven aan het label met de afdelings- of medewerkersnaam.
+        </p>
+      </section>
 
-        {items.length === 0 ? (
-          <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen items in de kledinglijn.</p>
-        ) : (
-          <div className="panel overflow-x-auto">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Merk / kleur</th>
-                  <th>Logo</th>
-                  <th>Richtprijs</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((it) => (
-                  <tr key={it.id} className="border-b border-line align-top">
-                    <td className="font-semibold text-ink-900">{it.naam}</td>
-                    <td className="text-warm">{[it.merk, it.kleur].filter(Boolean).join(' · ') || '-'}</td>
-                    <td className="text-warm">{[it.logopositie, it.techniek].filter(Boolean).join(' · ') || '-'}</td>
-                    <td className="text-warm">{it.richtprijs != null ? euro(Number(it.richtprijs)) : '-'}</td>
-                    <td>
-                      <form action={wisselItemActief} className="flex items-center gap-2">
-                        <input type="hidden" name="orgId" value={id} />
-                        <input type="hidden" name="itemId" value={it.id} />
-                        <input type="hidden" name="actief" value={it.actief ? 'false' : 'true'} />
-                        <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${it.actief ? 'bg-green-100 text-green-800' : 'bg-ink-100 text-ink-500'}`}>{it.actief ? 'actief' : 'inactief'}</span>
-                        <button type="submit" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">{it.actief ? 'Inactief' : 'Actief'}</button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <section className="mt-12">
+        {/* Staat er nog geen assortiment maar wel een oude kledinglijn, dan klapt die
+            open: anders lijkt het alsof het werk van vorig jaar verdwenen is. */}
+        <details className="panel p-4" open={assortiment.length === 0 && items.length > 0}>
+          <summary className="cursor-pointer font-display text-base font-bold text-ink-900">
+            Kledinglijn: het losse notitielijstje{items.length > 0 ? ` (${items.length})` : ''}
+          </summary>
+          <p className="mt-2 max-w-3xl text-[13px] text-warm">
+            Het verschil in het kort: in het assortiment hierboven kies je echte artikelen uit de catalogus,
+            en dat is wat de klant kan bestellen. De kledinglijn is een lijstje dat je zelf typt, zonder
+            koppeling aan een artikel, dus prijzen en maten kloppen daar niet vanzelf. Gebruik hem alleen om
+            een oude afspraak of een schets van een kledingpakket te bewaren. Moet de klant het kunnen
+            bestellen, zet het dan in het assortiment.
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="font-display text-base font-bold text-ink-900">Items in de kledinglijn</h3>
+            <Drawer knop="Item toevoegen" titel="Item toevoegen">
+              <form action={voegItemToe} className="mt-4 flex flex-col gap-3">
+                <input type="hidden" name="orgId" value={id} />
+                <div>
+                  <label className="veld-label">Naam</label>
+                  <input name="naam" required placeholder="Bijv. Softshell jas" className={inputCls} />
+                </div>
+                <div>
+                  <label className="veld-label">Merk</label>
+                  <input name="merk" placeholder="Merk" className={inputCls} />
+                </div>
+                <div>
+                  <label className="veld-label">Kleur</label>
+                  <input name="kleur" placeholder="Kleur" className={inputCls} />
+                </div>
+                <div>
+                  <label className="veld-label">Logopositie</label>
+                  <input name="logopositie" placeholder="Bijv. borst links" className={inputCls} />
+                </div>
+                <div>
+                  <label className="veld-label">Techniek</label>
+                  <input name="techniek" placeholder="Bijv. borduren" className={inputCls} />
+                </div>
+                <div>
+                  <label className="veld-label">Richtprijs (mag leeg)</label>
+                  <input name="richtprijs" inputMode="decimal" placeholder="bedrag" className={inputCls} />
+                </div>
+                <button type="submit" className="self-start knop-donker">Toevoegen</button>
+              </form>
+            </Drawer>
           </div>
-        )}
+
+          {items.length === 0 ? (
+            <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">
+              Nog geen items in de kledinglijn. Voor artikelen die de klant echt kan bestellen gebruik je het
+              assortiment hierboven; dit lijstje is alleen voor losse notities.
+            </p>
+          ) : (
+            <div className="panel overflow-x-auto">
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Merk / kleur</th>
+                    <th>Logo</th>
+                    <th>Richtprijs</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it) => (
+                    <tr key={it.id} className="border-b border-line align-top">
+                      <td className="font-semibold text-ink-900">{it.naam}</td>
+                      <td className="text-warm">{[it.merk, it.kleur].filter(Boolean).join(' · ') || '-'}</td>
+                      <td className="text-warm">{[it.logopositie, it.techniek].filter(Boolean).join(' · ') || '-'}</td>
+                      <td className="text-warm">{it.richtprijs != null ? euro(Number(it.richtprijs)) : '-'}</td>
+                      <td>
+                        <form action={wisselItemActief} className="flex items-center gap-2">
+                          <input type="hidden" name="orgId" value={id} />
+                          <input type="hidden" name="itemId" value={it.id} />
+                          <input type="hidden" name="actief" value={it.actief ? 'false' : 'true'} />
+                          <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${it.actief ? 'bg-green-100 text-green-800' : 'bg-ink-100 text-ink-500'}`}>{it.actief ? 'actief' : 'inactief'}</span>
+                          <button type="submit" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">{it.actief ? 'Inactief' : 'Actief'}</button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </details>
       </section>
     </>
   );
@@ -571,11 +615,14 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
     </section>
   );
 
+  // Assortiment staat vooraan na Gegevens: dit is het tabblad waar het dagelijkse
+  // werk zit. De kledinglijn heeft geen eigen tabblad meer, die staat als klein
+  // onderdeel onder het assortiment zodat het verschil meteen zichtbaar is.
   const tabs: TabDef[] = [
     { id: 'gegevens', label: 'Gegevens', content: gegevensTab },
+    { id: 'assortiment', label: 'Assortiment', content: assortimentTab, badge: assortiment.length || null },
     { id: 'contact', label: 'Contact', content: contactTab, badge: contactpersonen.length || null },
     { id: 'verkoop', label: 'Verkoop', content: verkoopTab, badge: verkoop.orders.length || null },
-    { id: 'kledinglijn', label: 'Kledinglijn', content: kledinglijnTab, badge: items.length || null },
     { id: 'logos', label: "Logo's", content: logosTab, badge: logos.length || null },
   ];
 
@@ -588,7 +635,6 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="flex items-center gap-4">
           <Link href={`/dashboard/klanten/${id}/structuur`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Inrichting</Link>
-          <Link href={`/dashboard/klanten/${id}/assortiment`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Assortiment</Link>
           <Link href="/dashboard/klanten" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar klanten</Link>
         </div>
       </div>

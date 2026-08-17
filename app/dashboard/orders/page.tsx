@@ -4,9 +4,8 @@ import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { listOrdersPaged, ORDER_STATUSSEN } from '@/lib/kms/orders';
 import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
 import SortableTh from '@/components/dashboard/SortableTh';
-import Drawer from '@/components/dashboard/Drawer';
 import Zoekbalk from '@/components/dashboard/Zoekbalk';
-import { nieuweOrder, wijzigOrderStatusInline, bulkOrderStatusActie } from './actions';
+import { wijzigOrderStatusInline, bulkOrderStatusActie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Orders', robots: { index: false, follow: false } };
@@ -42,6 +41,10 @@ const goedkeurBadge: Record<string, string> = {
   afgewezen: 'badge-rust',
 };
 
+const okBoodschap: Record<string, string> = {
+  status: 'Status bijgewerkt.',
+};
+
 /**
  * Aantal orders per status, voor de tellers op de filterchips.
  * Eén query over één kolom. Boven ~20.000 orders is een database-functie
@@ -61,7 +64,7 @@ async function ordersPerStatus(): Promise<Record<string, number>> {
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; pagina?: string; sort?: string; dir?: string; zoek?: string }>;
+  searchParams: Promise<{ status?: string; pagina?: string; sort?: string; dir?: string; zoek?: string; ok?: string }>;
 }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const sb = kmsAdmin();
@@ -78,36 +81,38 @@ export default async function OrdersPage({
     );
   }
 
-  const { status, pagina, sort, dir, zoek } = await searchParams;
+  const { status, pagina, sort, dir, zoek, ok } = await searchParams;
   const zoekTerm = (zoek ?? '').trim();
   const huidigePagina = Math.max(1, Number(pagina) || 1);
   const richting: 'asc' | 'desc' = dir === 'asc' ? 'asc' : 'desc';
   const huidigeStatus = (status ?? '').trim();
 
-  const [{ rijen: orders, totaal }, { data: orgData }, { data: medewData }, perStatus] = await Promise.all([
+  const [{ rijen: orders, totaal }, perStatus] = await Promise.all([
     listOrdersPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, zoek: zoekTerm, status: huidigeStatus, sort, dir: richting }),
-    sb.from('organisaties').select('id, naam').order('naam'),
-    sb.from('medewerkers').select('id, naam').order('naam'),
     ordersPerStatus(),
   ]);
-  const organisaties = (orgData as { id: string; naam: string }[]) ?? [];
-  const medewerkers = (medewData as { id: string; naam: string }[]) ?? [];
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
   const alleOrders = Object.values(perStatus).reduce((n, a) => n + a, 0);
 
-  const sortQs = sort ? `&sort=${encodeURIComponent(sort)}&dir=${richting}` : '';
-  const statusQs = huidigeStatus ? `&status=${encodeURIComponent(huidigeStatus)}` : '';
-  // URL van de huidige weergave: na een inline statuswijziging keren we hier terug
-  // zodat statusfilter, sortering en pagina behouden blijven.
-  const huidigeUrl = `/dashboard/orders?pagina=${huidigePagina}${statusQs}${sortQs}`;
-
-  function statusUrl(s: string) {
+  /**
+   * Eén plek waar de URL van de lijst wordt opgebouwd. Zoekterm, statusfilter en
+   * sortering reizen standaard mee: bladeren of een status bijwerken mag je niet
+   * uit je zoekresultaat schoppen.
+   */
+  function lijstUrl(opties: { status?: string; pagina?: number } = {}) {
     const p = new URLSearchParams();
+    const s = opties.status ?? huidigeStatus;
     if (s) p.set('status', s);
+    if (zoekTerm) p.set('zoek', zoekTerm);
     if (sort) { p.set('sort', sort); p.set('dir', richting); }
+    const pag = opties.pagina ?? 1;
+    if (pag > 1) p.set('pagina', String(pag));
     const qs = p.toString();
     return qs ? `/dashboard/orders?${qs}` : '/dashboard/orders';
   }
+
+  // Waar de statusformulieren na het opslaan naartoe terugkeren.
+  const huidigeUrl = lijstUrl({ pagina: huidigePagina });
 
   return (
     <main className="container-app py-6">
@@ -118,48 +123,34 @@ export default async function OrdersPage({
             {huidigeStatus ? `${totaal} van ${alleOrders}` : alleOrders}
           </span>
         </div>
-        <Drawer
-          knop="Nieuwe order"
-          titel="Nieuwe order"
-          beschrijving="Kies de klant en eventueel de medewerker. Na opslaan ga je door naar de orderpagina voor de regels."
-        >
-          <form action={nieuweOrder} className="flex flex-col gap-3">
-            <div>
-              <label className="veld-label" htmlFor="o-klant">Klant</label>
-              <select id="o-klant" name="organisatie_id" required className="veld">
-                <option value="">Kies een klant</option>
-                {organisaties.map((o) => <option key={o.id} value={o.id}>{o.naam}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="veld-label" htmlFor="o-medew">Medewerker (optioneel)</label>
-              <select id="o-medew" name="medewerker_id" className="veld">
-                <option value="">Geen medewerker</option>
-                {medewerkers.map((m) => <option key={m.id} value={m.id}>{m.naam}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="veld-label" htmlFor="o-aanvrager">Aangevraagd door (optioneel)</label>
-              <input id="o-aanvrager" name="aangevraagd_door" placeholder="Naam" className="veld" />
-            </div>
-            <button type="submit" className="knop-primair mt-2 self-start">Order aanmaken</button>
-          </form>
-        </Drawer>
+        {/* Een order aanmaken is de handeling van de dag en vraagt om ruimte:
+            eigen pagina in plaats van een lade van 320 px. */}
+        <Link href="/dashboard/orders/nieuw" className="knop-primair">Nieuwe order</Link>
       </div>
 
+      {ok && okBoodschap[ok] && (
+        <p className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-[13px] font-semibold text-green-800">
+          {okBoodschap[ok]}
+        </p>
+      )}
+
       <div className="dash-filter flex flex-wrap items-center gap-3">
-        <Zoekbalk waarde={zoekTerm} placeholder="Zoek op klant of ordernummer" bewaar={{ status: huidigeStatus }} />
+        <Zoekbalk
+          waarde={zoekTerm}
+          placeholder="Zoek op klant of ordernummer"
+          bewaar={{ status: huidigeStatus, sort, dir: sort ? richting : undefined }}
+        />
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <Link href={statusUrl('')} className={`chip ${huidigeStatus ? '' : 'chip-aan'}`}>
+        <Link href={lijstUrl({ status: '' })} className={`chip ${huidigeStatus ? '' : 'chip-aan'}`}>
           Alle
           <span className="chip-tel">{alleOrders}</span>
         </Link>
         {ORDER_STATUSSEN.map((s) => {
           const aantal = perStatus[s] ?? 0;
           return (
-            <Link key={s} href={statusUrl(s)} className={`chip ${huidigeStatus === s ? 'chip-aan' : ''}`}>
+            <Link key={s} href={lijstUrl({ status: s })} className={`chip ${huidigeStatus === s ? 'chip-aan' : ''}`}>
               {leesbaar(s)}
               <span className="chip-tel">{aantal}</span>
             </Link>
@@ -169,14 +160,19 @@ export default async function OrdersPage({
 
       {orders.length === 0 ? (
         <p className="panel mt-4 px-4 py-8 text-center text-[13px] text-warm">
-          Geen orders{huidigeStatus ? ` met status “${leesbaar(huidigeStatus)}”` : ''}. Maak er rechtsboven een aan.
+          {zoekTerm
+            ? `Geen orders gevonden voor “${zoekTerm}”${huidigeStatus ? ` met status “${leesbaar(huidigeStatus)}”` : ''}. Pas de zoekterm aan of kies een ander filter.`
+            : `Geen orders${huidigeStatus ? ` met status “${leesbaar(huidigeStatus)}”` : ''}. Maak er rechtsboven een aan.`}
         </p>
       ) : (
         <>
           <form id="bulkorders" action={bulkOrderStatusActie} className="mt-4 flex flex-wrap items-center justify-end gap-2">
             <input type="hidden" name="terug" value={huidigeUrl} />
             <span className="text-[12px] text-warm">Status van geselecteerde:</span>
-            <select name="bulk_status" aria-label="Nieuwe status voor geselecteerde orders" className="veld w-52">
+            {/* Bewust een lege beginwaarde: anders zet een misklik op Toepassen
+                alle aangevinkte orders terug op concept. */}
+            <select name="bulk_status" defaultValue="" aria-label="Nieuwe status voor geselecteerde orders" className="veld w-52">
+              <option value="">Kies een status</option>
               {ORDER_STATUSSEN.map((s) => <option key={s} value={s}>{leesbaar(s)}</option>)}
             </select>
             <button type="submit" className="knop-stil">Toepassen</button>
@@ -248,11 +244,11 @@ export default async function OrdersPage({
       {aantalPaginas > 1 && (
         <nav className="mt-3 flex items-center justify-between gap-4 text-[13px]" aria-label="Paginering">
           {huidigePagina > 1 ? (
-            <Link href={`/dashboard/orders?pagina=${huidigePagina - 1}${statusQs}${sortQs}`} className="knop-stil">Vorige</Link>
+            <Link href={lijstUrl({ pagina: huidigePagina - 1 })} className="knop-stil">Vorige</Link>
           ) : <span />}
           <span className="text-warm">Pagina {huidigePagina} van {aantalPaginas}</span>
           {huidigePagina < aantalPaginas ? (
-            <Link href={`/dashboard/orders?pagina=${huidigePagina + 1}${statusQs}${sortQs}`} className="knop-stil">Volgende</Link>
+            <Link href={lijstUrl({ pagina: huidigePagina + 1 })} className="knop-stil">Volgende</Link>
           ) : <span />}
         </nav>
       )}

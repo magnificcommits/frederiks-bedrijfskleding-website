@@ -6,6 +6,8 @@ import { voegRegel, werkRegel, verwijderRegel, wijzigStatus } from './actions';
 import PrintKnop from './PrintKnop';
 import TotaalKaart from '@/components/dashboard/TotaalKaart';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
+import DocumentVoet from '@/components/dashboard/DocumentVoet';
+import { bedrijf } from '@/content/bedrijf';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Factuur', robots: { index: false, follow: false } };
@@ -29,10 +31,12 @@ const statusBadge: Record<string, string> = {
   betaald: 'bg-green-100 text-green-800',
 };
 
+// Adres, IBAN, KvK en btw-nummer staan in content/bedrijf.ts, zodat factuur,
+// offerte en pakbon dezelfde gegevens tonen en er maar één plek is om ze te wijzigen.
 const BEDRIJF = {
-  naam: 'Frederiks Bedrijfskleding',
-  adres: 'Kruisbergseweg 9',
-  postcodePlaats: '7255 AG Hengelo Gld',
+  naam: bedrijf.naam,
+  adres: bedrijf.adres,
+  postcodePlaats: `${bedrijf.postcode} ${bedrijf.plaats}`,
 };
 
 export default async function FactuurDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -309,6 +313,8 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
           <p className="mt-6 whitespace-pre-wrap rounded-md bg-mist px-3 py-2 text-xs text-warm">{factuur.toegepaste_prijsafspraken}</p>
         )}
         {factuur.factuur_email && <p className="mt-6 text-xs text-warm">Vragen over deze factuur? Mail naar {factuur.factuur_email}.</p>}
+
+        <DocumentVoet />
       </section>
     </main>
   );

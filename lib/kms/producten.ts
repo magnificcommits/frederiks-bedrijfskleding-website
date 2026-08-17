@@ -113,6 +113,105 @@ export async function listMerken(): Promise<string[]> {
   return [...set].sort((a, b) => a.localeCompare(b, 'nl'));
 }
 
+/**
+ * Eén artikel zoals de artikelkiezer het toont. Bewust plat en klein gehouden:
+ * deze lijst gaat in zijn geheel naar de browser, dus elk extra veld telt 549 keer mee.
+ */
+export type ArtikelKeuze = {
+  id: string;
+  naam: string;
+  merk: string | null;
+  categorie: string | null;
+  sku: string | null;
+  art_nr_leverancier: string | null;
+  afbeelding: string | null;
+  /** Laagste variantprijs, anders de basisprijs. Null als er geen prijs bekend is. */
+  vanafprijs: number | null;
+  kleuren: string[];
+};
+
+/**
+ * De hele actieve catalogus in één keer, met foto, kleuren en vanafprijs.
+ *
+ * Bewust alles in één keer en geen query per toetsaanslag: bij 549 artikelen is
+ * dit ongeveer 120 kB die je één keer ophaalt, waarna filteren in de browser
+ * binnen een paar milliseconden klaar is. Een server-actie per toets kost elke
+ * keer opnieuw een netwerkrondje, moet je gaan uitstellen (debounce) en laat de
+ * lijst achter je typen aan hobbelen. De kleuren gaan om dezelfde reden mee:
+ * Jessi kiest in dezelfde handeling de kleur, en een tweede rondje naar de
+ * server zou juist op dat moment een wachtmoment inbouwen.
+ *
+ * Alleen aanroepen wanneer de kiezer echt opengaat, niet bij elke paginalading.
+ */
+export async function listArtikelKeuze(): Promise<ArtikelKeuze[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+
+  type ArtikelRij = {
+    id: string;
+    naam: string | null;
+    merk: string | null;
+    categorie: string | null;
+    sku: string | null;
+    art_nr_leverancier: string | null;
+    afbeeldingen: string[] | null;
+    verkoopprijs_basis: number | null;
+  };
+  type VariantRij = {
+    product_id: string;
+    kleur: string | null;
+    verkoopprijs: number | null;
+    actief: boolean | null;
+  };
+
+  const [{ data: artikelData }, { data: variantData }] = await Promise.all([
+    sb
+      .from('producten')
+      .select('id, naam, merk, categorie, sku, art_nr_leverancier, afbeeldingen, verkoopprijs_basis')
+      .eq('actief', true)
+      .order('naam')
+      .limit(5000),
+    // Alle varianten in één keer: filteren op de productlijst zou 549 uuid's in
+    // de query-URL zetten, en dat loopt PostgREST vast.
+    sb.from('product_varianten').select('product_id, kleur, verkoopprijs, actief').limit(50000),
+  ]);
+
+  const kleurenVan = new Map<string, string[]>();
+  const laagstePrijs = new Map<string, number>();
+  for (const v of (variantData as VariantRij[]) ?? []) {
+    // Alleen een expliciete false verbergt een variant; bij oudere rijen staat
+    // hier null en die horen er gewoon bij.
+    if (v.actief === false) continue;
+    const kleur = (v.kleur ?? '').trim();
+    if (kleur) {
+      const lijst = kleurenVan.get(v.product_id);
+      if (!lijst) kleurenVan.set(v.product_id, [kleur]);
+      else if (!lijst.includes(kleur)) lijst.push(kleur);
+    }
+    const prijs = v.verkoopprijs == null ? null : Number(v.verkoopprijs);
+    if (prijs != null && Number.isFinite(prijs) && prijs > 0) {
+      const huidig = laagstePrijs.get(v.product_id);
+      if (huidig == null || prijs < huidig) laagstePrijs.set(v.product_id, prijs);
+    }
+  }
+
+  return ((artikelData as ArtikelRij[]) ?? []).map((p) => {
+    const basis = p.verkoopprijs_basis == null ? null : Number(p.verkoopprijs_basis);
+    const terugval = basis != null && Number.isFinite(basis) && basis > 0 ? basis : null;
+    return {
+      id: p.id,
+      naam: p.naam?.trim() || 'Naamloos',
+      merk: p.merk,
+      categorie: p.categorie,
+      sku: p.sku,
+      art_nr_leverancier: p.art_nr_leverancier,
+      afbeelding: (p.afbeeldingen ?? [])[0] ?? null,
+      vanafprijs: laagstePrijs.get(p.id) ?? terugval,
+      kleuren: (kleurenVan.get(p.id) ?? []).sort((a, b) => a.localeCompare(b, 'nl')),
+    };
+  });
+}
+
 export async function getProduct(id: string): Promise<Product | null> {
   const sb = kmsAdmin(); if (!sb) return null;
   const { data } = await sb.from('producten').select('*').eq('id', id).maybeSingle();

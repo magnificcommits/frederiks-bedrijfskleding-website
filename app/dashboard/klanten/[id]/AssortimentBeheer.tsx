@@ -10,10 +10,10 @@ import { PERIODE_OPTIES, VERSTREKKING_OPTIES, periodeLabel, verstrekkingLabel } 
 
 /**
  * Het assortiment van één klant: welke artikelen zij mogen bestellen, in welke
- * kleur en hoe ze het krijgen. Met een zoekbalk, want ook een klant met tachtig
- * artikelen moet je kunnen doorzoeken zonder te scrollen. Kleur en verstrekking
- * zijn hier ook aan te passen: een verkeerd gekozen kleur mag geen reden zijn om
- * de regel weg te gooien en opnieuw te beginnen.
+ * kleur, voor wie (hele klant of een afdeling) en hoe ze het krijgen. Met een
+ * zoekbalk, want ook een klant met tachtig artikelen moet je kunnen doorzoeken
+ * zonder te scrollen. De kleur ligt vast na het toevoegen (foto in die kleur);
+ * verstrekking en afdeling zijn hier nog aan te passen.
  *
  * Zoeken gebeurt in de browser op de al geladen regels. De lijst is van één
  * klant en dus klein; een ronde langs de server per toetsaanslag zou hier alleen
@@ -22,13 +22,17 @@ import { PERIODE_OPTIES, VERSTREKKING_OPTIES, periodeLabel, verstrekkingLabel } 
 export default function AssortimentBeheer({
   orgId,
   regels,
+  afdelingen,
 }: {
   orgId: string;
   regels: AssortimentRij[];
+  afdelingen: { id: string; naam: string }[];
 }) {
   const router = useRouter();
   const [zoek, setZoek] = useState('');
   const [merk, setMerk] = useState('');
+  // '' = alles, 'klant' = alleen voor de hele klant, anders een afdeling-id.
+  const [groep, setGroep] = useState('');
   const [kiezerOpen, setKiezerOpen] = useState(false);
   const [melding, setMelding] = useState<{
     ok: boolean;
@@ -51,13 +55,15 @@ export default function AssortimentBeheer({
     const delen = zoek.trim().toLowerCase().split(/\s+/).filter(Boolean);
     return regels.filter((r) => {
       if (merk && r.merk !== merk) return false;
+      if (groep === 'klant' && (r.afdeling_id || r.medewerker_id)) return false;
+      if (groep && groep !== 'klant' && r.afdeling_id !== groep) return false;
       if (delen.length === 0) return true;
       const tekst = [r.naam, r.merk ?? '', r.sku ?? '', r.categorie ?? '', r.kleur ?? '']
         .join(' ')
         .toLowerCase();
       return delen.every((d) => tekst.includes(d));
     });
-  }, [regels, zoek, merk]);
+  }, [regels, zoek, merk, groep]);
 
   const sluitKiezer = useCallback(() => setKiezerOpen(false), []);
   const naToevoegen = useCallback(() => {
@@ -103,6 +109,27 @@ export default function AssortimentBeheer({
               ))}
             </select>
           </div>
+          {afdelingen.length > 0 && (
+            <div className="w-52">
+              <label className="veld-label" htmlFor="assortiment-groep">
+                Voor wie
+              </label>
+              <select
+                id="assortiment-groep"
+                value={groep}
+                onChange={(e) => setGroep(e.target.value)}
+                className="veld"
+              >
+                <option value="">Alles</option>
+                <option value="klant">Hele klant</option>
+                {afdelingen.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    Afdeling {a.naam}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <button type="button" onClick={() => setKiezerOpen(true)} className="knop-donker">
           Artikel zoeken en toevoegen
@@ -125,7 +152,7 @@ export default function AssortimentBeheer({
       {regels.length === 0 ? (
         <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-[13px] text-warm">
           Er staat nog niets in het assortiment. Klik op Artikel zoeken en toevoegen, zoek een artikel op
-          naam, merk of artikelnummer en kies daar meteen de kleur bij.
+          naam, merk of artikelnummer en kies daar de kleur en voor wie het is.
         </p>
       ) : gevonden.length === 0 ? (
         <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-[13px] text-warm">
@@ -145,6 +172,7 @@ export default function AssortimentBeheer({
                 <tr>
                   <th>Artikel</th>
                   <th>Kleur</th>
+                  <th>Voor wie</th>
                   <th>Hoe krijgt de klant dit</th>
                   <th></th>
                 </tr>
@@ -154,9 +182,10 @@ export default function AssortimentBeheer({
                   <RegelRij
                     // De stand van de keuzelijsten hoort bij de opgeslagen waarden.
                     // Wijzigt de server iets, dan moet de rij opnieuw beginnen.
-                    key={`${r.id}|${r.kleur ?? ''}|${r.verstrekking_type}|${r.gratis_per_periode ?? ''}|${r.periode}`}
+                    key={`${r.id}|${r.afdeling_id ?? ''}|${r.verstrekking_type}|${r.gratis_per_periode ?? ''}|${r.periode}`}
                     orgId={orgId}
                     regel={r}
+                    afdelingen={afdelingen}
                     onMelding={setMelding}
                   />
                 ))}
@@ -172,6 +201,7 @@ export default function AssortimentBeheer({
           catalogus={catalogus}
           onCatalogus={setCatalogus}
           alGekozenIds={alGekozenIds}
+          afdelingen={afdelingen}
           onSluiten={sluitKiezer}
           onToegevoegd={naToevoegen}
         />
@@ -183,18 +213,23 @@ export default function AssortimentBeheer({
 /**
  * Eén regel uit het assortiment. Houdt zijn eigen keuzes vast tot je op Opslaan
  * klikt, zodat een halve wijziging nooit stilletjes wegvalt.
+ *
+ * De kleur ligt vast: die is gekozen bij het toevoegen. Een andere kleur is een
+ * andere regel (verwijderen en opnieuw toevoegen).
  */
 function RegelRij({
   orgId,
   regel,
+  afdelingen,
   onMelding,
 }: {
   orgId: string;
   regel: AssortimentRij;
+  afdelingen: { id: string; naam: string }[];
   onMelding: (m: { ok: boolean; tekst: string; waarschuwing?: string }) => void;
 }) {
   const router = useRouter();
-  const [kleur, setKleur] = useState(regel.kleur ?? '');
+  const [groep, setGroep] = useState(regel.afdeling_id ?? '');
   const [type, setType] = useState<VerstrekkingType>(regel.verstrekking_type);
   // Staat er nog geen aantal, dan is 1 de zinnige startwaarde. Bij een regel die
   // al op periodiek gratis staat houden we 0 aan, anders lijkt de rij gewijzigd
@@ -209,21 +244,22 @@ function RegelRij({
   const [periode, setPeriode] = useState<Periode>(regel.periode);
   const [bezig, start] = useTransition();
 
+  const voorEenWerknemer = Boolean(regel.medewerker_id);
   const opgeslagenAantal =
     regel.verstrekking_type === 'periodiek_gratis' ? (regel.gratis_per_periode ?? 0) : null;
   const nieuwAantal = type === 'periodiek_gratis' ? Math.max(0, Number(aantal) || 0) : null;
+  const groepGewijzigd = !voorEenWerknemer && groep !== (regel.afdeling_id ?? '');
   const gewijzigd =
-    kleur !== (regel.kleur ?? '') ||
+    groepGewijzigd ||
     type !== regel.verstrekking_type ||
     periode !== regel.periode ||
     nieuwAantal !== opgeslagenAantal;
 
-  // Een kleur die al vastligt maar niet meer als variant bestaat, hoort toch in de
-  // lijst te staan. Anders wist opslaan hem stilletjes.
-  const kleurKeuzes =
-    regel.kleur && !regel.kleuren.includes(regel.kleur)
-      ? [regel.kleur, ...regel.kleuren]
-      : regel.kleuren;
+  // Een afdeling die al op de regel staat maar (nog) niet in de lijst, toch tonen.
+  const afdelingKeuzes =
+    regel.afdeling_id && !afdelingen.some((a) => a.id === regel.afdeling_id)
+      ? [{ id: regel.afdeling_id, naam: regel.bereik ?? 'onbekende afdeling' }, ...afdelingen]
+      : afdelingen;
 
   function opslaan() {
     if (bezig) return;
@@ -231,10 +267,10 @@ function RegelRij({
       const antwoord = await werkAssortimentActie({
         orgId,
         regelId: regel.id,
-        kleur: kleur || null,
         verstrekking_type: type,
         gratis_per_periode: nieuwAantal,
         periode,
+        ...(groepGewijzigd ? { afdeling_id: groep || null } : {}),
       });
       onMelding({ ok: antwoord.ok, tekst: antwoord.melding, waarschuwing: antwoord.waarschuwing });
       if (antwoord.ok) router.refresh();
@@ -244,7 +280,7 @@ function RegelRij({
   function verwijderen() {
     if (bezig) return;
     const bevestigd = window.confirm(
-      `${regel.naam} uit het assortiment van deze klant halen? Het artikel zelf blijft gewoon bestaan.`,
+      `${regel.naam}${regel.kleur ? ` in ${regel.kleur}` : ''} uit het assortiment van deze klant halen? Het artikel zelf blijft gewoon bestaan.`,
     );
     if (!bevestigd) return;
     start(async () => {
@@ -262,21 +298,20 @@ function RegelRij({
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={regel.afbeelding}
-              alt=""
-              className="h-10 w-10 shrink-0 rounded border border-line object-contain"
+              alt={regel.kleur ? `${regel.naam} in ${regel.kleur}` : ''}
+              className="h-14 w-14 shrink-0 rounded border border-line bg-white object-contain"
             />
           ) : (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-line bg-mist text-[10px] text-warm">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded border border-line bg-mist text-[10px] text-warm">
               geen foto
             </span>
           )}
           <div className="min-w-0">
-            <p className="truncate font-semibold text-ink-900">{regel.naam}</p>
-            <p className="truncate text-[11px] text-warm">
+            <p className="truncate text-[14px] font-semibold text-ink-900">{regel.naam}</p>
+            <p className="truncate text-[12px] text-warm">
               {[regel.merk, regel.sku].filter(Boolean).join(' · ') || 'Geen merk bekend'}
             </p>
             <div className="mt-0.5 flex flex-wrap gap-1.5">
-              {regel.bereik && <span className="badge-rust">alleen {regel.bereik}</span>}
               {!regel.artikel_actief && <span className="badge-actie">artikel staat op inactief</span>}
               {!regel.toegestaan && <span className="badge-actie">niet bestelbaar</span>}
             </div>
@@ -284,23 +319,33 @@ function RegelRij({
         </div>
       </td>
       <td>
-        {kleurKeuzes.length === 0 ? (
-          <span className="text-warm">{regel.kleur || 'Alle kleuren'}</span>
+        <span className="text-[14px] font-semibold text-ink-900">{regel.kleur || 'Geen kleur'}</span>
+        {!regel.kleur && regel.kleuren.length > 0 && (
+          <p className="text-[11px] text-amber-800">
+            Nog zonder vaste kleur. Verwijder en voeg opnieuw toe om een kleur vast te leggen.
+          </p>
+        )}
+      </td>
+      <td>
+        {voorEenWerknemer ? (
+          <span className="badge-rust">alleen {regel.bereik ?? 'één werknemer'}</span>
+        ) : afdelingKeuzes.length === 0 ? (
+          <span className="text-[13px] text-warm">Hele klant</span>
         ) : (
           <>
-            <label className="sr-only" htmlFor={`kleur-${regel.id}`}>
-              Kleur voor {regel.naam}
+            <label className="sr-only" htmlFor={`groep-${regel.id}`}>
+              Voor wie is {regel.naam}
             </label>
             <select
-              id={`kleur-${regel.id}`}
-              value={kleur}
-              onChange={(e) => setKleur(e.target.value)}
-              className="rounded-md border border-line bg-white px-2 py-1 text-[13px] text-ink-800"
+              id={`groep-${regel.id}`}
+              value={groep}
+              onChange={(e) => setGroep(e.target.value)}
+              className="rounded-md border border-line bg-white px-2 py-1.5 text-[13px] text-ink-800"
             >
-              <option value="">Alle kleuren</option>
-              {kleurKeuzes.map((k) => (
-                <option key={k} value={k}>
-                  {k}
+              <option value="">Hele klant</option>
+              {afdelingKeuzes.map((a) => (
+                <option key={a.id} value={a.id}>
+                  Afdeling {a.naam}
                 </option>
               ))}
             </select>
@@ -316,7 +361,7 @@ function RegelRij({
             id={`verstrekking-${regel.id}`}
             value={type}
             onChange={(e) => setType(e.target.value as VerstrekkingType)}
-            className="rounded-md border border-line bg-white px-2 py-1 text-[13px] text-ink-800"
+            className="rounded-md border border-line bg-white px-2 py-1.5 text-[13px] text-ink-800"
           >
             {VERSTREKKING_OPTIES.map((o) => (
               <option key={o.waarde} value={o.waarde}>
@@ -336,7 +381,7 @@ function RegelRij({
                 step="1"
                 value={aantal}
                 onChange={(e) => setAantal(e.target.value)}
-                className="w-16 rounded-md border border-line bg-white px-2 py-1 text-[13px] text-ink-800"
+                className="w-16 rounded-md border border-line bg-white px-2 py-1.5 text-[13px] text-ink-800"
               />
               <label className="sr-only" htmlFor={`periode-${regel.id}`}>
                 Periode voor {regel.naam}
@@ -345,7 +390,7 @@ function RegelRij({
                 id={`periode-${regel.id}`}
                 value={periode}
                 onChange={(e) => setPeriode(e.target.value as Periode)}
-                className="rounded-md border border-line bg-white px-2 py-1 text-[13px] text-ink-800"
+                className="rounded-md border border-line bg-white px-2 py-1.5 text-[13px] text-ink-800"
               >
                 {PERIODE_OPTIES.map((o) => (
                   <option key={o.waarde} value={o.waarde}>
@@ -356,7 +401,7 @@ function RegelRij({
             </>
           )}
           {gewijzigd && (
-            <button type="button" onClick={opslaan} disabled={bezig} className="knop-stil">
+            <button type="button" onClick={opslaan} disabled={bezig} className="knop-donker">
               {bezig ? 'Bezig...' : 'Opslaan'}
             </button>
           )}

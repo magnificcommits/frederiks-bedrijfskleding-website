@@ -1,5 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
-import { maakOrder, voegOrderregelToe } from '@/lib/kms/orders';
+import { maakOrder, voegOrderregelToe, type OrderregelVelden } from '@/lib/kms/orders';
 
 /**
  * Data-access voor de module Offertes. Offertes met regels, status en een
@@ -33,12 +33,28 @@ export type Offerteregel = {
   stukprijs: number | null;
   korting_pct: number | null;
   inkoop: number | null;
+  /** Gekoppeld artikel; leeg bij een vrije regel en bij oudere regels. */
+  product_id: string | null;
+  /** De ene gekozen kleur van het artikel. */
+  kleur: string | null;
+  /** Optioneel: de gekozen maat. Leeg betekent "maten volgen nog". */
+  maat: string | null;
+  lengte: number | null;
+  positie: number | null;
   created_at: string;
 };
 
+/** Regel zoals de offertepagina en de afdruk hem tonen: met foto in de gekozen kleur. */
+export type OfferteregelMetFoto = Offerteregel & { afbeelding: string | null };
+
 export type OfferteMetKlant = Offerte & { organisatie_naam: string | null };
 export type OfferteMetTotaal = OfferteMetKlant & { totaal: number };
-export type OfferteDetail = Offerte & { organisatie_naam: string | null; organisatie_email: string | null; regels: Offerteregel[] };
+export type OfferteDetail = Offerte & {
+  organisatie_naam: string | null;
+  /** Beste adres om de offerte naartoe te mailen (contactpersoon eerst). */
+  organisatie_email: string | null;
+  regels: OfferteregelMetFoto[];
+};
 
 export type OfferteVelden = {
   organisatie_id?: string | null;
@@ -54,7 +70,25 @@ export type RegelVelden = {
   stukprijs?: number;
   korting_pct?: number;
   inkoop?: number | null;
+  product_id?: string | null;
+  kleur?: string | null;
+  maat?: string | null;
 };
+
+/** Kleurnamen komen uit importbestanden: "Zwart", "zwart " en "ZWART" zijn hetzelfde. */
+const kleurSleutel = (kleur: string | null | undefined) => (kleur ?? '').trim().toLowerCase();
+
+/**
+ * Omschrijving van een artikelregel: merk + naam + gekozen kleur (+ maat).
+ * Bewust niet alle kleuren en maten van het artikel, alleen wat de klant krijgt.
+ */
+export function regelOmschrijving(p: { merk: string | null; naam: string }, kleur: string | null, maat: string | null): string {
+  const naam = p.merk && !p.naam.toLowerCase().startsWith(p.merk.toLowerCase()) ? `${p.merk} ${p.naam}` : p.naam;
+  const delen = [naam];
+  if (kleur && kleur.trim()) delen.push(kleur.trim());
+  if (maat && maat.trim()) delen.push(`maat ${maat.trim()}`);
+  return delen.join(', ');
+}
 
 /**
  * Totalen voor een set regels: subtotaal (na regelkorting, excl. btw), het kortingsbedrag,
@@ -178,6 +212,36 @@ export async function listOffertesPaged(opts: {
   return { rijen, totaal: count ?? 0 };
 }
 
+/**
+ * Foto per offerteregel: eerst de foto van de gekozen kleur, anders de eerste
+ * productafbeelding. Twee queries voor de hele offerte, niet één per regel.
+ */
+async function fotoPerRegel(regels: Offerteregel[]): Promise<Map<string, string>> {
+  const kaart = new Map<string, string>();
+  const sb = kmsAdmin();
+  const productIds = Array.from(new Set(regels.map((r) => r.product_id).filter((p): p is string => !!p)));
+  if (!sb || productIds.length === 0) return kaart;
+  const [{ data: prodData }, { data: kleurData }] = await Promise.all([
+    sb.from('producten').select('id, afbeeldingen').in('id', productIds),
+    sb.from('product_kleur_afbeeldingen').select('product_id, kleur, afbeelding_url').in('product_id', productIds),
+  ]);
+  const eersteFoto = new Map<string, string>();
+  for (const p of (prodData as { id: string; afbeeldingen: string[] | null }[]) ?? []) {
+    const eerste = (p.afbeeldingen ?? [])[0];
+    if (eerste) eersteFoto.set(p.id, eerste);
+  }
+  const kleurFoto = new Map<string, string>();
+  for (const k of (kleurData as { product_id: string; kleur: string | null; afbeelding_url: string | null }[]) ?? []) {
+    if (k.afbeelding_url) kleurFoto.set(`${k.product_id}|${kleurSleutel(k.kleur)}`, k.afbeelding_url);
+  }
+  for (const r of regels) {
+    if (!r.product_id) continue;
+    const foto = kleurFoto.get(`${r.product_id}|${kleurSleutel(r.kleur)}`) ?? eersteFoto.get(r.product_id);
+    if (foto) kaart.set(r.id, foto);
+  }
+  return kaart;
+}
+
 export async function getOfferte(id: string): Promise<OfferteDetail | null> {
   const sb = kmsAdmin(); if (!sb) return null;
   const { data } = await sb
@@ -192,13 +256,62 @@ export async function getOfferte(id: string): Promise<OfferteDetail | null> {
     .from('offerteregels')
     .select('*')
     .eq('offerte_id', id)
+    .order('positie', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true });
+  const regels = (regelData as Offerteregel[]) ?? [];
+  const fotos = await fotoPerRegel(regels);
+
+  // Mailadres: van de gekozen contactpersoon als die er een heeft, anders het
+  // algemene adres van de klant. Een offerte gaat naar de inkoper, niet naar de boekhouding.
+  let contactEmail: string | null = null;
+  if (rest.organisatie_id && rest.contactpersoon?.trim()) {
+    const { data: cp } = await sb
+      .from('contactpersonen')
+      .select('naam, email')
+      .eq('organisatie_id', rest.organisatie_id);
+    const gezocht = rest.contactpersoon.trim().toLowerCase();
+    const match = ((cp as { naam: string | null; email: string | null }[]) ?? []).find(
+      (c) => (c.naam ?? '').trim().toLowerCase() === gezocht && (c.email ?? '').trim(),
+    );
+    contactEmail = match?.email?.trim() || null;
+  }
+
   return {
     ...(rest as Offerte),
     organisatie_naam: organisaties?.naam ?? null,
-    organisatie_email: organisaties?.email_algemeen?.trim() || organisaties?.factuur_email?.trim() || null,
-    regels: (regelData as Offerteregel[]) ?? [],
+    organisatie_email: contactEmail || organisaties?.email_algemeen?.trim() || organisaties?.factuur_email?.trim() || null,
+    regels: regels.map((r) => ({ ...r, afbeelding: fotos.get(r.id) ?? null })),
   };
+}
+
+export type OfferteContact = { id: string; naam: string; functie: string | null; email: string | null; hoofdcontact: boolean };
+
+/** Contactpersonen van een klant voor de kiezer op de offerte (hoofdcontact eerst). */
+export async function listContactenVoorOfferte(orgId: string): Promise<OfferteContact[]> {
+  const sb = kmsAdmin(); if (!sb || !orgId) return [];
+  const { data } = await sb
+    .from('contactpersonen')
+    .select('id, naam, functie, email, hoofdcontact')
+    .eq('organisatie_id', orgId)
+    .order('hoofdcontact', { ascending: false })
+    .order('naam');
+  return ((data as { id: string; naam: string | null; functie: string | null; email: string | null; hoofdcontact: boolean | null }[]) ?? [])
+    .filter((c) => (c.naam ?? '').trim())
+    .map((c) => ({ id: c.id, naam: (c.naam ?? '').trim(), functie: c.functie, email: c.email, hoofdcontact: !!c.hoofdcontact }));
+}
+
+export type OfferteKlant = { id: string; naam: string; plaats: string | null; klantnummer: string | null };
+
+/** Alle klanten voor de zoekbare klantkiezer (naam, plaats en klantnummer). */
+export async function listKlantenVoorOfferte(): Promise<OfferteKlant[]> {
+  const sb = kmsAdmin(); if (!sb) return [];
+  const { data } = await sb.from('organisaties').select('id, naam, plaats, klantnummer').order('naam').limit(5000);
+  return ((data as { id: string; naam: string | null; plaats: string | null; klantnummer: string | null }[]) ?? []).map((k) => ({
+    id: k.id,
+    naam: k.naam ?? 'Zonder naam',
+    plaats: k.plaats,
+    klantnummer: k.klantnummer,
+  }));
 }
 
 export async function maakOfferte(v: OfferteVelden): Promise<string | null> {
@@ -247,16 +360,30 @@ export async function verwijderOfferte(id: string): Promise<boolean> {
   return !error;
 }
 
+/** Volgende positie onderaan de offerte, zodat nieuwe regels altijd achteraan komen. */
+async function volgendePositie(sb: NonNullable<ReturnType<typeof kmsAdmin>>, offerteId: string): Promise<number> {
+  const { data } = await sb.from('offerteregels').select('positie').eq('offerte_id', offerteId);
+  const rijen = (data as { positie: number | null }[]) ?? [];
+  const hoogste = rijen.reduce((m, r) => (r.positie != null && r.positie > m ? r.positie : m), 0);
+  return Math.max(hoogste, rijen.length) + 1;
+}
+
 export async function voegRegelToe(offerteId: string, v: RegelVelden): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
-  const { error } = await sb.from('offerteregels').insert({
+  const rij: Record<string, unknown> = {
     offerte_id: offerteId,
     omschrijving: v.omschrijving,
     aantal: Number(v.aantal) || 0,
     stukprijs: Number(v.stukprijs) || 0,
     korting_pct: Number(v.korting_pct) || 0,
     inkoop: v.inkoop != null && Number.isFinite(Number(v.inkoop)) ? Number(v.inkoop) : null,
-  });
+    positie: await volgendePositie(sb, offerteId),
+  };
+  // Alleen meesturen als er echt een artikel gekozen is; een vrije regel laat ze weg.
+  if (v.product_id) rij.product_id = v.product_id;
+  if (v.kleur && v.kleur.trim()) rij.kleur = v.kleur.trim();
+  if (v.maat && v.maat.trim()) rij.maat = v.maat.trim();
+  const { error } = await sb.from('offerteregels').insert(rij);
   return !error;
 }
 
@@ -269,8 +396,17 @@ export async function werkRegel(regelId: string, v: RegelVelden): Promise<boolea
     korting_pct: Number(v.korting_pct) || 0,
   };
   if (v.inkoop !== undefined) patch.inkoop = v.inkoop != null ? Number(v.inkoop) : null;
+  // Maat mag later alsnog ingevuld of gewist worden; kleur en artikel blijven staan.
+  if (v.maat !== undefined) patch.maat = v.maat && v.maat.trim() ? v.maat.trim() : null;
   const { error } = await sb.from('offerteregels').update(patch).eq('id', regelId);
   return !error;
+}
+
+/** Huidige waarden van een regel, voor het auditlog (voor/na). */
+export async function getRegel(regelId: string): Promise<Offerteregel | null> {
+  const sb = kmsAdmin(); if (!sb) return null;
+  const { data } = await sb.from('offerteregels').select('*').eq('id', regelId).maybeSingle();
+  return (data as Offerteregel | null) ?? null;
 }
 
 export async function verwijderRegel(regelId: string): Promise<boolean> {
@@ -279,55 +415,149 @@ export async function verwijderRegel(regelId: string): Promise<boolean> {
   return !error;
 }
 
-export type OfferteProductOptie = {
-  product_id: string;
+export type OfferteArtikel = {
+  id: string;
   naam: string;
   merk: string | null;
-  varianten: { id: string; maat: string | null; kleur: string | null; verkoopprijs: number | null; inkoop: number | null }[];
+  categorie: string | null;
+  afbeelding: string | null;
+  /** Staat in het assortiment van deze klant: die tonen we bovenaan. */
+  inAssortiment: boolean;
 };
 
 /**
- * Producten die voor een klant van toepassing zijn (uit het assortiment), met varianten en
- * verkoopprijs, voor de productkiezer op een offerte. Heeft de klant nog geen assortiment,
- * dan vallen we terug op alle actieve producten zodat de kiezer niet leeg is.
+ * Actieve artikelen voor de artikelzoeker op een offerte. Artikelen uit het
+ * assortiment van de klant komen eerst, daarna de rest van de catalogus,
+ * zodat Jessi ook iets nieuws kan aanbieden.
  */
-export async function getKlantProductOpties(orgId: string | null): Promise<OfferteProductOptie[]> {
+export async function listOfferteArtikelen(orgId: string | null): Promise<OfferteArtikel[]> {
   const sb = kmsAdmin(); if (!sb) return [];
+  const [{ data }, assRes] = await Promise.all([
+    sb.from('producten').select('id, naam, merk, categorie, afbeeldingen').eq('actief', true).order('naam').limit(3000),
+    orgId
+      ? sb.from('assortiment').select('product_id, toegestaan').eq('organisatie_id', orgId)
+      : Promise.resolve({ data: [] as { product_id: string; toegestaan: boolean }[] }),
+  ]);
+  const inAss = new Set(
+    ((assRes.data as { product_id: string; toegestaan: boolean | null }[] | null) ?? [])
+      .filter((a) => a.toegestaan !== false)
+      .map((a) => a.product_id),
+  );
+  const lijst = ((data as { id: string; naam: string | null; merk: string | null; categorie: string | null; afbeeldingen: string[] | null }[]) ?? []).map(
+    (p) => ({
+      id: p.id,
+      naam: p.naam ?? 'Naamloos',
+      merk: p.merk,
+      categorie: p.categorie,
+      afbeelding: (p.afbeeldingen ?? [])[0] ?? null,
+      inAssortiment: inAss.has(p.id),
+    }),
+  );
+  // Stabiel: binnen elke groep blijft de alfabetische volgorde staan.
+  return [...lijst.filter((p) => p.inAssortiment), ...lijst.filter((p) => !p.inAssortiment)];
+}
 
-  let productIds: string[] | null = null;
-  if (orgId) {
-    const { data: ass } = await sb
-      .from('assortiment')
-      .select('product_id, toegestaan')
-      .eq('organisatie_id', orgId);
-    const toegestaan = ((ass as { product_id: string; toegestaan: boolean }[]) ?? [])
-      .filter((a) => a.toegestaan)
-      .map((a) => a.product_id);
-    if (toegestaan.length > 0) productIds = Array.from(new Set(toegestaan));
+export type OfferteMaat = { variantId: string; maat: string; prijs: number | null; inkoop: number | null };
+export type OfferteKleur = {
+  /** Kleurnaam zoals hij op de offerte komt ('' bij artikelen zonder kleur). */
+  kleur: string;
+  afbeelding: string | null;
+  maten: OfferteMaat[];
+  /** Prijs als er (nog) geen maat gekozen is: gelijk voor alle maten, of de laagste. */
+  prijs: number | null;
+  inkoop: number | null;
+  /** Verschillen de prijzen per maat binnen deze kleur? */
+  prijsVerschiltPerMaat: boolean;
+};
+
+/**
+ * Kleuren van één artikel, elk met kleurfoto en de maten in die kleur.
+ * Alleen kleuren die echt als variant bestaan. Prijs: verkoopprijs van de
+ * variant, anders de basisprijs van het artikel.
+ */
+export async function listOfferteKleuren(productId: string): Promise<OfferteKleur[]> {
+  const sb = kmsAdmin();
+  if (!sb || !productId.trim()) return [];
+  const [{ data: varData }, { data: fotoData }, { data: prodData }] = await Promise.all([
+    sb
+      .from('product_varianten')
+      .select('id, maat, kleur, verkoopprijs, inkoopprijs')
+      .eq('product_id', productId)
+      .or('actief.is.null,actief.eq.true')
+      .limit(3000),
+    sb.from('product_kleur_afbeeldingen').select('kleur, afbeelding_url').eq('product_id', productId),
+    sb.from('producten').select('afbeeldingen, verkoopprijs_basis').eq('id', productId).maybeSingle(),
+  ]);
+  const prod = prodData as { afbeeldingen: string[] | null; verkoopprijs_basis: number | null } | null;
+  const basis = prod?.verkoopprijs_basis != null ? Number(prod.verkoopprijs_basis) : null;
+  const eersteFoto = (prod?.afbeeldingen ?? [])[0] ?? null;
+
+  const fotoVan = new Map<string, string>();
+  for (const f of (fotoData as { kleur: string | null; afbeelding_url: string | null }[]) ?? []) {
+    if (f.afbeelding_url) fotoVan.set(kleurSleutel(f.kleur), f.afbeelding_url);
   }
 
-  let q = sb
-    .from('producten')
-    .select('id, naam, merk, product_varianten(id, maat, kleur, verkoopprijs, inkoopprijs, actief)')
-    .eq('actief', true)
-    .order('naam');
-  if (productIds) q = q.in('id', productIds);
-  const { data } = await q;
+  const groepen = new Map<string, OfferteKleur>();
+  for (const v of (varData as { id: string; maat: string | null; kleur: string | null; verkoopprijs: number | null; inkoopprijs: number | null }[]) ?? []) {
+    const sleutel = kleurSleutel(v.kleur);
+    let g = groepen.get(sleutel);
+    if (!g) {
+      g = {
+        kleur: (v.kleur ?? '').trim(),
+        afbeelding: fotoVan.get(sleutel) ?? eersteFoto,
+        maten: [],
+        prijs: null,
+        inkoop: null,
+        prijsVerschiltPerMaat: false,
+      };
+      groepen.set(sleutel, g);
+    }
+    const maat = (v.maat ?? '').trim();
+    // Dubbele maat binnen dezelfde kleur (dubbele import): eerste houden.
+    if (maat && g.maten.some((m) => m.maat.toLowerCase() === maat.toLowerCase())) continue;
+    g.maten.push({
+      variantId: v.id,
+      maat,
+      prijs: v.verkoopprijs != null ? Number(v.verkoopprijs) : basis,
+      inkoop: v.inkoopprijs != null ? Number(v.inkoopprijs) : null,
+    });
+  }
 
-  const rows = (data as unknown as {
-    id: string; naam: string; merk: string | null;
-    product_varianten: { id: string; maat: string | null; kleur: string | null; verkoopprijs: number | null; inkoopprijs: number | null; actief: boolean | null }[] | null;
-  }[]) ?? [];
+  const kleuren = [...groepen.values()];
+  // Artikel zonder varianten: één "kleur" zonder naam met de basisprijs, zodat
+  // de prijs toch wordt voorgevuld.
+  if (kleuren.length === 0) {
+    return basis != null || eersteFoto
+      ? [{ kleur: '', afbeelding: eersteFoto, maten: [], prijs: basis, inkoop: null, prijsVerschiltPerMaat: false }]
+      : [];
+  }
+  for (const g of kleuren) {
+    g.maten.sort((a, b) => {
+      const na = a.maat ? Number(a.maat) : NaN;
+      const nb = b.maat ? Number(b.maat) : NaN;
+      if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+      return maatVolgorde(a.maat) - maatVolgorde(b.maat) || a.maat.localeCompare(b.maat, 'nl', { numeric: true });
+    });
+    const prijzen = g.maten.map((m) => m.prijs).filter((p): p is number => p != null);
+    const inkopen = g.maten.map((m) => m.inkoop).filter((p): p is number => p != null);
+    g.prijs = prijzen.length ? Math.min(...prijzen) : basis;
+    g.inkoop = inkopen.length ? Math.min(...inkopen) : null;
+    g.prijsVerschiltPerMaat = new Set(prijzen).size > 1;
+  }
+  kleuren.sort((a, b) => (a.kleur || '\uffff').localeCompare(b.kleur || '\uffff', 'nl'));
+  return kleuren;
+}
 
-  return rows.map((p) => ({
-    product_id: p.id,
-    naam: p.naam,
-    merk: p.merk,
-    varianten: (p.product_varianten ?? [])
-      .filter((v) => v.actief !== false)
-      .map((v) => ({ id: v.id, maat: v.maat, kleur: v.kleur, verkoopprijs: v.verkoopprijs, inkoop: v.inkoopprijs }))
-      .sort((a, b) => (a.maat ?? '').localeCompare(b.maat ?? '', 'nl') || (a.kleur ?? '').localeCompare(b.kleur ?? '', 'nl')),
-  }));
+/** Confectiematen in logische volgorde (XS voor S voor M ... voor 4XL); onbekend achteraan. */
+const MAAT_RIJ = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL', '5XL', '6XL', '7XL', '8XL'];
+function maatVolgorde(maat: string): number {
+  const m = maat.trim().toUpperCase();
+  const i = MAAT_RIJ.indexOf(m);
+  if (i === -1) return 100;
+  // XXL en 2XL zijn dezelfde maat, net als XXXL en 3XL.
+  if (m === '2XL') return MAAT_RIJ.indexOf('XXL');
+  if (m === '3XL') return MAAT_RIJ.indexOf('XXXL');
+  return i;
 }
 
 /**
@@ -344,28 +574,34 @@ export async function voegPakketAlsRegels(offerteId: string, pakketId: string): 
   const sb = kmsAdmin(); if (!sb) return 0;
   const { data: ppData } = await sb
     .from('pakket_producten')
-    .select('product_id, variant_id, aantal, prod:producten(naam), var:product_varianten(maat, kleur, verkoopprijs, inkoopprijs)')
+    .select('product_id, variant_id, aantal, prod:producten(naam, merk), var:product_varianten(maat, kleur, verkoopprijs, inkoopprijs)')
     .eq('pakket_id', pakketId);
   const pp = (ppData as unknown as {
     product_id: string;
     variant_id: string | null;
     aantal: number;
-    prod: { naam: string } | null;
+    prod: { naam: string; merk: string | null } | null;
     var: { maat: string | null; kleur: string | null; verkoopprijs: number | null; inkoopprijs: number | null } | null;
   }[]) ?? [];
   if (pp.length === 0) return 0;
 
-  const rows = pp.map((r) => {
-    const naam = r.prod?.naam ?? 'Product';
-    const variantLabel = r.var ? [r.var.maat, r.var.kleur].filter(Boolean).join(', ') : '';
-    return {
+  const start = await volgendePositie(sb, offerteId);
+  const rows = pp.map((r, i) => {
+    const kleur = r.var?.kleur?.trim() || null;
+    const maat = r.var?.maat?.trim() || null;
+    const rij: Record<string, unknown> = {
       offerte_id: offerteId,
-      omschrijving: variantLabel ? `${naam}, ${variantLabel}` : naam,
+      omschrijving: regelOmschrijving({ naam: r.prod?.naam ?? 'Product', merk: r.prod?.merk ?? null }, kleur, maat),
       aantal: Math.max(1, Math.round(Number(r.aantal) || 1)),
       stukprijs: r.var?.verkoopprijs != null ? Number(r.var.verkoopprijs) : 0,
       korting_pct: 0,
       inkoop: r.var?.inkoopprijs != null ? Number(r.var.inkoopprijs) : null,
+      positie: start + i,
+      product_id: r.product_id,
     };
+    if (kleur) rij.kleur = kleur;
+    if (maat) rij.maat = maat;
+    return rij;
   });
   const { error } = await sb.from('offerteregels').insert(rows);
   return error ? 0 : rows.length;
@@ -380,14 +616,44 @@ export async function maakOrderVanOfferte(offerteId: string): Promise<string | n
     notitie: `Aangemaakt uit offerte ${off.offertenummer != null ? `#${off.offertenummer}` : ''}`.trim(),
   });
   if (!orderId) return null;
+  const sb = kmsAdmin();
   for (const r of off.regels) {
     const kort = Number(r.korting_pct) || 0;
     const netto = (Number(r.stukprijs) || 0) * (1 - kort / 100);
-    await voegOrderregelToe(orderId, {
-      item_naam: r.omschrijving ?? 'Regel',
+    const kleur = r.kleur?.trim() || null;
+    const maat = r.maat?.trim() || null;
+    // Kleur en maat gaan als eigen velden mee naar de order (pakbon, inkoop, coupeuse).
+    // Staan ze ook al in de omschrijving, dan halen we ze daar weg, anders komen ze
+    // op de factuur dubbel ("Polo, Zwart (M / Zwart)").
+    let itemNaam = (r.omschrijving ?? '').trim() || 'Regel';
+    if (maat && itemNaam.toLowerCase().endsWith(`, maat ${maat}`.toLowerCase())) itemNaam = itemNaam.slice(0, -`, maat ${maat}`.length);
+    if (kleur && itemNaam.toLowerCase().endsWith(`, ${kleur}`.toLowerCase())) itemNaam = itemNaam.slice(0, -`, ${kleur}`.length);
+
+    // Met artikel, kleur en maat is de exacte variant bekend; die koppelen we mee.
+    let variantId: string | null = null;
+    if (sb && r.product_id && maat) {
+      const { data: varData } = await sb
+        .from('product_varianten')
+        .select('id, kleur, maat')
+        .eq('product_id', r.product_id)
+        .ilike('maat', maat);
+      const match = ((varData as { id: string; kleur: string | null; maat: string | null }[]) ?? []).find(
+        (v) => kleurSleutel(v.kleur) === kleurSleutel(kleur),
+      );
+      variantId = match?.id ?? null;
+    }
+
+    const regel: OrderregelVelden = {
+      item_naam: itemNaam,
       aantal: Math.max(1, Math.round(Number(r.aantal) || 1)),
       stukprijs: Math.round(netto * 100) / 100,
-    });
+    };
+    if (r.product_id) regel.product_id = r.product_id;
+    if (variantId) regel.variant_id = variantId;
+    if (kleur) regel.kleur = kleur;
+    if (maat) regel.maat = maat;
+    if (r.lengte != null) regel.lengte = r.lengte;
+    await voegOrderregelToe(orderId, regel);
   }
   await zetOfferteStatus(offerteId, 'geaccepteerd');
   return orderId;

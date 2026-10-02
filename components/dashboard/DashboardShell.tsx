@@ -26,11 +26,12 @@ const groepen: Groep[] = [
   { titel: 'Overzicht', items: [
     { href: '/dashboard', label: 'Overzicht' },
     { href: '/dashboard/leads', label: 'Leads' },
-    { href: '/dashboard/taken', label: 'Taken' },
+    { href: '/dashboard/taken', label: 'Taken en afspraken' },
     { href: '/dashboard/nieuwsbrief', label: 'Nieuwsbrief' },
   ] },
   { titel: 'Groei', items: [
     { href: '/dashboard/prospects', label: 'Prospects' },
+    { href: '/dashboard/prospects/brieven', label: 'Brieven met QR' },
     { href: '/dashboard/campagnes', label: 'Campagnes' },
   ] },
   { titel: 'Verkoop', items: [
@@ -45,8 +46,6 @@ const groepen: Groep[] = [
   { titel: 'Catalogus', items: [
     { href: '/dashboard/producten', label: 'Producten' },
     { href: '/dashboard/voorraad', label: 'Voorraad' },
-    { href: '/dashboard/functies', label: 'Functies' },
-    { href: '/dashboard/pakketten', label: 'Pakketten' },
     { href: '/dashboard/leveranciers', label: 'Leveranciers' },
     { href: '/dashboard/inkoop', label: 'Inkoop' },
   ] },
@@ -69,6 +68,7 @@ const groepen: Groep[] = [
     { href: '/dashboard/export', label: 'Export CSV' },
     { href: '/dashboard/audit', label: 'Logboek' },
     { href: '/dashboard/instellingen', label: 'Instellingen' },
+    { href: '/dashboard/beveiliging', label: 'Beveiliging (2FA)' },
   ] },
 ];
 
@@ -76,6 +76,7 @@ const groepen: Groep[] = [
 // Medewerkers en lezers krijgen deze niet in de nav en worden server-side geweerd.
 const EIGENAAR_ONLY = new Set<string>([
   '/dashboard/prospects',
+  '/dashboard/prospects/brieven',
   '/dashboard/campagnes',
   '/dashboard/facturen',
   '/dashboard/sparen',

@@ -2,11 +2,19 @@
 
 import { Garment } from '@/components/Garments';
 import { kleuren } from '@/content/configurator';
+import DrukproefCompositie, { type Formaat } from './DrukproefCompositie';
+import { normaliseerOntwerp } from './ontwerp';
 
 /**
- * Toont het voorbeeld van een drukproef. Als er een eigen afbeelding is geüpload,
- * laten we die zien. Anders renderen we het kledingstuk met het logo erop via Garment,
- * net als in de pakketconfigurator.
+ * Toont het voorbeeld van een drukproef.
+ *
+ * - Heeft de proef een ontwerp (logo's zelf geplaatst op de echte artikelfoto),
+ *   dan tonen we de voor- en achterkant via DrukproefCompositie.
+ * - Oude proeven zonder ontwerp werken zoals altijd: een eigen geüploade afbeelding,
+ *   of anders het getekende kledingstuk met het logo erop (Garment).
+ *
+ * De extra props (ontwerp, achterAfbeeldingUrl) zijn optioneel, zodat bestaande
+ * aanroepers (portaal, order) ongewijzigd blijven werken.
  */
 export default function DrukproefPreview({
   afbeeldingUrl,
@@ -15,6 +23,9 @@ export default function DrukproefPreview({
   logoUrl,
   positie,
   techniek,
+  ontwerp,
+  achterAfbeeldingUrl,
+  formaat = 'normaal',
 }: {
   afbeeldingUrl?: string | null;
   type: string;
@@ -22,7 +33,15 @@ export default function DrukproefPreview({
   logoUrl?: string | null;
   positie: string;
   techniek: string;
+  ontwerp?: unknown;
+  achterAfbeeldingUrl?: string | null;
+  formaat?: Formaat;
 }) {
+  const o = normaliseerOntwerp(ontwerp);
+  if (o) {
+    return <DrukproefCompositie ontwerp={o} voorUrl={afbeeldingUrl ?? null} achterUrl={achterAfbeeldingUrl ?? null} formaat={formaat} />;
+  }
+
   if (afbeeldingUrl) {
     return (
       <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-lg bg-mist">

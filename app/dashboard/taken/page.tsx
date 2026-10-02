@@ -1,279 +1,75 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
-import { formatDatum } from '@/lib/format';
-import { listTaken, TAAK_WERKSTATUSSEN, type Taak } from '@/lib/kms/taken';
+import { listTaken, listTaakPersonen, synchroniseerAutoTaken, TAAK_WERKSTATUSSEN } from '@/lib/kms/taken';
 import { listOrganisaties } from '@/lib/portaalAdmin';
-import NavigateSelect from '@/components/dashboard/NavigateSelect';
-import ConfirmSubmit from '@/components/ConfirmSubmit';
-import { maakTaakActie, zetTaakStatusActie, zetTaakWerkstatusActie, verwijderTaakActie } from './actions';
+import TakenTabel, { type SortKolom, type TakenFilters } from './TakenTabel';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Taken', robots: { index: false, follow: false } };
 
-const inputCls =
-  'veld';
+const SORTEERKOLOMMEN: SortKolom[] = ['datum', 'klant', 'status', 'persoon', 'bron'];
 
-const okBoodschap: Record<string, string> = {
-  aangemaakt: 'Taak toegevoegd.',
-  afgerond: 'Taak gemarkeerd als klaar.',
-  heropend: 'Taak heropend.',
-  verwijderd: 'Taak verwijderd.',
-  stap: 'Stap bijgewerkt.',
-  geen_stap: 'Die stap ken ik niet, er is niets gewijzigd.',
-  geen_titel: 'Geef de taak eerst een titel.',
-};
-
-/**
- * De stap staat als los label bij de taak. Bewust een andere kleur dan de
- * prioriteit, anders vechten twee badges naast elkaar om dezelfde aandacht.
- */
-function stapBadge(werkstatus: string | null) {
-  if (!werkstatus || werkstatus === 'Niet gestart') return null;
-  return (
-    <span className="inline-block rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-ink-900">
-      {werkstatus}
-    </span>
-  );
-}
-
-function prioriteitBadge(prioriteit: string) {
-  const stijl =
-    prioriteit === 'hoog'
-      ? 'border-red-200 bg-red-50 text-red-700'
-      : prioriteit === 'laag'
-        ? 'border-line bg-mist text-warm'
-        : 'border-line bg-white text-ink-800';
-  return (
-    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold ${stijl}`}>
-      {prioriteit === 'hoog' ? 'Hoog' : prioriteit === 'laag' ? 'Laag' : 'Normaal'}
-    </span>
-  );
+/** Vandaag als yyyy-mm-dd in Nederlandse tijd (de server draait in UTC). */
+function vandaagNl(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Amsterdam',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 }
 
 export default async function TakenPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; ok?: string }>;
+  searchParams: Promise<{ status?: string; persoon?: string; soort?: string; bron?: string; q?: string; sort?: string; dir?: string }>;
 }) {
   if (!(await dashAuthed())) redirect('/dashboard');
 
-  const { status, ok } = await searchParams;
-  const filter: 'open' | 'klaar' | 'alle' =
-    status === 'klaar' ? 'klaar' : status === 'alle' ? 'alle' : 'open';
+  const sp = await searchParams;
+  const werkstatussen = TAAK_WERKSTATUSSEN as readonly string[];
+  const status =
+    sp.status === '__alles' || (sp.status && werkstatussen.includes(sp.status)) ? String(sp.status) : '';
+  const begin: TakenFilters = {
+    status,
+    persoon: String(sp.persoon ?? ''),
+    soort: sp.soort === 'taak' || sp.soort === 'afspraak' ? sp.soort : '',
+    bron: ['handmatig', 'order', 'portaal', 'prospect'].includes(String(sp.bron)) ? String(sp.bron) : '',
+    q: String(sp.q ?? ''),
+    sort: SORTEERKOLOMMEN.includes(sp.sort as SortKolom) ? (sp.sort as SortKolom) : 'datum',
+    dir: sp.dir === 'desc' ? 'desc' : 'asc',
+  };
+  const inclusiefAfgerond = status === '__alles' || status === 'Afgerond';
 
-  const [taken, organisaties] = await Promise.all([listTaken(filter), listOrganisaties()]);
-  const vandaag = new Date().toISOString().slice(0, 10);
-
-  const isVerlopen = (t: Taak) =>
-    t.status === 'open' && !!t.vervaldatum && t.vervaldatum < vandaag;
+  // Eerst orders en portaalbestellingen omzetten naar taken, dan pas de lijst ophalen.
+  await synchroniseerAutoTaken();
+  const [taken, organisaties, personen] = await Promise.all([
+    listTaken(inclusiefAfgerond ? 'alle' : 'open'),
+    listOrganisaties(),
+    listTaakPersonen(),
+  ]);
 
   return (
     <main className="container-app py-6">
-      <div className="dash-kop flex items-center justify-between gap-4">
+      <div className="dash-kop flex flex-wrap items-center justify-between gap-4">
         <h1 className="dash-h1">Taken</h1>
-        <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">
-          Terug naar dashboard
-        </Link>
       </div>
-      <p className="mt-2 text-sm text-warm">
-        Opvolgtaken voor de klantopvolging: bel-afspraken, offertes nasturen, passen inplannen.
+      <p className="mt-2 max-w-3xl text-[14px] text-warm">
+        Alle lopende bestellingen en afspraken op één plek. Nieuwe orders en bestellingen uit het klantportaal
+        komen er vanzelf in. Klik in een vakje om het te wijzigen; het wordt meteen bewaard. Vink een rij af als
+        hij klaar is.
       </p>
 
-      {ok && okBoodschap[ok] && (
-        <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">
-          {okBoodschap[ok]}
-        </p>
-      )}
-
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-        {/* Lijst */}
-        <section>
-          <div className="flex items-center gap-3">
-            <h2 className="font-display text-xl font-extrabold text-ink-900">Overzicht</h2>
-            <div className="w-44">
-              <NavigateSelect
-                basePath="/dashboard/taken"
-                param="status"
-                value={filter}
-                options={[
-                  { value: 'open', label: 'Open taken' },
-                  { value: 'klaar', label: 'Afgerond' },
-                  { value: 'alle', label: 'Alle taken' },
-                ]}
-              />
-            </div>
-          </div>
-
-          {taken.length === 0 ? (
-            <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">
-              {filter === 'klaar'
-                ? 'Nog geen afgeronde taken.'
-                : 'Geen taken. Maak rechts je eerste opvolgtaak aan.'}
-            </p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {taken.map((t) => {
-                const klaar = t.status === 'klaar';
-                const verlopen = isVerlopen(t);
-                return (
-                  <li
-                    key={t.id}
-                    className={`rounded-2xl border border-line bg-white p-5 shadow-soft ${klaar ? 'opacity-70' : ''}`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3
-                            className={`font-display text-lg font-bold text-ink-900 ${klaar ? 'line-through' : ''}`}
-                          >
-                            {t.titel}
-                          </h3>
-                          {prioriteitBadge(t.prioriteit)}
-                          {stapBadge(t.werkstatus)}
-                          {klaar && (
-                            <span className="inline-block rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">
-                              Klaar
-                            </span>
-                          )}
-                        </div>
-                        {t.omschrijving && (
-                          <p className="mt-1.5 whitespace-pre-line text-sm text-warm">{t.omschrijving}</p>
-                        )}
-                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-warm">
-                          {t.organisatie_naam && (
-                            <span>
-                              Klant: <span className="font-semibold text-ink-800">{t.organisatie_naam}</span>
-                            </span>
-                          )}
-                          {t.vervaldatum && (
-                            <span className={verlopen ? 'font-semibold text-red-600' : ''}>
-                              Vervaldatum: {formatDatum(t.vervaldatum)}
-                              {verlopen ? ' (verlopen)' : ''}
-                            </span>
-                          )}
-                          {t.toegewezen_aan && <span>Voor: {t.toegewezen_aan}</span>}
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                        <form action={zetTaakWerkstatusActie}>
-                          <input type="hidden" name="id" value={t.id} />
-                          <label className="sr-only" htmlFor={`stap-${t.id}`}>
-                            Stap in de werkstroom
-                          </label>
-                          <select
-                            id={`stap-${t.id}`}
-                            name="werkstatus"
-                            defaultValue={t.werkstatus ?? "Niet gestart"}
-                            className="rounded-md border border-line bg-white px-2 py-1.5 text-sm font-semibold text-ink-800"
-                          >
-                            {TAAK_WERKSTATUSSEN.map((w) => (
-                              <option key={w} value={w}>
-                                {w}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="submit"
-                            className="ml-1 rounded-md border border-line bg-mist px-2.5 py-1.5 text-sm font-semibold text-ink-800 hover:bg-white"
-                          >
-                            Opslaan
-                          </button>
-                        </form>
-                        <form action={zetTaakStatusActie}>
-                          <input type="hidden" name="id" value={t.id} />
-                          <input type="hidden" name="status" value={klaar ? 'open' : 'klaar'} />
-                          <button
-                            type="submit"
-                            className="rounded-md border border-line bg-white px-3 py-1.5 text-sm font-semibold text-ink-800 hover:bg-mist"
-                          >
-                            {klaar ? 'Heropenen' : 'Markeer als klaar'}
-                          </button>
-                        </form>
-                        <form action={verwijderTaakActie}>
-                          <input type="hidden" name="id" value={t.id} />
-                          <ConfirmSubmit
-                            message="Deze taak verwijderen? Dit kan niet ongedaan worden gemaakt."
-                            className="rounded-md border border-line bg-white px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
-                          >
-                            Verwijderen
-                          </ConfirmSubmit>
-                        </form>
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        {/* Nieuwe taak */}
-        <aside>
-          <div className="panel p-4">
-            <h2 className="font-display text-lg font-bold text-ink-900">Nieuwe taak</h2>
-            <form action={maakTaakActie} className="mt-4 space-y-4">
-              <div>
-                <label className="veld-label">Titel</label>
-                <input
-                  type="text"
-                  name="titel"
-                  required
-                  placeholder="Bijv. Offerte nasturen Garage Jansen"
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label className="veld-label">Omschrijving</label>
-                <textarea name="omschrijving" rows={3} className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Klant (optioneel)</label>
-                <select name="organisatie_id" defaultValue="" className={inputCls}>
-                  <option value="">Geen klant</option>
-                  {organisaties.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.naam}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="veld-label">Prioriteit</label>
-                <select name="prioriteit" defaultValue="normaal" className={inputCls}>
-                  <option value="laag">Laag</option>
-                  <option value="normaal">Normaal</option>
-                  <option value="hoog">Hoog</option>
-                </select>
-              </div>
-              <div>
-                <label className="veld-label">Stap</label>
-                <select name="werkstatus" defaultValue="Niet gestart" className={inputCls}>
-                  {TAAK_WERKSTATUSSEN.map((w) => (
-                    <option key={w} value={w}>
-                      {w}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="veld-label">Vervaldatum (optioneel)</label>
-                <input type="date" name="vervaldatum" className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Toegewezen aan (optioneel)</label>
-                <input type="text" name="toegewezen_aan" placeholder="Bijv. Jessi" className={inputCls} />
-              </div>
-              <button
-                type="submit"
-                className="w-full knop-donker"
-              >
-                Taak toevoegen
-              </button>
-            </form>
-          </div>
-        </aside>
+      <div className="mt-6">
+        <TakenTabel
+          taken={taken}
+          organisaties={organisaties.map((o) => ({ id: o.id, naam: o.naam }))}
+          personen={personen}
+          werkstatussen={werkstatussen}
+          inclusiefAfgerond={inclusiefAfgerond}
+          vandaag={vandaagNl()}
+          begin={begin}
+        />
       </div>
     </main>
   );

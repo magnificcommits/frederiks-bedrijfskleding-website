@@ -17,6 +17,7 @@ const FOUT_TEKSTEN: Record<string, string> = {
   order: 'Kon geen order maken. Koppel eerst een klant.',
   mail: 'Vul een e-mailadres in.',
   'geen-toegang': 'Geen toegang. Dit onderdeel is alleen voor de eigenaar.',
+  verzenden: 'Versturen is mislukt. De mail is niet verstuurd; controleer het adres of probeer het later opnieuw.',
 };
 
 function ToastInner() {

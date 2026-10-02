@@ -1,6 +1,9 @@
 'use server';
 import { redirect } from 'next/navigation';
-import { dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
+import { revalidatePath } from 'next/cache';
+import { dashAuthed, eisEigenaar, kmsAdmin } from '@/lib/kms/adminClient';
+import { logAudit } from '@/lib/kms/audit';
+import { zoekLogo } from '@/lib/prospect/logoZoeker';
 import { importeerProspecten, maakProspect, zetProspectStatus, werkProspectNotitie } from '@/lib/kms/prospecten';
 
 /**
@@ -75,4 +78,45 @@ export async function werkNotitieActie(formData: FormData) {
   const notitie = String(formData.get('notitie') ?? '').trim();
   if (id) await werkProspectNotitie(id, notitie);
   redirect('/dashboard/prospects?ok=opgeslagen');
+}
+
+/**
+ * Bulkactie "Logo's ophalen voor selectie": per prospect zonder logo de website
+ * afzoeken en de beste kandidaat direct als logo zetten. Eén voor één, maximaal
+ * 20 per keer, en binnen een tijdsbudget zodat de serverfunctie niet afbreekt.
+ * Wat niet lukte of overbleef zie je in de melding; Jessi kan per prospect nog
+ * een andere afbeelding kiezen of zelf uploaden.
+ */
+export async function bulkLogosOphalenActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  await eisEigenaar();
+  const terug = String(formData.get('terug') ?? '').trim() || '/dashboard/prospects';
+  const veiligTerug = terug.startsWith('/dashboard/prospects') ? terug : '/dashboard/prospects';
+  const ids = [...new Set(formData.getAll('ids').map(String).filter((i) => /^[0-9a-f-]{36}$/i.test(i)))].slice(0, 20);
+  const sb = kmsAdmin();
+  let gelukt = 0;
+  let mislukt = 0;
+  let overgeslagen = 0;
+  let nietGedaan = 0;
+  if (sb && ids.length) {
+    const { data } = await sb.from('prospecten').select('id, website, logo_url').in('id', ids);
+    const rijen = (data as { id: string; website: string | null; logo_url: string | null }[] | null) ?? [];
+    const eind = Date.now() + 50_000;
+    for (const r of rijen) {
+      if (r.logo_url || !r.website) { overgeslagen++; continue; }
+      const over = eind - Date.now();
+      if (over < 4000) { nietGedaan++; continue; }
+      const res = await zoekLogo(r.website, Math.min(12_000, over));
+      if (res.ok) {
+        await sb.from('prospecten').update({ logo_url: res.url }).eq('id', r.id);
+        gelukt++;
+      } else {
+        mislukt++;
+      }
+    }
+    await logAudit('prospect.logos_bulk', { entiteit: 'prospect', details: { aantal: ids.length, gelukt, mislukt, overgeslagen, nietGedaan } });
+  }
+  revalidatePath('/dashboard/prospects');
+  const qs = new URLSearchParams({ melding: 'logos', gelukt: String(gelukt), mislukt: String(mislukt), over: String(overgeslagen), rest: String(nietGedaan) });
+  redirect(`${veiligTerug}${veiligTerug.includes('?') ? '&' : '?'}${qs.toString()}`);
 }

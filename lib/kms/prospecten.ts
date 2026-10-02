@@ -9,6 +9,7 @@ import { kmsAdmin } from '@/lib/kms/adminClient';
 export const PROSPECT_STATUSSEN = [
   'nieuw',
   'benaderd',
+  'geinteresseerd',
   'reageerde',
   'gekwalificeerd',
   'klant',
@@ -33,6 +34,18 @@ export type Prospect = {
   notitie: string | null;
   laatste_contact: string | null;
   created_at: string;
+  // Kennismakingsbrief (QR). Optioneel: oudere selecties halen ze niet op.
+  token?: string;
+  adres?: string | null;
+  postcode?: string | null;
+  logo_url?: string | null;
+  huisstijl_kleur?: string | null;
+  mockup_artikelen?: unknown;
+  eerste_scan_op?: string | null;
+  laatste_scan_op?: string | null;
+  aantal_scans?: number | null;
+  brief_verstuurd_op?: string | null;
+  afgemeld_op?: string | null;
 };
 
 export type ProspectVelden = {
@@ -45,10 +58,12 @@ export type ProspectVelden = {
   plaats?: string | null;
   website?: string | null;
   grootte?: string | null;
+  adres?: string | null;
+  postcode?: string | null;
 };
 
 /** Toegestane sorteerkolommen (echte DB-kolommen op prospecten). */
-const SORTEERKOLOMMEN = ['bedrijfsnaam', 'status', 'plaats', 'created_at', 'score'] as const;
+const SORTEERKOLOMMEN = ['bedrijfsnaam', 'status', 'plaats', 'created_at', 'score', 'laatste_scan_op', 'aantal_scans', 'brief_verstuurd_op'] as const;
 
 /**
  * Maakt een zoekterm veilig voor een ilike-patroon: tekens die de PostgREST-filter
@@ -68,6 +83,8 @@ export async function listProspectenPaged(opts: {
   zoek?: string;
   sort?: string;
   dir?: 'asc' | 'desc';
+  /** 'ja' = minstens één keer gescand, 'nee' = nog nooit gescand. */
+  gescand?: string;
 }): Promise<{ rijen: Prospect[]; totaal: number }> {
   const sb = kmsAdmin(); if (!sb) return { rijen: [], totaal: 0 };
   const pagina = Math.max(1, opts.pagina);
@@ -78,7 +95,9 @@ export async function listProspectenPaged(opts: {
   let q = sb
     .from('prospecten')
     .select('*', { count: 'exact' })
-    .order(kolom, { ascending: oplopend });
+    .order(kolom, { ascending: oplopend, nullsFirst: false });
+  if (opts.gescand === 'ja') q = q.gt('aantal_scans', 0);
+  if (opts.gescand === 'nee') q = q.or('aantal_scans.is.null,aantal_scans.eq.0');
   if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
   if (opts.zoek && opts.zoek.trim()) {
     const p = maakZoekpatroon(opts.zoek);
@@ -188,6 +207,8 @@ export async function werkProspect(
   if (v.plaats !== undefined) patch.plaats = tekst(v.plaats);
   if (v.website !== undefined) patch.website = tekst(v.website);
   if (v.grootte !== undefined) patch.grootte = tekst(v.grootte);
+  if (v.adres !== undefined) patch.adres = tekst(v.adres);
+  if (v.postcode !== undefined) patch.postcode = tekst(v.postcode)?.toUpperCase() ?? null;
   if (v.notitie !== undefined) patch.notitie = tekst(v.notitie);
   if (v.status !== undefined && v.status.trim()) patch.status = v.status.trim();
   if (v.score !== undefined && Number.isFinite(Number(v.score))) patch.score = Math.round(Number(v.score));

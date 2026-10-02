@@ -80,6 +80,20 @@ export default async function InstellingenPage({
           </form>
         </div>
 
+        {/* Beveiliging: tweestapsverificatie en sessie */}
+        <div className="panel p-4">
+          <h2 className="font-display text-lg font-bold text-ink-900">Beveiliging</h2>
+          <p className="mt-1 text-xs text-warm">Tweestapsverificatie met een app op je telefoon instellen en zien hoe lang je nog ingelogd bent.</p>
+          <Link href="/dashboard/beveiliging" className="mt-4 inline-block knop-donker">Naar Beveiliging</Link>
+        </div>
+
+        {/* Logboek: wie wijzigde wat */}
+        <div className="panel p-4">
+          <h2 className="font-display text-lg font-bold text-ink-900">Logboek</h2>
+          <p className="mt-1 text-xs text-warm">Zie wie wat heeft gewijzigd, met de oude en de nieuwe waarde.</p>
+          <Link href="/dashboard/audit" className="mt-4 inline-block knop-donker">Naar het logboek</Link>
+        </div>
+
         {/* Spaarsysteem, beheer staat op de eigen Sparen-pagina */}
         <div className="panel p-4 lg:col-span-2">
           <h2 className="font-display text-lg font-bold text-ink-900">Spaarsysteem</h2>

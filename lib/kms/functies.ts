@@ -99,3 +99,53 @@ export async function verwijderFunctieProduct(id: string): Promise<boolean> {
   const { error } = await sb.from('functie_producten').delete().eq('id', id);
   return !error;
 }
+
+/** Een klant die nog functies heeft, met per functie of de afdeling al bestaat. */
+export type KlantMetFuncties = {
+  organisatie_id: string;
+  klant_naam: string;
+  functies: { id: string; naam: string; afdeling_bestaat: boolean }[];
+};
+
+/**
+ * Klanten die nog functies hebben. Functies zijn opgegaan in afdelingen bij de
+ * klant; deze lijst laat zien waar nog iets staat en of de afdeling met dezelfde
+ * naam al is aangemaakt (door de omzetting of met de hand).
+ */
+export async function listKlantenMetFuncties(): Promise<KlantMetFuncties[]> {
+  const sb = kmsAdmin(); if (!sb) return [];
+  const { data: functieData, error } = await sb.from('functies').select('id, organisatie_id, naam').limit(1000);
+  if (error) return [];
+  const functies = ((functieData as { id: string; organisatie_id: string | null; naam: string | null }[]) ?? []).filter(
+    (f) => f.organisatie_id,
+  );
+  if (functies.length === 0) return [];
+  const orgIds = [...new Set(functies.map((f) => f.organisatie_id as string))];
+  const [{ data: orgData }, { data: afdData }] = await Promise.all([
+    sb.from('organisaties').select('id, naam').in('id', orgIds),
+    sb.from('afdelingen').select('organisatie_id, naam').in('organisatie_id', orgIds),
+  ]);
+  const naamVan = new Map(((orgData as { id: string; naam: string }[]) ?? []).map((o) => [o.id, o.naam]));
+  const afdelingen = new Set(
+    ((afdData as { organisatie_id: string; naam: string | null }[]) ?? []).map(
+      (a) => `${a.organisatie_id}|${(a.naam ?? '').trim().toLowerCase()}`,
+    ),
+  );
+  const perKlant = new Map<string, KlantMetFuncties>();
+  for (const f of functies) {
+    const orgId = f.organisatie_id as string;
+    const klant = perKlant.get(orgId) ?? {
+      organisatie_id: orgId,
+      klant_naam: naamVan.get(orgId) ?? 'Onbekende klant',
+      functies: [],
+    };
+    const naam = f.naam?.trim() || 'Naamloze functie';
+    klant.functies.push({
+      id: f.id,
+      naam,
+      afdeling_bestaat: afdelingen.has(`${orgId}|${naam.toLowerCase()}`),
+    });
+    perKlant.set(orgId, klant);
+  }
+  return [...perKlant.values()].sort((a, b) => a.klant_naam.localeCompare(b.klant_naam, 'nl'));
+}

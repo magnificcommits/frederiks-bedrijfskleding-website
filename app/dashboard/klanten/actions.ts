@@ -2,7 +2,8 @@
 import { redirect } from 'next/navigation';
 import { maakOrganisatie, addGebruiker } from '@/lib/portaalAdmin';
 import { logAudit } from '@/lib/kms/audit';
-import { dashAuthed } from '@/lib/kms/adminClient';
+import { dashAuthed, kmsAdmin } from '@/lib/kms/adminClient';
+import { maakContactpersoon } from '@/lib/kms/crm';
 
 
 /** Zelfde toegangsregel als de dashboard-layout: wachtwoord-cookie OF ingelogde admin. */
@@ -19,9 +20,23 @@ export async function nieuweOrganisatie(formData: FormData) {
   const telefoon = String(formData.get('telefoon') ?? '').trim();
   const contactpersoon = String(formData.get('contactpersoon') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim();
+  const branche = String(formData.get('branche') ?? '').trim();
   if (!naam) redirect('/dashboard/klanten');
   const id = await maakOrganisatie({ naam, plaats, adres, postcode, telefoon });
+  // Branche en contactpersoon (voor de kolom in de klantenlijst) alleen meesturen als ze zijn ingevuld.
+  const extra: Record<string, string> = {};
+  if (branche) extra.branche = branche;
+  if (contactpersoon) extra.contactpersoon = contactpersoon;
+  if (id && Object.keys(extra).length > 0) {
+    const sb = kmsAdmin();
+    if (sb) await sb.from('organisaties').update(extra).eq('id', id);
+  }
   if (id && email) await addGebruiker(id, email, contactpersoon);
-  if (id) await logAudit('klant_aangemaakt', { entiteit: 'organisatie', entiteitId: id, details: { naam } });
+  // De contactpersoon ook echt als contactpersoon vastleggen (hoofdcontact), zodat
+  // hij op het tabblad Contact staat en niet alleen als portaal-inlog.
+  if (id && contactpersoon) {
+    await maakContactpersoon(id, { naam: contactpersoon, email: email || null, hoofdcontact: true });
+  }
+  if (id) await logAudit('klant_aangemaakt', { entiteit: 'organisatie', entiteitId: id, details: { naam, branche: branche || null } });
   redirect(id ? '/dashboard/klanten/' + id : '/dashboard/klanten');
 }

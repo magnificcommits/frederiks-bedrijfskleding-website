@@ -7,9 +7,11 @@ import NavigateSelect from '@/components/dashboard/NavigateSelect';
 import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
 import SortableTh from '@/components/dashboard/SortableTh';
 import EmptyState from '@/components/dashboard/EmptyState';
-import { importeerCsvActie, nieuweProspectActie, zetProspectStatusActie } from './actions';
+import { importeerCsvActie, nieuweProspectActie, zetProspectStatusActie, bulkLogosOphalenActie } from './actions';
 
 export const dynamic = 'force-dynamic';
+// De bulkactie "Logo's ophalen" loopt tot ~50 seconden.
+export const maxDuration = 60;
 export const metadata = { title: 'Prospects', robots: { index: false, follow: false } };
 
 const inputCls = 'veld';
@@ -23,13 +25,14 @@ function fmt(d: string | null) {
 const statusBadge: Record<string, string> = {
   nieuw: 'bg-ink-100 text-ink-600',
   benaderd: 'bg-amber-100 text-amber-800',
+  geinteresseerd: 'bg-amber-200 text-amber-900',
   reageerde: 'bg-amber-100 text-amber-800',
   gekwalificeerd: 'bg-amber-100 text-amber-800',
   klant: 'bg-green-100 text-green-800',
   afgemeld: 'bg-ink-100 text-ink-500',
 };
 
-export default async function ProspectsPage({ searchParams }: { searchParams: Promise<{ status?: string; zoek?: string; pagina?: string; sort?: string; dir?: string }> }) {
+export default async function ProspectsPage({ searchParams }: { searchParams: Promise<{ status?: string; zoek?: string; pagina?: string; sort?: string; dir?: string; gescand?: string; melding?: string; gelukt?: string; mislukt?: string; over?: string; rest?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   await eisEigenaar();
   const sb = kmsAdmin();
@@ -46,17 +49,19 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
     );
   }
 
-  const { status, zoek, pagina, sort, dir } = await searchParams;
+  const { status, zoek, pagina, sort, dir, gescand: gescandRuw, melding, gelukt, mislukt, over, rest } = await searchParams;
+  const gescand = gescandRuw === 'ja' || gescandRuw === 'nee' ? gescandRuw : undefined;
   const huidigePagina = Math.max(1, Number(pagina) || 1);
   const richting: 'asc' | 'desc' = dir === 'asc' ? 'asc' : 'desc';
-  const { rijen: prospecten, totaal } = await listProspectenPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, status, zoek, sort, dir: richting });
+  const { rijen: prospecten, totaal } = await listProspectenPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, status, zoek, sort, dir: richting, gescand });
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
   const statusQs = status ? `&status=${encodeURIComponent(status)}` : '';
   const zoekQs = zoek ? `&zoek=${encodeURIComponent(zoek)}` : '';
   const sortQs = sort ? `&sort=${encodeURIComponent(sort)}&dir=${richting}` : '';
+  const scanQs = gescand ? `&gescand=${gescand}` : '';
   // URL van de huidige weergave: na een inline statuswijziging keren we hier terug
   // zodat status-, zoekfilter, sortering en pagina behouden blijven.
-  const huidigeUrl = `/dashboard/prospects?pagina=${huidigePagina}${statusQs}${zoekQs}${sortQs}`;
+  const huidigeUrl = `/dashboard/prospects?pagina=${huidigePagina}${statusQs}${zoekQs}${sortQs}${scanQs}`;
 
   return (
     <main className="container-app py-6">
@@ -64,6 +69,7 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
         <h1 className="dash-h1">Prospects</h1>
         <div className="flex items-center gap-2">
           <Link href="/dashboard" className="knop-tekst">Terug naar dashboard</Link>
+          <Link href="/dashboard/prospects/brieven" className="knop-primair">Brieven maken</Link>
           <Drawer
             knop="Importeer prospects"
             titel="Importeer prospects"
@@ -144,11 +150,43 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
         </div>
         <form method="get" className="grow">
           {status && <input type="hidden" name="status" value={status} />}
+          {gescand && <input type="hidden" name="gescand" value={gescand} />}
           <label className="veld-label">Zoeken</label>
           <input name="zoek" defaultValue={zoek ?? ''} placeholder="Bedrijf, contactpersoon, e-mail of plaats" className={`${inputCls} min-w-[16rem]`} />
         </form>
-        {(status || zoek) && <Link href="/dashboard/prospects" className="text-sm font-semibold text-warm hover:text-ink-800">Wissen</Link>}
+        <div>
+          <span className="veld-label">QR-code</span>
+          <div className="flex gap-1.5">
+            {([['', 'Alle'], ['ja', 'Gescand'], ['nee', 'Nog niet gescand']] as const).map(([w, l]) => (
+              <Link
+                key={w || 'alle'}
+                href={`/dashboard/prospects?pagina=1${statusQs}${zoekQs}${sortQs}${w ? `&gescand=${w}` : ''}`}
+                className={`chip ${(gescand ?? '') === w ? 'chip-aan' : ''}`}
+              >
+                {l}
+              </Link>
+            ))}
+          </div>
+        </div>
+        {(status || zoek || gescand) && <Link href="/dashboard/prospects" className="text-sm font-semibold text-warm hover:text-ink-800">Wissen</Link>}
       </div>
+
+      {melding === 'logos' && (
+        <p className="mt-4 rounded-md border border-line bg-mist px-3 py-2 text-[13px] text-ink-800" role="status">
+          Logo&apos;s ophalen klaar: {Number(gelukt) || 0} gevonden, {Number(mislukt) || 0} niet gelukt
+          {Number(over) ? `, ${Number(over)} overgeslagen (al een logo of geen website)` : ''}
+          {Number(rest) ? `, ${Number(rest)} niet meer aan toegekomen (start de actie nog een keer)` : ''}.
+          Bekijk ze in de kolom Logo; per prospect kun je een ander logo kiezen.
+        </p>
+      )}
+
+      {prospecten.length > 0 && (
+        <form id="bulk-logos" action={bulkLogosOphalenActie} className="mt-4 flex flex-wrap items-center gap-2">
+          <input type="hidden" name="terug" value={huidigeUrl} />
+          <button type="submit" className="knop-stil">Logo&apos;s ophalen voor selectie</button>
+          <span className="text-[12px] text-warm">Vink rijen aan (max 20 per keer). Prospects met een logo slaan we over. Duurt tot een minuut.</span>
+        </form>
+      )}
 
         {prospecten.length === 0 ? (
           <EmptyState tekst="Geen prospects gevonden. Gebruik de knoppen rechtsboven om te importeren of er handmatig een toe te voegen." />
@@ -157,15 +195,22 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
             <table className="tbl">
               <thead className="thead-sticky">
                 <tr>
+                  <th className="w-8"><span className="sr-only">Selecteer</span></th>
                   <SortableTh label="Bedrijf" col="bedrijfsnaam" />
                   <SortableTh label="Plaats" col="plaats" />
                   <SortableTh label="Status" col="status" />
+                  <SortableTh label="Gescand" col="laatste_scan_op" />
+                  <SortableTh label="Brief verstuurd" col="brief_verstuurd_op" className="hidden md:table-cell" />
+                  <th className="hidden lg:table-cell">Logo</th>
                   <SortableTh label="Toegevoegd" col="created_at" className="hidden sm:table-cell" />
                 </tr>
               </thead>
               <tbody>
                 {prospecten.map((p) => (
                   <tr key={p.id} className="border-b border-line">
+                    <td>
+                      <input type="checkbox" name="ids" value={p.id} form="bulk-logos" aria-label={`Selecteer ${p.bedrijfsnaam}`} className="h-4 w-4 accent-amber-500" />
+                    </td>
                     <td className="text-ink-900">
                       <Link href={`/dashboard/prospects/${p.id}`} className="font-semibold text-amber-700 hover:text-amber-800">{p.bedrijfsnaam}</Link>
                       {(p.eigenaar || p.contactpersoon) && <span className="block text-xs text-warm">{p.eigenaar || p.contactpersoon}</span>}
@@ -185,6 +230,22 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
                         />
                       </form>
                     </td>
+                    <td className="whitespace-nowrap">
+                      {(p.aantal_scans ?? 0) > 0 ? (
+                        <span className="badge-actie" title={`Laatste scan ${fmt(p.laatste_scan_op ?? null)}`}>{p.aantal_scans}× · {fmt(p.laatste_scan_op ?? null)}</span>
+                      ) : (
+                        <span className="text-warm">-</span>
+                      )}
+                    </td>
+                    <td className="hidden whitespace-nowrap text-warm md:table-cell">{fmt(p.brief_verstuurd_op ?? null)}</td>
+                    <td className="hidden lg:table-cell">
+                      {p.logo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.logo_url} alt={`Logo ${p.bedrijfsnaam}`} className="h-7 w-14 object-contain" />
+                      ) : (
+                        <span className="text-warm">-</span>
+                      )}
+                    </td>
                     <td className="hidden whitespace-nowrap text-warm sm:table-cell">{fmt(p.created_at)}</td>
                   </tr>
                 ))}
@@ -195,11 +256,11 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
         {aantalPaginas > 1 && (
           <nav className="mt-4 flex items-center justify-between gap-4 text-sm" aria-label="Paginering">
             {huidigePagina > 1 ? (
-              <Link href={`/dashboard/prospects?pagina=${huidigePagina - 1}${statusQs}${zoekQs}${sortQs}`} className="font-semibold text-warm hover:text-ink-800">Vorige</Link>
+              <Link href={`/dashboard/prospects?pagina=${huidigePagina - 1}${statusQs}${zoekQs}${sortQs}${scanQs}`} className="font-semibold text-warm hover:text-ink-800">Vorige</Link>
             ) : <span />}
             <span className="text-warm">Pagina {huidigePagina} van {aantalPaginas}</span>
             {huidigePagina < aantalPaginas ? (
-              <Link href={`/dashboard/prospects?pagina=${huidigePagina + 1}${statusQs}${zoekQs}${sortQs}`} className="font-semibold text-warm hover:text-ink-800">Volgende</Link>
+              <Link href={`/dashboard/prospects?pagina=${huidigePagina + 1}${statusQs}${zoekQs}${sortQs}${scanQs}`} className="font-semibold text-warm hover:text-ink-800">Volgende</Link>
             ) : <span />}
           </nav>
         )}

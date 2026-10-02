@@ -204,3 +204,11 @@ export async function maakOrder(formData: FormData): Promise<void> {
   await logAudit('passessie_omgezet', { entiteit: 'order', entiteitId: order.id, details: { passessie: id } });
   redirect(`/dashboard/orders/${order.id}`);
 }
+
+/** Naar het tabblad Werknemers van de gekozen klant, waar je de maten per werknemer noteert. */
+export async function naarKlantWerknemers(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const orgId = String(formData.get('organisatie_id') ?? '').trim();
+  if (!orgId) redirect('/dashboard/passessie?fout=geen-klant');
+  redirect(`/dashboard/klanten/${encodeURIComponent(orgId)}?tab=werknemers`);
+}

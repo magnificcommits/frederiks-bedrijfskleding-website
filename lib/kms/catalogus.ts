@@ -191,6 +191,22 @@ function isPubliceerbaar(r: Rij): boolean {
   return fotosVan(r.afbeeldingen).length > 0 && (r.omschrijving?.trim().length ?? 0) > MIN_OMSCHRIJVING;
 }
 
+/**
+ * Url van de publieke productpagina, of null als het artikel daar niet staat
+ * (inactief, geen foto, te dunne omschrijving of een categorie zonder pagina).
+ * Zelfde regels als listPubliekeProducten, zodat een link nooit op een 404 uitkomt.
+ */
+export function publiekeProductUrl(r: {
+  naam: string; sku: string | null; categorie: string | null; omschrijving: string | null;
+  afbeeldingen: string[] | null; actief?: boolean | null;
+}): string | null {
+  if (r.actief === false) return null;
+  const cat = CATEGORIEEN.find((c) => c.naam === r.categorie);
+  if (!cat) return null;
+  if (fotosVan(r.afbeeldingen).length === 0 || (r.omschrijving?.trim().length ?? 0) <= MIN_OMSCHRIJVING) return null;
+  return `/assortiment/${cat.slug}/${productSlug(r)}`;
+}
+
 export async function listPubliekeProducten(opts: { categorieSlug?: string; merkSlug?: string } = {}): Promise<PubliekProduct[]> {
   const sb = kmsAdmin();
   if (!sb) return [];

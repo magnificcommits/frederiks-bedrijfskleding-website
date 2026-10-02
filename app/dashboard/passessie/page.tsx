@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { listKlantKeuze, listPassessies } from '@/lib/kms/passessies';
-import { startPassessie } from './actions';
+import { startPassessie, naarKlantWerknemers } from './actions';
 
 export const metadata: Metadata = { title: 'Passessies', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -61,6 +61,32 @@ export default async function PassessiesPage({ searchParams }: { searchParams: P
           {foutBoodschap[fout] ?? 'Er ging iets mis. Probeer het opnieuw.'}
         </p>
       )}
+
+      <section className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <h2 className="font-display text-lg font-bold text-ink-900">Maten noteren kan nu ook direct bij de klant</h2>
+        <p className="mt-1 max-w-3xl text-[14px] text-amber-900">
+          Op de klantpagina, tabblad Werknemers, zie je per werknemer alle artikelen uit zijn assortiment en vul je
+          meteen de maat in. Handig op een pasdag. Een passessie hieronder gebruik je als je er direct een order van
+          wilt maken.
+        </p>
+        <form action={naarKlantWerknemers} className="mt-3 flex flex-wrap items-end gap-3">
+          <label className="block text-sm font-medium text-ink-800">
+            Klant
+            <select name="organisatie_id" required className={`${inputCls} min-w-[16rem]`} defaultValue="">
+              <option value="" disabled>
+                Kies een klant
+              </option>
+              {klanten.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.naam}
+                  {k.plaats ? ` - ${k.plaats}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" className="knop-donker">Naar werknemers van deze klant</button>
+        </form>
+      </section>
 
       <section className="mt-8 panel p-4">
         <h2 className="font-display text-xl font-bold text-ink-900">Nieuwe sessie starten</h2>

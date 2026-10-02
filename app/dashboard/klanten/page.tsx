@@ -156,12 +156,27 @@ export default async function KlantenPage({
         <Drawer
           knop="Nieuwe klant"
           titel="Nieuwe klant"
-          beschrijving="Vul direct de contactpersoon en het inlog-e-mailadres in, dan kan de klant meteen inloggen op het portaal. Na opslaan ga je door naar de klantpagina voor de kledinglijn."
+          beschrijving="Vul direct de contactpersoon en het inlog-e-mailadres in, dan kan de klant meteen inloggen op het portaal. Na opslaan ga je door naar de klantpagina voor assortiment, werknemers en afdelingen."
         >
-          <form action={nieuweOrganisatie} className="flex flex-col gap-3">
+          <form action={nieuweOrganisatie} className="flex flex-col gap-4">
             <div>
               <label className="veld-label" htmlFor="k-naam">Bedrijfsnaam</label>
               <input id="k-naam" name="naam" required placeholder="Bedrijfsnaam" className="veld" />
+            </div>
+            <div>
+              <label className="veld-label" htmlFor="k-branche">Branche</label>
+              <input
+                id="k-branche"
+                name="branche"
+                list="k-branche-suggesties"
+                placeholder="Kies of typ een branche"
+                autoComplete="off"
+                className="veld"
+              />
+              <datalist id="k-branche-suggesties">
+                {branches.map((b) => <option key={b.branche} value={b.branche} />)}
+              </datalist>
+              <p className="veld-hint">Kies bij voorkeur een bestaande branche, dan werkt het filter op de klantenlijst.</p>
             </div>
             <div>
               <label className="veld-label" htmlFor="k-adres">Adres</label>
@@ -195,7 +210,7 @@ export default async function KlantenPage({
               <p className="veld-hint">Dit adres kan straks inloggen op /portaal via een e-maillink.</p>
             </div>
 
-            <button type="submit" className="knop-primair mt-2 self-start">Klant aanmaken</button>
+            <button type="submit" className="knop-primair mt-2 self-start px-4 py-2.5 text-[15px]">Klant aanmaken</button>
           </form>
         </Drawer>
       </div>

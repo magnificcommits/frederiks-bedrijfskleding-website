@@ -47,11 +47,12 @@ type SendArgs = { to: string; subject: string; html: string; replyTo?: string; f
  * Verstuurt e-mail via Resend. Zonder RESEND_API_KEY wordt er niets verstuurd
  * (en faalt de flow niet), handig voor preview/lokaal.
  */
-export async function sendEmail({ to, subject, html, replyTo, from, attachments }: SendArgs): Promise<{ sent: boolean }> {
-  if (!isEmailConfigured) return { sent: false };
+export async function sendEmail({ to, subject, html, replyTo, from, attachments }: SendArgs): Promise<{ sent: boolean; error?: string }> {
+  if (!isEmailConfigured) return { sent: false, error: 'E-mail is niet ingesteld (RESEND_API_KEY ontbreekt).' };
   const { Resend } = await import('resend');
   const resend = new Resend(env.resendApiKey);
-  await resend.emails.send({
+  // De Resend-SDK gooit geen fout bij een API-weigering maar geeft { error } terug.
+  const { error } = await resend.emails.send({
     from: from || env.resendFrom,
     to,
     subject,
@@ -59,5 +60,6 @@ export async function sendEmail({ to, subject, html, replyTo, from, attachments 
     ...(replyTo ? { replyTo } : {}),
     ...(attachments && attachments.length ? { attachments } : {}),
   });
+  if (error) return { sent: false, error: error.message || 'Versturen geweigerd door de mailserver.' };
   return { sent: true };
 }

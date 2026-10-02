@@ -1,21 +1,18 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import Drawer from '@/components/dashboard/Drawer';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import StatusChips from '@/components/dashboard/StatusChips';
 import Zoekbalk from '@/components/dashboard/Zoekbalk';
 import { telPerStatus } from '@/lib/kms/tellingen';
 import { listOffertesPaged, OFFERTE_STATUSSEN } from '@/lib/kms/offertes';
-import { listOrganisaties } from '@/lib/portaalAdmin';
 import { formatEuro, formatDatum } from '@/lib/format';
 import SortableTh from '@/components/dashboard/SortableTh';
 import EmptyState from '@/components/dashboard/EmptyState';
-import { maakOfferteActie, bulkOfferteStatusActie } from './actions';
+import { bulkOfferteStatusActie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Offertes', robots: { index: false, follow: false } };
 
-const inputCls = 'veld';
 const PER_PAGINA = 25;
 
 const statusBadge: Record<string, string> = {
@@ -46,10 +43,7 @@ export default async function OffertesPage({ searchParams }: { searchParams: Pro
   const huidigePagina = Math.max(1, Number(pagina) || 1);
   const richting = dir === 'asc' ? 'asc' : 'desc';
   // Totaalbedrag per offerte komt nu in één query mee (geen N+1 meer per rij).
-  const [{ rijen: offertes, totaal }, organisaties] = await Promise.all([
-    listOffertesPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, zoek: zoekTerm, status, sort, dir: richting }),
-    listOrganisaties(),
-  ]);
+  const { rijen: offertes, totaal } = await listOffertesPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, zoek: zoekTerm, status, sort, dir: richting });
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
   const statusQs = status ? `&status=${encodeURIComponent(status)}` : '';
   const sorteerQs = `${sort ? `&sort=${encodeURIComponent(sort)}` : ''}${dir ? `&dir=${encodeURIComponent(richting)}` : ''}`;
@@ -64,34 +58,7 @@ export default async function OffertesPage({ searchParams }: { searchParams: Pro
         <h1 className="dash-h1">Offertes</h1>
         <div className="flex items-center gap-2">
           <Link href="/dashboard" className="knop-tekst">Terug naar dashboard</Link>
-          <Drawer
-            knop="Nieuwe offerte"
-            titel="Nieuwe offerte"
-            beschrijving="Kies een klant en vul daarna de regels in op de offerte."
-          >
-            <form action={maakOfferteActie} className="mt-4 flex flex-col gap-3">
-                <div>
-                  <label className="veld-label">Klant</label>
-                  <select name="organisatie_id" className={inputCls} defaultValue="">
-                    <option value="">Geen klant gekoppeld</option>
-                    {organisaties.map((o) => <option key={o.id} value={o.id}>{o.naam}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="veld-label">Contactpersoon</label>
-                  <input name="contactpersoon" placeholder="Naam contactpersoon" className={inputCls} />
-                </div>
-                <div>
-                  <label className="veld-label">Geldig tot</label>
-                  <input type="date" name="geldig_tot" className={inputCls} />
-                </div>
-                <div>
-                  <label className="veld-label">Notitie</label>
-                  <textarea name="notitie" rows={2} placeholder="Interne notitie of toelichting" className={inputCls} />
-                </div>
-                <button type="submit" className="self-start knop-donker">Offerte aanmaken</button>
-            </form>
-          </Drawer>
+          <Link href="/dashboard/offertes/nieuw" className="knop-primair">Nieuwe offerte</Link>
         </div>
       </div>
       <p className="mt-2 text-sm text-warm">Offertes met hun status. Klik op een offertenummer om de regels te beheren en de offerte af te drukken.</p>

@@ -24,6 +24,9 @@ const CSP = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Logo-uploads (prospects, nieuwsbrief) lopen via server actions; standaard max 1 MB.
+  // Vercel staat per verzoek max 4,5 MB toe, dus 4 MB.
+  experimental: { serverActions: { bodySizeLimit: '4mb' } },
   outputFileTracingRoot: __dirname,
   images: {
     // Productfoto's staan bij de leveranciers op hun eigen CDN. next/image
@@ -44,7 +47,7 @@ const nextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           { key: 'Content-Security-Policy', value: CSP },
         ],

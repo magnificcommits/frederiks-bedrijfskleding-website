@@ -10,8 +10,12 @@ import {
   alsMailregel,
   alsCsv,
 } from '@/lib/kms/nieuwsbrief';
+import Drawer from '@/components/dashboard/Drawer';
+import EmptyState from '@/components/dashboard/EmptyState';
+import { ensureBasisTemplate, listNieuwsbrieven, webversieUrl, STATUS_LABEL, type NieuwsbriefKop } from '@/lib/nieuwsbrief/opslag';
 import AdressenKopieren from './AdressenKopieren';
-import { zetAfgemeldActie } from './actions';
+import BevestigKnop from './BevestigKnop';
+import { kopieerNieuwsbriefActie, nieuweNieuwsbriefActie, verwijderNieuwsbriefActie, zetAfgemeldActie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Nieuwsbrief', robots: { index: false, follow: false } };
@@ -38,14 +42,8 @@ function csvNaam(branche: string): string {
   return `nieuwsbrief-${deel}-${datum}.csv`;
 }
 
-export default async function NieuwsbriefPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ branche?: string; zoek?: string; ok?: string }>;
-}) {
-  if (!(await dashAuthed())) redirect('/dashboard');
-
-  const { branche, zoek, ok } = await searchParams;
+/** Tabblad Adressen: de bestaande lijst om te kopiëren en te exporteren. */
+async function AdressenTab({ branche, zoek, ok }: { branche?: string; zoek?: string; ok?: string }) {
   const brancheFilter = (branche ?? '').trim();
   const zoekTerm = (zoek ?? '').trim();
 
@@ -63,33 +61,26 @@ export default async function NieuwsbriefPage({
   /** URL met de andere filters intact. */
   function url(next: { zoek?: string; branche?: string }) {
     const p = new URLSearchParams();
+    p.set('tab', 'adressen');
     const z = next.zoek !== undefined ? next.zoek : zoekTerm;
     const b = next.branche !== undefined ? next.branche : brancheFilter;
     if (z) p.set('zoek', z);
     if (b) p.set('branche', b);
-    const qs = p.toString();
-    return qs ? `/dashboard/nieuwsbrief?${qs}` : '/dashboard/nieuwsbrief';
+    return `/dashboard/nieuwsbrief?${p.toString()}`;
   }
 
   return (
-    <main className="container-app py-6">
-      <div className="dash-kop justify-between gap-4">
-        <div className="flex items-baseline gap-2.5">
-          <h1 className="dash-h1">Nieuwsbrief</h1>
-          <span className="text-[13px] tabular-nums text-warm">
-            {heeftFilter ? `${mailbaar.length} van ${totaal}` : totaal}
-          </span>
-        </div>
-        <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">
-          Terug naar dashboard
-        </Link>
-      </div>
-
+    <>
+      <p className="text-[13px] text-warm">
+        <span className="font-semibold tabular-nums text-ink-900">{heeftFilter ? `${mailbaar.length} van ${totaal}` : totaal}</span>{' '}
+        adressen in de lijst
+      </p>
       <p className="dash-sub mt-2 max-w-3xl">
         Alle algemene e-mailadressen van klanten, met bedrijf en branche erbij, plus de aanmeldingen
         via het formulier op de site. De lijst wordt live opgebouwd uit de klantkaarten, dus een
         nieuwe klant staat er meteen in zodra het algemene e-mailadres is ingevuld. Kies een branche,
-        kopieer de adressen en plak ze in het bcc-veld van je mailprogramma.
+        kopieer de adressen en plak ze in het bcc-veld van je mailprogramma. Versturen vanuit het programma zelf
+        doe je op het tabblad Nieuwsbrieven; daar wordt dezelfde lijst gebruikt.
       </p>
 
       {ok && okBoodschap[ok] && (
@@ -106,6 +97,7 @@ export default async function NieuwsbriefPage({
 
       <div className="dash-filter flex flex-wrap items-center gap-2">
         <form method="get" className="flex items-center gap-2">
+          <input type="hidden" name="tab" value="adressen" />
           {brancheFilter && <input type="hidden" name="branche" value={brancheFilter} />}
           <input
             name="zoek"
@@ -132,7 +124,7 @@ export default async function NieuwsbriefPage({
           </Link>
         )}
         {heeftFilter && (
-          <Link href="/dashboard/nieuwsbrief" className="knop-tekst">
+          <Link href="/dashboard/nieuwsbrief?tab=adressen" className="knop-tekst">
             Alles wissen
           </Link>
         )}
@@ -285,6 +277,354 @@ export default async function NieuwsbriefPage({
           </div>
         </details>
       )}
+    </>
+  );
+}
+
+const FOUTEN: Record<string, string> = {
+  nieuwsbrief: 'Er kon geen nieuwe nieuwsbrief worden gemaakt. Probeer het nog een keer.',
+  'niet-verwijderen': 'Een verzonden of ingeplande nieuwsbrief kun je niet verwijderen.',
+};
+
+function tijdNl(iso: string | null): string {
+  if (!iso) return '';
+  return new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }).format(
+    new Date(iso),
+  );
+}
+
+function dagNl(iso: string | null): string {
+  if (!iso) return '';
+  return new Intl.DateTimeFormat('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' }).format(new Date(iso));
+}
+
+function KopieerKnop({ id, label = 'Kopiëren' }: { id: string; label?: string }) {
+  return (
+    <form action={kopieerNieuwsbriefActie}>
+      <input type="hidden" name="id" value={id} />
+      <button type="submit" className="knop-tekst">
+        {label}
+      </button>
+    </form>
+  );
+}
+
+function VerwijderKnop({ brief }: { brief: NieuwsbriefKop }) {
+  return (
+    <form action={verwijderNieuwsbriefActie}>
+      <input type="hidden" name="id" value={brief.id} />
+      <BevestigKnop vraag={`"${brief.naam}" verwijderen? Dit kan niet ongedaan worden gemaakt.`}>Verwijderen</BevestigKnop>
+    </form>
+  );
+}
+
+/** Tabblad Nieuwsbrieven: concepten, ingepland, verzonden en templates. */
+async function BrievenTab({ fout }: { fout?: string }) {
+  const templateId = await ensureBasisTemplate();
+  const alle = await listNieuwsbrieven();
+  const templates = alle.filter((b) => b.is_template);
+  const brieven = alle.filter((b) => !b.is_template);
+  const concepten = brieven.filter((b) => b.status === 'concept' || b.status === 'mislukt');
+  const gepland = brieven
+    .filter((b) => b.status === 'gepland' || b.status === 'verzenden')
+    .sort((a, b) => (a.gepland_op ?? '').localeCompare(b.gepland_op ?? ''));
+  const verzonden = brieven
+    .filter((b) => b.status === 'verzonden')
+    .sort((a, b) => (b.verzonden_op ?? '').localeCompare(a.verzonden_op ?? ''));
+
+  return (
+    <div className="flex flex-col gap-6">
+      {fout && FOUTEN[fout] && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-[14px] font-semibold text-red-700">{FOUTEN[fout]}</p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Drawer
+          knop="Nieuwe nieuwsbrief"
+          titel="Nieuwe nieuwsbrief"
+          beschrijving="Begin met de basistemplate (header, footer en de vaste opbouw), of met een kopie van een eerdere nieuwsbrief."
+        >
+          <form action={nieuweNieuwsbriefActie} className="mt-4 flex flex-col gap-4">
+            <div>
+              <label className="veld-label" htmlFor="nb-naam">
+                Naam (alleen voor jezelf)
+              </label>
+              <input id="nb-naam" name="naam" placeholder="Bijv. Nieuwsbrief november" className="veld text-[15px]" />
+            </div>
+            <div>
+              <label className="veld-label" htmlFor="nb-van">
+                Begin met
+              </label>
+              <select id="nb-van" name="van" defaultValue={templateId ?? ''} className="veld text-[15px]">
+                {templates.length > 0 && (
+                  <optgroup label="Templates">
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.naam}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {brieven.length > 0 && (
+                  <optgroup label="Kopie van een eerdere nieuwsbrief">
+                    {brieven.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.naam}
+                        {b.verzonden_op ? ` (verzonden ${formatDatum(b.verzonden_op)})` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </div>
+            <div>
+              <button type="submit" className="knop-primair text-[15px]">
+                Maken en openen
+              </button>
+            </div>
+          </form>
+        </Drawer>
+        {templateId && (
+          <Link href={`/dashboard/nieuwsbrief/${templateId}`} className="knop-stil">
+            Template beheren
+          </Link>
+        )}
+      </div>
+
+      <section>
+        <h2 className="font-display text-lg font-bold text-ink-900">Concepten</h2>
+        {concepten.length === 0 ? (
+          <div className="mt-2">
+            <EmptyState tekst="Er staan geen concepten klaar. Klik op Nieuwe nieuwsbrief om er een te maken." />
+          </div>
+        ) : (
+          <div className="panel mt-2 overflow-x-auto">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Naam</th>
+                  <th>Onderwerp</th>
+                  <th>Laatst bewerkt</th>
+                  <th>
+                    <span className="sr-only">Acties</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {concepten.map((b) => (
+                  <tr key={b.id}>
+                    <td>
+                      <Link href={`/dashboard/nieuwsbrief/${b.id}`} className="rij-link">
+                        {b.naam}
+                      </Link>
+                      {b.status === 'mislukt' && <span className="badge ml-2 bg-red-100 text-red-800">{STATUS_LABEL.mislukt}</span>}
+                    </td>
+                    <td className="stil">{b.onderwerp || '—'}</td>
+                    <td className="stil whitespace-nowrap">{tijdNl(b.updated_at)}</td>
+                    <td>
+                      <div className="flex justify-end gap-3">
+                        <Link href={`/dashboard/nieuwsbrief/${b.id}`} className="knop-tekst">
+                          Openen
+                        </Link>
+                        <KopieerKnop id={b.id} />
+                        <VerwijderKnop brief={b} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {gepland.length > 0 && (
+        <section>
+          <h2 className="font-display text-lg font-bold text-ink-900">Ingepland en bezig</h2>
+          <div className="panel mt-2 overflow-x-auto">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Naam</th>
+                  <th>Onderwerp</th>
+                  <th>Wanneer</th>
+                  <th>
+                    <span className="sr-only">Acties</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {gepland.map((b) => (
+                  <tr key={b.id}>
+                    <td>
+                      <Link href={`/dashboard/nieuwsbrief/${b.id}`} className="rij-link">
+                        {b.naam}
+                      </Link>
+                    </td>
+                    <td className="stil">{b.onderwerp || '—'}</td>
+                    <td className="whitespace-nowrap">
+                      {b.status === 'verzenden' ? (
+                        <span className="badge-actie">
+                          Wordt verstuurd ({b.aantal_verzonden} van {b.aantal_ontvangers ?? '?'})
+                        </span>
+                      ) : (
+                        <span>{dagNl(b.gepland_op)}, &apos;s ochtends tussen 07:00 en 08:00</span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="flex justify-end gap-3">
+                        <Link href={`/dashboard/nieuwsbrief/${b.id}?tab=versturen`} className="knop-tekst">
+                          Openen
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      <section>
+        <h2 className="font-display text-lg font-bold text-ink-900">Verzonden</h2>
+        {verzonden.length === 0 ? (
+          <p className="mt-2 text-[14px] text-warm">Nog geen nieuwsbrieven verstuurd vanuit het programma.</p>
+        ) : (
+          <div className="panel mt-2 overflow-x-auto">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Naam</th>
+                  <th>Onderwerp</th>
+                  <th>Verzonden op</th>
+                  <th className="text-right">Ontvangers</th>
+                  <th className="text-right">Verstuurd</th>
+                  <th className="text-right">Niet gelukt</th>
+                  <th>
+                    <span className="sr-only">Acties</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {verzonden.map((b) => (
+                  <tr key={b.id}>
+                    <td>
+                      <Link href={`/dashboard/nieuwsbrief/${b.id}?tab=versturen`} className="rij-link">
+                        {b.naam}
+                      </Link>
+                    </td>
+                    <td className="stil">{b.onderwerp || '—'}</td>
+                    <td className="stil whitespace-nowrap">{tijdNl(b.verzonden_op)}</td>
+                    <td className="text-right tabular-nums">{b.aantal_ontvangers ?? 0}</td>
+                    <td className="text-right tabular-nums">{b.aantal_verzonden}</td>
+                    <td className={`text-right tabular-nums ${b.aantal_fouten ? 'font-semibold text-red-700' : ''}`}>{b.aantal_fouten}</td>
+                    <td>
+                      <div className="flex justify-end gap-3">
+                        <a href={webversieUrl(b.web_token)} target="_blank" rel="noopener" className="knop-tekst">
+                          Webversie
+                        </a>
+                        <KopieerKnop id={b.id} label="Kopieer als nieuwe" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="font-display text-lg font-bold text-ink-900">Templates</h2>
+        <p className="mt-1 max-w-3xl text-[14px] text-warm">
+          Een template is de basis waar elke nieuwe nieuwsbrief mee begint: de vaste header, footer en opbouw. Pas de
+          template aan als je iets voor alle volgende nieuwsbrieven wilt veranderen.
+        </p>
+        <div className="panel mt-2 overflow-x-auto">
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Naam</th>
+                <th>Laatst bewerkt</th>
+                <th>
+                  <span className="sr-only">Acties</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {templates.map((t) => (
+                <tr key={t.id}>
+                  <td>
+                    <Link href={`/dashboard/nieuwsbrief/${t.id}`} className="rij-link">
+                      {t.naam}
+                    </Link>
+                  </td>
+                  <td className="stil whitespace-nowrap">{tijdNl(t.updated_at)}</td>
+                  <td>
+                    <div className="flex justify-end gap-3">
+                      <form action={nieuweNieuwsbriefActie}>
+                        <input type="hidden" name="van" value={t.id} />
+                        <button type="submit" className="knop-tekst">
+                          Nieuwe nieuwsbrief hiervan
+                        </button>
+                      </form>
+                      <Link href={`/dashboard/nieuwsbrief/${t.id}`} className="knop-tekst">
+                        Bewerken
+                      </Link>
+                      <KopieerKnop id={t.id} />
+                      {templates.length > 1 && <VerwijderKnop brief={t} />}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export default async function NieuwsbriefPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ branche?: string; zoek?: string; ok?: string; tab?: string; fout?: string }>;
+}) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+
+  const { branche, zoek, ok, tab, fout } = await searchParams;
+  // Filters of een melding over een adres horen bij het tabblad Adressen.
+  const adressenActief = tab === 'adressen' || Boolean(branche || zoek || (ok && ok in okBoodschap));
+
+  return (
+    <main className="container-app py-6">
+      <div className="dash-kop justify-between gap-4">
+        <h1 className="dash-h1">Nieuwsbrief</h1>
+        <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">
+          Terug naar dashboard
+        </Link>
+      </div>
+
+      <nav className="mt-4 flex flex-wrap gap-1 border-b border-line" aria-label="Onderdelen nieuwsbrief">
+        {[
+          { id: 'brieven', label: 'Nieuwsbrieven', href: '/dashboard/nieuwsbrief', aan: !adressenActief },
+          { id: 'adressen', label: 'Adressen', href: '/dashboard/nieuwsbrief?tab=adressen', aan: adressenActief },
+        ].map((t) => (
+          <Link
+            key={t.id}
+            href={t.href}
+            aria-current={t.aan ? 'page' : undefined}
+            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+              t.aan ? 'border-amber-600 text-ink-900' : 'border-transparent text-warm hover:text-ink-800'
+            }`}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </nav>
+
+      <div className="pt-6">{adressenActief ? <AdressenTab branche={branche} zoek={zoek} ok={ok} /> : <BrievenTab fout={fout} />}</div>
     </main>
   );
 }

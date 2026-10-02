@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import { getOfferte, offerteTotalen, OFFERTE_STATUSSEN, getKlantProductOpties } from '@/lib/kms/offertes';
-import { listOrganisaties } from '@/lib/portaalAdmin';
+import { getOfferte, offerteTotalen, OFFERTE_STATUSSEN, listKlantenVoorOfferte } from '@/lib/kms/offertes';
+import KlantContactKiezer from '../KlantContactKiezer';
 import { formatEuro, formatDatum } from '@/lib/format';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import {
@@ -23,6 +23,12 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Offerte', robots: { index: false, follow: false } };
 
 const inputCls = 'veld';
+const groot = 'veld py-2.5 text-[15px]';
+
+/** Getal in een invoerveld met een komma als decimaalteken (34,5 in plaats van 34.5). */
+function getalTekst(n: number | null): string {
+  return String(n ?? 0).replace('.', ',');
+}
 
 const statusBadge: Record<string, string> = {
   concept: 'bg-ink-100 text-ink-600',
@@ -56,7 +62,7 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
     );
   }
 
-  const [offerte, organisaties] = await Promise.all([getOfferte(id), listOrganisaties()]);
+  const [offerte, klanten] = await Promise.all([getOfferte(id), listKlantenVoorOfferte()]);
   if (!offerte) {
     return (
       <main className="container-smal py-20">
@@ -70,7 +76,6 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
   }
 
   const { subtotaal, korting, btw, totaal, marge } = offerteTotalen(offerte.regels, offerte.btw_pct);
-  const opties = await getKlantProductOpties(offerte.organisatie_id);
   const pakketten = offerte.organisatie_id ? await listPakketten(offerte.organisatie_id) : [];
   const verlopen = !!offerte.geldig_tot && offerte.status !== 'geaccepteerd' && offerte.status !== 'afgewezen' && new Date(offerte.geldig_tot) < new Date(new Date().toDateString());
 
@@ -92,32 +97,31 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
         <div className="min-w-0 space-y-6">
           <div className="panel p-4">
             <h2 className="font-display text-base font-bold text-ink-900">Kopgegevens</h2>
-            <form action={werkOfferteActie} className="mt-3 grid gap-3 sm:grid-cols-2">
+            <form action={werkOfferteActie} className="mt-4 space-y-5">
               <input type="hidden" name="offerteId" value={offerte.id} />
-              <div className="sm:col-span-2">
-                <label className="veld-label">Klant</label>
-                <select name="organisatie_id" className={inputCls} defaultValue={offerte.organisatie_id ?? ''}>
-                  <option value="">Geen klant gekoppeld</option>
-                  {organisaties.map((o) => <option key={o.id} value={o.id}>{o.naam}</option>)}
-                </select>
+              {/* key: na opslaan opnieuw opbouwen met de opgeslagen klant en contactpersoon. */}
+              <KlantContactKiezer
+                key={`${offerte.organisatie_id ?? ''}|${offerte.contactpersoon ?? ''}`}
+                klanten={klanten}
+                beginKlantId={offerte.organisatie_id ?? ''}
+                beginContact={offerte.contactpersoon ?? ''}
+              />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className="veld-label" htmlFor="kop-geldig">Geldig tot</label>
+                  <input id="kop-geldig" type="date" name="geldig_tot" defaultValue={dateInputWaarde(offerte.geldig_tot)} className={groot} />
+                </div>
+                <div>
+                  <label className="veld-label" htmlFor="kop-btw">Btw %</label>
+                  <input id="kop-btw" name="btw_pct" inputMode="decimal" defaultValue={String(offerte.btw_pct ?? 21)} className={groot} />
+                </div>
               </div>
               <div>
-                <label className="veld-label">Contactpersoon</label>
-                <input name="contactpersoon" defaultValue={offerte.contactpersoon ?? ''} className={inputCls} />
+                <label className="veld-label" htmlFor="kop-notitie">Notitie</label>
+                <textarea id="kop-notitie" name="notitie" rows={4} defaultValue={offerte.notitie ?? ''} placeholder="Toelichting voor de klant" className={groot} />
+                <p className="veld-hint">Deze tekst staat onderaan de offerte die de klant krijgt.</p>
               </div>
               <div>
-                <label className="veld-label">Geldig tot</label>
-                <input type="date" name="geldig_tot" defaultValue={dateInputWaarde(offerte.geldig_tot)} className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Btw %</label>
-                <input name="btw_pct" inputMode="decimal" defaultValue={String(offerte.btw_pct ?? 21)} className={inputCls} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="veld-label">Notitie</label>
-                <textarea name="notitie" rows={2} defaultValue={offerte.notitie ?? ''} className={inputCls} />
-              </div>
-              <div className="sm:col-span-2">
                 <button type="submit" className="knop-donker">Kopgegevens opslaan</button>
               </div>
             </form>
@@ -128,75 +132,119 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
             {offerte.regels.length === 0 ? (
               <p className="mt-3 rounded-lg border border-dashed border-line bg-mist px-5 py-6 text-center text-[13px] text-warm">Nog geen regels op deze offerte. Voeg er hieronder een toe.</p>
             ) : (
-              <div className="panel mt-3">
-                <table className="tbl">
+              <div className="panel mt-3 overflow-x-auto">
+                {/* Vaste kolombreedtes (table-fixed + colgroup): koppen staan exact boven de
+                    waarden, ook als een regel een foto of een extra regel met kleur heeft.
+                    De invoervelden horen via het form-attribuut bij het formulier in de laatste kolom. */}
+                <table className="tbl min-w-[820px] table-fixed">
+                  <colgroup>
+                    <col className="w-[4.5rem]" />
+                    <col />
+                    <col className="w-24" />
+                    <col className="w-32" />
+                    <col className="w-24" />
+                    <col className="w-32" />
+                    <col className="w-[7.5rem]" />
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th>Omschrijving</th>
-                      <th className="w-20">Aantal</th>
-                      <th className="w-28">Stukprijs</th>
-                      <th className="w-20">Korting</th>
-                      <th className="num w-28">Regeltotaal</th>
-                      <th className="w-28"></th>
+                      <th><span className="sr-only">Foto</span></th>
+                      <th className="text-left">Omschrijving</th>
+                      <th className="text-right">Aantal</th>
+                      <th className="text-right">Stukprijs</th>
+                      <th className="text-right">Korting %</th>
+                      <th className="text-right">Regeltotaal</th>
+                      <th><span className="sr-only">Acties</span></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {offerte.regels.map((r) => (
-                      <tr key={r.id}>
-                        <td colSpan={6}>
-                          <form action={werkRegelActie} className="grid grid-cols-12 items-center gap-2">
-                            <input type="hidden" name="offerteId" value={offerte.id} />
-                            <input type="hidden" name="regelId" value={r.id} />
-                            <div className="col-span-12 sm:col-span-5">
-                              <input name="omschrijving" required defaultValue={r.omschrijving ?? ''} aria-label="Omschrijving" className={inputCls} />
+                    {offerte.regels.map((r) => {
+                      const formId = `regel-${r.id}`;
+                      const regelTotaal = (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0) * (1 - (Number(r.korting_pct) || 0) / 100);
+                      return (
+                        <tr key={r.id} className="align-top">
+                          <td className="py-2.5">
+                            {r.afbeelding ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img src={r.afbeelding} alt={r.kleur ? `Foto in ${r.kleur}` : ''} className="h-12 w-12 rounded border border-line bg-white object-contain" />
+                            ) : (
+                              <span className="flex h-12 w-12 items-center justify-center rounded border border-dashed border-line text-[10px] text-warm">
+                                {r.product_id ? 'geen foto' : 'vrij'}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5">
+                            <input form={formId} name="omschrijving" required defaultValue={r.omschrijving ?? ''} aria-label="Omschrijving" className={inputCls} />
+                            {r.product_id && (
+                              <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-warm">
+                                <span>
+                                  Kleur: <span className="font-semibold text-ink-900">{r.kleur || 'standaard'}</span>
+                                </span>
+                                <label className="flex items-center gap-1.5">
+                                  Maat:
+                                  <input
+                                    form={formId}
+                                    name="maat"
+                                    defaultValue={r.maat ?? ''}
+                                    placeholder="nog niet bekend"
+                                    aria-label="Maat"
+                                    className="w-32 rounded border border-line px-1.5 py-0.5 text-[12px] text-ink-900 placeholder:text-ink-300 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                                  />
+                                </label>
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2.5">
+                            <input form={formId} name="aantal" inputMode="decimal" defaultValue={getalTekst(r.aantal)} aria-label="Aantal" className={`${inputCls} text-right tabular-nums`} />
+                          </td>
+                          <td className="py-2.5">
+                            <input form={formId} name="stukprijs" inputMode="decimal" defaultValue={getalTekst(r.stukprijs)} aria-label="Stukprijs" className={`${inputCls} text-right tabular-nums`} />
+                          </td>
+                          <td className="py-2.5">
+                            <input form={formId} name="korting_pct" inputMode="decimal" defaultValue={getalTekst(r.korting_pct)} aria-label="Korting %" className={`${inputCls} text-right tabular-nums`} />
+                          </td>
+                          <td className="num py-2.5 pt-4 font-semibold text-ink-900">{formatEuro(regelTotaal)}</td>
+                          <td className="py-2.5">
+                            <div className="flex flex-col items-end gap-1">
+                              <form id={formId} action={werkRegelActie}>
+                                <input type="hidden" name="offerteId" value={offerte.id} />
+                                <input type="hidden" name="regelId" value={r.id} />
+                                <button type="submit" className="knop-stil">Opslaan</button>
+                              </form>
+                              <form action={verwijderRegelActie}>
+                                <input type="hidden" name="offerteId" value={offerte.id} />
+                                <input type="hidden" name="regelId" value={r.id} />
+                                <ConfirmSubmit message="Deze regel verwijderen?" className="text-[12px] font-semibold text-warm hover:text-ink-900">Verwijderen</ConfirmSubmit>
+                              </form>
                             </div>
-                            <div className="col-span-3 sm:col-span-1">
-                              <input name="aantal" inputMode="decimal" defaultValue={String(r.aantal ?? 0)} aria-label="Aantal" className={inputCls} />
-                            </div>
-                            <div className="col-span-4 sm:col-span-2">
-                              <input name="stukprijs" inputMode="decimal" defaultValue={String(r.stukprijs ?? 0)} aria-label="Stukprijs" className={inputCls} />
-                            </div>
-                            <div className="col-span-2 sm:col-span-1">
-                              <input name="korting_pct" inputMode="decimal" defaultValue={String(r.korting_pct ?? 0)} aria-label="Korting %" title="Korting %" className={inputCls} />
-                            </div>
-                            <div className="col-span-3 sm:col-span-2 text-right text-[13px] font-semibold tabular-nums text-ink-900">{formatEuro((Number(r.aantal) || 0) * (Number(r.stukprijs) || 0) * (1 - (Number(r.korting_pct) || 0) / 100))}</div>
-                            <div className="col-span-12 flex items-center gap-3 sm:col-span-1 sm:justify-end">
-                              <button type="submit" className="knop-stil">Opslaan</button>
-                            </div>
-                          </form>
-                          <form action={verwijderRegelActie} className="mt-1">
-                            <input type="hidden" name="offerteId" value={offerte.id} />
-                            <input type="hidden" name="regelId" value={r.id} />
-                            <ConfirmSubmit message="Deze regel verwijderen?" className="text-[11px] font-semibold text-warm hover:text-ink-900">Verwijderen</ConfirmSubmit>
-                          </form>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2">
-            <RegelToevoegen offerteId={offerte.id} opties={opties} />
-            {pakketten.length > 0 && (
-              <div className="panel p-4">
-                <h3 className="font-display text-base font-bold text-ink-900">Vast pakket toevoegen</h3>
-                <p className="veld-hint">Voeg in een keer alle producten van een klant-pakket toe als regels.</p>
-                <form action={voegPakketActie} className="mt-3">
-                  <input type="hidden" name="offerteId" value={offerte.id} />
-                  <select name="pakketId" required defaultValue="" className={inputCls}>
-                    <option value="">Kies een pakket</option>
-                    {pakketten.map((p) => <option key={p.id} value={p.id}>{p.naam}</option>)}
-                  </select>
-                  <button type="submit" className="knop-donker mt-2 w-full">Pakket toevoegen</button>
-                </form>
-              </div>
-            )}
-          </div>
-        </div>
+          {/* key: na het toevoegen van een regel begint de kiezer weer leeg. */}
+          <RegelToevoegen key={offerte.regels.length} offerteId={offerte.id} organisatieId={offerte.organisatie_id} />
 
+          {pakketten.length > 0 && (
+            <div className="panel max-w-xl p-4">
+              <h3 className="font-display text-base font-bold text-ink-900">Vast pakket toevoegen</h3>
+              <p className="veld-hint">Voeg in een keer alle producten van een klant-pakket toe als regels.</p>
+              <form action={voegPakketActie} className="mt-3 flex flex-wrap items-end gap-2">
+                <input type="hidden" name="offerteId" value={offerte.id} />
+                <select name="pakketId" required defaultValue="" className={`${inputCls} min-w-[16rem] flex-1`}>
+                  <option value="">Kies een pakket</option>
+                  {pakketten.map((p) => <option key={p.id} value={p.id}>{p.naam}</option>)}
+                </select>
+                <button type="submit" className="knop-donker">Pakket toevoegen</button>
+              </form>
+            </div>
+          )}
+        </div>
         <aside className="space-y-4 lg:sticky lg:top-16">
           <TotaalKaart
             regels={[

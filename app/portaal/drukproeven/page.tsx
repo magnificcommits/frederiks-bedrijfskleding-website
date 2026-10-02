@@ -23,6 +23,8 @@ type Drukproef = {
   positie: string;
   logo_url: string | null;
   afbeelding_url: string | null;
+  achter_afbeelding_url?: string | null;
+  ontwerp?: unknown;
   omschrijving: string | null;
   status: string;
   opmerking: string | null;
@@ -137,7 +139,7 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
 
                 {p.omschrijving && <p className="mt-3 text-sm text-warm">{p.omschrijving}</p>}
 
-                <div className="mx-auto mt-4 max-w-xs">
+                <div className={`mx-auto mt-4 ${p.ontwerp ? 'max-w-2xl' : 'max-w-xs'}`}>
                   <DrukproefPreview
                     afbeeldingUrl={p.afbeelding_url}
                     type={p.type}
@@ -145,6 +147,8 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
                     logoUrl={p.logo_url}
                     positie={p.positie}
                     techniek={p.techniek}
+                    ontwerp={p.ontwerp}
+                    achterAfbeeldingUrl={p.achter_afbeelding_url ?? null}
                   />
                 </div>
 

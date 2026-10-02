@@ -83,9 +83,17 @@ export default async function PassessieDetail({
             {sessie.notitie ? ` - ${sessie.notitie}` : ''}
           </p>
         </div>
-        <Link href="/dashboard/passessie" className="text-sm font-semibold text-warm hover:text-ink-800">
-          Alle passessies
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          <Link
+            href={`/dashboard/klanten/${sessie.organisatie_id}?tab=werknemers`}
+            className="text-sm font-semibold text-amber-700 hover:text-amber-800"
+          >
+            Werknemers en maten bij de klant
+          </Link>
+          <Link href="/dashboard/passessie" className="text-sm font-semibold text-warm hover:text-ink-800">
+            Alle passessies
+          </Link>
+        </div>
       </div>
 
       {ok && okBoodschap[ok] && (

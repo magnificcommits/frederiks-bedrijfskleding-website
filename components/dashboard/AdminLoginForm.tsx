@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { createPortalBrowserClient } from '@/lib/portaal/supabaseBrowser';
+import { controleerLinkAanvraag } from '@/app/dashboard/actions';
 
 export default function AdminLoginForm() {
   const [email, setEmail] = useState('');
@@ -14,15 +15,27 @@ export default function AdminLoginForm() {
     const sb = createPortalBrowserClient();
     if (!sb) { setError('Inloggen met e-maillink is nog niet geconfigureerd.'); return; }
     setBezig(true);
-    const { error } = await sb.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/dashboard/auth/callback`,
-        shouldCreateUser: false,
-      },
-    });
-    setBezig(false);
-    if (error) setError(error.message); else setSent(true);
+    try {
+      // Eerst controleren of er niet te veel links zijn aangevraagd (beveiliging).
+      const controle = await controleerLinkAanvraag(email.trim());
+      if (!controle.ok) {
+        setError(controle.fout ?? 'Inloggen lukt nu even niet. Probeer het over 15 minuten opnieuw.');
+        return;
+      }
+      const { error } = await sb.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard/auth/callback`,
+          shouldCreateUser: false,
+        },
+      });
+      if (error) setError('Het versturen van de inloglink is niet gelukt. Controleer het e-mailadres of probeer het later opnieuw.');
+      else setSent(true);
+    } catch {
+      setError('Er ging iets mis. Probeer het opnieuw.');
+    } finally {
+      setBezig(false);
+    }
   }
 
   if (sent) {

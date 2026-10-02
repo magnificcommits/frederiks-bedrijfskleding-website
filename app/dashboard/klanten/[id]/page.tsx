@@ -3,14 +3,18 @@ import { redirect } from 'next/navigation';
 import { isLeadsDbConfigured } from '@/lib/env';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { getOrganisatie, getGebruikers, listItems, listBestellingen } from '@/lib/portaalAdmin';
-import { listContactpersonen, listActiviteiten, getKlantVerkoop, ACTIVITEIT_SOORTEN } from '@/lib/kms/crm';
+import { listContactpersonen, listActiviteiten, getKlantVerkoop, listBranches, ACTIVITEIT_SOORTEN, type Contactpersoon } from '@/lib/kms/crm';
 import { listLogos } from '@/lib/kms/logos';
 import { listKlantAssortiment } from '@/lib/kms/assortiment';
-import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus, nieuwContact, verwijderContactActie, nieuweActiviteit, verwijderActiviteitActie, nieuwLogoActie, verwijderLogoActie, zetRetourenActiefActie } from './actions';
+import { listAfdelingen, listVestigingen } from '@/lib/kms/structuur';
+import { listWerknemers, pasdagGegevens } from '@/lib/kms/werknemers';
+import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus, nieuwContact, werkContactActie, verwijderContactActie, contactNaarWerknemerActie, nieuweActiviteit, verwijderActiviteitActie, nieuwLogoActie, verwijderLogoActie, zetRetourenActiefActie } from './actions';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import Tabs, { type TabDef } from '@/components/dashboard/Tabs';
 import Drawer from '@/components/dashboard/Drawer';
 import AssortimentBeheer from './AssortimentBeheer';
+import WerknemersTab from './WerknemersTab';
+import AfdelingenTab from './AfdelingenTab';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klant', robots: { index: false, follow: false } };
@@ -37,12 +41,22 @@ const SOORT_LABEL: Record<string, string> = {
   notitie: 'Notitie', telefoon: 'Telefoon', bezoek: 'Bezoek', offerte: 'Offerte', mail: 'Mail',
 };
 
-const inputCls = 'veld';
+const inputCls = 'veld py-2 text-[15px]';
 const fileCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-mist file:px-3 file:py-1 file:text-xs file:font-semibold file:text-ink-700 hover:file:bg-line focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 
-export default async function KlantPage({ params }: { params: Promise<{ id: string }> }) {
+const TAB_IDS = ['gegevens', 'assortiment', 'werknemers', 'afdelingen', 'contact', 'verkoop', 'logos'];
+
+export default async function KlantPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   if (!(await authed())) redirect('/dashboard');
   const { id } = await params;
+  const { tab } = await searchParams;
+  const startTab = tab && TAB_IDS.includes(tab) ? tab : 'gegevens';
 
   if (!isLeadsDbConfigured) {
     return (
@@ -70,7 +84,7 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
   }
   const retourenAan = (org as { retouren_actief?: boolean | null }).retouren_actief !== false;
 
-  const [gebruikers, items, bestellingen, contactpersonen, activiteiten, verkoop, logos, assortiment] = await Promise.all([
+  const [gebruikers, items, bestellingen, contactpersonen, activiteiten, verkoop, logos, assortiment, werknemers, afdelingen, vestigingen, branches] = await Promise.all([
     getGebruikers(id),
     listItems(id),
     listBestellingen(id),
@@ -79,7 +93,16 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
     getKlantVerkoop(id),
     listLogos(id),
     listKlantAssortiment(id),
+    listWerknemers(id),
+    listAfdelingen(id),
+    listVestigingen(id),
+    listBranches(),
   ]);
+  const actieveWerknemers = werknemers.filter((w) => w.actief);
+  const pasdag = await pasdagGegevens(id, actieveWerknemers);
+  const afdelingKeuzes = afdelingen.map((a) => ({ id: a.id, naam: a.naam }));
+  const hoofdcontact = contactpersonen.find((c) => c.hoofdcontact) ?? null;
+  const facturatiecontact = contactpersonen.find((c) => c.facturatie) ?? null;
 
   const vandaag = new Date(); vandaag.setHours(0, 0, 0, 0);
   const isOpvolgingDue = (d: string | null) => {
@@ -94,9 +117,25 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
         <h2 className="font-display text-xl font-bold text-ink-900">Gegevens</h2>
         <form action={werkOrganisatie} className="mt-4 grid gap-4 panel p-4 sm:grid-cols-2">
           <input type="hidden" name="orgId" value={id} />
-          <div className="sm:col-span-2">
-            <label className="veld-label">Bedrijfsnaam</label>
-            <input name="naam" required defaultValue={org.naam} className={inputCls} />
+          <div>
+            <label className="veld-label" htmlFor="org-naam">Bedrijfsnaam</label>
+            <input id="org-naam" name="naam" required defaultValue={org.naam} className={inputCls} />
+          </div>
+          <div>
+            <label className="veld-label" htmlFor="org-branche">Branche</label>
+            <input
+              id="org-branche"
+              name="branche"
+              list="branche-suggesties"
+              defaultValue={org.branche ?? ''}
+              placeholder="Kies of typ een branche"
+              autoComplete="off"
+              className={inputCls}
+            />
+            <datalist id="branche-suggesties">
+              {branches.map((b) => <option key={b} value={b} />)}
+            </datalist>
+            <p className="veld-hint">Kies bij voorkeur een bestaande branche, dan werkt het filter op de klantenlijst.</p>
           </div>
           <div className="sm:col-span-2">
             <label className="veld-label">Adres</label>
@@ -241,47 +280,93 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
     </>
   );
 
+  function contactFormulier(c: Contactpersoon | null) {
+    const sleutel = c?.id ?? 'nieuw';
+    return (
+      <form action={c ? werkContactActie : nieuwContact} className="flex flex-col gap-4">
+        <input type="hidden" name="orgId" value={id} />
+        {c && <input type="hidden" name="contactId" value={c.id} />}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="veld-label" htmlFor={`cp-naam-${sleutel}`}>Naam</label>
+            <input id={`cp-naam-${sleutel}`} name="naam" required defaultValue={c?.naam ?? ''} placeholder="Naam" className={inputCls} />
+          </div>
+          <div>
+            <label className="veld-label" htmlFor={`cp-functie-${sleutel}`}>Functie</label>
+            <input id={`cp-functie-${sleutel}`} name="functie" defaultValue={c?.functie ?? ''} placeholder="Bijv. inkoop" className={inputCls} />
+          </div>
+        </div>
+        <div>
+          <label className="veld-label" htmlFor={`cp-mail-${sleutel}`}>E-mail</label>
+          <input id={`cp-mail-${sleutel}`} name="email" type="email" defaultValue={c?.email ?? ''} placeholder="naam@bedrijf.nl" className={inputCls} />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="veld-label" htmlFor={`cp-tel-${sleutel}`}>Telefoon</label>
+            <input id={`cp-tel-${sleutel}`} name="telefoon" defaultValue={c?.telefoon ?? ''} placeholder="0314 12 34 56" className={inputCls} />
+          </div>
+          <div>
+            <label className="veld-label" htmlFor={`cp-mob-${sleutel}`}>Mobiel</label>
+            <input id={`cp-mob-${sleutel}`} name="mobiel" defaultValue={c?.mobiel ?? ''} placeholder="06 12 34 56 78" className={inputCls} />
+          </div>
+        </div>
+        <div className="flex flex-col gap-3 rounded-lg border border-line bg-mist p-4">
+          <label className="flex items-start gap-3 text-ink-900">
+            <input name="hoofdcontact" type="checkbox" defaultChecked={c?.hoofdcontact ?? false} className="mt-0.5 h-5 w-5 rounded border-line" />
+            <span>
+              <span className="block font-semibold">Hoofdcontact</span>
+              <span className="block text-[13px] text-warm">De vaste persoon met wie je afspraken maakt.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-3 text-ink-900">
+            <input name="facturatie" type="checkbox" defaultChecked={c?.facturatie ?? false} className="mt-0.5 h-5 w-5 rounded border-line" />
+            <span>
+              <span className="block font-semibold">Facturatie</span>
+              <span className="block text-[13px] text-warm">
+                Facturen gaan naar het e-mailadres van deze persoon. Er is er maar één per klant: vink je dit aan, dan
+                gaat het vinkje bij de vorige uit.
+              </span>
+            </span>
+          </label>
+        </div>
+        <button type="submit" className="self-start knop-donker px-4 py-2.5 text-[15px]">{c ? 'Wijzigingen opslaan' : 'Toevoegen'}</button>
+      </form>
+    );
+  }
+
   const contactTab = (
     <>
       <section>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-xl font-bold text-ink-900">Contactpersonen</h2>
           <Drawer knop="Contactpersoon toevoegen" titel="Contactpersoon toevoegen">
-            <form action={nieuwContact} className="mt-4 flex flex-col gap-3">
-              <input type="hidden" name="orgId" value={id} />
-              <div>
-                <label className="veld-label">Naam</label>
-                <input name="naam" required placeholder="Naam" className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Functie</label>
-                <input name="functie" placeholder="Bijv. inkoop" className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">E-mail</label>
-                <input name="email" type="email" placeholder="naam@bedrijf.nl" className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Telefoon</label>
-                <input name="telefoon" placeholder="0314 12 34 56" className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Mobiel</label>
-                <input name="mobiel" placeholder="06 12 34 56 78" className={inputCls} />
-              </div>
-              <label className="flex items-center gap-2 text-sm text-warm">
-                <input name="hoofdcontact" type="checkbox" className="h-4 w-4 rounded border-line text-ink-900 focus:ring-amber-200" />
-                Hoofdcontact
-              </label>
-              <button type="submit" className="self-start knop-donker">Toevoegen</button>
-            </form>
+            {contactFormulier(null)}
           </Drawer>
         </div>
 
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="panel px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-warm">Hoofdcontact</p>
+            <p className="mt-0.5 text-[15px] font-semibold text-ink-900">{hoofdcontact ? hoofdcontact.naam : 'Nog niet gekozen'}</p>
+            {hoofdcontact?.email && <p className="text-[13px] text-warm">{hoofdcontact.email}</p>}
+          </div>
+          <div className={`panel px-4 py-3 ${facturatiecontact ? '' : 'border-amber-300 bg-amber-50'}`}>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-warm">Facturatiecontact</p>
+            <p className="mt-0.5 text-[15px] font-semibold text-ink-900">{facturatiecontact ? facturatiecontact.naam : 'Nog niet gekozen'}</p>
+            <p className="text-[13px] text-warm">
+              {facturatiecontact
+                ? facturatiecontact.email
+                  ? `Facturen gaan naar ${facturatiecontact.email}`
+                  : 'Let op: deze persoon heeft nog geen e-mailadres.'
+                : 'Vink bij een contactpersoon Facturatie aan, dan gaan facturen naar diens e-mailadres.'}
+            </p>
+          </div>
+        </div>
+
         {contactpersonen.length === 0 ? (
-          <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen contactpersonen.</p>
+          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen contactpersonen.</p>
         ) : (
-          <div className="panel overflow-x-auto">
+          <div className="panel mt-4 overflow-x-auto">
             <table className="tbl">
               <thead>
                 <tr>
@@ -297,17 +382,30 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
                   <tr key={c.id} className="border-b border-line align-top">
                     <td className="font-semibold text-ink-900">
                       {c.naam}
-                      {c.hoofdcontact && <span className="ml-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">hoofdcontact</span>}
+                      <span className="mt-1 flex flex-wrap gap-1.5">
+                        {c.hoofdcontact && <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">hoofdcontact</span>}
+                        {c.facturatie && <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">facturatie</span>}
+                      </span>
                     </td>
                     <td className="text-warm">{c.functie || '-'}</td>
                     <td className="text-warm">{c.email || '-'}</td>
                     <td className="text-warm">{[c.telefoon, c.mobiel].filter(Boolean).join(' · ') || '-'}</td>
-                    <td className="text-right">
-                      <form action={verwijderContactActie}>
-                        <input type="hidden" name="orgId" value={id} />
-                        <input type="hidden" name="contactId" value={c.id} />
-                        <ConfirmSubmit message="Deze contactpersoon verwijderen?" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</ConfirmSubmit>
-                      </form>
+                    <td>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Drawer knop="Bewerken" titel={`Contactpersoon bewerken: ${c.naam}`} knopKlasse="knop-stil">
+                          {contactFormulier(c)}
+                        </Drawer>
+                        <form action={contactNaarWerknemerActie}>
+                          <input type="hidden" name="orgId" value={id} />
+                          <input type="hidden" name="contactId" value={c.id} />
+                          <button type="submit" className="knop-stil" title="Maakt een werknemer met dezelfde naam, e-mail en telefoon">Maak werknemer</button>
+                        </form>
+                        <form action={verwijderContactActie}>
+                          <input type="hidden" name="orgId" value={id} />
+                          <input type="hidden" name="contactId" value={c.id} />
+                          <ConfirmSubmit message="Deze contactpersoon verwijderen?" className="knop-stil">Verwijderen</ConfirmSubmit>
+                        </form>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -315,6 +413,10 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
             </table>
           </div>
         )}
+        <p className="mt-2 text-[13px] text-warm">
+          Contactpersonen zijn de mensen met wie je zaken doet. Wie kleding draagt, zet je op het tabblad Werknemers;
+          met Maak werknemer neem je een contactpersoon daar in één klik over.
+        </p>
       </section>
 
       <section className="mt-12">
@@ -434,22 +536,16 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
         <div className="max-w-3xl">
           <h2 className="font-display text-xl font-bold text-ink-900">Assortiment</h2>
           <p className="mt-1 text-[13px] text-warm">
-            De artikelen die {org.naam} mag bestellen, met de kleur erbij en hoe de medewerker ze krijgt:
+            De artikelen die {org.naam} mag bestellen, met de vaste kleur erbij en hoe de werknemer ze krijgt:
             van het budget, met punten of een aantal gratis per periode. Dit is de lijst die het portaal en
             de passessie gebruiken, dus foto, maten en prijs komen recht uit de catalogus.
           </p>
         </div>
-        <AssortimentBeheer orgId={id} regels={assortiment} />
+        <AssortimentBeheer orgId={id} regels={assortiment} afdelingen={afdelingKeuzes} />
         <p className="mt-6 max-w-3xl text-[13px] text-warm">
-          Wat je hier toevoegt geldt voor de hele klant. Moet een artikel alleen voor één afdeling of één
-          medewerker openstaan, dan stel je dat in bij{' '}
-          <Link
-            href={`/dashboard/klanten/${id}/assortiment`}
-            className="font-semibold text-amber-700 hover:text-amber-800"
-          >
-            assortiment per afdeling
-          </Link>
-          . Zulke regels herken je in de lijst hierboven aan het label met de afdelings- of medewerkersnaam.
+          Bij elk artikel kies je of het voor de hele klant is of alleen voor bepaalde afdelingen, bijvoorbeeld
+          laskleding alleen voor de lassers. Afdelingen maak je aan op het tabblad Afdelingen. Een werknemer ziet in het
+          portaal de artikelen van de hele klant plus die van zijn eigen afdeling.
         </p>
       </section>
 
@@ -618,9 +714,32 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
   // Assortiment staat vooraan na Gegevens: dit is het tabblad waar het dagelijkse
   // werk zit. De kledinglijn heeft geen eigen tabblad meer, die staat als klein
   // onderdeel onder het assortiment zodat het verschil meteen zichtbaar is.
+  const werknemersTab = (
+    <WerknemersTab
+      orgId={id}
+      orgNaam={org.naam}
+      werknemers={werknemers}
+      afdelingen={afdelingen}
+      vestigingen={vestigingen}
+      contactpersonen={contactpersonen}
+      pasdag={pasdag}
+    />
+  );
+  const afdelingenTab = (
+    <AfdelingenTab
+      orgId={id}
+      afdelingen={afdelingen}
+      vestigingen={vestigingen}
+      werknemers={werknemers}
+      assortiment={assortiment}
+    />
+  );
+
   const tabs: TabDef[] = [
     { id: 'gegevens', label: 'Gegevens', content: gegevensTab },
     { id: 'assortiment', label: 'Assortiment', content: assortimentTab, badge: assortiment.length || null },
+    { id: 'werknemers', label: 'Werknemers', content: werknemersTab, badge: actieveWerknemers.length || null },
+    { id: 'afdelingen', label: 'Afdelingen', content: afdelingenTab, badge: afdelingen.length || null },
     { id: 'contact', label: 'Contact', content: contactTab, badge: contactpersonen.length || null },
     { id: 'verkoop', label: 'Verkoop', content: verkoopTab, badge: verkoop.orders.length || null },
     { id: 'logos', label: "Logo's", content: logosTab, badge: logos.length || null },
@@ -631,16 +750,20 @@ export default async function KlantPage({ params }: { params: Promise<{ id: stri
       <div className="dash-kop flex items-center justify-between gap-4">
         <div>
           <h1 className="dash-h1">{org.naam}</h1>
-          <p className="mt-1 text-sm text-warm">{org.plaats || 'Geen plaats'}</p>
+          <p className="mt-1 text-sm text-warm">
+            {[org.klantnummer ? `Klantnummer ${org.klantnummer}` : null, org.plaats || 'Geen plaats', org.branche].filter(Boolean).join(' · ')}
+          </p>
         </div>
         <div className="flex items-center gap-4">
+          <Link href={`/dashboard/offertes/nieuw?klant=${id}`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Nieuwe offerte</Link>
           <Link href={`/dashboard/klanten/${id}/structuur`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Inrichting</Link>
           <Link href="/dashboard/klanten" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar klanten</Link>
         </div>
       </div>
 
       <div className="mt-8">
-        <Tabs tabs={tabs} />
+        {/* key: na opslaan stuurt de actie terug met ?tab=..., dan opent dat tabblad. */}
+        <Tabs key={startTab} tabs={tabs} initial={startTab} />
       </div>
     </main>
   );

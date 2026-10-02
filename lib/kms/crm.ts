@@ -18,6 +18,8 @@ export type Contactpersoon = {
   telefoon: string | null;
   mobiel: string | null;
   hoofdcontact: boolean;
+  /** Dit is het facturatiecontact: zijn e-mailadres gaat op de factuur. Hoogstens één per klant. */
+  facturatie: boolean;
   opmerkingen: string | null;
   created_at: string;
 };
@@ -29,6 +31,7 @@ export type ContactpersoonVelden = {
   telefoon?: string | null;
   mobiel?: string | null;
   hoofdcontact?: boolean;
+  facturatie?: boolean;
   opmerkingen?: string | null;
 };
 
@@ -75,9 +78,11 @@ export async function listContactpersonen(orgId: string): Promise<Contactpersoon
   return (data as Contactpersoon[]) ?? [];
 }
 
-export async function maakContactpersoon(orgId: string, v: ContactpersoonVelden): Promise<boolean> {
-  const sb = kmsAdmin(); if (!sb) return false;
-  const { error } = await sb.from('contactpersonen').insert({
+export async function maakContactpersoon(orgId: string, v: ContactpersoonVelden): Promise<string | null> {
+  const sb = kmsAdmin(); if (!sb) return null;
+  // Er mag maar één facturatiecontact zijn: de vorige gaat eerst uit.
+  if (v.facturatie) await sb.from('contactpersonen').update({ facturatie: false }).eq('organisatie_id', orgId).eq('facturatie', true);
+  const rij: Record<string, unknown> = {
     organisatie_id: orgId,
     naam: v.naam,
     functie: v.functie || null,
@@ -86,22 +91,74 @@ export async function maakContactpersoon(orgId: string, v: ContactpersoonVelden)
     mobiel: v.mobiel || null,
     hoofdcontact: v.hoofdcontact ?? false,
     opmerkingen: v.opmerkingen || null,
-  });
-  return !error;
+  };
+  if (v.facturatie) rij.facturatie = true;
+  const { data, error } = await sb.from('contactpersonen').insert(rij).select('id').single();
+  if (error || !data) return null;
+  return (data as { id: string }).id;
 }
 
-export async function werkContactpersoon(id: string, v: Partial<ContactpersoonVelden>): Promise<boolean> {
-  const sb = kmsAdmin(); if (!sb) return false;
-  const patch: Record<string, unknown> = {};
-  if (v.naam !== undefined) patch.naam = v.naam;
-  if (v.functie !== undefined) patch.functie = v.functie || null;
-  if (v.email !== undefined) patch.email = v.email || null;
-  if (v.telefoon !== undefined) patch.telefoon = v.telefoon || null;
-  if (v.mobiel !== undefined) patch.mobiel = v.mobiel || null;
-  if (v.hoofdcontact !== undefined) patch.hoofdcontact = v.hoofdcontact;
-  if (v.opmerkingen !== undefined) patch.opmerkingen = v.opmerkingen || null;
-  const { error } = await sb.from('contactpersonen').update(patch).eq('id', id);
-  return !error;
+/**
+ * Contactpersoon bijwerken. Wordt hij facturatiecontact, dan gaat het vinkje
+ * bij de vorige facturatiecontact van dezelfde klant eerst uit (er mag er maar
+ * één zijn). Geeft voor/na terug met alleen de gewijzigde velden.
+ */
+export async function werkContactpersoon(
+  id: string,
+  v: Partial<ContactpersoonVelden>,
+): Promise<{ ok: boolean; voor: Record<string, unknown>; na: Record<string, unknown> }> {
+  const sb = kmsAdmin(); if (!sb) return { ok: false, voor: {}, na: {} };
+  const { data } = await sb.from('contactpersonen').select('*').eq('id', id).maybeSingle();
+  const huidig = data as Record<string, unknown> | null;
+  if (!huidig) return { ok: false, voor: {}, na: {} };
+
+  const gewenst: Record<string, unknown> = {};
+  if (v.naam !== undefined && v.naam.trim()) gewenst.naam = v.naam.trim();
+  if (v.functie !== undefined) gewenst.functie = v.functie || null;
+  if (v.email !== undefined) gewenst.email = v.email || null;
+  if (v.telefoon !== undefined) gewenst.telefoon = v.telefoon || null;
+  if (v.mobiel !== undefined) gewenst.mobiel = v.mobiel || null;
+  if (v.hoofdcontact !== undefined) gewenst.hoofdcontact = v.hoofdcontact;
+  if (v.facturatie !== undefined) gewenst.facturatie = v.facturatie;
+  if (v.opmerkingen !== undefined) gewenst.opmerkingen = v.opmerkingen || null;
+
+  const voor: Record<string, unknown> = {};
+  const na: Record<string, unknown> = {};
+  for (const [sleutel, waarde] of Object.entries(gewenst)) {
+    const oud = huidig[sleutel] ?? null;
+    if (oud !== (waarde ?? null)) {
+      voor[sleutel] = oud;
+      na[sleutel] = waarde;
+    }
+  }
+  if (Object.keys(na).length === 0) return { ok: true, voor, na };
+
+  if (na.facturatie === true) {
+    await sb
+      .from('contactpersonen')
+      .update({ facturatie: false })
+      .eq('organisatie_id', String(huidig.organisatie_id))
+      .eq('facturatie', true)
+      .neq('id', id);
+  }
+  const { error } = await sb.from('contactpersonen').update(na).eq('id', id);
+  return { ok: !error, voor, na };
+}
+
+/**
+ * Alle branches die al bij klanten voorkomen, voor de suggestielijst bij het
+ * invullen. Zo blijft de schrijfwijze gelijk en werkt het filter op de
+ * klantenlijst.
+ */
+export async function listBranches(): Promise<string[]> {
+  const sb = kmsAdmin(); if (!sb) return [];
+  const { data } = await sb.from('organisaties').select('branche').not('branche', 'is', null).limit(5000);
+  const set = new Set<string>();
+  for (const r of (data as { branche: string | null }[]) ?? []) {
+    const b = r.branche?.trim();
+    if (b) set.add(b);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, 'nl'));
 }
 
 export async function verwijderContactpersoon(id: string): Promise<boolean> {

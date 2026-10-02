@@ -1,14 +1,15 @@
 import type { Metadata } from 'next';
 import { dashAuthed, getHuidigeAdmin, eisEigenaar } from '@/lib/kms/adminClient';
-import { listAdmins } from '@/lib/kms/adminGebruikers';
-import { adminToevoegen, adminActiefZetten, adminRolWijzigen } from './actions';
+import { listAdmins, tweeStapStatus } from '@/lib/kms/adminGebruikers';
+import { adminToevoegen, adminActiefZetten, adminRolWijzigen, adminTweeStapUitzetten } from './actions';
+import ConfirmSubmit from '@/components/ConfirmSubmit';
 import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
 import Drawer from '@/components/dashboard/Drawer';
 
 export const metadata: Metadata = { title: 'Beheerders', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
-type SP = { fout?: string };
+type SP = { fout?: string; ok?: string };
 
 const rolLabel: Record<string, string> = {
   eigenaar: 'Eigenaar',
@@ -40,7 +41,7 @@ export default async function AdminsPage({ searchParams }: { searchParams: Promi
     );
   }
 
-  const admins = await listAdmins();
+  const [admins, tweeStap] = await Promise.all([listAdmins(), tweeStapStatus()]);
 
   return (
     <main className="container-app py-6">
@@ -51,6 +52,12 @@ export default async function AdminsPage({ searchParams }: { searchParams: Promi
 
       {sp?.fout === 'toegang' && (
         <p className="mt-4 rounded-md bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">Geen toegang voor die actie.</p>
+      )}
+      {sp?.fout === 'tweestap' && (
+        <p className="mt-4 rounded-md bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">Tweestapsverificatie uitzetten is niet gelukt.</p>
+      )}
+      {sp?.ok === 'tweestap' && (
+        <p className="mt-4 rounded-md bg-green-50 px-4 py-3 text-sm font-medium text-green-800">Tweestapsverificatie is uitgezet. Deze beheerder kan de app opnieuw koppelen via Beveiliging.</p>
       )}
       {sp?.fout === 'opslaan' && (
         <p className="mt-4 rounded-md bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">Opslaan mislukt. Bestaat dit e-mailadres al?</p>
@@ -92,6 +99,7 @@ export default async function AdminsPage({ searchParams }: { searchParams: Promi
                   <th>Naam</th>
                   <th>Rol</th>
                   <th>Status</th>
+                  <th>Tweestap</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -122,6 +130,22 @@ export default async function AdminsPage({ searchParams }: { searchParams: Promi
                           {a.actief ? 'Deactiveren' : 'Activeren'}
                         </button>
                       </form>
+                    </td>
+                    <td>
+                      {tweeStap[a.email.toLowerCase()] ? (
+                        <form action={adminTweeStapUitzetten} className="flex items-center gap-2">
+                          <input type="hidden" name="id" value={a.id} />
+                          <span className="inline-block rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">Aan</span>
+                          <ConfirmSubmit
+                            message={`Tweestapsverificatie uitzetten voor ${a.email}? Doe dit alleen als deze persoon de app niet meer kan gebruiken, bijvoorbeeld bij een kwijtgeraakte telefoon.`}
+                            className="rounded-md border border-line px-2 py-1 text-xs font-semibold text-ink-700 hover:bg-mist"
+                          >
+                            Uitzetten
+                          </ConfirmSubmit>
+                        </form>
+                      ) : (
+                        <span className="inline-block rounded-full bg-ink-100 px-2.5 py-0.5 text-xs font-semibold text-ink-500">Uit</span>
+                      )}
                     </td>
                   </tr>
                 ))}

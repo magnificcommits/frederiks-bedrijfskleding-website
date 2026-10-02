@@ -2,9 +2,10 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { dashAuthed } from '@/lib/kms/adminClient';
+import { dashAuthed, kmsAdmin } from '@/lib/kms/adminClient';
 import { logAudit } from '@/lib/kms/audit';
 import { zetAfgemeld, type AfmeldResultaat } from '@/lib/kms/nieuwsbrief';
+import { getNieuwsbrief, maakNieuwsbrief } from '@/lib/nieuwsbrief/opslag';
 
 /**
  * De filters komen als losse velden mee en worden hier opnieuw opgebouwd, in
@@ -13,6 +14,7 @@ import { zetAfgemeld, type AfmeldResultaat } from '@/lib/kms/nieuwsbrief';
  */
 function terugNaarLijst(zoek: string, branche: string, ok: string): string {
   const p = new URLSearchParams();
+  p.set('tab', 'adressen');
   if (zoek) p.set('zoek', zoek);
   if (branche) p.set('branche', branche);
   p.set('ok', ok);
@@ -48,4 +50,60 @@ export async function zetAfgemeldActie(formData: FormData) {
 
   revalidatePath('/dashboard/nieuwsbrief');
   redirect(terugNaarLijst(zoek, branche, ok));
+}
+
+const isUuid = (v: string) => /^[0-9a-f-]{36}$/i.test(v);
+
+/**
+ * Nieuwe nieuwsbrief. Zonder bron een kopie van de basistemplate; met
+ * `van` een kopie van die template of eerdere brief.
+ */
+export async function nieuweNieuwsbriefActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const van = String(formData.get('van') ?? '').trim();
+  const naam = String(formData.get('naam') ?? '').trim();
+  const id = await maakNieuwsbrief({ vanId: isUuid(van) ? van : null, naam: naam || null });
+  if (!id) redirect('/dashboard/nieuwsbrief?fout=nieuwsbrief');
+  await logAudit('nieuwsbrief_aangemaakt', { entiteit: 'nieuwsbrieven', entiteitId: id, details: { van: isUuid(van) ? van : 'basistemplate', naam: naam || null } });
+  revalidatePath('/dashboard/nieuwsbrief');
+  redirect(`/dashboard/nieuwsbrief/${id}?ok=aangemaakt`);
+}
+
+/** Kopie van een brief of template (een template blijft een template). */
+export async function kopieerNieuwsbriefActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const van = String(formData.get('id') ?? '').trim();
+  if (!isUuid(van)) redirect('/dashboard/nieuwsbrief');
+  const bron = await getNieuwsbrief(van);
+  if (!bron) redirect('/dashboard/nieuwsbrief');
+  const id = await maakNieuwsbrief({ vanId: van, alsTemplate: bron.is_template });
+  if (!id) redirect('/dashboard/nieuwsbrief?fout=nieuwsbrief');
+  await logAudit('nieuwsbrief_gekopieerd', { entiteit: 'nieuwsbrieven', entiteitId: id, details: { van } });
+  revalidatePath('/dashboard/nieuwsbrief');
+  redirect(`/dashboard/nieuwsbrief/${id}?ok=aangemaakt`);
+}
+
+/**
+ * Concept, mislukte brief of template verwijderen. Een verzonden of
+ * ingeplande brief blijft staan: die hoort bij de geschiedenis en de webversie
+ * moet blijven werken.
+ */
+export async function verwijderNieuwsbriefActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('id') ?? '').trim();
+  const sb = kmsAdmin();
+  if (!sb || !isUuid(id)) redirect('/dashboard/nieuwsbrief');
+  const brief = await getNieuwsbrief(id);
+  if (!brief) redirect('/dashboard/nieuwsbrief');
+  if (!brief.is_template && brief.status !== 'concept' && brief.status !== 'mislukt') {
+    redirect('/dashboard/nieuwsbrief?fout=niet-verwijderen');
+  }
+  await sb.from('nieuwsbrieven').delete().eq('id', id);
+  await logAudit('nieuwsbrief_verwijderd', {
+    entiteit: 'nieuwsbrieven',
+    entiteitId: id,
+    details: { naam: brief.naam, status: brief.status, template: brief.is_template },
+  });
+  revalidatePath('/dashboard/nieuwsbrief');
+  redirect('/dashboard/nieuwsbrief?ok=verwijderd');
 }

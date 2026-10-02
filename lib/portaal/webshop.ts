@@ -35,6 +35,8 @@ export type WebshopMedewerker = {
   productbudget: number | null;
   buiten_budget_toegestaan: boolean;
   vestiging_id: string | null;
+  /** Afdeling van de werknemer; bepaalt mee welke artikelen hij in de webshop ziet. */
+  afdeling_id?: string | null;
   actief: boolean;
 };
 
@@ -142,16 +144,88 @@ export async function getMijnWebshopOrganisatie(): Promise<WebshopOrg | null> {
   return (data as WebshopOrg) ?? null;
 }
 
-/** Alle producten in het assortiment van de eigen organisatie, met hun actieve varianten. RLS filtert op assortiment. */
-export async function getAssortiment(): Promise<WebshopProduct[]> {
+/** Eén assortimentregel zoals het portaal hem leest (RLS: alleen de eigen organisatie). */
+type PortaalRegel = {
+  product_id: string;
+  afdeling_id: string | null;
+  medewerker_id: string | null;
+  kleur: string | null;
+  toegestaan: boolean | null;
+  verstrekking_type: string | null;
+  gratis_per_periode: number | null;
+  periode: string | null;
+};
+
+/** De assortimentregels van de eigen organisatie. Valt terug zonder kleur als die kolom (nog) ontbreekt. */
+async function getPortaalRegels(): Promise<PortaalRegel[]> {
   const sb = await getServerSupabase();
   if (!sb) return [];
-  const { data: producten } = await sb
-    .from('producten')
-    .select('id, naam, omschrijving, merk, categorie, btw, afbeeldingen')
-    .order('naam');
-  const lijst = (producten as Omit<WebshopProduct, 'varianten'>[]) ?? [];
+  const basis = 'product_id, afdeling_id, medewerker_id, toegestaan, verstrekking_type, gratis_per_periode, periode';
+  const metKleur = await sb.from('assortiment').select(`${basis}, kleur`);
+  if (!metKleur.error) return (metKleur.data as PortaalRegel[]) ?? [];
+  const zonder = await sb.from('assortiment').select(basis);
+  return ((zonder.data as Omit<PortaalRegel, 'kleur'>[]) ?? []).map((r) => ({ ...r, kleur: null }));
+}
+
+/**
+ * Geldt deze regel voor deze werknemer? Zonder afdeling en zonder werknemer geldt
+ * hij voor de hele klant; anders moet de afdeling of de werknemer zelf kloppen.
+ */
+function regelGeldt(regel: PortaalRegel, mw: { id: string; afdeling_id?: string | null }): boolean {
+  if (regel.medewerker_id) return regel.medewerker_id === mw.id;
+  if (regel.afdeling_id) return regel.afdeling_id === (mw.afdeling_id ?? null);
+  return true;
+}
+
+/** Hoe specifiek een regel is: voor één werknemer > voor zijn afdeling > hele klant. */
+function specificiteit(regel: PortaalRegel): number {
+  return regel.medewerker_id ? 2 : regel.afdeling_id ? 1 : 0;
+}
+
+const zelfdeKleur = (a: string | null | undefined, b: string | null | undefined) =>
+  (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
+
+/**
+ * Alle producten in het assortiment van de eigen organisatie, met hun actieve varianten. RLS filtert op assortiment.
+ *
+ * Is de ingelogde gebruiker zelf een werknemer, dan ziet hij alleen wat voor de hele
+ * klant, voor zijn eigen afdeling of voor hem persoonlijk in het assortiment staat
+ * (bijv. laskleding alleen voor de afdeling Lassers). Ligt er per regel een kleur
+ * vast, dan alleen de varianten in die kleur(en).
+ *
+ * `medewerker`: weglaten = de eigen werknemer opzoeken; null = geen filter (bijv. een
+ * beheerder die voor iemand anders bestelt). Heeft de organisatie geen
+ * assortimentregels die het portaal kan lezen, dan blijft het oude gedrag staan.
+ */
+export async function getAssortiment(
+  medewerker?: { id: string; afdeling_id?: string | null } | null,
+): Promise<WebshopProduct[]> {
+  const sb = await getServerSupabase();
+  if (!sb) return [];
+  const [{ data: producten }, regels, eigen] = await Promise.all([
+    sb.from('producten').select('id, naam, omschrijving, merk, categorie, btw, afbeeldingen').order('naam'),
+    getPortaalRegels(),
+    medewerker === undefined ? getMijnMedewerker() : Promise.resolve(medewerker),
+  ]);
+  let lijst = (producten as Omit<WebshopProduct, 'varianten'>[]) ?? [];
   if (lijst.length === 0) return [];
+
+  // Per product de toegestane kleuren voor deze werknemer; null = alle kleuren.
+  let kleurenPerProduct: Map<string, string[] | null> | null = null;
+  if (eigen && regels.length > 0) {
+    const geldend = regels.filter((r) => r.toegestaan !== false && regelGeldt(r, eigen));
+    kleurenPerProduct = new Map();
+    for (const r of geldend) {
+      const huidig = kleurenPerProduct.get(r.product_id);
+      const kleur = r.kleur?.trim() || null;
+      if (huidig === null) continue; // al 'alle kleuren'
+      if (!kleur) kleurenPerProduct.set(r.product_id, null);
+      else kleurenPerProduct.set(r.product_id, [...(huidig ?? []), kleur]);
+    }
+    const toegestaan = kleurenPerProduct;
+    lijst = lijst.filter((p) => toegestaan.has(p.id));
+    if (lijst.length === 0) return [];
+  }
 
   const ids = lijst.map((p) => p.id);
   const { data: varianten } = await sb
@@ -161,10 +235,14 @@ export async function getAssortiment(): Promise<WebshopProduct[]> {
     .eq('actief', true);
   const vlist = (varianten as WebshopVariant[]) ?? [];
 
-  return lijst.map((p) => ({
-    ...p,
-    varianten: vlist.filter((v) => v.product_id === p.id),
-  }));
+  return lijst.map((p) => {
+    const alle = vlist.filter((v) => v.product_id === p.id);
+    const kleuren = kleurenPerProduct?.get(p.id) ?? null;
+    if (!kleuren) return { ...p, varianten: alle };
+    const inKleur = alle.filter((v) => kleuren.some((k) => zelfdeKleur(k, v.kleur)));
+    // Klopt de vastgelegde kleur met geen enkele variant, dan liever alles tonen dan niets.
+    return { ...p, varianten: inKleur.length > 0 ? inKleur : alle };
+  });
 }
 
 /** Zoekt de medewerker waarvan het e-mailadres gelijk is aan dat van de ingelogde gebruiker. Kan null zijn. */
@@ -177,7 +255,7 @@ export async function getMijnMedewerker(): Promise<WebshopMedewerker | null> {
   const { data } = await sb
     .from('medewerkers')
     .select(
-      'id, naam, voornaam, achternaam, email, functie, budget, budget_type, startbudget, productbudget, buiten_budget_toegestaan, vestiging_id, actief',
+      'id, naam, voornaam, achternaam, email, functie, budget, budget_type, startbudget, productbudget, buiten_budget_toegestaan, vestiging_id, afdeling_id, actief',
     )
     .ilike('email', email)
     .limit(1)
@@ -192,7 +270,7 @@ export async function getWebshopMedewerkers(): Promise<WebshopMedewerker[]> {
   const { data } = await sb
     .from('medewerkers')
     .select(
-      'id, naam, voornaam, achternaam, email, functie, budget, budget_type, startbudget, productbudget, buiten_budget_toegestaan, vestiging_id, actief',
+      'id, naam, voornaam, achternaam, email, functie, budget, budget_type, startbudget, productbudget, buiten_budget_toegestaan, vestiging_id, afdeling_id, actief',
     )
     .eq('actief', true)
     .order('naam');
@@ -233,13 +311,23 @@ export async function getKleurAfbeeldingen(): Promise<Record<string, Record<stri
 /**
  * Verstrekkingstype per product voor de eigen organisatie, waarbij alleen de
  * eigen assortimentregels meekomen. Ontbreekt een product, dan valt het op 'budget' terug.
+ *
+ * Staat een product meerdere keren in het assortiment (hele klant, afdeling,
+ * werknemer), dan wint de meest specifieke regel die voor de werknemer geldt.
+ * `medewerker`: weglaten = de eigen werknemer opzoeken; null = geen voorkeur.
  */
-export async function getVerstrekkingen(): Promise<Record<string, Verstrekking>> {
+export async function getVerstrekkingen(
+  medewerker?: { id: string; afdeling_id?: string | null } | null,
+): Promise<Record<string, Verstrekking>> {
   const sb = await getServerSupabase();
   if (!sb) return {};
-  const { data } = await sb
-    .from('assortiment')
-    .select('product_id, verstrekking_type, gratis_per_periode, periode');
+  const [alleRegels, eigen] = await Promise.all([
+    getPortaalRegels(),
+    medewerker === undefined ? getMijnMedewerker() : Promise.resolve(medewerker),
+  ]);
+  const data = (eigen ? alleRegels.filter((r) => regelGeldt(r, eigen)) : alleRegels)
+    .slice()
+    .sort((a, b) => (eigen ? specificiteit(b) - specificiteit(a) : specificiteit(a) - specificiteit(b)));
   const geldigeTypes: VerstrekkingType[] = ['budget', 'periodiek_gratis', 'altijd_gratis', 'punten'];
   const geldigePeriodes: VerstrekkingPeriode[] = ['maand', 'kwartaal', 'jaar'];
   const map: Record<string, Verstrekking> = {};

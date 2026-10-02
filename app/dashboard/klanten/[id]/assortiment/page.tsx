@@ -72,6 +72,14 @@ export default async function AssortimentPage({ params }: { params: Promise<{ id
         <Link href={`/dashboard/klanten/${id}`} className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar klant</Link>
       </div>
 
+      <div className="mt-6 max-w-3xl rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-[14px] text-amber-900">
+        Dit is de oude lijst. Het assortiment beheer je nu op de klantpagina, tabblad Assortiment: daar kies je bij
+        elk artikel ook de kleur en of het voor de hele klant of voor bepaalde afdelingen is.{' '}
+        <Link href={`/dashboard/klanten/${id}?tab=assortiment`} className="font-semibold text-amber-800 underline">
+          Naar het assortiment van deze klant
+        </Link>
+      </div>
+
       <p className="mt-6 max-w-2xl text-sm text-warm">
         Bepaal welke producten deze klant in de webshop kan bestellen en hoe elk artikel verstrekt wordt.
         Een artikel kan van het budget af gaan, een aantal keer per periode gratis zijn, altijd gratis zijn, of met punten gaan.

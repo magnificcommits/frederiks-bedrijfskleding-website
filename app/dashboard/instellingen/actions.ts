@@ -1,10 +1,10 @@
 'use server';
 import { redirect } from 'next/navigation';
 import { dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
-import { zetBoekhouderEmail } from '@/lib/kms/facturen';
-import { zetRetourtermijn } from '@/lib/portaal/service';
+import { zetBoekhouderEmail, getBoekhouderEmail } from '@/lib/kms/facturen';
+import { zetRetourtermijn, getRetourtermijn } from '@/lib/portaal/service';
 import { zetSpaarInstellingen } from '@/lib/kms/sparen';
-import { logAudit } from '@/lib/kms/audit';
+import { logAudit, logWijziging } from '@/lib/kms/audit';
 
 /**
  * Server actions voor de gebundelde instellingen-pagina. Elk blok post naar een
@@ -16,8 +16,13 @@ export async function zetBoekhouderActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   await eisEigenaar();
   const email = String(formData.get('email') ?? '').trim();
+  const vorig = await getBoekhouderEmail();
   await zetBoekhouderEmail(email);
-  await logAudit('boekhouder_email_gewijzigd', { entiteit: 'instellingen' });
+  await logWijziging('boekhouder_email_gewijzigd', {
+    entiteit: 'instellingen',
+    voor: { boekhouder_email: vorig },
+    na: { boekhouder_email: email },
+  });
   redirect('/dashboard/instellingen?ok=boekhouder');
 }
 
@@ -26,8 +31,13 @@ export async function zetRetourActie(formData: FormData) {
   await eisEigenaar();
   const dagen = Number.parseInt(String(formData.get('dagen') ?? '').trim(), 10);
   const veilig = Number.isFinite(dagen) && dagen > 0 ? dagen : 30;
+  const vorig = await getRetourtermijn();
   await zetRetourtermijn(veilig);
-  await logAudit('retourbeleid_gewijzigd', { entiteit: 'instellingen', details: { dagen: veilig } });
+  await logWijziging('retourbeleid_gewijzigd', {
+    entiteit: 'instellingen',
+    voor: { retourtermijn_dagen: vorig },
+    na: { retourtermijn_dagen: veilig },
+  });
   redirect('/dashboard/instellingen?ok=retour');
 }
 

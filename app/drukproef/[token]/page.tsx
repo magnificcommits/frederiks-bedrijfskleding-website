@@ -1,5 +1,8 @@
-import { getDrukproefViaToken } from '@/lib/kms/drukproeven';
+import { getDrukproefViaToken, artikelVoorDrukproef } from '@/lib/kms/drukproeven';
 import DrukproefPreview from '@/app/dashboard/drukproeven/DrukproefPreview';
+import PrintKnop from '@/app/dashboard/drukproeven/PrintKnop';
+import AfdrukStijl from '@/app/dashboard/drukproeven/AfdrukStijl';
+import { normaliseerOntwerp } from '@/app/dashboard/drukproeven/ontwerp';
 import { site } from '@/content/site';
 import { beslisActie } from './actions';
 
@@ -43,10 +46,17 @@ export default async function DrukproefTokenPage({
 
   const bedrijf = proef.organisatie_naam ?? '';
   const behandeld = proef.status === 'goedgekeurd' || proef.status === 'afgekeurd';
+  // Nieuwe proeven (met ontwerp) tonen voor- en achterkant naast elkaar en zijn breder.
+  const ontwerp = normaliseerOntwerp(proef.ontwerp);
+  const artikel = ontwerp && proef.product_id ? await artikelVoorDrukproef(proef.product_id, proef.product_kleur ?? null) : null;
+  const artikelRegel = [artikel ? [artikel.merk, artikel.naam].filter(Boolean).join(' ') : null, proef.product_kleur ? `kleur ${proef.product_kleur}` : null, ontwerp ? (proef.techniek === 'bedrukken' ? 'bedrukt' : 'geborduurd') : null]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <main className="container-x py-16">
-      <div className="mx-auto max-w-md rounded-2xl border border-line bg-white p-8 shadow-soft">
+      <AfdrukStijl doelId="drukproef-pagina" />
+      <div id="drukproef-pagina" className={`mx-auto rounded-2xl border border-line bg-white p-8 shadow-soft ${ontwerp ? 'max-w-4xl' : 'max-w-md'}`}>
         <Kop />
 
         {ok === 'akkoord' && (
@@ -63,11 +73,15 @@ export default async function DrukproefTokenPage({
         <div className="mt-6 text-center">
           {bedrijf && <p className="text-xs font-semibold uppercase tracking-wide text-warm">{bedrijf}</p>}
           <h1 className="mt-1 font-display text-2xl font-bold text-ink-900">{proef.naam}</h1>
-          {proef.omschrijving && <p className="mt-2 text-sm text-warm">{proef.omschrijving}</p>}
+          {artikelRegel && <p className="mt-1 text-sm text-warm">{artikelRegel}</p>}
+          {proef.omschrijving && <p className="mt-2 whitespace-pre-line text-sm text-warm">{proef.omschrijving}</p>}
         </div>
 
-        <div className="mx-auto mt-6 max-w-md">
+        <div className={`mx-auto mt-6 ${ontwerp ? '' : 'max-w-md'}`}>
           <DrukproefPreview
+            ontwerp={proef.ontwerp}
+            achterAfbeeldingUrl={proef.achter_afbeelding_url ?? null}
+            formaat="groot"
             afbeeldingUrl={proef.afbeelding_url}
             type={proef.type}
             kleur={proef.kleur}
@@ -77,8 +91,12 @@ export default async function DrukproefTokenPage({
           />
         </div>
 
+        <div className="mt-4 flex justify-center">
+          <PrintKnop tekst="Drukproef afdrukken" className="knop-stil" />
+        </div>
+
         {behandeld ? (
-          <div className="mt-8">
+          <div className="mx-auto mt-8 max-w-md">
             {proef.status === 'goedgekeurd' ? (
               <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
                 <p className="font-semibold">Je hebt deze drukproef goedgekeurd{proef.behandeld_op ? ` op ${datum(proef.behandeld_op)}` : ''}.</p>
@@ -97,7 +115,7 @@ export default async function DrukproefTokenPage({
             <p className="mt-6 text-center text-sm text-warm">Vragen? Bel ons op {site.phone} of mail naar {site.email}.</p>
           </div>
         ) : (
-          <form action={beslisActie} className="mt-8">
+          <form action={beslisActie} className="mx-auto mt-8 max-w-md print:hidden">
             <input type="hidden" name="token" value={token} />
             <label htmlFor="opmerking" className="block text-sm font-semibold text-ink-900">
               Opmerking (optioneel)

@@ -2,7 +2,8 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { env, isLeadsDbConfigured } from '@/lib/env';
 import { login } from './actions';
-import { dashAuthed } from '@/lib/kms/adminClient';
+import { dashAuthed, adminSessieStatus } from '@/lib/kms/adminClient';
+import { redirect } from 'next/navigation';
 import AdminLoginForm from '@/components/dashboard/AdminLoginForm';
 import { getOverzicht, getVandaagSignalen, getWerklijst } from '@/lib/kms/overzicht';
 
@@ -45,11 +46,18 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
   const authed = await dashAuthed();
 
   if (!authed) {
+    // Half ingelogd: beheerder met tweestapsverificatie die de code nog moet invoeren.
+    const sessie = await adminSessieStatus();
+    if (sessie.status === '2fa-nodig') redirect('/dashboard/auth/2fa');
+    const verlopen = sessie.status === 'verlopen';
     return (
       <main className="container-smal py-20">
         <div className="mx-auto max-w-sm panel p-4">
           <h1 className="dash-h1">Frederiks KMS</h1>
           <p className="mt-2 text-sm text-warm">Log in om het systeem te beheren.</p>
+          {verlopen && (
+            <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">Je bent na 8 uur automatisch uitgelogd. Log opnieuw in.</p>
+          )}
           {sp?.fout === 'link' && (
             <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">De inloglink werkte niet of is verlopen. Vraag hieronder een nieuwe aan.</p>
           )}

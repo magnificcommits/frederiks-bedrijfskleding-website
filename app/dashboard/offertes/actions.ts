@@ -2,7 +2,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { dashAuthed } from '@/lib/kms/adminClient';
-import { maakOfferte, zetOfferteStatus } from '@/lib/kms/offertes';
+import { maakOfferte, zetOfferteStatus, listContactenVoorOfferte, type OfferteContact } from '@/lib/kms/offertes';
 import { logAudit } from '@/lib/kms/audit';
 
 export async function maakOfferteActie(formData: FormData) {
@@ -18,10 +18,21 @@ export async function maakOfferteActie(formData: FormData) {
     notitie: notitie || null,
   });
   if (id) {
-    await logAudit('offerte_aangemaakt', { entiteit: 'offertes', entiteitId: id });
+    await logAudit('offerte_aangemaakt', { entiteit: 'offertes', entiteitId: id, details: { organisatie_id: organisatie_id || null } });
     redirect('/dashboard/offertes/' + id + '?ok=aangemaakt');
   }
-  redirect('/dashboard/offertes');
+  redirect('/dashboard/offertes/nieuw?fout=aanmaken');
+}
+
+/**
+ * Contactpersonen van een klant, voor de kiezer op het offerteformulier.
+ * Wordt vanuit de browser aangeroepen zodra er een klant gekozen is.
+ */
+export async function haalContactenActie(organisatieId: string): Promise<OfferteContact[]> {
+  if (!(await dashAuthed())) return [];
+  const id = String(organisatieId ?? '').trim();
+  if (!id) return [];
+  return listContactenVoorOfferte(id);
 }
 
 /** Bulk-statuswijziging voor alle aangevinkte offertes in een keer. */

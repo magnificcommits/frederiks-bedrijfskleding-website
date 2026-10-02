@@ -1,6 +1,8 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { isEmailConfigured, env } from '@/lib/env';
 import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
+import { factuurEmailVoor, type FactuurEmailBron } from '@/lib/kms/factuurEmail';
+import { bedrijf } from '@/content/bedrijf';
 
 /**
  * Data-access voor de module Facturatie (zelf gebouwd, geen externe boekhouding).
@@ -172,12 +174,8 @@ export async function getFactuur(id: string): Promise<FactuurDetail | null> {
 
 export async function maakLegeFactuur(organisatieId: string): Promise<string | null> {
   const sb = kmsAdmin(); if (!sb) return null;
-  const { data: orgData } = await sb
-    .from('organisaties')
-    .select('factuur_email')
-    .eq('id', organisatieId)
-    .maybeSingle();
-  const factuurEmail = (orgData as { factuur_email: string | null } | null)?.factuur_email ?? null;
+  // Adres van het facturatiecontact van de klant (met terugval, zie factuurEmailVoor).
+  const factuurEmail = (await factuurEmailVoor(organisatieId))?.email ?? null;
   const factuurnummer = await volgendFactuurnummer(sb);
   const { data, error } = await sb
     .from('facturen')
@@ -207,12 +205,13 @@ export async function maakFactuurVanOrder(orderId: string): Promise<string | nul
   const order = orderData as { id: string; organisatie_id: string } | null;
   if (!order) return null;
 
-  const [{ data: regelData }, { data: orgData }] = await Promise.all([
+  const [{ data: regelData }, gevonden] = await Promise.all([
     sb.from('orderregels').select('item_naam, maat, kleur, aantal, stukprijs').eq('order_id', orderId).order('created_at'),
-    sb.from('organisaties').select('factuur_email').eq('id', order.organisatie_id).maybeSingle(),
+    factuurEmailVoor(order.organisatie_id),
   ]);
   const orderregels = (regelData as { item_naam: string; maat: string | null; kleur: string | null; aantal: number; stukprijs: number | null }[]) ?? [];
-  const factuurEmail = (orgData as { factuur_email: string | null } | null)?.factuur_email ?? null;
+  // Adres van het facturatiecontact van de klant (met terugval, zie factuurEmailVoor).
+  const factuurEmail = gevonden?.email ?? null;
 
   const factuurnummer = await volgendFactuurnummer(sb);
   const { data: factuurData, error } = await sb
@@ -325,7 +324,7 @@ export async function zetFactuurStatus(id: string, status: string, betaaldatum?:
     const { data } = await sb.from('facturen').select('factuurdatum, vervaldatum').eq('id', id).maybeSingle();
     const huidig = data as { factuurdatum: string | null; vervaldatum: string | null } | null;
     if (huidig && !huidig.vervaldatum) {
-      patch.vervaldatum = plusDagen(huidig.factuurdatum, 30);
+      patch.vervaldatum = plusDagen(huidig.factuurdatum, bedrijf.betaaltermijnDagen);
     }
   }
   const { error } = await sb.from('facturen').update(patch).eq('id', id);
@@ -454,6 +453,91 @@ export async function mailFacturenNaarBoekhouder(ids: string[]): Promise<{ ok: b
   await sb.from('factuur_mail_log').insert(ids.map((id) => ({ factuur_id: id, naar_email: boekhouder.trim() })));
 
   return { ok: true, aantal: ids.length };
+}
+
+/** Leesbare herkomst van een factuuradres, voor op de factuurpagina. */
+export function factuurEmailHerkomst(bron: FactuurEmailBron, naam: string | null): string {
+  switch (bron) {
+    case 'facturatiecontact':
+      return naam ? `facturatiecontact ${naam}` : 'het facturatiecontact van de klant';
+    case 'factuur_email':
+      return 'het factuur-e-mailadres op de klantkaart';
+    case 'email_algemeen':
+      return 'het algemene e-mailadres van de klant';
+    case 'hoofdcontact':
+      return naam ? `hoofdcontact ${naam}` : 'het hoofdcontact van de klant';
+  }
+}
+
+/** Voorgesteld factuuradres voor een klant met de herkomst in gewone taal. */
+export async function factuurEmailSuggestie(organisatieId: string): Promise<{ email: string; herkomst: string; bron: FactuurEmailBron } | null> {
+  const r = await factuurEmailVoor(organisatieId);
+  if (!r) return null;
+  return { email: r.email, bron: r.bron, herkomst: factuurEmailHerkomst(r.bron, r.naam) };
+}
+
+/** Zet het e-mailadres voor deze ene factuur (de klantkaart blijft ongemoeid). */
+export async function zetFactuurEmail(id: string, email: string | null): Promise<boolean> {
+  const sb = kmsAdmin(); if (!sb) return false;
+  const { error } = await sb.from('facturen').update({ factuur_email: email && email.trim() ? email.trim() : null }).eq('id', id);
+  return !error;
+}
+
+/**
+ * Mailt de factuur naar de klant: de complete factuur als overzicht in de mail,
+ * met betaalgegevens. Bij een conceptfactuur gaat de status daarna op
+ * 'verzonden' (en wordt de vervaldatum gezet). Een betaalde factuur blijft betaald.
+ */
+export async function mailFactuurNaarKlant(id: string, to: string): Promise<{ ok: boolean; error?: string }> {
+  const adres = to.trim();
+  if (!adres || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adres)) return { ok: false, error: 'Vul een geldig e-mailadres in.' };
+  if (!isEmailConfigured) return { ok: false, error: 'E-mail is nog niet ingesteld. Vraag Tim om dit aan te zetten.' };
+  const f = await getFactuur(id);
+  if (!f) return { ok: false, error: 'Factuur niet gevonden.' };
+
+  const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
+  const datum = (d: string | null) => {
+    if (!d) return '-';
+    try { return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric' }); }
+    catch { return d; }
+  };
+  const vervaldatum = f.vervaldatum ?? plusDagen(f.factuurdatum, bedrijf.betaaltermijnDagen);
+  const nummer = f.factuurnummer || 'concept';
+  const td = 'padding:6px 0;border-bottom:1px solid #eee;';
+  const rijen = f.regels
+    .map(
+      (r) => `<tr><td style="${td}color:#1c1c1c;">${escapeHtml(r.omschrijving)}</td><td style="${td}text-align:right;color:#52504e;">${escapeHtml(String(r.aantal).replace('.', ','))}</td><td style="${td}text-align:right;color:#52504e;">${euro(Number(r.stukprijs) || 0)}</td><td style="${td}text-align:right;color:#1c1c1c;">${euro(Number(r.bedrag) || 0)}</td></tr>`,
+    )
+    .join('');
+  const bodyHtml = `
+    <p style="margin:0;">Beste relatie,</p>
+    <p style="margin:14px 0 0;">Hierbij factuur <strong>${escapeHtml(nummer)}</strong> van ${escapeHtml(datum(f.factuurdatum))}${f.organisatie?.naam ? ` voor ${escapeHtml(f.organisatie.naam)}` : ''}.</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
+      <thead><tr><th style="text-align:left;padding:6px 0;border-bottom:2px solid #1c1c1c;">Omschrijving</th><th style="text-align:right;padding:6px 0;border-bottom:2px solid #1c1c1c;">Aantal</th><th style="text-align:right;padding:6px 0;border-bottom:2px solid #1c1c1c;">Stukprijs</th><th style="text-align:right;padding:6px 0;border-bottom:2px solid #1c1c1c;">Bedrag</th></tr></thead>
+      <tbody>${rijen || '<tr><td colspan="4" style="padding:8px 0;color:#52504e;">Geen regels.</td></tr>'}</tbody>
+    </table>
+    <table style="margin-left:auto;font-size:14px;">
+      <tr><td style="padding:2px 12px 2px 0;color:#52504e;">Subtotaal excl. btw</td><td style="text-align:right;color:#1c1c1c;">${euro(Number(f.bedrag_excl) || 0)}</td></tr>
+      <tr><td style="padding:2px 12px 2px 0;color:#52504e;">Btw</td><td style="text-align:right;color:#1c1c1c;">${euro(Number(f.btw_bedrag) || 0)}</td></tr>
+      <tr><td style="padding:6px 12px 2px 0;font-weight:800;color:#1c1c1c;">Totaal incl. btw</td><td style="text-align:right;font-weight:800;color:#1c1c1c;">${euro(Number(f.bedrag_incl) || 0)}</td></tr>
+    </table>
+    <p style="margin:18px 0 0;">Wij verzoeken u het bedrag vóór <strong>${escapeHtml(datum(vervaldatum))}</strong> over te maken op <strong>${escapeHtml(bedrijf.iban)}</strong> t.n.v. ${escapeHtml(bedrijf.naam)}, onder vermelding van factuurnummer ${escapeHtml(nummer)}${f.organisatie?.klantnummer ? ` en debiteurnummer ${escapeHtml(f.organisatie.klantnummer)}` : ''}.</p>
+    <p style="margin:14px 0 0;">Vragen over deze factuur? Antwoord gerust op deze mail of bel ${escapeHtml(bedrijf.telefoon)}.</p>
+    <p style="margin:18px 0 0;font-size:12px;color:#52504e;">${escapeHtml(bedrijf.naam)} · ${escapeHtml(bedrijf.adres)}, ${escapeHtml(bedrijf.postcode)} ${escapeHtml(bedrijf.plaats)} · KvK ${escapeHtml(bedrijf.kvk)} · Btw ${escapeHtml(bedrijf.btw)}</p>
+  `;
+  try {
+    const r = await sendEmail({
+      to: adres,
+      replyTo: bedrijf.email,
+      subject: `Factuur ${nummer} van ${bedrijf.naam}`,
+      html: emailLayout({ heading: `Factuur ${nummer}`, preheader: `Factuur ${nummer} van ${bedrijf.naam}`, bodyHtml }),
+    });
+    if (!r.sent) return { ok: false, error: `Versturen mislukt: ${r.error ?? 'onbekende fout'}` };
+  } catch {
+    return { ok: false, error: 'Versturen mislukt. Probeer het later nog eens.' };
+  }
+  if (f.status === 'concept') await zetFactuurStatus(id, 'verzonden');
+  return { ok: true };
 }
 
 /** Verzendlogboek van een factuur naar de boekhouder, nieuwste eerst. */

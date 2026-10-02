@@ -1,165 +1,473 @@
 'use server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { addGebruiker, maakItem, zetItemActief, zetBestellingStatus, werkOrganisatieBij } from '@/lib/portaalAdmin';
+import { addGebruiker, maakItem, zetItemActief, zetBestellingStatus } from '@/lib/portaalAdmin';
 import { dashAuthed, kmsAdmin } from '@/lib/kms/adminClient';
-import { maakContactpersoon, verwijderContactpersoon, maakActiviteit, verwijderActiviteit } from '@/lib/kms/crm';
+import {
+  maakContactpersoon,
+  werkContactpersoon,
+  verwijderContactpersoon,
+  maakActiviteit,
+  verwijderActiviteit,
+} from '@/lib/kms/crm';
 import { uploadMedia } from '@/lib/kms/storage';
 import { maakLogo, verwijderLogo } from '@/lib/kms/logos';
 import { logAudit } from '@/lib/kms/audit';
 import { listArtikelKeuze, type ArtikelKeuze } from '@/lib/kms/producten';
+import { maakAfdeling, werkAfdeling, verwijderAfdeling } from '@/lib/kms/structuur';
+import {
+  maakWerknemer,
+  werkWerknemerBij,
+  werknemerVanContact,
+  slaMatenOp,
+  type MaatInvoer,
+} from '@/lib/kms/werknemers';
 import {
   voegAssortimentRegelToe,
   werkAssortimentRegelBij,
   verwijderAssortimentRegel,
+  kleurKeuzesVoorArtikel,
   KLEUR_NOG_NIET_BESCHIKBAAR,
   type AssortimentAntwoord,
+  type KleurKeuze,
   type Periode,
   type VerstrekkingType,
 } from '@/lib/kms/assortiment';
-
 
 /** Zelfde toegangsregel als de dashboard-layout: wachtwoord-cookie OF ingelogde admin. */
 async function authed() {
   return dashAuthed();
 }
 
+const TABS = ['gegevens', 'assortiment', 'werknemers', 'afdelingen', 'contact', 'verkoop', 'logos'] as const;
+type Tab = (typeof TABS)[number];
+
+/**
+ * Terug naar de klantpagina op het tabblad waar Jessi was. Zonder tab-parameter
+ * sprong de pagina na elke opslag terug naar Gegevens.
+ */
+function terug(orgId: string, tab: Tab, ok?: string): never {
+  const p = new URLSearchParams({ tab });
+  if (ok) p.set('ok', ok);
+  redirect(`/dashboard/klanten/${orgId}?${p.toString()}`);
+}
+
+function tekst(formData: FormData, veld: string): string {
+  return String(formData.get(veld) ?? '').trim();
+}
+
+/** Hoort deze afdeling (of vestiging) echt bij deze klant? Anders negeren we hem. */
+async function hoortBijKlant(tabel: 'afdelingen' | 'vestigingen', orgId: string, id: string): Promise<boolean> {
+  if (!id) return false;
+  const sb = kmsAdmin();
+  if (!sb) return false;
+  const { data } = await sb.from(tabel).select('id').eq('id', id).eq('organisatie_id', orgId).maybeSingle();
+  return Boolean(data);
+}
+
 export async function werkOrganisatie(formData: FormData) {
   if (!(await authed())) redirect('/dashboard');
-  const id = String(formData.get('orgId') ?? '');
-  const naam = String(formData.get('naam') ?? '').trim();
-  const plaats = String(formData.get('plaats') ?? '').trim();
-  const adres = String(formData.get('adres') ?? '').trim();
-  const postcode = String(formData.get('postcode') ?? '').trim();
-  const telefoon = String(formData.get('telefoon') ?? '').trim();
+  const id = tekst(formData, 'orgId');
+  const naam = tekst(formData, 'naam');
   if (id && naam) {
-    await werkOrganisatieBij(id, { naam, plaats, adres, postcode, telefoon });
-    await logAudit('klant_gewijzigd', { entiteit: 'organisatie', entiteitId: id });
+    const sb = kmsAdmin();
+    if (sb) {
+      const gewenst: Record<string, string | null> = {
+        naam,
+        adres: tekst(formData, 'adres') || null,
+        postcode: tekst(formData, 'postcode') || null,
+        plaats: tekst(formData, 'plaats') || null,
+        telefoon: tekst(formData, 'telefoon') || null,
+        branche: tekst(formData, 'branche') || null,
+      };
+      const { data } = await sb
+        .from('organisaties')
+        .select('naam, adres, postcode, plaats, telefoon, branche')
+        .eq('id', id)
+        .maybeSingle();
+      const huidig = (data as Record<string, string | null> | null) ?? {};
+      const voor: Record<string, unknown> = {};
+      const na: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(gewenst)) {
+        if ((huidig[k] ?? null) !== v) {
+          voor[k] = huidig[k] ?? null;
+          na[k] = v;
+        }
+      }
+      if (Object.keys(na).length > 0) {
+        await sb.from('organisaties').update(na).eq('id', id);
+        await logAudit('klant_gewijzigd', { entiteit: 'organisatie', entiteitId: id, details: { voor, na } });
+      }
+    }
   }
-  redirect('/dashboard/klanten/' + id);
+  revalidatePath('/dashboard/klanten');
+  terug(id, 'gegevens', 'opgeslagen');
 }
 
 export async function zetRetourenActiefActie(formData: FormData) {
   if (!(await authed())) redirect('/dashboard');
-  const id = String(formData.get('orgId') ?? '').trim();
+  const id = tekst(formData, 'orgId');
   const aan = String(formData.get('aan') ?? '') === 'true';
   if (id) {
     const sb = kmsAdmin();
     if (sb) await sb.from('organisaties').update({ retouren_actief: aan }).eq('id', id);
-    await logAudit('klant_retouren_toggle', { entiteit: 'organisatie', entiteitId: id, details: { aan } });
+    await logAudit('klant_retouren_toggle', { entiteit: 'organisatie', entiteitId: id, details: { voor: { retouren_actief: !aan }, na: { retouren_actief: aan } } });
   }
-  redirect('/dashboard/klanten/' + id);
+  terug(id, 'gegevens', 'opgeslagen');
 }
 
 export async function koppelGebruiker(formData: FormData) {
   if (!(await authed())) redirect('/dashboard');
-  const id = String(formData.get('orgId') ?? '');
-  const email = String(formData.get('email') ?? '').trim();
-  const naam = String(formData.get('naam') ?? '').trim();
-  if (id && email) await addGebruiker(id, email, naam);
-  redirect('/dashboard/klanten/' + id);
+  const id = tekst(formData, 'orgId');
+  const email = tekst(formData, 'email');
+  const naam = tekst(formData, 'naam');
+  if (id && email) {
+    await addGebruiker(id, email, naam);
+    await logAudit('portaalgebruiker_gekoppeld', { entiteit: 'organisatie', entiteitId: id, details: { email } });
+  }
+  terug(id, 'contact', 'toegevoegd');
 }
 
 export async function voegItemToe(formData: FormData) {
   if (!(await authed())) redirect('/dashboard');
-  const id = String(formData.get('orgId') ?? '');
-  const naam = String(formData.get('naam') ?? '').trim();
-  const merk = String(formData.get('merk') ?? '').trim() || null;
-  const kleur = String(formData.get('kleur') ?? '').trim() || null;
-  const logopositie = String(formData.get('logopositie') ?? '').trim() || null;
-  const techniek = String(formData.get('techniek') ?? '').trim() || null;
+  const id = tekst(formData, 'orgId');
+  const naam = tekst(formData, 'naam');
+  const merk = tekst(formData, 'merk') || null;
+  const kleur = tekst(formData, 'kleur') || null;
+  const logopositie = tekst(formData, 'logopositie') || null;
+  const techniek = tekst(formData, 'techniek') || null;
   const ruw = String(formData.get('richtprijs') ?? '').replace(/[^0-9.,]/g, '').replace(',', '.');
   const richtprijs = ruw === '' ? null : Number(ruw);
   if (id && naam) await maakItem(id, { naam, merk, kleur, logopositie, techniek, richtprijs });
-  redirect('/dashboard/klanten/' + id);
+  terug(id, 'assortiment', 'toegevoegd');
 }
 
 export async function wisselItemActief(formData: FormData) {
   if (!(await authed())) redirect('/dashboard');
-  const id = String(formData.get('orgId') ?? '');
-  const itemId = String(formData.get('itemId') ?? '');
+  const id = tekst(formData, 'orgId');
+  const itemId = tekst(formData, 'itemId');
   const actief = String(formData.get('actief') ?? '') === 'true';
   if (itemId) await zetItemActief(itemId, actief);
-  redirect('/dashboard/klanten/' + id);
+  terug(id, 'assortiment', 'bijgewerkt');
 }
 
 export async function zetStatus(formData: FormData) {
   if (!(await authed())) redirect('/dashboard');
-  const id = String(formData.get('orgId') ?? '');
-  const bestelId = String(formData.get('bestelId') ?? '');
-  const status = String(formData.get('status') ?? '').trim();
+  const id = tekst(formData, 'orgId');
+  const bestelId = tekst(formData, 'bestelId');
+  const status = tekst(formData, 'status');
   if (bestelId && status) await zetBestellingStatus(bestelId, status);
-  redirect('/dashboard/klanten/' + id);
+  terug(id, 'verkoop', 'status');
 }
+
+/* --------------------------------------------------------------------- */
+/* Contactpersonen                                                         */
+/* --------------------------------------------------------------------- */
 
 export async function nieuwContact(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
-  const id = String(formData.get('orgId') ?? '');
-  const naam = String(formData.get('naam') ?? '').trim();
-  const functie = String(formData.get('functie') ?? '').trim() || null;
-  const email = String(formData.get('email') ?? '').trim() || null;
-  const telefoon = String(formData.get('telefoon') ?? '').trim() || null;
-  const mobiel = String(formData.get('mobiel') ?? '').trim() || null;
-  const hoofdcontact = String(formData.get('hoofdcontact') ?? '') === 'on';
-  if (id && naam) await maakContactpersoon(id, { naam, functie, email, telefoon, mobiel, hoofdcontact });
-  redirect('/dashboard/klanten/' + id);
+  const id = tekst(formData, 'orgId');
+  const naam = tekst(formData, 'naam');
+  if (id && naam) {
+    const contactId = await maakContactpersoon(id, {
+      naam,
+      functie: tekst(formData, 'functie') || null,
+      email: tekst(formData, 'email') || null,
+      telefoon: tekst(formData, 'telefoon') || null,
+      mobiel: tekst(formData, 'mobiel') || null,
+      hoofdcontact: formData.get('hoofdcontact') === 'on',
+      facturatie: formData.get('facturatie') === 'on',
+    });
+    if (contactId) {
+      await logAudit('contactpersoon_toegevoegd', { entiteit: 'contactpersoon', entiteitId: contactId, details: { organisatie_id: id, naam } });
+    }
+  }
+  terug(id, 'contact', 'toegevoegd');
+}
+
+export async function werkContactActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = tekst(formData, 'orgId');
+  const contactId = tekst(formData, 'contactId');
+  const naam = tekst(formData, 'naam');
+  if (contactId && naam) {
+    const { ok, voor, na } = await werkContactpersoon(contactId, {
+      naam,
+      functie: tekst(formData, 'functie') || null,
+      email: tekst(formData, 'email') || null,
+      telefoon: tekst(formData, 'telefoon') || null,
+      mobiel: tekst(formData, 'mobiel') || null,
+      hoofdcontact: formData.get('hoofdcontact') === 'on',
+      facturatie: formData.get('facturatie') === 'on',
+    });
+    if (ok && Object.keys(na).length > 0) {
+      await logAudit('contactpersoon_gewijzigd', { entiteit: 'contactpersoon', entiteitId: contactId, details: { voor, na } });
+    }
+  }
+  terug(id, 'contact', 'opgeslagen');
 }
 
 export async function verwijderContactActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
-  const id = String(formData.get('orgId') ?? '');
-  const contactId = String(formData.get('contactId') ?? '');
-  if (contactId) await verwijderContactpersoon(contactId);
-  redirect('/dashboard/klanten/' + id);
+  const id = tekst(formData, 'orgId');
+  const contactId = tekst(formData, 'contactId');
+  if (contactId) {
+    await verwijderContactpersoon(contactId);
+    await logAudit('contactpersoon_verwijderd', { entiteit: 'contactpersoon', entiteitId: contactId, details: { organisatie_id: id } });
+  }
+  terug(id, 'contact', 'verwijderd');
 }
+
+/** Contactpersoon ook als werknemer vastleggen (naam, e-mail en telefoon gaan mee). */
+export async function contactNaarWerknemerActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = tekst(formData, 'orgId');
+  const contactId = tekst(formData, 'contactId');
+  if (contactId) {
+    const uitkomst = await werknemerVanContact(contactId);
+    if (uitkomst && !uitkomst.bestond) {
+      await logAudit('werknemer_aangemaakt', {
+        entiteit: 'medewerker',
+        entiteitId: uitkomst.id,
+        details: { organisatie_id: uitkomst.organisatie_id, naam: uitkomst.naam, uit_contactpersoon: contactId },
+      });
+    }
+  }
+  revalidatePath('/dashboard/klanten');
+  terug(id, 'werknemers', 'aangemaakt');
+}
+
+/* --------------------------------------------------------------------- */
+/* Activiteiten en logo's                                                  */
+/* --------------------------------------------------------------------- */
 
 export async function nieuweActiviteit(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
-  const id = String(formData.get('orgId') ?? '');
-  const soort = String(formData.get('soort') ?? '').trim() || undefined;
-  const omschrijving = String(formData.get('omschrijving') ?? '').trim();
-  const datum = String(formData.get('datum') ?? '').trim() || null;
-  const opvolgdatum = String(formData.get('opvolgdatum') ?? '').trim() || null;
-  const door = String(formData.get('door') ?? '').trim() || null;
+  const id = tekst(formData, 'orgId');
+  const soort = tekst(formData, 'soort') || undefined;
+  const omschrijving = tekst(formData, 'omschrijving');
+  const datum = tekst(formData, 'datum') || null;
+  const opvolgdatum = tekst(formData, 'opvolgdatum') || null;
+  const door = tekst(formData, 'door') || null;
   if (id && omschrijving) await maakActiviteit(id, { soort, omschrijving, datum, opvolgdatum, door });
-  redirect('/dashboard/klanten/' + id);
+  terug(id, 'contact', 'toegevoegd');
 }
 
 export async function verwijderActiviteitActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
-  const id = String(formData.get('orgId') ?? '');
-  const activiteitId = String(formData.get('activiteitId') ?? '');
+  const id = tekst(formData, 'orgId');
+  const activiteitId = tekst(formData, 'activiteitId');
   if (activiteitId) await verwijderActiviteit(activiteitId);
-  redirect('/dashboard/klanten/' + id);
+  terug(id, 'contact', 'verwijderd');
 }
 
 export async function nieuwLogoActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
-  const id = String(formData.get('orgId') ?? '').trim();
-  const naam = String(formData.get('naam') ?? '').trim();
+  const id = tekst(formData, 'orgId');
+  const naam = tekst(formData, 'naam');
   const logoUpload = await uploadMedia(formData.get('logo_bestand') as File | null, 'logos');
   const vectorUpload = await uploadMedia(formData.get('vectorbestand') as File | null, 'logos');
   const borduurUpload = await uploadMedia(formData.get('borduurbestand') as File | null, 'logos');
-  const logo_bestand_url = logoUpload ?? (String(formData.get('logo_bestand_url') ?? '').trim() || null);
-  const vectorbestand_url = vectorUpload ?? (String(formData.get('vectorbestand_url') ?? '').trim() || null);
-  const borduurbestand_url = borduurUpload ?? (String(formData.get('borduurbestand_url') ?? '').trim() || null);
-  const opmerkingen = String(formData.get('opmerkingen') ?? '').trim() || null;
+  const logo_bestand_url = logoUpload ?? (tekst(formData, 'logo_bestand_url') || null);
+  const vectorbestand_url = vectorUpload ?? (tekst(formData, 'vectorbestand_url') || null);
+  const borduurbestand_url = borduurUpload ?? (tekst(formData, 'borduurbestand_url') || null);
+  const opmerkingen = tekst(formData, 'opmerkingen') || null;
   if (id && naam) {
     await maakLogo(id, { naam, logo_bestand_url, vectorbestand_url, borduurbestand_url, opmerkingen });
     await logAudit('logo_toegevoegd', { entiteit: 'organisatie', entiteitId: id, details: { naam } });
   }
-  redirect('/dashboard/klanten/' + id);
+  terug(id, 'logos', 'toegevoegd');
 }
 
 export async function verwijderLogoActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
-  const id = String(formData.get('orgId') ?? '').trim();
-  const logoId = String(formData.get('logoId') ?? '').trim();
+  const id = tekst(formData, 'orgId');
+  const logoId = tekst(formData, 'logoId');
   if (logoId) {
     await verwijderLogo(logoId);
     await logAudit('logo_verwijderd', { entiteit: 'organisatie', entiteitId: id });
   }
-  redirect('/dashboard/klanten/' + id);
+  terug(id, 'logos', 'verwijderd');
+}
+
+/* --------------------------------------------------------------------- */
+/* Werknemers                                                              */
+/* --------------------------------------------------------------------- */
+
+async function werknemerVelden(formData: FormData, orgId: string) {
+  const afdeling = tekst(formData, 'afdeling_id');
+  const vestiging = tekst(formData, 'vestiging_id');
+  return {
+    naam: tekst(formData, 'naam'),
+    email: tekst(formData, 'email') || null,
+    telefoon: tekst(formData, 'telefoon') || null,
+    personeelsnummer: tekst(formData, 'personeelsnummer') || null,
+    afdeling_id: afdeling && (await hoortBijKlant('afdelingen', orgId, afdeling)) ? afdeling : null,
+    vestiging_id: vestiging && (await hoortBijKlant('vestigingen', orgId, vestiging)) ? vestiging : null,
+    opmerkingen: tekst(formData, 'opmerkingen') || null,
+  };
+}
+
+export async function nieuweWerknemerActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = tekst(formData, 'orgId');
+  const velden = await werknemerVelden(formData, id);
+  if (id && velden.naam) {
+    const nieuwId = await maakWerknemer(id, velden);
+    if (nieuwId) {
+      await logAudit('werknemer_aangemaakt', {
+        entiteit: 'medewerker',
+        entiteitId: nieuwId,
+        details: { organisatie_id: id, naam: velden.naam },
+      });
+    }
+  }
+  revalidatePath('/dashboard/klanten');
+  terug(id, 'werknemers', 'toegevoegd');
+}
+
+export async function werkWerknemerActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = tekst(formData, 'orgId');
+  const werknemerId = tekst(formData, 'werknemerId');
+  const velden = await werknemerVelden(formData, id);
+  if (werknemerId && velden.naam) {
+    const { ok, voor, na } = await werkWerknemerBij(werknemerId, velden);
+    if (ok && Object.keys(na).length > 0) {
+      await logAudit('werknemer_gewijzigd', { entiteit: 'medewerker', entiteitId: werknemerId, details: { voor, na } });
+    }
+  }
+  terug(id, 'werknemers', 'opgeslagen');
+}
+
+/** Op non-actief zetten (uit dienst) of weer actief maken. Er wordt niets verwijderd. */
+export async function zetWerknemerActiefActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = tekst(formData, 'orgId');
+  const werknemerId = tekst(formData, 'werknemerId');
+  const actief = String(formData.get('actief') ?? '') === 'true';
+  if (werknemerId) {
+    const { ok, voor, na } = await werkWerknemerBij(werknemerId, { actief });
+    if (ok && Object.keys(na).length > 0) {
+      await logAudit(actief ? 'werknemer_actief' : 'werknemer_non_actief', {
+        entiteit: 'medewerker',
+        entiteitId: werknemerId,
+        details: { voor, na },
+      });
+    }
+  }
+  revalidatePath('/dashboard/klanten');
+  terug(id, 'werknemers', 'bijgewerkt');
+}
+
+/**
+ * Pasdag: de maten van één werknemer plus de opmerking over zijn kleding in één
+ * keer opslaan. Geeft een antwoord terug zodat het formulier openblijft en Jessi
+ * meteen door kan naar de volgende werknemer.
+ */
+export async function slaPasdagOpActie(invoer: {
+  orgId: string;
+  werknemerId: string;
+  regels: MaatInvoer[];
+  opmerkingen: string;
+}): Promise<{ ok: boolean; melding: string }> {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const orgId = invoer.orgId.trim();
+  const werknemerId = invoer.werknemerId.trim();
+  if (!orgId || !werknemerId) return { ok: false, melding: 'Deze werknemer bestaat niet meer.' };
+
+  const sb = kmsAdmin();
+  if (!sb) return { ok: false, melding: 'Geen verbinding met de database.' };
+  const { data } = await sb.from('medewerkers').select('id').eq('id', werknemerId).eq('organisatie_id', orgId).maybeSingle();
+  if (!data) return { ok: false, melding: 'Deze werknemer hoort niet bij deze klant.' };
+
+  const regels: MaatInvoer[] = invoer.regels
+    .filter((r) => typeof r.product_id === 'string' && r.product_id)
+    .map((r) => {
+      const lengte = r.lengte == null ? null : Math.round(Number(r.lengte));
+      return {
+        product_id: r.product_id,
+        kleur: r.kleur?.trim() || null,
+        maat: r.maat?.trim() || null,
+        lengte: lengte != null && Number.isFinite(lengte) && lengte > 0 ? lengte : null,
+        opmerking: r.opmerking?.trim() || null,
+      };
+    });
+
+  const maten = await slaMatenOp(werknemerId, regels);
+  const opm = await werkWerknemerBij(werknemerId, { opmerkingen: invoer.opmerkingen.trim() || null });
+
+  await logAudit('pasdag_maten_opgeslagen', {
+    entiteit: 'medewerker',
+    entiteitId: werknemerId,
+    details: { organisatie_id: orgId, opgeslagen: maten.opgeslagen, gewist: maten.gewist, ...(Object.keys(opm.na).length > 0 ? { voor: opm.voor, na: opm.na } : {}) },
+  });
+  revalidatePath('/dashboard/klanten/' + orgId);
+  if (!maten.ok || !opm.ok) return { ok: false, melding: 'Niet alles is opgeslagen. Probeer het nog eens.' };
+  return { ok: true, melding: 'Opgeslagen.' };
+}
+
+/* --------------------------------------------------------------------- */
+/* Afdelingen                                                              */
+/* --------------------------------------------------------------------- */
+
+async function afdelingVelden(formData: FormData, orgId: string) {
+  const vestiging = tekst(formData, 'vestiging_id');
+  return {
+    naam: tekst(formData, 'naam'),
+    kostenplaats: tekst(formData, 'kostenplaats') || null,
+    leidinggevende: tekst(formData, 'leidinggevende') || null,
+    vestiging_id: vestiging && (await hoortBijKlant('vestigingen', orgId, vestiging)) ? vestiging : null,
+  };
+}
+
+export async function nieuweAfdelingActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = tekst(formData, 'orgId');
+  const velden = await afdelingVelden(formData, id);
+  if (id && velden.naam) {
+    const ok = await maakAfdeling(id, velden);
+    if (ok) await logAudit('afdeling_aangemaakt', { entiteit: 'organisatie', entiteitId: id, details: { naam: velden.naam } });
+  }
+  terug(id, 'afdelingen', 'toegevoegd');
+}
+
+export async function werkAfdelingActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = tekst(formData, 'orgId');
+  const afdelingId = tekst(formData, 'afdelingId');
+  const velden = await afdelingVelden(formData, id);
+  if (afdelingId && velden.naam && (await hoortBijKlant('afdelingen', id, afdelingId))) {
+    const sb = kmsAdmin();
+    const { data } = sb
+      ? await sb.from('afdelingen').select('naam, kostenplaats, leidinggevende, vestiging_id').eq('id', afdelingId).maybeSingle()
+      : { data: null };
+    const huidig = (data as Record<string, string | null> | null) ?? {};
+    const voor: Record<string, unknown> = {};
+    const na: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(velden)) {
+      if ((huidig[k] ?? null) !== (v ?? null)) {
+        voor[k] = huidig[k] ?? null;
+        na[k] = v;
+      }
+    }
+    if (Object.keys(na).length > 0) {
+      await werkAfdeling(afdelingId, na as Partial<typeof velden>);
+      await logAudit('afdeling_gewijzigd', { entiteit: 'afdeling', entiteitId: afdelingId, details: { voor, na } });
+    }
+  }
+  terug(id, 'afdelingen', 'opgeslagen');
+}
+
+export async function verwijderAfdelingKlantActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = tekst(formData, 'orgId');
+  const afdelingId = tekst(formData, 'afdelingId');
+  if (afdelingId && (await hoortBijKlant('afdelingen', id, afdelingId))) {
+    await verwijderAfdeling(afdelingId);
+    await logAudit('afdeling_verwijderd', { entiteit: 'afdeling', entiteitId: afdelingId, details: { organisatie_id: id } });
+  }
+  terug(id, 'afdelingen', 'verwijderd');
 }
 
 /* --------------------------------------------------------------------- */
@@ -168,9 +476,7 @@ export async function verwijderLogoActie(formData: FormData) {
 
 /**
  * De hele catalogus voor de artikelkiezer. Wordt pas aangeroepen als het
- * zoekvenster opengaat, zodat de klantpagina zelf licht blijft. Daarna zoekt de
- * browser in de opgehaalde lijst en gaat er per toetsaanslag niets meer heen en
- * weer.
+ * zoekvenster opengaat, zodat de klantpagina zelf licht blijft.
  */
 export async function haalArtikelenActie(): Promise<ArtikelKeuze[]> {
   if (!(await dashAuthed())) redirect('/dashboard');
@@ -178,14 +484,23 @@ export async function haalArtikelenActie(): Promise<ArtikelKeuze[]> {
 }
 
 /**
- * Artikel toevoegen aan het assortiment van een klant, met kleur en verstrekking
- * in dezelfde handeling.
+ * De kleuren van één artikel met de foto per kleur. Wordt opgehaald zodra Jessi
+ * een artikel aantikt. De kleuren uit de catalogus-lijst waren niet betrouwbaar:
+ * die lijst haalt alle varianten in één verzoek op, en de database geeft daar
+ * hoogstens 1000 rijen van terug. Bij de meeste artikelen ontbraken de kleuren
+ * daardoor ('Bij dit artikel staan nog geen kleuren in het systeem').
+ */
+export async function haalKleurenActie(productId: string): Promise<KleurKeuze[]> {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  return kleurKeuzesVoorArtikel(String(productId ?? '').trim());
+}
+
+/**
+ * Artikel toevoegen aan het assortiment van een klant, met kleur, verstrekking
+ * en voor wie (hele klant of afdelingen) in dezelfde handeling.
  *
- * Geeft bewust een antwoord terug in plaats van door te sturen naar de
- * klantpagina: de tabbladen op die pagina houden hun eigen stand bij, dus een
- * redirect zou Jessi na elk artikel terugzetten op het eerste tabblad en het
- * zoekvenster sluiten. Nu blijft het venster open en kan ze in één keer een hele
- * kledinglijn samenstellen. De lijst zelf wordt met revalidatePath vernieuwd.
+ * Geeft een antwoord terug in plaats van door te sturen: zo blijft het
+ * zoekvenster open en kan Jessi in één keer een hele kledinglijn samenstellen.
  */
 export async function voegAssortimentToeActie(invoer: {
   orgId: string;
@@ -195,6 +510,7 @@ export async function voegAssortimentToeActie(invoer: {
   verstrekking_type: VerstrekkingType;
   gratis_per_periode: number | null;
   periode: Periode;
+  afdelingIds?: string[];
 }): Promise<AssortimentAntwoord> {
   if (!(await dashAuthed())) redirect('/dashboard');
 
@@ -202,17 +518,32 @@ export async function voegAssortimentToeActie(invoer: {
   const productId = invoer.productId.trim();
   if (!orgId || !productId) return { ok: false, melding: 'Er is geen artikel gekozen.' };
 
-  const uitkomst = await voegAssortimentRegelToe(orgId, {
+  // Alleen afdelingen van deze klant tellen mee.
+  const afdelingIds: string[] = [];
+  for (const a of invoer.afdelingIds ?? []) {
+    if (await hoortBijKlant('afdelingen', orgId, a)) afdelingIds.push(a);
+  }
+  // Gevraagd voor bepaalde afdelingen, maar geen enkele bestaat (meer): dan niet
+  // stilletjes voor de hele klant toevoegen.
+  if ((invoer.afdelingIds ?? []).length > 0 && afdelingIds.length === 0) {
+    return { ok: false, melding: 'De gekozen afdeling bestaat niet meer. Ververs de pagina en kies opnieuw.' };
+  }
+
+  const { uitkomst, toegevoegd, overgeslagen } = await voegAssortimentRegelToe(orgId, {
     productId,
     kleur: invoer.kleur,
     verstrekking_type: invoer.verstrekking_type,
     gratis_per_periode: invoer.gratis_per_periode,
     periode: invoer.periode,
+    afdelingIds,
   });
 
   const naam = invoer.artikelNaam.trim() || 'Het artikel';
+  if (uitkomst === 'kleur_verplicht') {
+    return { ok: false, melding: `Kies eerst een kleur voor ${naam}. De kleur ligt na het toevoegen vast.` };
+  }
   if (uitkomst === 'bestaat_al') {
-    return { ok: false, melding: `${naam} staat al in dit assortiment.` };
+    return { ok: false, melding: `${naam} staat in deze kleur al in dit assortiment.` };
   }
   if (uitkomst === 'mislukt') {
     return { ok: false, melding: `${naam} kon niet worden toegevoegd. Probeer het opnieuw.` };
@@ -221,24 +552,29 @@ export async function voegAssortimentToeActie(invoer: {
   await logAudit('assortiment_toegevoegd', {
     entiteit: 'organisatie',
     entiteitId: orgId,
-    details: { productId, kleur: invoer.kleur, verstrekking_type: invoer.verstrekking_type },
+    details: { productId, kleur: invoer.kleur, verstrekking_type: invoer.verstrekking_type, afdelingIds },
   });
   revalidatePath('/dashboard/klanten/' + orgId);
+  const voorWie = afdelingIds.length > 0 ? ` voor ${toegevoegd} ${toegevoegd === 1 ? 'afdeling' : 'afdelingen'}` : '';
   return {
     ok: true,
-    melding: `${naam} toegevoegd aan het assortiment.`,
+    melding: `${naam} toegevoegd aan het assortiment${voorWie}.${overgeslagen > 0 ? ` ${overgeslagen} stond er al.` : ''}`,
     waarschuwing: uitkomst === 'toegevoegd_zonder_kleur' ? KLEUR_NOG_NIET_BESCHIKBAAR : undefined,
   };
 }
 
-/** Kleur, verstrekking of budget van een regel in het assortiment bijwerken. */
+/**
+ * Verstrekking, budget of voor wie (hele klant / afdeling) van een regel
+ * bijwerken. De kleur ligt vast en wordt hier niet meer veranderd.
+ */
 export async function werkAssortimentActie(invoer: {
   orgId: string;
   regelId: string;
-  kleur: string | null;
   verstrekking_type: VerstrekkingType;
   gratis_per_periode: number | null;
   periode: Periode;
+  /** Weglaten = niet veranderen; leeg = hele klant. */
+  afdeling_id?: string | null;
 }): Promise<AssortimentAntwoord> {
   if (!(await dashAuthed())) redirect('/dashboard');
 
@@ -246,24 +582,34 @@ export async function werkAssortimentActie(invoer: {
   const regelId = invoer.regelId.trim();
   if (!orgId || !regelId) return { ok: false, melding: 'Deze regel bestaat niet meer.' };
 
-  const uitkomst = await werkAssortimentRegelBij(regelId, {
-    kleur: invoer.kleur,
+  let afdeling: string | null | undefined = undefined;
+  if (invoer.afdeling_id !== undefined) {
+    afdeling = invoer.afdeling_id ? invoer.afdeling_id : null;
+    if (afdeling && !(await hoortBijKlant('afdelingen', orgId, afdeling))) {
+      return { ok: false, melding: 'Die afdeling hoort niet bij deze klant.' };
+    }
+  }
+
+  const { uitkomst, voor, na } = await werkAssortimentRegelBij(regelId, {
     verstrekking_type: invoer.verstrekking_type,
     gratis_per_periode: invoer.gratis_per_periode,
     periode: invoer.periode,
+    ...(afdeling !== undefined ? { afdeling_id: afdeling } : {}),
   });
   if (uitkomst === 'dubbel') {
-    return { ok: false, melding: 'Dit artikel staat in die kleur al in het assortiment.' };
+    return { ok: false, melding: 'Dit artikel staat in die kleur al voor die groep in het assortiment.' };
   }
   if (uitkomst === 'mislukt') {
     return { ok: false, melding: 'Opslaan is niet gelukt. Probeer het opnieuw.' };
   }
 
-  await logAudit('assortiment_gewijzigd', {
-    entiteit: 'organisatie',
-    entiteitId: orgId,
-    details: { regelId, kleur: invoer.kleur, verstrekking_type: invoer.verstrekking_type },
-  });
+  if (Object.keys(na).length > 0) {
+    await logAudit('assortiment_gewijzigd', {
+      entiteit: 'assortiment',
+      entiteitId: regelId,
+      details: { organisatie_id: orgId, voor, na },
+    });
+  }
   revalidatePath('/dashboard/klanten/' + orgId);
   return {
     ok: true,

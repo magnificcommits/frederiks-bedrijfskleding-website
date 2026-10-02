@@ -76,6 +76,7 @@ type OrgRij = {
   branche: string | null;
   email_algemeen: string | null;
   datum_klant: string | null;
+  actief?: boolean | null;
 };
 
 type InschrijvingRij = {
@@ -137,16 +138,20 @@ async function haalInschrijvingen(sb: SupabaseClient): Promise<InschrijvingenRes
   };
 }
 
-/**
- * De volledige nieuwsbrieflijst plus de klanten die er nog buiten vallen.
- * In één functie, zodat de organisaties maar één keer worden opgehaald.
- */
-export async function getNieuwsbriefOverzicht(): Promise<NieuwsbriefOverzicht> {
-  const sb = kmsAdmin();
-  if (!sb) return { adressen: [], zonderAdres: [], afmeldenMogelijk: false };
+type Adresbouw = {
+  adressen: NieuwsbriefAdres[];
+  orgs: OrgRij[];
+  kolommenAanwezig: boolean;
+};
 
+/**
+ * De kern van de lijst: klanten en losse aanmeldingen samengevoegd en
+ * ontdubbeld op e-mailadres (kleine letters). Gedeeld door het overzicht en de
+ * verzending, zodat "wie staat erin" op precies één plek wordt bepaald.
+ */
+async function bouwAdressen(sb: SupabaseClient): Promise<Adresbouw> {
   const [orgRes, inschrijvingenRes] = await Promise.all([
-    sb.from('organisaties').select('id, naam, branche, email_algemeen, datum_klant').order('naam'),
+    sb.from('organisaties').select('id, naam, branche, email_algemeen, datum_klant, actief').order('naam'),
     haalInschrijvingen(sb),
   ]);
 
@@ -181,6 +186,7 @@ export async function getNieuwsbriefOverzicht(): Promise<NieuwsbriefOverzicht> {
       // Geen tweede regel voor hetzelfde adres. Een afmelding telt wél altijd
       // mee: bij twijfel liever niet mailen dan per ongeluk wel.
       if (afgemeld) bestaand.afgemeld = true;
+      if (!bestaand.naam && i.naam?.trim()) bestaand.naam = i.naam.trim();
       continue;
     }
     const org = i.organisatie_id ? orgVan.get(i.organisatie_id) : undefined;
@@ -203,6 +209,19 @@ export async function getNieuwsbriefOverzicht(): Promise<NieuwsbriefOverzicht> {
       a.email.localeCompare(b.email, 'nl'),
   );
 
+  return { adressen, orgs, kolommenAanwezig: inschrijvingenRes.kolommenAanwezig };
+}
+
+/**
+ * De volledige nieuwsbrieflijst plus de klanten die er nog buiten vallen.
+ * In één functie, zodat de organisaties maar één keer worden opgehaald.
+ */
+export async function getNieuwsbriefOverzicht(): Promise<NieuwsbriefOverzicht> {
+  const sb = kmsAdmin();
+  if (!sb) return { adressen: [], zonderAdres: [], afmeldenMogelijk: false };
+
+  const { adressen, orgs, kolommenAanwezig } = await bouwAdressen(sb);
+
   const missend = orgs.filter((o) => !schoonEmail(o.email_algemeen));
   // De contactpersonen alleen ophalen als er ook echt klanten zonder adres zijn.
   const hoofdcontacten = missend.length > 0 ? await listHoofdcontacten() : [];
@@ -215,7 +234,7 @@ export async function getNieuwsbriefOverzicht(): Promise<NieuwsbriefOverzicht> {
     suggestie: schoonEmail(contactVan.get(o.id)?.email),
   }));
 
-  return { adressen, zonderAdres, afmeldenMogelijk: inschrijvingenRes.kolommenAanwezig };
+  return { adressen, zonderAdres, afmeldenMogelijk: kolommenAanwezig };
 }
 
 /** De adressen die daadwerkelijk gemaild mogen worden. */
@@ -348,4 +367,115 @@ export async function zetAfgemeld(
   });
   if (!error) return 'ok';
   return kolomOntbreekt(error) ? 'nog-niet-klaar' : 'mislukt';
+}
+
+/* ------------------------------------------------------------------ */
+/* Doelgroep en ontvangers voor de verzending vanuit het programma      */
+/* ------------------------------------------------------------------ */
+
+export const DOELGROEP_SOORTEN = ['alle', 'actieve-klanten', 'inschrijvingen', 'branches'] as const;
+export type DoelgroepSoort = (typeof DOELGROEP_SOORTEN)[number];
+
+/** Opgeslagen in nieuwsbrieven.doelgroep. */
+export type Doelgroep = { soort: DoelgroepSoort; branches: string[] };
+
+export const DOELGROEP_LABELS: Record<DoelgroepSoort, { label: string; uitleg: string }> = {
+  alle: { label: 'Iedereen in de lijst', uitleg: 'Alle klanten met een algemeen e-mailadres en alle aanmeldingen via de site.' },
+  'actieve-klanten': { label: 'Alleen actieve klanten', uitleg: 'Klanten die op actief staan. Losse aanmeldingen gaan niet mee.' },
+  inschrijvingen: { label: 'Alleen aanmeldingen via de site', uitleg: 'Mensen die zich zelf hebben aangemeld en (nog) geen klant zijn.' },
+  branches: { label: 'Alleen bepaalde branches', uitleg: 'Kies een of meer branches hieronder.' },
+};
+
+export function normaliseerDoelgroep(v: unknown): Doelgroep {
+  const o = (typeof v === 'object' && v !== null ? v : {}) as { soort?: unknown; branches?: unknown };
+  const soort = DOELGROEP_SOORTEN.includes(o.soort as DoelgroepSoort) ? (o.soort as DoelgroepSoort) : 'alle';
+  const branches = Array.isArray(o.branches)
+    ? [...new Set(o.branches.filter((b): b is string => typeof b === 'string' && b.trim() !== '').map((b) => b.trim()))].slice(0, 100)
+    : [];
+  return { soort, branches };
+}
+
+/** Eén ontvanger zoals die in de wachtrij komt. */
+export type NieuwsbriefOntvanger = {
+  email: string;
+  naam: string | null;
+  bedrijf: string | null;
+  organisatie_id: string | null;
+};
+
+/** Alle adressen uit de afmeldingen-tabel (campagnes en afmeldlinks), in kleine letters. */
+async function afgemeldeAdressen(sb: SupabaseClient): Promise<Set<string>> {
+  // In blokken van 1000: de database geeft er standaard maximaal 1000 per keer terug,
+  // en een gemist afgemeld adres mag nooit alsnog een nieuwsbrief krijgen.
+  const uit = new Set<string>();
+  for (let van = 0; van < 200_000; van += 1000) {
+    const { data, error } = await sb.from('afmeldingen').select('email').order('email').range(van, van + 999);
+    if (error) break;
+    const rijen = (data as { email: string | null }[]) ?? [];
+    for (const r of rijen) {
+      const e = (r.email ?? '').trim().toLowerCase();
+      if (e) uit.add(e);
+    }
+    if (rijen.length < 1000) break;
+  }
+  return uit;
+}
+
+/**
+ * Namen van contactpersonen per e-mailadres. Is het algemene adres van een klant
+ * toevallig ook het adres van een contactpersoon, dan krijgt die een
+ * persoonlijke aanhef in plaats van "Beste relatie".
+ */
+async function contactNamen(sb: SupabaseClient): Promise<Map<string, string>> {
+  const { data } = await sb.from('contactpersonen').select('email, naam');
+  const uit = new Map<string, string>();
+  for (const r of (data as { email: string | null; naam: string | null }[]) ?? []) {
+    const email = schoonEmail(r.email);
+    const naam = r.naam?.trim();
+    if (email && naam && !uit.has(email)) uit.set(email, naam);
+  }
+  return uit;
+}
+
+/**
+ * De ontvangers voor een doelgroep: ontdubbeld, zonder afgemelde adressen
+ * (afgemeld=true in de inschrijvingen én alles in de afmeldingen-tabel).
+ */
+export async function ontvangersVoorDoelgroep(doelgroepInvoer: Doelgroep | unknown): Promise<NieuwsbriefOntvanger[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+  const doelgroep = normaliseerDoelgroep(doelgroepInvoer);
+
+  const [{ adressen, orgs }, afgemeld, namen] = await Promise.all([bouwAdressen(sb), afgemeldeAdressen(sb), contactNamen(sb)]);
+  const actief = new Map(orgs.map((o) => [o.id, o.actief !== false]));
+  const branches = new Set(doelgroep.branches);
+
+  return teMailen(adressen)
+    .filter((a) => !afgemeld.has(a.email))
+    .filter((a) => {
+      switch (doelgroep.soort) {
+        case 'actieve-klanten':
+          return a.bron === 'klant' && a.organisatie_id !== null && actief.get(a.organisatie_id) === true;
+        case 'inschrijvingen':
+          return a.bron === 'aanmelding';
+        case 'branches':
+          return branches.size > 0 && branches.has(a.branche || ZONDER_BRANCHE);
+        default:
+          return true;
+      }
+    })
+    .map((a) => ({
+      email: a.email,
+      naam: a.naam || namen.get(a.email) || null,
+      bedrijf: a.bedrijf,
+      organisatie_id: a.organisatie_id,
+    }));
+}
+
+/** Branches met het aantal mailbare adressen, voor de doelgroepkeuze. */
+export async function nieuwsbriefBranches(): Promise<BrancheTelling[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+  const [{ adressen }, afgemeld] = await Promise.all([bouwAdressen(sb), afgemeldeAdressen(sb)]);
+  return tellPerBranche(adressen.filter((a) => !afgemeld.has(a.email)));
 }

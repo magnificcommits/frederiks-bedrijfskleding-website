@@ -9,7 +9,10 @@ import { usePathname } from 'next/navigation';
 export default function ChromeGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isApp =
-    pathname?.startsWith('/portaal') || pathname?.startsWith('/dashboard');
+    pathname?.startsWith('/portaal') ||
+    pathname?.startsWith('/dashboard') ||
+    // Voorbeeldportaal voor prospects: eigen portaalschil, geen marketing-navigatie.
+    /^\/kennismaking\/[^/]+\/portaal(\/|$)/.test(pathname ?? '');
   if (isApp) return null;
   return <>{children}</>;
 }

@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import type { NieuweOrderKeuzes } from '@/lib/kms/orders';
 import { nieuweOrder } from '../actions';
+import { haalKlantPersonenActie, contactAlsWerknemerActie, type KlantPersonen } from './actions';
 
 /** Meer klanten tegelijk tonen leest niemand, en het maakt het typen traag. */
 const MAX_KLANTEN = 40;
@@ -25,6 +27,33 @@ export default function NieuweOrderFormulier({
   const [medewerkerId, setMedewerkerId] = useState('');
   const [afdelingId, setAfdelingId] = useState('');
   const [vestigingId, setVestigingId] = useState('');
+  // Werknemers, afdelingen en contactpersonen van de gekozen klant, vers opgehaald.
+  const [personen, setPersonen] = useState<KlantPersonen | null>(null);
+  const [personenLaden, setPersonenLaden] = useState(false);
+  const [omzetMelding, setOmzetMelding] = useState<{ ok: boolean; tekst: string } | null>(null);
+  const [omzetten, startOmzetten] = useTransition();
+
+  useEffect(() => {
+    if (!klantId) {
+      setPersonen(null);
+      return;
+    }
+    let levend = true;
+    setPersonenLaden(true);
+    haalKlantPersonenActie(klantId)
+      .then((p) => {
+        if (levend) setPersonen(p);
+      })
+      .catch(() => {
+        if (levend) setPersonen(null);
+      })
+      .finally(() => {
+        if (levend) setPersonenLaden(false);
+      });
+    return () => {
+      levend = false;
+    };
+  }, [klantId]);
 
   const klant = useMemo(() => keuzes.klanten.find((k) => k.id === klantId) ?? null, [keuzes.klanten, klantId]);
 
@@ -37,18 +66,58 @@ export default function NieuweOrderFormulier({
   }, [zoek, keuzes.klanten]);
   const zichtbaar = gevonden.slice(0, MAX_KLANTEN);
 
+  // Zolang de verse lijst nog laadt, gebruiken we wat al met de pagina meekwam.
   const medewerkers = useMemo(
-    () => keuzes.medewerkers.filter((m) => m.organisatie_id === klantId),
-    [keuzes.medewerkers, klantId],
+    () =>
+      personen
+        ? personen.werknemers
+        : keuzes.medewerkers
+            .filter((m) => m.organisatie_id === klantId)
+            .map((m) => ({ id: m.id, naam: m.naam, afdeling_id: null, vestiging_id: null })),
+    [personen, keuzes.medewerkers, klantId],
   );
   const afdelingen = useMemo(
-    () => keuzes.afdelingen.filter((a) => a.organisatie_id === klantId),
-    [keuzes.afdelingen, klantId],
+    () => personen?.afdelingen ?? keuzes.afdelingen.filter((a) => a.organisatie_id === klantId),
+    [personen, keuzes.afdelingen, klantId],
   );
   const vestigingen = useMemo(
-    () => keuzes.vestigingen.filter((v) => v.organisatie_id === klantId),
-    [keuzes.vestigingen, klantId],
+    () => personen?.vestigingen ?? keuzes.vestigingen.filter((v) => v.organisatie_id === klantId),
+    [personen, keuzes.vestigingen, klantId],
   );
+  // Contactpersonen die nog geen werknemer zijn: die kun je als werknemer kiezen.
+  const contactKeuzes = useMemo(() => {
+    if (!personen) return [];
+    const bekend = new Set(
+      personen.werknemers.map((w) => w.naam.trim().toLowerCase()),
+    );
+    return personen.contactpersonen.filter((c) => !bekend.has(c.naam.trim().toLowerCase()));
+  }, [personen]);
+
+  function kiesMedewerker(waarde: string) {
+    setOmzetMelding(null);
+    if (!waarde.startsWith('contact:')) {
+      setMedewerkerId(waarde);
+      // Heeft de werknemer een afdeling of vestiging, vul die alvast in.
+      const w = medewerkers.find((m) => m.id === waarde);
+      if (w?.afdeling_id && !afdelingId) setAfdelingId(w.afdeling_id);
+      if (w?.vestiging_id && !vestigingId) setVestigingId(w.vestiging_id);
+      return;
+    }
+    const contactId = waarde.slice('contact:'.length);
+    startOmzetten(async () => {
+      const antwoord = await contactAlsWerknemerActie({ orgId: klantId, contactId });
+      setOmzetMelding({ ok: antwoord.ok, tekst: antwoord.melding });
+      if (antwoord.ok && antwoord.id) {
+        const nieuw = { id: antwoord.id, naam: antwoord.naam ?? 'Werknemer', afdeling_id: null, vestiging_id: null };
+        setPersonen((p) =>
+          p
+            ? { ...p, werknemers: p.werknemers.some((w) => w.id === nieuw.id) ? p.werknemers : [...p.werknemers, nieuw] }
+            : p,
+        );
+        setMedewerkerId(antwoord.id);
+      }
+    });
+  }
 
   function kiesKlant(id: string) {
     setKlantId(id);
@@ -57,6 +126,9 @@ export default function NieuweOrderFormulier({
     setMedewerkerId('');
     setAfdelingId('');
     setVestigingId('');
+    setOmzetMelding(null);
+    // Anders staan de werknemers van de vorige klant in de lijst tot de nieuwe binnen zijn.
+    setPersonen(null);
   }
 
   return (
@@ -133,22 +205,48 @@ export default function NieuweOrderFormulier({
         </p>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div>
-            <label className="veld-label" htmlFor="o-medewerker">Medewerker</label>
+            <label className="veld-label" htmlFor="o-medewerker">Werknemer</label>
             <select
               id="o-medewerker"
               name="medewerker_id"
               value={medewerkerId}
-              onChange={(e) => setMedewerkerId(e.target.value)}
-              disabled={!klantId}
+              onChange={(e) => kiesMedewerker(e.target.value)}
+              disabled={!klantId || omzetten}
               className="veld disabled:bg-mist disabled:text-warm"
             >
-              <option value="">Geen medewerker</option>
-              {medewerkers.map((m) => (
-                <option key={m.id} value={m.id}>{m.naam}</option>
-              ))}
+              <option value="">Geen werknemer</option>
+              {medewerkers.length > 0 && (
+                <optgroup label="Werknemers">
+                  {medewerkers.map((m) => (
+                    <option key={m.id} value={m.id}>{m.naam}</option>
+                  ))}
+                </optgroup>
+              )}
+              {contactKeuzes.length > 0 && (
+                <optgroup label="Contactpersonen (wordt werknemer)">
+                  {contactKeuzes.map((c) => (
+                    <option key={c.id} value={`contact:${c.id}`}>{c.naam}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
-            {klantId && medewerkers.length === 0 && (
-              <p className="veld-hint">Deze klant heeft nog geen medewerkers.</p>
+            {omzetten && <p className="veld-hint">Werknemer aanmaken...</p>}
+            {omzetMelding && (
+              <p className={`veld-hint font-semibold ${omzetMelding.ok ? 'text-green-700' : 'text-red-700'}`}>
+                {omzetMelding.tekst}
+              </p>
+            )}
+            {klantId && !personenLaden && medewerkers.length === 0 && (
+              <p className="veld-hint">
+                Deze klant heeft nog geen werknemers.
+                {contactKeuzes.length > 0
+                  ? ' Kies hierboven een contactpersoon, dan wordt die meteen als werknemer aangemaakt. Of '
+                  : ' '}
+                <Link href={`/dashboard/klanten/${klantId}?tab=werknemers`} className="font-semibold text-amber-700 hover:text-amber-800">
+                  {contactKeuzes.length > 0 ? 'voeg een werknemer toe' : 'Werknemer toevoegen'}
+                </Link>
+                .
+              </p>
             )}
           </div>
           <div>
@@ -166,8 +264,13 @@ export default function NieuweOrderFormulier({
                 <option key={a.id} value={a.id}>{a.naam}</option>
               ))}
             </select>
-            {klantId && afdelingen.length === 0 && (
-              <p className="veld-hint">Deze klant heeft nog geen afdelingen.</p>
+            {klantId && !personenLaden && afdelingen.length === 0 && (
+              <p className="veld-hint">
+                Deze klant heeft nog geen afdelingen.{' '}
+                <Link href={`/dashboard/klanten/${klantId}?tab=afdelingen`} className="font-semibold text-amber-700 hover:text-amber-800">
+                  Afdeling toevoegen
+                </Link>
+              </p>
             )}
           </div>
           <div>

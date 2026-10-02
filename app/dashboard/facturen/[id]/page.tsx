@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
-import { getFactuur, getFactuurMailLog } from '@/lib/kms/facturen';
-import { voegRegel, werkRegel, verwijderRegel, wijzigStatus } from './actions';
+import { getFactuur, getFactuurMailLog, factuurEmailSuggestie } from '@/lib/kms/facturen';
+import { voegRegel, werkRegel, verwijderRegel, wijzigStatus, zetFactuurEmailActie, mailFactuurKlantActie } from './actions';
 import PrintKnop from './PrintKnop';
 import TotaalKaart from '@/components/dashboard/TotaalKaart';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
@@ -39,10 +39,11 @@ const BEDRIJF = {
   postcodePlaats: `${bedrijf.postcode} ${bedrijf.plaats}`,
 };
 
-export default async function FactuurDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function FactuurDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ mailfout?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   await eisEigenaar();
   const { id } = await params;
+  const { mailfout } = await searchParams;
   const sb = kmsAdmin();
 
   if (!sb) {
@@ -71,6 +72,11 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
   }
 
   const org = factuur.organisatie;
+  // Waar komt het factuuradres vandaan? Het voorstel volgt het facturatiecontact van de klant.
+  const suggestie = await factuurEmailSuggestie(factuur.organisatie_id);
+  const huidigAdres = factuur.factuur_email?.trim() || '';
+  const adresInVeld = huidigAdres || suggestie?.email || '';
+  const zelfdeAlsVoorstel = !!suggestie && huidigAdres.toLowerCase() === suggestie.email.toLowerCase();
   const excl = Number(factuur.bedrag_excl) || 0;
   const btw = Number(factuur.btw_bedrag) || 0;
   const incl = Number(factuur.bedrag_incl) || 0;
@@ -211,12 +217,57 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
           totaal={incl}
         />
         <div className="panel p-4">
+          <h2 className="font-display text-base font-bold text-ink-900">Versturen naar klant</h2>
+          {mailfout && (
+            <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-800">{mailfout}</p>
+          )}
+          <form action={zetFactuurEmailActie} className="mt-3">
+            <input type="hidden" name="factuurId" value={factuur.id} />
+            <label className="veld-label" htmlFor="factuur-email">Factuur mailen naar</label>
+            <input
+              id="factuur-email"
+              name="factuur_email"
+              type="email"
+              defaultValue={adresInVeld}
+              placeholder="facturen@klant.nl"
+              className="veld py-2 text-[14px]"
+            />
+            <p className="veld-hint">
+              {!huidigAdres && suggestie && <>Voorstel uit {suggestie.herkomst}. Nog niet opgeslagen op deze factuur.</>}
+              {huidigAdres && zelfdeAlsVoorstel && <>Dit adres komt van {suggestie!.herkomst}.</>}
+              {huidigAdres && suggestie && !zelfdeAlsVoorstel && (
+                <>Aangepast voor deze factuur. Volgens de klantkaart is het {suggestie.email} ({suggestie.herkomst}).</>
+              )}
+              {huidigAdres && !suggestie && <>Handmatig ingevuld voor deze factuur. Bij de klant staat geen facturatiecontact.</>}
+              {!huidigAdres && !suggestie && (
+                <>
+                  Bij deze klant staat nog geen adres voor facturen. Vink bij een contactpersoon <strong>Facturatie</strong> aan op de{' '}
+                  <Link href={`/dashboard/klanten/${factuur.organisatie_id}`} className="font-semibold text-amber-700 hover:text-amber-800">klantkaart</Link>, of typ hier een adres.
+                </>
+              )}
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              {/* Opslaan staat eerst: Enter in het adresveld slaat alleen op en mailt niet per ongeluk. */}
+              <button type="submit" className="knop-stil w-full">Adres opslaan</button>
+              <button type="submit" formAction={mailFactuurKlantActie} className="knop-donker w-full">
+                {factuur.status === 'concept' ? 'Factuur mailen naar klant' : 'Factuur opnieuw mailen'}
+              </button>
+              {huidigAdres && suggestie && !zelfdeAlsVoorstel && (
+                <button type="submit" name="herstel_email" value={suggestie.email} className="knop-tekst w-full">
+                  Terugzetten naar {suggestie.email}
+                </button>
+              )}
+            </div>
+            <p className="veld-hint">Het adres geldt alleen voor deze factuur. Een concept gaat na het mailen op Verzonden.</p>
+          </form>
+        </div>
+
+        <div className="panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Factuurgegevens</h2>
           <dl className="mt-3 space-y-1.5 text-sm">
             <div className="flex justify-between gap-3"><dt className="text-warm">Factuurnummer</dt><dd className="font-medium text-ink-900">{factuur.factuurnummer || 'concept'}</dd></div>
             <div className="flex justify-between gap-3"><dt className="text-warm">Factuurdatum</dt><dd className="text-ink-900">{fmt(factuur.factuurdatum)}</dd></div>
             <div className="flex justify-between gap-3"><dt className="text-warm">Vervaldatum</dt><dd className="text-ink-900">{fmt(factuur.vervaldatum)}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-warm">Factuur-e-mail</dt><dd className="text-ink-900">{factuur.factuur_email || '-'}</dd></div>
             {factuur.betaaldatum && <div className="flex justify-between gap-3"><dt className="text-warm">Betaald op</dt><dd className="text-ink-900">{fmt(factuur.betaaldatum)}</dd></div>}
           </dl>
         </div>
@@ -251,7 +302,7 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
               <button type="submit" className="rounded-md bg-ink-900 px-3 py-2 text-sm font-semibold text-white hover:bg-ink-800">Betaald</button>
             </form>
           </div>
-          <p className="mt-3 text-xs text-warm">Bij Verzonden wordt de vervaldatum op factuurdatum plus 30 dagen gezet. Bij Betaald wordt de betaaldatum op vandaag gezet.</p>
+          <p className="mt-3 text-xs text-warm">Bij Verzonden wordt de vervaldatum op factuurdatum plus {bedrijf.betaaltermijnDagen} dagen gezet. Bij Betaald wordt de betaaldatum op vandaag gezet.</p>
         </div>
       </aside>
       </div>
@@ -312,7 +363,7 @@ export default async function FactuurDetailPage({ params }: { params: Promise<{ 
         {factuur.toegepaste_prijsafspraken && (
           <p className="mt-6 whitespace-pre-wrap rounded-md bg-mist px-3 py-2 text-xs text-warm">{factuur.toegepaste_prijsafspraken}</p>
         )}
-        {factuur.factuur_email && <p className="mt-6 text-xs text-warm">Vragen over deze factuur? Mail naar {factuur.factuur_email}.</p>}
+        <p className="mt-6 text-xs text-warm">Vragen over deze factuur? Mail naar {bedrijf.email} of bel {bedrijf.telefoon}.</p>
 
         <DocumentVoet />
       </section>

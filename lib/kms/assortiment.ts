@@ -206,6 +206,156 @@ export async function zetVerstrekking(
 }
 
 /* ------------------------------------------------------------------------- */
+/* Hulp: alle rijen ophalen, ook boven de 1000.                               */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * Supabase geeft per verzoek hoogstens 1000 rijen terug (instelling max-rows),
+ * ook als je in de query een hogere limit zet. Daardoor kwamen bij artikelen
+ * met veel maten de kleuren maar half of helemaal niet mee. Deze hulp haalt in
+ * blokken van 1000 op tot alles binnen is.
+ *
+ * `pagina` krijgt het begin en eind van het blok en moet een query met
+ * `.range(van, tot)` en een vaste volgorde (`.order('id')`) teruggeven.
+ */
+export async function haalAlles<T>(
+  pagina: (van: number, tot: number) => PromiseLike<{ data: unknown; error: unknown }>,
+  stap = 1000,
+): Promise<T[]> {
+  const uit: T[] = [];
+  for (let i = 0; i < 200; i++) {
+    const van = i * stap;
+    const { data, error } = await pagina(van, van + stap - 1);
+    if (error) break;
+    const rijen = (data as T[]) ?? [];
+    uit.push(...rijen);
+    if (rijen.length < stap) break;
+  }
+  return uit;
+}
+
+/** Een id-lijst in stukken, zodat de query-URL niet te lang wordt. */
+export function inStukken<T>(lijst: T[], grootte = 150): T[][] {
+  const uit: T[][] = [];
+  for (let i = 0; i < lijst.length; i += grootte) uit.push(lijst.slice(i, i + grootte));
+  return uit;
+}
+
+/** Kleuren vergelijken zonder last van hoofdletters of spaties. */
+export function zelfdeKleur(a: string | null | undefined, b: string | null | undefined): boolean {
+  return (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
+}
+
+/* ------------------------------------------------------------------------- */
+/* Kleuren van een artikel, met foto per kleur.                               */
+/* ------------------------------------------------------------------------- */
+
+export type KleurKeuze = { kleur: string; afbeelding: string | null };
+
+type VariantKleurRij = { product_id: string; kleur: string | null; actief: boolean | null };
+type KleurFotoRij = { product_id: string; kleur: string | null; afbeelding_url: string | null };
+
+/** Varianten (product, kleur, actief) van een reeks artikelen, alles opgehaald. */
+async function haalVariantKleuren(sb: SupabaseClient, productIds: string[]): Promise<VariantKleurRij[]> {
+  const uit: VariantKleurRij[] = [];
+  for (const stuk of inStukken(productIds)) {
+    const rijen = await haalAlles<VariantKleurRij>((van, tot) =>
+      sb
+        .from('product_varianten')
+        .select('product_id, kleur, actief')
+        .in('product_id', stuk)
+        .order('id')
+        .range(van, tot),
+    );
+    uit.push(...rijen);
+  }
+  return uit;
+}
+
+/** Kleurfoto's van een reeks artikelen, alles opgehaald. */
+async function haalKleurFotos(sb: SupabaseClient, productIds: string[]): Promise<KleurFotoRij[]> {
+  const uit: KleurFotoRij[] = [];
+  for (const stuk of inStukken(productIds)) {
+    const rijen = await haalAlles<KleurFotoRij>((van, tot) =>
+      sb
+        .from('product_kleur_afbeeldingen')
+        .select('product_id, kleur, afbeelding_url')
+        .in('product_id', stuk)
+        .order('id')
+        .range(van, tot),
+    );
+    uit.push(...rijen);
+  }
+  return uit;
+}
+
+/**
+ * Per artikel de kleuren met foto. De kleuren komen uit de actieve varianten
+ * (alleen een expliciete false telt als niet actief). Heeft een artikel geen
+ * kleur op de varianten maar wel kleurfoto's, dan gelden die kleuren.
+ * De foto is de kleurfoto, anders de eerste foto van het artikel.
+ */
+export async function kleurenPerArtikel(
+  sb: SupabaseClient,
+  productIds: string[],
+  hoofdfoto: Map<string, string | null> = new Map(),
+): Promise<Map<string, KleurKeuze[]>> {
+  const uit = new Map<string, KleurKeuze[]>();
+  if (productIds.length === 0) return uit;
+  const [varianten, fotos] = await Promise.all([
+    haalVariantKleuren(sb, productIds),
+    haalKleurFotos(sb, productIds),
+  ]);
+
+  const fotoVan = new Map<string, string>();
+  const fotoKleuren = new Map<string, string[]>();
+  for (const f of fotos) {
+    const kleur = (f.kleur ?? '').trim();
+    if (!kleur || !f.afbeelding_url) continue;
+    const sleutel = `${f.product_id}|${kleur.toLowerCase()}`;
+    if (!fotoVan.has(sleutel)) fotoVan.set(sleutel, f.afbeelding_url);
+    const lijst = fotoKleuren.get(f.product_id) ?? [];
+    if (!lijst.some((k) => zelfdeKleur(k, kleur))) lijst.push(kleur);
+    fotoKleuren.set(f.product_id, lijst);
+  }
+
+  const variantKleuren = new Map<string, string[]>();
+  for (const v of varianten) {
+    if (v.actief === false) continue;
+    const kleur = (v.kleur ?? '').trim();
+    if (!kleur) continue;
+    const lijst = variantKleuren.get(v.product_id) ?? [];
+    if (!lijst.some((k) => zelfdeKleur(k, kleur))) lijst.push(kleur);
+    variantKleuren.set(v.product_id, lijst);
+  }
+
+  for (const id of productIds) {
+    const kleuren = variantKleuren.get(id) ?? fotoKleuren.get(id) ?? [];
+    uit.set(
+      id,
+      [...kleuren]
+        .sort((a, b) => a.localeCompare(b, 'nl'))
+        .map((kleur) => ({
+          kleur,
+          afbeelding: fotoVan.get(`${id}|${kleur.toLowerCase()}`) ?? hoofdfoto.get(id) ?? null,
+        })),
+    );
+  }
+  return uit;
+}
+
+/** De kleuren van één artikel, met foto per kleur. Voor de artikelkiezer. */
+export async function kleurKeuzesVoorArtikel(productId: string): Promise<KleurKeuze[]> {
+  const sb = kmsAdmin();
+  if (!sb || !productId) return [];
+  const { data } = await sb.from('producten').select('id, afbeeldingen').eq('id', productId).maybeSingle();
+  const rij = data as { id: string; afbeeldingen: string[] | null } | null;
+  const hoofdfoto = new Map<string, string | null>([[productId, (rij?.afbeeldingen ?? [])[0] ?? null]]);
+  const kaart = await kleurenPerArtikel(sb, [productId], hoofdfoto);
+  return kaart.get(productId) ?? [];
+}
+
+/* ------------------------------------------------------------------------- */
 /* Assortiment van één klant: overzicht, toevoegen, bijwerken, verwijderen.   */
 /* ------------------------------------------------------------------------- */
 
@@ -228,25 +378,75 @@ type RegelRij = {
 /**
  * De assortimentregels van één organisatie.
  *
- * `kleur` is later aan de tabel toegevoegd (zie de migratie bij deze wijziging).
- * Draait een omgeving die migratie nog niet, dan zou een select met die kolom de
- * hele query laten mislukken en bleef het scherm leeg. Daarom valt hij één keer
- * terug op de kolommen die er zeker zijn.
+ * `kleur` is later aan de tabel toegevoegd. Draait een omgeving die migratie nog
+ * niet, dan zou een select met die kolom de hele query laten mislukken en bleef
+ * het scherm leeg. Daarom valt hij één keer terug op de kolommen die er zeker zijn.
  */
 async function haalRegels(sb: SupabaseClient, orgId: string): Promise<RegelRij[]> {
   const metKleur = await sb
     .from('assortiment')
     .select(`${REGELVELDEN}, kleur`)
     .eq('organisatie_id', orgId)
-    .limit(5000);
-  if (!metKleur.error) return (metKleur.data as RegelRij[]) ?? [];
+    .order('id')
+    .limit(1000);
+  if (!metKleur.error) {
+    const eerste = (metKleur.data as RegelRij[]) ?? [];
+    if (eerste.length < 1000) return eerste;
+    return haalAlles<RegelRij>((van, tot) =>
+      sb
+        .from('assortiment')
+        .select(`${REGELVELDEN}, kleur`)
+        .eq('organisatie_id', orgId)
+        .order('id')
+        .range(van, tot),
+    );
+  }
 
   const zonderKleur = await sb
     .from('assortiment')
     .select(REGELVELDEN)
     .eq('organisatie_id', orgId)
-    .limit(5000);
+    .limit(1000);
   return ((zonderKleur.data as Omit<RegelRij, 'kleur'>[]) ?? []).map((r) => ({ ...r, kleur: null }));
+}
+
+/** De assortimentregels van een klant zoals andere modules ze nodig hebben. */
+export type KaleRegel = {
+  id: string;
+  product_id: string;
+  afdeling_id: string | null;
+  medewerker_id: string | null;
+  kleur: string | null;
+  toegestaan: boolean;
+};
+
+export async function listKaleRegels(orgId: string): Promise<KaleRegel[]> {
+  const sb = kmsAdmin();
+  if (!sb || !orgId) return [];
+  return (await haalRegels(sb, orgId))
+    .filter((r): r is RegelRij & { product_id: string } => Boolean(r.product_id))
+    .map((r) => ({
+      id: r.id,
+      product_id: r.product_id,
+      afdeling_id: r.afdeling_id,
+      medewerker_id: r.medewerker_id,
+      kleur: r.kleur?.trim() || null,
+      toegestaan: r.toegestaan !== false,
+    }));
+}
+
+/**
+ * Geldt deze assortimentregel voor deze werknemer? Een regel zonder afdeling en
+ * zonder werknemer geldt voor de hele klant; anders moet de afdeling of de
+ * werknemer zelf kloppen.
+ */
+export function regelGeldtVoor(
+  regel: { afdeling_id: string | null; medewerker_id: string | null },
+  werknemer: { id: string; afdeling_id: string | null },
+): boolean {
+  if (regel.medewerker_id) return regel.medewerker_id === werknemer.id;
+  if (regel.afdeling_id) return regel.afdeling_id === werknemer.afdeling_id;
+  return true;
 }
 
 /** Eén regel uit het assortiment van een klant, met de artikelgegevens erbij. */
@@ -257,10 +457,11 @@ export type AssortimentRij = {
   merk: string | null;
   categorie: string | null;
   sku: string | null;
+  /** Foto in de gekozen kleur, anders de hoofdfoto van het artikel. */
   afbeelding: string | null;
   /** Blijft null zolang de kleur-migratie nog niet gedraaid is. */
   kleur: string | null;
-  /** De kleuren die dit artikel in de catalogus heeft, om uit te kiezen. */
+  /** De kleuren die dit artikel in de catalogus heeft. */
   kleuren: string[];
   toegestaan: boolean;
   verstrekking_type: VerstrekkingType;
@@ -270,11 +471,14 @@ export type AssortimentRij = {
   artikel_actief: boolean;
   /** Afdeling of medewerker waarvoor deze regel geldt; null = de hele klant. */
   bereik: string | null;
+  afdeling_id: string | null;
+  medewerker_id: string | null;
 };
 
 /**
- * Het assortiment van één klant: alleen wat er daadwerkelijk in staat, met foto,
- * kleur en verstrekking. Dit is de lijst die Jessi op de klantpagina ziet.
+ * Het assortiment van één klant: alleen wat er daadwerkelijk in staat, met foto
+ * in de gekozen kleur en verstrekking. Dit is de lijst die Jessi op de
+ * klantpagina ziet.
  *
  * Een artikel dat op inactief staat blijft in de lijst staan met een melding;
  * stil verdwijnen zou betekenen dat een klant iets bestelt wat zij niet ziet.
@@ -289,19 +493,6 @@ export async function listKlantAssortiment(orgId: string): Promise<AssortimentRi
   ];
   if (productIds.length === 0) return [];
 
-  const [{ data: artikelData }, { data: variantData }] = await Promise.all([
-    sb
-      .from('producten')
-      .select('id, naam, merk, categorie, sku, afbeeldingen, actief')
-      .in('id', productIds)
-      .limit(5000),
-    sb
-      .from('product_varianten')
-      .select('product_id, kleur, actief')
-      .in('product_id', productIds)
-      .limit(20000),
-  ]);
-
   type ArtikelRij = {
     id: string;
     naam: string | null;
@@ -311,23 +502,22 @@ export async function listKlantAssortiment(orgId: string): Promise<AssortimentRi
     afbeeldingen: string[] | null;
     actief: boolean | null;
   };
-  const artikelVan = new Map<string, ArtikelRij>();
-  for (const a of (artikelData as ArtikelRij[]) ?? []) artikelVan.set(a.id, a);
-
-  // De kleuren die het artikel echt heeft, zodat Jessi een kleur kan kiezen in
-  // plaats van hem over te typen. Alleen een expliciete false verbergt een
-  // variant; bij oudere rijen staat hier null en die horen er gewoon bij.
-  type VariantRij = { product_id: string; kleur: string | null; actief: boolean | null };
-  const kleurenVan = new Map<string, string[]>();
-  for (const v of (variantData as VariantRij[]) ?? []) {
-    if (v.actief === false) continue;
-    const kleur = (v.kleur ?? '').trim();
-    if (!kleur) continue;
-    const lijst = kleurenVan.get(v.product_id);
-    if (!lijst) kleurenVan.set(v.product_id, [kleur]);
-    else if (!lijst.includes(kleur)) lijst.push(kleur);
+  const artikelen: ArtikelRij[] = [];
+  for (const stuk of inStukken(productIds)) {
+    const { data } = await sb
+      .from('producten')
+      .select('id, naam, merk, categorie, sku, afbeeldingen, actief')
+      .in('id', stuk);
+    artikelen.push(...((data as ArtikelRij[]) ?? []));
   }
-  for (const lijst of kleurenVan.values()) lijst.sort((a, b) => a.localeCompare(b, 'nl'));
+  const artikelVan = new Map<string, ArtikelRij>();
+  const hoofdfoto = new Map<string, string | null>();
+  for (const a of artikelen) {
+    artikelVan.set(a.id, a);
+    hoofdfoto.set(a.id, (a.afbeeldingen ?? [])[0] ?? null);
+  }
+
+  const kleurenVan = await kleurenPerArtikel(sb, productIds, hoofdfoto);
 
   // Namen van afdelingen en medewerkers alleen ophalen als er ook regels zijn
   // die daarop staan; bij de meeste klanten geldt alles voor iedereen.
@@ -338,7 +528,7 @@ export async function listKlantAssortiment(orgId: string): Promise<AssortimentRi
   if (afdelingIds.length > 0) {
     const { data } = await sb.from('afdelingen').select('id, naam').in('id', afdelingIds);
     for (const a of (data as { id: string; naam: string | null }[]) ?? []) {
-      if (a.naam) bereikVan.set(`afdeling:${a.id}`, `Afdeling ${a.naam}`);
+      if (a.naam) bereikVan.set(`afdeling:${a.id}`, `afdeling ${a.naam}`);
     }
   }
   const medewerkerIds = [
@@ -357,6 +547,9 @@ export async function listKlantAssortiment(orgId: string): Promise<AssortimentRi
     // Een regel zonder artikel is een verweesde rij (product verwijderd); die
     // heeft niets te tonen en zou alleen maar een lege regel opleveren.
     if (!r.product_id || !artikel) continue;
+    const kleur = r.kleur?.trim() || null;
+    const kleuren = kleurenVan.get(r.product_id) ?? [];
+    const kleurFoto = kleur ? kleuren.find((k) => zelfdeKleur(k.kleur, kleur))?.afbeelding : null;
     rijen.push({
       id: r.id,
       product_id: r.product_id,
@@ -364,18 +557,20 @@ export async function listKlantAssortiment(orgId: string): Promise<AssortimentRi
       merk: artikel.merk,
       categorie: artikel.categorie,
       sku: artikel.sku,
-      afbeelding: (artikel.afbeeldingen ?? [])[0] ?? null,
-      kleur: r.kleur?.trim() || null,
-      kleuren: kleurenVan.get(r.product_id) ?? [],
+      afbeelding: kleurFoto ?? hoofdfoto.get(r.product_id) ?? null,
+      kleur,
+      kleuren: kleuren.map((k) => k.kleur),
       toegestaan: r.toegestaan !== false,
       verstrekking_type: normaliseerType(r.verstrekking_type),
       gratis_per_periode: r.gratis_per_periode,
       periode: normaliseerPeriode(r.periode),
       artikel_actief: artikel.actief !== false,
       bereik:
-        (r.afdeling_id ? bereikVan.get(`afdeling:${r.afdeling_id}`) : null) ??
-        (r.medewerker_id ? bereikVan.get(`medewerker:${r.medewerker_id}`) : null) ??
+        (r.afdeling_id ? bereikVan.get(`afdeling:${r.afdeling_id}`) ?? 'een verwijderde afdeling' : null) ??
+        (r.medewerker_id ? bereikVan.get(`medewerker:${r.medewerker_id}`) ?? 'één werknemer' : null) ??
         null,
+      afdeling_id: r.afdeling_id,
+      medewerker_id: r.medewerker_id,
     });
   }
 
@@ -383,7 +578,8 @@ export async function listKlantAssortiment(orgId: string): Promise<AssortimentRi
     (a, b) =>
       (a.merk ?? '').localeCompare(b.merk ?? '', 'nl') ||
       a.naam.localeCompare(b.naam, 'nl') ||
-      (a.kleur ?? '').localeCompare(b.kleur ?? '', 'nl'),
+      (a.kleur ?? '').localeCompare(b.kleur ?? '', 'nl') ||
+      (a.bereik ?? '').localeCompare(b.bereik ?? '', 'nl'),
   );
 }
 
@@ -391,9 +587,16 @@ export async function listKlantAssortiment(orgId: string): Promise<AssortimentRi
 export type NieuweAssortimentRegel = VerstrekkingVelden & {
   productId: string;
   kleur: string | null;
+  /** Leeg = de hele klant; anders één regel per afdeling. */
+  afdelingIds?: string[];
 };
 
-export type ToevoegResultaat = 'toegevoegd' | 'toegevoegd_zonder_kleur' | 'bestaat_al' | 'mislukt';
+export type ToevoegResultaat =
+  | 'toegevoegd'
+  | 'toegevoegd_zonder_kleur'
+  | 'bestaat_al'
+  | 'kleur_verplicht'
+  | 'mislukt';
 
 /**
  * Zin die Jessi te zien krijgt zolang de kolom `assortiment.kleur` nog niet
@@ -404,56 +607,80 @@ export const KLEUR_NOG_NIET_BESCHIKBAAR =
   'De kleur is nog niet bewaard: de database heeft daar nog geen veld voor. De rest is wel opgeslagen. Laat dat veld toevoegen, dan blijft de kleur voortaan staan.';
 
 /**
- * Artikel toevoegen aan het assortiment van een klant, inclusief kleur en
- * verstrekking in dezelfde handeling.
+ * Artikel toevoegen aan het assortiment van een klant, inclusief kleur,
+ * verstrekking en voor wie het geldt (hele klant of één of meer afdelingen).
  *
- * Dezelfde jas in twee kleuren mag; dezelfde jas twee keer in dezelfde kleur is
- * altijd een vergissing en levert alleen dubbele regels op in het portaal.
+ * Heeft het artikel kleuren, dan is een kleur verplicht: de kleur ligt daarna
+ * vast. Dezelfde jas in twee kleuren mag; dezelfde jas twee keer in dezelfde
+ * kleur voor dezelfde groep is altijd een vergissing.
  */
 export async function voegAssortimentRegelToe(
   orgId: string,
   invoer: NieuweAssortimentRegel,
-): Promise<ToevoegResultaat> {
+): Promise<{ uitkomst: ToevoegResultaat; toegevoegd: number; overgeslagen: number }> {
   const sb = kmsAdmin();
-  if (!sb || !orgId || !invoer.productId) return 'mislukt';
+  if (!sb || !orgId || !invoer.productId) return { uitkomst: 'mislukt', toegevoegd: 0, overgeslagen: 0 };
 
   const kleur = invoer.kleur?.trim() || null;
-  const bestaande = await haalRegels(sb, orgId);
-  const dubbel = bestaande.some(
-    (r) =>
-      r.product_id === invoer.productId &&
-      (r.kleur?.trim() || null) === kleur &&
-      !r.afdeling_id &&
-      !r.medewerker_id,
-  );
-  if (dubbel) return 'bestaat_al';
+  if (!kleur) {
+    const kleuren = await kleurKeuzesVoorArtikel(invoer.productId);
+    if (kleuren.length > 0) return { uitkomst: 'kleur_verplicht', toegevoegd: 0, overgeslagen: 0 };
+  }
 
-  const rij: {
+  const groepen: (string | null)[] =
+    invoer.afdelingIds && invoer.afdelingIds.length > 0 ? [...new Set(invoer.afdelingIds)] : [null];
+
+  const bestaande = await haalRegels(sb, orgId);
+  const nieuw = groepen.filter(
+    (afdelingId) =>
+      !bestaande.some(
+        (r) =>
+          r.product_id === invoer.productId &&
+          (r.kleur?.trim() || null) === kleur &&
+          (r.afdeling_id ?? null) === afdelingId &&
+          !r.medewerker_id,
+      ),
+  );
+  const overgeslagen = groepen.length - nieuw.length;
+  if (nieuw.length === 0) return { uitkomst: 'bestaat_al', toegevoegd: 0, overgeslagen };
+
+  type Rij = {
     organisatie_id: string;
     product_id: string;
     toegestaan: boolean;
     verstrekking_type: VerstrekkingType;
     gratis_per_periode: number | null;
     periode: Periode;
+    afdeling_id?: string;
     kleur?: string;
-  } = {
-    organisatie_id: orgId,
-    product_id: invoer.productId,
-    toegestaan: true,
-    ...schoneVerstrekking(invoer),
   };
-  // Kleur alleen meesturen als er een kleur gekozen is. Zo werkt toevoegen ook
-  // op een database waar de kleur-migratie nog niet gedraaid heeft.
-  if (kleur) rij.kleur = kleur;
+  const rijen: Rij[] = nieuw.map((afdelingId) => {
+    const rij: Rij = {
+      organisatie_id: orgId,
+      product_id: invoer.productId,
+      toegestaan: true,
+      ...schoneVerstrekking(invoer),
+    };
+    if (afdelingId) rij.afdeling_id = afdelingId;
+    // Kleur alleen meesturen als er een kleur gekozen is. Zo werkt toevoegen ook
+    // op een database waar de kleur-migratie nog niet gedraaid heeft.
+    if (kleur) rij.kleur = kleur;
+    return rij;
+  });
 
-  const { error } = await sb.from('assortiment').insert(rij);
-  if (!error) return 'toegevoegd';
-  if (!kleur) return 'mislukt';
+  const { error } = await sb.from('assortiment').insert(rijen);
+  if (!error) return { uitkomst: 'toegevoegd', toegevoegd: rijen.length, overgeslagen };
+  if (!kleur) return { uitkomst: 'mislukt', toegevoegd: 0, overgeslagen };
 
-  const zonderKleur = { ...rij };
-  delete zonderKleur.kleur;
+  const zonderKleur = rijen.map((r) => {
+    const kopie = { ...r };
+    delete kopie.kleur;
+    return kopie;
+  });
   const tweedePoging = await sb.from('assortiment').insert(zonderKleur);
-  return tweedePoging.error ? 'mislukt' : 'toegevoegd_zonder_kleur';
+  return tweedePoging.error
+    ? { uitkomst: 'mislukt', toegevoegd: 0, overgeslagen }
+    : { uitkomst: 'toegevoegd_zonder_kleur', toegevoegd: rijen.length, overgeslagen };
 }
 
 /**
@@ -463,66 +690,81 @@ export async function voegAssortimentRegelToe(
 export type BijwerkResultaat = 'opgeslagen' | 'opgeslagen_zonder_kleur' | 'dubbel' | 'mislukt';
 
 /**
- * Verstrekking (en eventueel de kleur) van een bestaande assortimentregel bijwerken.
- * `kleur` weglaten laat de bestaande kleur staan; expliciet null wist hem.
+ * Verstrekking en/of de groep (hele klant of afdeling) van een bestaande
+ * assortimentregel bijwerken. `afdeling_id` weglaten laat de groep staan;
+ * null zet hem op de hele klant.
  *
- * Wordt de kleur meegegeven, dan kijken we eerst of dezelfde jas in die kleur al
- * voor dezelfde groep klaarstaat. Twee identieke regels leveren in het portaal
- * twee keer hetzelfde artikel op en dat is altijd een vergissing.
+ * De kleur ligt na het toevoegen vast; wie een andere kleur wil, haalt de regel
+ * weg en voegt hem opnieuw toe. `kleur` wordt hier daarom alleen nog doorgegeven
+ * door oudere aanroepen en standaard ongemoeid gelaten.
  */
 export async function werkAssortimentRegelBij(
   regelId: string,
-  velden: VerstrekkingVelden & { kleur?: string | null },
-): Promise<BijwerkResultaat> {
+  velden: VerstrekkingVelden & { kleur?: string | null; afdeling_id?: string | null },
+): Promise<{ uitkomst: BijwerkResultaat; voor: Record<string, unknown>; na: Record<string, unknown> }> {
   const sb = kmsAdmin();
-  if (!sb || !regelId) return 'mislukt';
+  if (!sb || !regelId) return { uitkomst: 'mislukt', voor: {}, na: {} };
 
-  // undefined = de kleur blijft ongemoeid; null = de kleur wordt gewist.
   const nieuweKleur: string | null | undefined =
     velden.kleur === undefined ? undefined : velden.kleur?.trim() || null;
+  const nieuweAfdeling: string | null | undefined =
+    velden.afdeling_id === undefined ? undefined : velden.afdeling_id || null;
 
-  const patch: VerstrekkingVelden & { kleur?: string | null } = schoneVerstrekking(velden);
+  const { data: huidigData } = await sb
+    .from('assortiment')
+    .select('*')
+    .eq('id', regelId)
+    .maybeSingle();
+  const huidig = (huidigData as Record<string, unknown> | null) ?? null;
+  if (!huidig) return { uitkomst: 'mislukt', voor: {}, na: {} };
+
+  const patch: Record<string, unknown> = { ...schoneVerstrekking(velden) };
   if (nieuweKleur !== undefined) patch.kleur = nieuweKleur;
-
-  if (nieuweKleur !== undefined) {
-    const { data: huidig } = await sb
-      .from('assortiment')
-      .select('organisatie_id, product_id, afdeling_id, medewerker_id')
-      .eq('id', regelId)
-      .maybeSingle();
-    const rij = huidig as {
-      organisatie_id: string | null;
-      product_id: string | null;
-      afdeling_id: string | null;
-      medewerker_id: string | null;
-    } | null;
-    if (rij && rij.organisatie_id && rij.product_id) {
-      const productId = rij.product_id;
-      const afdelingId = rij.afdeling_id;
-      const medewerkerId = rij.medewerker_id;
-      const bestaande = await haalRegels(sb, rij.organisatie_id);
-      const dubbel = bestaande.some(
-        (r) =>
-          r.id !== regelId &&
-          r.product_id === productId &&
-          (r.kleur?.trim() || null) === nieuweKleur &&
-          r.afdeling_id === afdelingId &&
-          r.medewerker_id === medewerkerId,
-      );
-      if (dubbel) return 'dubbel';
-    }
+  if (nieuweAfdeling !== undefined) {
+    patch.afdeling_id = nieuweAfdeling;
+    // Een regel voor een afdeling of de hele klant is niet meer voor één werknemer.
+    if (huidig.medewerker_id) patch.medewerker_id = null;
   }
 
-  const { error } = await sb.from('assortiment').update(patch).eq('id', regelId);
-  if (!error) return 'opgeslagen';
-  if (nieuweKleur === undefined) return 'mislukt';
+  // Alleen wat echt verandert gaat naar de database en het logboek.
+  const voor: Record<string, unknown> = {};
+  const na: Record<string, unknown> = {};
+  for (const [sleutel, waarde] of Object.entries(patch)) {
+    if ((huidig[sleutel] ?? null) !== (waarde ?? null)) {
+      voor[sleutel] = huidig[sleutel] ?? null;
+      na[sleutel] = waarde;
+    }
+  }
+  if (Object.keys(na).length === 0) return { uitkomst: 'opgeslagen', voor, na };
 
-  // Zelfde terugval als bij toevoegen: zonder de kleur-migratie slaan we in elk
-  // geval de verstrekking op, in plaats van de hele wijziging te laten vallen.
-  const zonderKleur = { ...patch };
+  if ('kleur' in na || 'afdeling_id' in na) {
+    const orgId = String(huidig.organisatie_id ?? '');
+    const productId = String(huidig.product_id ?? '');
+    const kleur = 'kleur' in na ? (na.kleur as string | null) : ((huidig.kleur as string | null)?.trim() || null);
+    const afdelingId =
+      'afdeling_id' in na ? (na.afdeling_id as string | null) : ((huidig.afdeling_id as string | null) ?? null);
+    const medewerkerId =
+      'medewerker_id' in na ? null : ((huidig.medewerker_id as string | null) ?? null);
+    const bestaande = await haalRegels(sb, orgId);
+    const dubbel = bestaande.some(
+      (r) =>
+        r.id !== regelId &&
+        r.product_id === productId &&
+        (r.kleur?.trim() || null) === kleur &&
+        (r.afdeling_id ?? null) === afdelingId &&
+        (r.medewerker_id ?? null) === medewerkerId,
+    );
+    if (dubbel) return { uitkomst: 'dubbel', voor, na };
+  }
+
+  const { error } = await sb.from('assortiment').update(na).eq('id', regelId);
+  if (!error) return { uitkomst: 'opgeslagen', voor, na };
+  if (!('kleur' in na)) return { uitkomst: 'mislukt', voor, na };
+
+  const zonderKleur = { ...na };
   delete zonderKleur.kleur;
   const tweedePoging = await sb.from('assortiment').update(zonderKleur).eq('id', regelId);
-  return tweedePoging.error ? 'mislukt' : 'opgeslagen_zonder_kleur';
+  return { uitkomst: tweedePoging.error ? 'mislukt' : 'opgeslagen_zonder_kleur', voor, na };
 }
 
 /**

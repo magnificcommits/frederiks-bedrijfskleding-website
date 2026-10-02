@@ -523,7 +523,11 @@ export function renderNieuwsbrief(ontwerpInvoer: Ontwerp | unknown, opties: Rend
   const o = normaliseerOntwerp(ontwerpInvoer);
   const inst = o.instellingen;
   const font = LETTERTYPEN[inst.lettertype]?.stack ?? LETTERTYPEN.arial.stack;
-  const siteUrl = (opties.siteUrl || '').replace(/\/$/, '');
+  // In het editorvoorbeeld (iframe in het dashboard) staan de afbeeldingen op de huidige
+  // deployment; in een echte mail gaan ze via het publieke domein (siteUrl).
+  const basisUrl =
+    opties.modus === 'voorbeeld' && typeof window !== 'undefined' ? window.location.origin : opties.siteUrl || '';
+  const siteUrl = basisUrl.replace(/\/$/, '');
   const ctx: Ctx = { opties, inst, font, siteUrl };
 
   // Afmeld- en webversielink zijn verplicht in een verstuurde mail. Ontbreken

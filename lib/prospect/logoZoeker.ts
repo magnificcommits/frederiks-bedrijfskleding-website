@@ -21,7 +21,10 @@ const MAX_LOGO = 2 * 1024 * 1024;
 export const MAX_UPLOAD = 4 * 1024 * 1024;
 const TIMEOUT_MS = 8000;
 const MAX_REDIRECTS = 4;
-const UA = 'Mozilla/5.0 (compatible; FrederiksLogoZoeker/1.0; +https://www.frederiksbedrijfskleding.nl)';
+// Gewone browser-identificatie: veel hostingfirewalls (Wordfence, Cloudflare) weigeren
+// onbekende bots met een 403, ook voor een simpele homepage-opvraag.
+const UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36';
 
 /* ------------------------------------------------------------------ */
 /* Netwerkveiligheid                                                   */
@@ -300,8 +303,10 @@ export function websiteNaarUrl(website: string): string {
   return /^https?:\/\//i.test(t) ? t : `https://${t.replace(/^\/+/, '')}`;
 }
 
-/** Downloadt één afbeelding (veilig) en slaat hem op in media/prospects. */
-export async function slaLogoOpVanUrl(bron: string, deadline = Date.now() + TIMEOUT_MS): Promise<string> {
+type LogoBestand = { body: Buffer; type: NonNullable<ReturnType<typeof herkenAfbeelding>> };
+
+/** Downloadt één afbeelding (veilig) en controleert of het een bruikbaar logo is. */
+async function downloadLogo(bron: string, deadline: number): Promise<LogoBestand> {
   const a = await veiligOphalen(bron, MAX_LOGO, deadline, 'image/svg+xml,image/png,image/webp,image/jpeg,image/*;q=0.8');
   const type = herkenAfbeelding(a.body);
   if (!type) throw new Error('Geen png, jpg, webp of svg');
@@ -311,10 +316,29 @@ export async function slaLogoOpVanUrl(bron: string, deadline = Date.now() + TIME
     if (b != null && b < 48) throw new Error('Afbeelding te klein');
   }
   if (a.body.length < 200) throw new Error('Afbeelding te klein');
-  const bestand = new File([new Uint8Array(a.body)], `logo.${type.ext}`, { type: type.mime });
+  return { body: a.body, type };
+}
+
+async function bewaarLogo(l: LogoBestand): Promise<string> {
+  const bestand = new File([new Uint8Array(l.body)], `logo.${l.type.ext}`, { type: l.type.mime });
   const upload = await uploadMediaMetNaam(bestand, 'prospects');
   if (!upload) throw new Error('Opslaan in de mediabibliotheek mislukte');
   return upload.url;
+}
+
+/** Downloadt één afbeelding (veilig) en slaat hem op in media/prospects. */
+export async function slaLogoOpVanUrl(bron: string, deadline = Date.now() + TIMEOUT_MS): Promise<string> {
+  return bewaarLogo(await downloadLogo(bron, deadline));
+}
+
+/** Websitepictogram via Google, als de site zelf niets bruikbaars geeft of ons weigert. */
+function faviconUrl(website: string): string | null {
+  try {
+    const host = new URL(websiteNaarUrl(website)).hostname;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=256`;
+  } catch {
+    return null;
+  }
 }
 
 export type LogoResultaat =
@@ -325,30 +349,55 @@ export type LogoResultaat =
  * Zoekt het logo op de homepage en slaat de beste kandidaat op die echt een
  * bruikbare afbeelding is. `budgetMs` begrenst de totale tijd (voor de bulkactie).
  */
-export async function zoekLogo(website: string, budgetMs = 2 * TIMEOUT_MS): Promise<LogoResultaat> {
+export async function zoekLogo(website: string, budgetMs = 2 * TIMEOUT_MS, metFavicon = true): Promise<LogoResultaat> {
   const start = Date.now();
   const eindTotaal = start + budgetMs;
+  const favicon = faviconUrl(website);
+
+  // Laatste redmiddel: het websitepictogram. Jessi ziet het eerst als voorbeeld en
+  // kiest zelf of het bruikbaar is.
+  async function viaFavicon(reden: string, kandidaten: Kandidaat[]): Promise<LogoResultaat> {
+    if (metFavicon && favicon && eindTotaal - Date.now() > 1500) {
+      try {
+        const url = await slaLogoOpVanUrl(favicon, Math.min(Date.now() + 5000, eindTotaal));
+        return { ok: true, url, bron: favicon, kandidaten };
+      } catch {
+        /* valt door naar de foutmelding */
+      }
+    }
+    return { ok: false, fout: reden, kandidaten };
+  }
+
   let pagina: Antwoord;
   try {
     pagina = await veiligOphalen(websiteNaarUrl(website), MAX_HTML, Math.min(start + TIMEOUT_MS, eindTotaal), 'text/html,application/xhtml+xml');
   } catch (e) {
-    return { ok: false, fout: `Website niet bereikbaar: ${(e as Error).message}`, kandidaten: [] };
+    return viaFavicon(`Website niet bereikbaar: ${(e as Error).message}. Alleen het websitepictogram geprobeerd.`, []);
   }
   const kandidaten = vindKandidaten(pagina.body.toString('utf8'), pagina.url);
-  if (!kandidaten.length) return { ok: false, fout: 'Geen logo gevonden op de homepage.', kandidaten };
+  if (!kandidaten.length) return viaFavicon('Geen logo gevonden op de homepage.', kandidaten);
 
+  // De beste vier tegelijk downloaden (scheelt seconden), dan de hoogst gerangschikte
+  // die bruikbaar is opslaan. Zo komt er maar één bestand in de mediabibliotheek.
+  const over = eindTotaal - Date.now();
+  if (over < 1000) return { ok: false, fout: 'Geen tijd meer om afbeeldingen op te halen.', kandidaten };
+  const deadline = Date.now() + Math.min(TIMEOUT_MS, over);
+  const pogingen = await Promise.allSettled(kandidaten.slice(0, 4).map((k) => downloadLogo(k.url, deadline)));
   let laatsteFout = '';
-  for (const k of kandidaten.slice(0, 4)) {
-    const over = eindTotaal - Date.now();
-    if (over < 1000) break;
+  for (let i = 0; i < pogingen.length; i++) {
+    const r = pogingen[i];
+    if (r.status === 'rejected') {
+      laatsteFout = (r.reason as Error)?.message ?? '';
+      continue;
+    }
     try {
-      const url = await slaLogoOpVanUrl(k.url, Date.now() + Math.min(TIMEOUT_MS, over));
-      return { ok: true, url, bron: k.url, kandidaten };
+      const url = await bewaarLogo(r.value);
+      return { ok: true, url, bron: kandidaten[i].url, kandidaten };
     } catch (e) {
       laatsteFout = (e as Error).message;
     }
   }
-  return { ok: false, fout: `Gevonden afbeeldingen waren niet bruikbaar${laatsteFout ? ` (${laatsteFout})` : ''}.`, kandidaten };
+  return viaFavicon(`Gevonden afbeeldingen waren niet bruikbaar${laatsteFout ? ` (${laatsteFout})` : ''}.`, kandidaten);
 }
 
 /** Controle voor een handmatig geupload logo. Geeft een foutmelding of null. */

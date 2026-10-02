@@ -106,7 +106,7 @@ export async function bulkLogosOphalenActie(formData: FormData) {
       if (r.logo_url || !r.website) { overgeslagen++; continue; }
       const over = eind - Date.now();
       if (over < 4000) { nietGedaan++; continue; }
-      const res = await zoekLogo(r.website, Math.min(12_000, over));
+      const res = await zoekLogo(r.website, Math.min(12_000, over), false); // bulk zet direct: geen los pictogram als logo
       if (res.ok) {
         await sb.from('prospecten').update({ logo_url: res.url }).eq('id', r.id);
         gelukt++;

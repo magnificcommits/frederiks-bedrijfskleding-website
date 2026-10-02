@@ -132,7 +132,12 @@ export default function KlantContactKiezer({
               setActief(0);
               if (klant && e.target.value !== klant.naam) setKlant(null);
             }}
-            onFocus={() => setOpen(true)}
+            // Is er al een klant gekozen (bv. via 'Nieuwe offerte' op de klantkaart), dan
+            // de lijst niet vanzelf openklappen: die viel anders over de contactpersonen.
+            onFocus={() => {
+              if (!klant) setOpen(true);
+            }}
+            onClick={() => setOpen(true)}
             onBlur={() => {
               setTimeout(() => setOpen(false), 150);
               // Volledige naam getypt zonder te klikken: die klant dan toch kiezen,
@@ -218,6 +223,7 @@ export default function KlantContactKiezer({
                   <span className="block text-[15px] font-semibold text-ink-900">
                     {c.naam}
                     {c.hoofdcontact && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">hoofdcontact</span>}
+                    {gekozen && <span className="ml-2 text-[12px] font-semibold text-amber-700">✓ gekozen</span>}
                   </span>
                   <span className="block truncate text-[13px] text-warm">
                     {[c.functie, c.email].filter(Boolean).join(' · ') || 'Geen functie of e-mail bekend'}

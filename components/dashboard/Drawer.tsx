@@ -43,6 +43,40 @@ export default function Drawer({
   const [gemount, setGemount] = useState(false);
   const paneel = useRef<HTMLDivElement>(null);
   const verzonden = useRef(false);
+  // Opslaan duurt op de server een paar seconden. Zonder teken lijkt er dan niets te
+  // gebeuren, dus tonen we een balk 'Bezig met opslaan' en zetten we de knoppen
+  // van dat formulier uit (geen dubbele klik). Komt er een nieuwe pagina, dan gaat
+  // het venster dicht; blijft die uit (bv. een foutmelding), dan na 12 s weer vrij.
+  const [bezig, setBezig] = useState(false);
+  const bezigKnoppen = useRef<HTMLButtonElement[]>([]);
+  const bezigTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function stopBezig() {
+    if (bezigTimer.current) clearTimeout(bezigTimer.current);
+    bezigTimer.current = null;
+    bezigKnoppen.current.forEach((k) => {
+      k.disabled = false;
+      k.removeAttribute('aria-busy');
+    });
+    bezigKnoppen.current = [];
+    setBezig(false);
+  }
+
+  function startBezig(form: HTMLFormElement | null) {
+    setBezig(true);
+    if (bezigTimer.current) clearTimeout(bezigTimer.current);
+    bezigTimer.current = setTimeout(stopBezig, 12_000);
+    if (!form) return;
+    // Pas na deze event-ronde uitzetten, anders kan de browser het versturen afbreken.
+    setTimeout(() => {
+      const knoppen = Array.from(form.querySelectorAll<HTMLButtonElement>('button[type="submit"], button:not([type])'));
+      knoppen.forEach((k) => {
+        k.disabled = true;
+        k.setAttribute('aria-busy', 'true');
+      });
+      bezigKnoppen.current = knoppen;
+    }, 0);
+  }
 
   // Na het versturen van een formulier stuurt de server actie terug naar de
   // pagina; die komt met nieuwe inhoud binnen. Dan is het formulier klaar en
@@ -51,8 +85,16 @@ export default function Drawer({
   useEffect(() => {
     if (!verzonden.current) return;
     verzonden.current = false;
+    stopBezig();
     setOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [children]);
+
+  // Venster dicht (Sluiten, Escape): eventuele bezig-stand opruimen.
+  useEffect(() => {
+    if (!open) stopBezig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // createPortal kan pas na de eerste render in de browser: op de server bestaat
   // document.body niet.
@@ -125,9 +167,11 @@ export default function Drawer({
       <button type="button" aria-label="Sluiten" onClick={() => setOpen(false)} className="drawer-overlay" />
       <div
         ref={paneel}
-        onSubmitCapture={() => {
+        onSubmitCapture={(e) => {
           verzonden.current = true;
+          startBezig(e.target instanceof HTMLFormElement ? e.target : null);
         }}
+        aria-busy={bezig || undefined}
         className={
           isLade
             ? `drawer-paneel relative flex h-full w-full ${breedte} flex-col border-l border-line bg-white shadow-card`
@@ -148,6 +192,12 @@ export default function Drawer({
             Sluiten
           </button>
         </div>
+        {bezig && (
+          <div role="status" className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2 text-[14px] font-medium text-amber-900 sm:px-6">
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" aria-hidden="true" />
+            Bezig met opslaan…
+          </div>
+        )}
         <div className={`flex-1 overflow-y-auto px-5 py-5 sm:px-6 ${leesbaar}`}>{children}</div>
       </div>
     </div>

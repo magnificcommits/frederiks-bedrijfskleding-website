@@ -19,6 +19,7 @@ import {
   markeerBriefVerstuurdActie,
 } from './actions';
 import KopieerKnop from './KopieerKnop';
+import VerzendKnop from '@/components/dashboard/VerzendKnop';
 
 export const dynamic = 'force-dynamic';
 // "Logo ophalen" mag tot ~16 s duren (homepage + afbeelding, elk max 8 s).
@@ -265,7 +266,7 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
                     <form action={accepteerLogoActie}>
                       <input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="url" value={sp.kandidaat} />
-                      <button className="knop-primair">Gebruik dit logo</button>
+                      <VerzendKnop className="knop-primair" bezigTekst="Opslaan…">Gebruik dit logo</VerzendKnop>
                     </form>
                     <Link href={`/dashboard/prospects/${p.id}#logo`} className="knop-tekst">Niet gebruiken</Link>
                   </div>
@@ -287,7 +288,7 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
                           {/* Extern plaatje alleen als voorbeeld; opslaan gebeurt pas na de veilige download. */}
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={a} alt="" referrerPolicy="no-referrer" className="h-10 w-20 object-contain" />
-                          <button className="knop-stil">Probeer deze</button>
+                          <VerzendKnop className="knop-stil" bezigTekst="Ophalen…">Probeer deze</VerzendKnop>
                         </form>
                       </li>
                     ))}
@@ -298,13 +299,13 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <form action={haalLogoVanWebsiteActie} className="flex flex-col gap-1">
                   <input type="hidden" name="id" value={p.id} />
-                  <button className="knop-donker self-start" disabled={!p.website}>Logo ophalen van website</button>
+                  <VerzendKnop className="knop-donker self-start" disabled={!p.website} bezigTekst="Logo zoeken… (max. 15 sec)">Logo ophalen van website</VerzendKnop>
                   <p className="veld-hint">{p.website ? `Zoekt op ${p.website}. Duurt tot 15 seconden.` : 'Vul eerst een website in.'}</p>
                 </form>
                 <form action={uploadLogoActie} className="flex flex-col gap-1">
                   <input type="hidden" name="id" value={p.id} />
                   <input type="file" name="logo" accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml" required className="text-[13px]" />
-                  <button className="knop-stil self-start">Logo uploaden</button>
+                  <VerzendKnop className="knop-stil self-start" bezigTekst="Uploaden…">Logo uploaden</VerzendKnop>
                   <p className="veld-hint">png, jpg, webp of svg, maximaal 4 MB. Liefst met transparante achtergrond.</p>
                 </form>
               </div>

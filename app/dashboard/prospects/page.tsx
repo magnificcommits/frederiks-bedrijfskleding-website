@@ -8,6 +8,7 @@ import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
 import SortableTh from '@/components/dashboard/SortableTh';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { importeerCsvActie, nieuweProspectActie, zetProspectStatusActie, bulkLogosOphalenActie } from './actions';
+import VerzendKnop from '@/components/dashboard/VerzendKnop';
 
 export const dynamic = 'force-dynamic';
 // De bulkactie "Logo's ophalen" loopt tot ~50 seconden.
@@ -183,7 +184,7 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
       {prospecten.length > 0 && (
         <form id="bulk-logos" action={bulkLogosOphalenActie} className="mt-4 flex flex-wrap items-center gap-2">
           <input type="hidden" name="terug" value={huidigeUrl} />
-          <button type="submit" className="knop-stil">Logo&apos;s ophalen voor selectie</button>
+          <VerzendKnop className="knop-stil" bezigTekst="Logo&apos;s zoeken… (kan een minuut duren)">Logo&apos;s ophalen voor selectie</VerzendKnop>
           <span className="text-[12px] text-warm">Vink rijen aan (max 20 per keer). Prospects met een logo slaan we over. Duurt tot een minuut.</span>
         </form>
       )}

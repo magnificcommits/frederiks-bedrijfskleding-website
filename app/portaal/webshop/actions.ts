@@ -44,7 +44,9 @@ export async function plaatsBestelling(formData: FormData) {
   const org = await getMijnWebshopOrganisatie();
   if (!org) redirect('/portaal');
 
-  const assortiment = await getAssortiment();
+  // Eerst de medewerker: het assortiment (afdeling, vaste kleuren) hangt van hem af.
+  const { id: medewerkerId, medewerker } = await bepaalMedewerker(formData);
+  const assortiment = await getAssortiment(medewerker ?? null);
   const varianten = new Map<string, { product: (typeof assortiment)[number]; variant: (typeof assortiment)[number]['varianten'][number] }>();
   for (const p of assortiment) {
     for (const v of p.varianten) varianten.set(v.id, { product: p, variant: v });
@@ -75,8 +77,6 @@ export async function plaatsBestelling(formData: FormData) {
     });
   }
   if (regels.length === 0) redirect('/portaal/webshop?leeg=1');
-
-  const { id: medewerkerId, medewerker } = await bepaalMedewerker(formData);
 
   // Verbruik ophalen voor de budgetcheck (alleen relevant bij budget_actief en een medewerker met budget).
   let verbruikt = 0;

@@ -193,9 +193,12 @@ const zelfdeKleur = (a: string | null | undefined, b: string | null | undefined)
  * (bijv. laskleding alleen voor de afdeling Lassers). Ligt er per regel een kleur
  * vast, dan alleen de varianten in die kleur(en).
  *
- * `medewerker`: weglaten = de eigen werknemer opzoeken; null = geen filter (bijv. een
- * beheerder die voor iemand anders bestelt). Heeft de organisatie geen
- * assortimentregels die het portaal kan lezen, dan blijft het oude gedrag staan.
+ * `medewerker`: weglaten = de eigen werknemer opzoeken (en zonder match: als null);
+ * een werknemer = filteren op wat voor hem geldt (beheerder die voor iemand bestelt);
+ * null = geen werknemer bekend: alles wat in het assortiment staat, maar wel alleen
+ * in de vastgelegde kleur(en) (samengenomen over alle regels van dat product).
+ * Heeft de organisatie geen assortimentregels die het portaal kan lezen, dan blijft
+ * het oude gedrag staan (alles, alle kleuren).
  */
 export async function getAssortiment(
   medewerker?: { id: string; afdeling_id?: string | null } | null,
@@ -210,17 +213,18 @@ export async function getAssortiment(
   let lijst = (producten as Omit<WebshopProduct, 'varianten'>[]) ?? [];
   if (lijst.length === 0) return [];
 
-  // Per product de toegestane kleuren voor deze werknemer; null = alle kleuren.
+  // Per product de toegestane kleuren; null = alle kleuren. Zonder werknemer tellen
+  // alle regels mee, zodat een vaste kleur ook voor een beheerder geldt.
   let kleurenPerProduct: Map<string, string[] | null> | null = null;
-  if (eigen && regels.length > 0) {
-    const geldend = regels.filter((r) => r.toegestaan !== false && regelGeldt(r, eigen));
+  if (regels.length > 0) {
+    const geldend = regels.filter((r) => r.toegestaan !== false && (eigen ? regelGeldt(r, eigen) : true));
     kleurenPerProduct = new Map();
     for (const r of geldend) {
       const huidig = kleurenPerProduct.get(r.product_id);
       const kleur = r.kleur?.trim() || null;
       if (huidig === null) continue; // al 'alle kleuren'
       if (!kleur) kleurenPerProduct.set(r.product_id, null);
-      else kleurenPerProduct.set(r.product_id, [...(huidig ?? []), kleur]);
+      else if (!huidig?.some((k) => zelfdeKleur(k, kleur))) kleurenPerProduct.set(r.product_id, [...(huidig ?? []), kleur]);
     }
     const toegestaan = kleurenPerProduct;
     lijst = lijst.filter((p) => toegestaan.has(p.id));

@@ -40,6 +40,7 @@ export default async function Webshop({
     pakketok?: string;
     reden?: string;
     herhaal?: string;
+    voor?: string;
   }>;
 }) {
   if (!isPortalConfigured) {
@@ -69,8 +70,7 @@ export default async function Webshop({
   }
 
   const sp = await searchParams;
-  const [assortiment, eigenMedewerker, toegang, pakketten, kleurAfbeeldingen] = await Promise.all([
-    getAssortiment(),
+  const [eigenMedewerker, toegang, pakketten, kleurAfbeeldingen] = await Promise.all([
     getMijnMedewerker(),
     getMijnToegang(),
     getPakketten(),
@@ -78,8 +78,14 @@ export default async function Webshop({
   ]);
 
   // Geen eigen medewerker-match (bijv. klantbeheerder): laat een medewerker kiezen.
+  // Is er via ?voor= een medewerker gekozen, dan zie je precies zijn assortiment
+  // (afdeling + vaste kleuren); zonder keuze alles, maar wel in de vaste kleuren.
   const kiesMedewerker = !eigenMedewerker;
   const medewerkers = kiesMedewerker ? await getWebshopMedewerkers() : [];
+  const gekozen = kiesMedewerker ? medewerkers.find((m) => m.id === (sp?.voor ?? '').trim()) ?? null : null;
+  const assortiment = await getAssortiment(eigenMedewerker ?? gekozen ?? null);
+  const mwNaam = (m: { naam: string | null; voornaam?: string | null; achternaam?: string | null; email?: string | null }) =>
+    m.naam ?? ([m.voornaam, m.achternaam].filter(Boolean).join(' ') || m.email || 'Medewerker');
 
   // Voorkeursmaten alleen bij een eigen medewerker (per product de voorkeursvariant + plus/minus).
   const voorkeursmaten = eigenMedewerker ? await getVoorkeursmaten(eigenMedewerker.id) : {};
@@ -173,9 +179,34 @@ export default async function Webshop({
       </p>
 
       {kiesMedewerker && (
-        <div className="mt-6 rounded-xl border border-line bg-white p-4 text-sm text-warm shadow-soft">
-          Je e-mailadres is niet aan een medewerker gekoppeld. Je kunt in de winkelwagen kiezen voor wie je bestelt, of zonder medewerker bestellen.
-        </div>
+        <form method="get" className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-line bg-white p-4 text-sm text-warm shadow-soft">
+          <div className="min-w-[16rem] flex-1">
+            <label htmlFor="voor" className="block text-xs font-semibold text-warm">
+              Bestellen voor
+            </label>
+            <select
+              id="voor"
+              name="voor"
+              defaultValue={gekozen?.id ?? ''}
+              className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+            >
+              <option value="">Geen specifieke medewerker (alle artikelen)</option>
+              {medewerkers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {mwNaam(m)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className="btn-primary">
+            Toon assortiment
+          </button>
+          <p className="w-full text-xs">
+            {gekozen
+              ? `Je ziet nu alleen wat ${mwNaam(gekozen)} mag bestellen.`
+              : 'Kies een medewerker om alleen zijn of haar artikelen en kleuren te zien.'}
+          </p>
+        </form>
       )}
 
       {sp?.ok && (
@@ -247,7 +278,7 @@ export default async function Webshop({
                       <select
                         id={`pmw-${p.id}`}
                         name="medewerker_id"
-                        defaultValue=""
+                        defaultValue={gekozen?.id ?? ''}
                         className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
                       >
                         <option value="">Geen specifieke medewerker</option>
@@ -307,7 +338,7 @@ export default async function Webshop({
                       <select
                         id={`pmwr-${p.id}`}
                         name="medewerker_id"
-                        defaultValue=""
+                        defaultValue={gekozen?.id ?? ''}
                         className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
                       >
                         <option value="">Geen specifieke medewerker</option>
@@ -345,6 +376,7 @@ export default async function Webshop({
         eigenMedewerkerNaam={eigenNaam}
         kiesMedewerker={kiesMedewerker}
         medewerkers={medewerkers}
+        gekozenMedewerkerId={gekozen?.id ?? null}
         verstrekkingen={verstrekkingPerProduct}
         kortingPct={org.korting_pct}
         kleurAfbeeldingen={kleurAfbeeldingen}

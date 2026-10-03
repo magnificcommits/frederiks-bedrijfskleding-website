@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { plaatsBestelling, toggleFavorietActie } from './actions';
 import type { WebshopProduct, WebshopMedewerker } from '@/lib/portaal/webshop';
 import { useLocalStorageState } from '@/lib/portaal/useLocalStorageState';
@@ -45,6 +46,8 @@ type Props = {
   eigenMedewerkerNaam: string | null;
   kiesMedewerker: boolean;
   medewerkers: WebshopMedewerker[];
+  /** Medewerker gekozen via ?voor=; het assortiment is dan al op hem gefilterd. */
+  gekozenMedewerkerId?: string | null;
   verstrekkingen: Record<string, VerstrekkingInfo>;
   kortingPct: number | null;
   kleurAfbeeldingen: Record<string, Record<string, string>>;
@@ -93,12 +96,14 @@ export default function WebshopClient({
   eigenMedewerkerNaam,
   kiesMedewerker,
   medewerkers,
+  gekozenMedewerkerId = null,
   verstrekkingen,
   kortingPct,
   kleurAfbeeldingen,
   favorieten,
   herhaalRegels,
 }: Props) {
+  const router = useRouter();
   const [mand, setMand] = useLocalStorageState<MandItem[]>('fb-webshop-mand', []);
   const [zoek, setZoek] = useState('');
   const favorietenSet = new Set(favorieten);
@@ -249,7 +254,9 @@ export default function WebshopClient({
   const overProductbudget = productbudget != null && aantalStuks > productbudget;
   const onderMin = minBestelbedrag != null && mand.length > 0 && totaal < Number(minBestelbedrag);
   const bovenMax = maxBestelbedrag != null && totaal > Number(maxBestelbedrag);
-  const leeg = mand.length === 0;
+  // Artikelen die (na het kiezen van een medewerker) niet meer in het getoonde assortiment staan.
+  const buitenAssortiment = mand.filter((x) => !variantIndex.has(x.variantId));
+  const leeg = mand.length === buitenAssortiment.length;
   const geblokkeerd = leeg || overBudget || overProductbudget || onderMin || bovenMax;
 
   return (
@@ -538,6 +545,21 @@ export default function WebshopClient({
             </p>
           )}
 
+          {buitenAssortiment.length > 0 && (
+            <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-ink-800">
+              {buitenAssortiment.length === 1 ? 'Eén artikel' : `${buitenAssortiment.length} artikelen`} in je winkelwagen{' '}
+              {buitenAssortiment.length === 1 ? 'hoort' : 'horen'} niet bij dit assortiment en{' '}
+              {buitenAssortiment.length === 1 ? 'wordt' : 'worden'} niet besteld.{' '}
+              <button
+                type="button"
+                className="font-semibold underline"
+                onClick={() => setMand((m) => m.filter((x) => variantIndex.has(x.variantId)))}
+              >
+                Uit winkelwagen halen
+              </button>
+            </div>
+          )}
+
           {leeg ? (
             <p className="mt-4 text-sm text-warm">Je winkelwagen is nog leeg.</p>
           ) : (
@@ -640,7 +662,17 @@ export default function WebshopClient({
                 <label htmlFor="medewerker_id" className="block text-xs font-semibold text-warm">
                   Bestellen voor medewerker
                 </label>
-                <select id="medewerker_id" name="medewerker_id" defaultValue="" className={inputClass}>
+                <select
+                  id="medewerker_id"
+                  name="medewerker_id"
+                  value={gekozenMedewerkerId ?? ''}
+                  onChange={(e) => {
+                    // Andere medewerker = ander assortiment (afdeling, vaste kleuren): pagina opnieuw laden.
+                    const id = e.target.value;
+                    router.replace(id ? `/portaal/webshop?voor=${encodeURIComponent(id)}` : '/portaal/webshop', { scroll: false });
+                  }}
+                  className={inputClass}
+                >
                   <option value="">Geen specifieke medewerker</option>
                   {medewerkers.map((m) => (
                     <option key={m.id} value={m.id}>

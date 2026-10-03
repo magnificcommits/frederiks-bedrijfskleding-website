@@ -9,8 +9,10 @@ import {
   werkWerknemerActie,
   zetWerknemerActiefActie,
   contactNaarWerknemerActie,
+  bulkWerknemersActie,
 } from './actions';
 import PasdagMaten from './PasdagMaten';
+import WerknemersInvoer from '../_delen/WerknemersInvoer';
 
 /**
  * Tabblad Werknemers op de klantpagina: wie er bij de klant werkt, in welke
@@ -28,6 +30,8 @@ export default function WerknemersTab({
   vestigingen,
   contactpersonen,
   pasdag,
+  openWerknemerId = null,
+  melding = null,
 }: {
   orgId: string;
   orgNaam: string;
@@ -36,11 +40,16 @@ export default function WerknemersTab({
   vestigingen: Vestiging[];
   contactpersonen: Contactpersoon[];
   pasdag: PasdagGegevens;
+  /** Net toegevoegde werknemer: zijn maten klappen meteen open. */
+  openWerknemerId?: string | null;
+  /** Terugmelding na meerdere tegelijk toevoegen. */
+  melding?: string | null;
 }) {
   const afdelingNaam = new Map(afdelingen.map((a) => [a.id, a.naam]));
   const vestigingNaam = new Map(vestigingen.map((v) => [v.id, v.naam]));
   const actief = werknemers.filter((w) => w.actief);
   const nonActief = werknemers.filter((w) => !w.actief);
+  const netToegevoegd = openWerknemerId ? actief.find((w) => w.id === openWerknemerId) ?? null : null;
 
   // Contactpersonen die nog geen werknemer zijn (zelfde e-mail of naam).
   const bekend = new Set(
@@ -189,14 +198,80 @@ export default function WerknemersTab({
               het tabblad Contact.
             </p>
           </div>
-          <Drawer
-            knop="Werknemer toevoegen"
-            titel="Werknemer toevoegen"
-            beschrijving={`Nieuwe werknemer bij ${orgNaam}. Alleen de naam is verplicht.`}
-          >
-            {formulier(null)}
-          </Drawer>
+          <div className="flex flex-wrap gap-2">
+            <Drawer
+              knop="Meerdere tegelijk / plakken uit Excel"
+              titel="Meerdere werknemers toevoegen"
+              beschrijving={`Typ de namen onder elkaar (Enter = volgende) of plak een lijst uit Excel. Afdelingen die nog niet bestaan bij ${orgNaam} worden aangemaakt.`}
+              breedte="sm:max-w-4xl"
+              knopKlasse="knop-stil"
+            >
+              <WerknemersInvoer
+                afdelingen={afdelingen.map((a) => ({ id: a.id, naam: a.naam }))}
+                actie={bulkWerknemersActie}
+                verborgen={{ orgId }}
+                plakkenOpen
+                knoppen={
+                  <button type="submit" className="knop-donker self-start px-4 py-2.5 text-[15px]">
+                    Werknemers opslaan
+                  </button>
+                }
+              />
+            </Drawer>
+            <Drawer
+              knop="Uitgebreid toevoegen"
+              titel="Werknemer toevoegen"
+              beschrijving={`Nieuwe werknemer bij ${orgNaam}, met alle velden. Alleen de naam is verplicht.`}
+              knopKlasse="knop-stil"
+            >
+              {formulier(null)}
+            </Drawer>
+          </div>
         </div>
+
+        {/* Snel toevoegen: één rij, Enter = opslaan. Daarna klapt bij de pasdag
+            hieronder meteen 'Maten invullen' open voor deze werknemer. De key
+            maakt het formulier na elke toevoeging weer leeg. */}
+        <form
+          key={openWerknemerId ?? 'leeg'}
+          action={nieuweWerknemerActie}
+          className="panel mt-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1.2fr_1.5fr_auto] lg:items-end"
+        >
+          <input type="hidden" name="orgId" value={orgId} />
+          <div>
+            <label className="veld-label" htmlFor="snel-naam">Werknemer toevoegen</label>
+            <input id="snel-naam" name="naam" required placeholder="Voor- en achternaam" autoComplete="off" className="veld" />
+          </div>
+          <div>
+            <label className="veld-label" htmlFor="snel-afd">Afdeling</label>
+            <select id="snel-afd" name="afdeling_id" defaultValue="" className="veld">
+              <option value="">{afdelingen.length === 0 ? 'Nog geen afdelingen' : 'Geen afdeling'}</option>
+              {afdelingen.map((a) => (
+                <option key={a.id} value={a.id}>{a.naam}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="veld-label" htmlFor="snel-mail">E-mail (optioneel)</label>
+            <input id="snel-mail" name="email" type="email" placeholder="naam@bedrijf.nl" autoComplete="off" className="veld" />
+          </div>
+          <div>
+            <label className="veld-label" htmlFor="snel-opm">Opmerkingen (optioneel)</label>
+            <input id="snel-opm" name="opmerkingen" placeholder="Bijv. broek 2 cm korter" autoComplete="off" className="veld" />
+          </div>
+          <button type="submit" className="knop-primair whitespace-nowrap">Toevoegen en maten invullen</button>
+        </form>
+
+        {netToegevoegd && (
+          <p role="status" className="mt-3 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-[14px] text-green-800">
+            {netToegevoegd.naam} staat erbij. Vul hieronder bij Pasdag meteen de maten in, of voeg de volgende toe.
+          </p>
+        )}
+        {melding && !netToegevoegd && (
+          <p role="status" className="mt-3 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-[14px] text-green-800">
+            {melding.slice(0, 600)}
+          </p>
+        )}
 
         {nogGeenWerknemer.length > 0 && (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
@@ -223,7 +298,7 @@ export default function WerknemersTab({
 
         {actief.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-[14px] text-warm">
-            Nog geen werknemers. Klik op Werknemer toevoegen, of zet hierboven een contactpersoon om.
+            Nog geen werknemers. Typ hierboven een naam, plak een lijst uit Excel, of zet een contactpersoon om.
           </p>
         ) : (
           <div className="panel mt-4 overflow-x-auto">
@@ -256,7 +331,7 @@ export default function WerknemersTab({
         )}
       </section>
 
-      <section className="mt-12">
+      <section id="pasdag" className="mt-12 scroll-mt-24">
         <div className="max-w-3xl">
           <h2 className="font-display text-xl font-bold text-ink-900">Pasdag: maten noteren</h2>
           <p className="mt-1 text-[14px] text-warm">
@@ -271,6 +346,7 @@ export default function WerknemersTab({
         </div>
         <div className="mt-4">
           <PasdagMaten
+            key={netToegevoegd ? netToegevoegd.id : 'pasdag'}
             orgId={orgId}
             werknemers={actief.map((w) => ({
               id: w.id,
@@ -279,6 +355,7 @@ export default function WerknemersTab({
               opmerkingen: w.opmerkingen,
             }))}
             gegevens={pasdag}
+            startOpenId={netToegevoegd ? netToegevoegd.id : null}
           />
         </div>
       </section>

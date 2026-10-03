@@ -285,3 +285,37 @@ export async function getKlantVerkoop(orgId: string): Promise<KlantVerkoop> {
 
   return { orders, facturen, omzetBetaald, herkomstLead };
 }
+
+// ---- Portaaltoegang ----
+
+export type PortaalUitkomst = 'toegevoegd' | 'bestond' | 'elders' | 'mislukt';
+
+/**
+ * Een e-mailadres toegang geven tot het klantportaal (rij in portaal_gebruikers),
+ * net als E-mail koppelen op het tabblad Contact, maar zonder dubbele rijen:
+ * - staat het adres al bij deze klant, dan gebeurt er niets ('bestond');
+ * - staat het bij een andere klant, dan ook niet ('elders'): één inlog hoort bij
+ *   één klant, anders weet het portaal niet welke klant het moet tonen.
+ * Is er een werknemer bij, dan wordt die gekoppeld (medewerker_id).
+ */
+export async function geefPortaalToegang(
+  orgId: string,
+  email: string,
+  naam: string | null,
+  medewerkerId?: string | null,
+): Promise<PortaalUitkomst> {
+  const sb = kmsAdmin(); if (!sb) return 'mislukt';
+  const adres = email.trim().toLowerCase();
+  if (!orgId || !adres.includes('@')) return 'mislukt';
+  // ilike zonder jokertekens: % en _ in een adres letterlijk nemen.
+  const patroon = adres.replace(/[\\%_]/g, (t) => `\\${t}`);
+  const { data } = await sb.from('portaal_gebruikers').select('id, organisatie_id').ilike('email', patroon).limit(5);
+  const bestaande = (data as { id: string; organisatie_id: string | null }[] | null) ?? [];
+  if (bestaande.some((r) => r.organisatie_id === orgId)) return 'bestond';
+  if (bestaande.length > 0) return 'elders';
+  const rij: Record<string, unknown> = { organisatie_id: orgId, email: adres };
+  if (naam?.trim()) rij.naam = naam.trim();
+  if (medewerkerId) rij.medewerker_id = medewerkerId;
+  const { error } = await sb.from('portaal_gebruikers').insert(rij);
+  return error ? 'mislukt' : 'toegevoegd';
+}

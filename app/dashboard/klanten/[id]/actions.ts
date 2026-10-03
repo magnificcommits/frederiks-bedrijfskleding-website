@@ -22,6 +22,7 @@ import {
   slaMatenOp,
   type MaatInvoer,
 } from '@/lib/kms/werknemers';
+import { leesJsonLijst, naarInvoerRijen, slaWerknemersOp, uitkomstTekst } from '../_delen/werknemersOpslaan';
 import {
   voegAssortimentRegelToe,
   werkAssortimentRegelBij,
@@ -46,9 +47,10 @@ type Tab = (typeof TABS)[number];
  * Terug naar de klantpagina op het tabblad waar Jessi was. Zonder tab-parameter
  * sprong de pagina na elke opslag terug naar Gegevens.
  */
-function terug(orgId: string, tab: Tab, ok?: string): never {
+function terug(orgId: string, tab: Tab, ok?: string, extra?: Record<string, string>): never {
   const p = new URLSearchParams({ tab });
   if (ok) p.set('ok', ok);
+  for (const [k, v] of Object.entries(extra ?? {})) if (v) p.set(k, v);
   redirect(`/dashboard/klanten/${orgId}?${p.toString()}`);
 }
 
@@ -80,9 +82,16 @@ export async function werkOrganisatie(formData: FormData) {
         telefoon: tekst(formData, 'telefoon') || null,
         branche: tekst(formData, 'branche') || null,
       };
+      // Velden die alleen meegaan als het formulier ze echt heeft, zodat een
+      // formulier zonder deze velden ze nooit leegmaakt.
+      for (const k of ['email_algemeen', 'factuur_email', 'kvk', 'btw_nummer'] as const) {
+        if (!formData.has(k)) continue;
+        const v = tekst(formData, k);
+        gewenst[k] = (k === 'email_algemeen' || k === 'factuur_email' ? v.toLowerCase() : v) || null;
+      }
       const { data } = await sb
         .from('organisaties')
-        .select('naam, adres, postcode, plaats, telefoon, branche')
+        .select('naam, adres, postcode, plaats, telefoon, branche, email_algemeen, factuur_email, kvk, btw_nummer')
         .eq('id', id)
         .maybeSingle();
       const huidig = (data as Record<string, string | null> | null) ?? {};
@@ -223,8 +232,11 @@ export async function contactNaarWerknemerActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const id = tekst(formData, 'orgId');
   const contactId = tekst(formData, 'contactId');
+  let werknemerId = '';
   if (contactId) {
     const uitkomst = await werknemerVanContact(contactId);
+    // Alleen als de contactpersoon echt bij deze klant hoort: anders niet doorsturen naar zijn maten.
+    if (uitkomst && uitkomst.organisatie_id === id) werknemerId = uitkomst.id;
     if (uitkomst && !uitkomst.bestond) {
       await logAudit('werknemer_aangemaakt', {
         entiteit: 'medewerker',
@@ -234,7 +246,8 @@ export async function contactNaarWerknemerActie(formData: FormData) {
     }
   }
   revalidatePath('/dashboard/klanten');
-  terug(id, 'werknemers', 'aangemaakt');
+  // Meteen de maten van deze werknemer openklappen op het tabblad Werknemers.
+  terug(id, 'werknemers', 'aangemaakt', { maten: werknemerId });
 }
 
 /* --------------------------------------------------------------------- */
@@ -312,8 +325,9 @@ export async function nieuweWerknemerActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const id = tekst(formData, 'orgId');
   const velden = await werknemerVelden(formData, id);
+  let nieuwId: string | null = null;
   if (id && velden.naam) {
-    const nieuwId = await maakWerknemer(id, velden);
+    nieuwId = await maakWerknemer(id, velden);
     if (nieuwId) {
       await logAudit('werknemer_aangemaakt', {
         entiteit: 'medewerker',
@@ -323,7 +337,19 @@ export async function nieuweWerknemerActie(formData: FormData) {
     }
   }
   revalidatePath('/dashboard/klanten');
-  terug(id, 'werknemers', 'toegevoegd');
+  // Na toevoegen klapt bij de pasdag meteen 'Maten invullen' open voor deze werknemer.
+  terug(id, 'werknemers', nieuwId ? 'toegevoegd' : 'mislukt', nieuwId ? { maten: nieuwId } : undefined);
+}
+
+/** Meerdere werknemers tegelijk (getypt of geplakt uit Excel) op het tabblad Werknemers. */
+export async function bulkWerknemersActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = tekst(formData, 'orgId');
+  if (!id) redirect('/dashboard/klanten');
+  const rijen = naarInvoerRijen(leesJsonLijst(formData.get('rijen')));
+  const uitkomst = await slaWerknemersOp(id, rijen);
+  revalidatePath('/dashboard/klanten');
+  terug(id, 'werknemers', 'toegevoegd', { melding: uitkomstTekst(uitkomst) });
 }
 
 export async function werkWerknemerActie(formData: FormData) {

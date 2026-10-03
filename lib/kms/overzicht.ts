@@ -94,7 +94,9 @@ export async function getVandaagSignalen(): Promise<VandaagSignalen | null> {
   const vandaag = new Date().toISOString().slice(0, 10);
 
   const [takenR, ordersR, retourenR, facturenR, productenR] = await Promise.all([
-    sb.from('taken').select('status, vervaldatum').eq('status', 'open'),
+    // Taken in de prullenbak of het archief tellen niet mee (vóór de migratie taken v2: alle open taken).
+    sb.from('taken').select('status, vervaldatum').eq('status', 'open').is('verwijderd_op', null).is('gearchiveerd_op', null)
+      .then(async (r) => (r.error ? await sb.from('taken').select('status, vervaldatum').eq('status', 'open') : r)),
     sb.from('orders').select('goedkeuring_status'),
     sb.from('retouren').select('status'),
     sb.from('facturen').select('status, vervaldatum'),

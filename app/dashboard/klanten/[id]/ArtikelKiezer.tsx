@@ -29,6 +29,7 @@ export default function ArtikelKiezer({
   afdelingen,
   onSluiten,
   onToegevoegd,
+  startAfdelingen = [],
 }: {
   orgId: string;
   catalogus: ArtikelKeuze[] | null;
@@ -37,6 +38,8 @@ export default function ArtikelKiezer({
   afdelingen: { id: string; naam: string }[];
   onSluiten: () => void;
   onToegevoegd: () => void;
+  /** Vooraf aangevinkte afdelingen (geopend vanuit 'Artikelen voor deze afdeling'). */
+  startAfdelingen?: string[];
 }) {
   const [laden, setLaden] = useState(catalogus === null);
   const [mislukt, setMislukt] = useState(false);
@@ -48,8 +51,8 @@ export default function ArtikelKiezer({
   // Kleuren van het gekozen artikel, met foto. null = nog aan het laden.
   const [kleurKeuzes, setKleurKeuzes] = useState<KleurKeuze[] | null>(null);
   const [kleurenMislukt, setKleurenMislukt] = useState(false);
-  const [voorWie, setVoorWie] = useState<'klant' | 'afdelingen'>('klant');
-  const [gekozenAfdelingen, setGekozenAfdelingen] = useState<string[]>([]);
+  const [voorWie, setVoorWie] = useState<'klant' | 'afdelingen'>(startAfdelingen.length > 0 ? 'afdelingen' : 'klant');
+  const [gekozenAfdelingen, setGekozenAfdelingen] = useState<string[]>(startAfdelingen);
   const [type, setType] = useState<VerstrekkingType>('budget');
   const [aantal, setAantal] = useState('1');
   const [periode, setPeriode] = useState<Periode>('jaar');
@@ -151,8 +154,8 @@ export default function ArtikelKiezer({
     setType('budget');
     setAantal('1');
     setPeriode('jaar');
-    setVoorWie('klant');
-    setGekozenAfdelingen([]);
+    setVoorWie(startAfdelingen.length > 0 ? 'afdelingen' : 'klant');
+    setGekozenAfdelingen(startAfdelingen);
     // De kleuren per artikel apart ophalen: dan zijn ze altijd compleet, met foto.
     haalKleurenActie(artikel.id)
       .then((lijst) => {

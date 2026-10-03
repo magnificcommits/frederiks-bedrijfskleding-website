@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PasdagGegevens } from '@/lib/kms/werknemers';
 import { slaPasdagOpActie } from './actions';
@@ -25,12 +25,25 @@ export default function PasdagMaten({
   orgId,
   werknemers,
   gegevens,
+  startOpenId = null,
 }: {
   orgId: string;
   werknemers: PasWerknemer[];
   gegevens: PasdagGegevens;
+  /** Deze werknemer staat bij binnenkomst al open (net toegevoegd). */
+  startOpenId?: string | null;
 }) {
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(startOpenId);
+
+  // Net toegevoegd: meteen naar zijn maten scrollen.
+  useEffect(() => {
+    if (!startOpenId) return;
+    const t = setTimeout(
+      () => document.getElementById(`pas-${startOpenId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      100,
+    );
+    return () => clearTimeout(t);
+  }, [startOpenId]);
   const [zoek, setZoek] = useState('');
   const [alleenOpen, setAlleenOpen] = useState(false);
 

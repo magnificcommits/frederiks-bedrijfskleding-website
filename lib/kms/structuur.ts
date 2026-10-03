@@ -227,6 +227,31 @@ export async function maakAfdeling(orgId: string, v: AfdelingVelden): Promise<bo
   return !error;
 }
 
+/** Zelfde als maakAfdeling, maar geeft het id van de nieuwe afdeling terug (of null). */
+export async function maakAfdelingMetId(orgId: string, v: AfdelingVelden): Promise<string | null> {
+  const sb = kmsAdmin(); if (!sb || !v.naam.trim()) return null;
+  const rij: Record<string, unknown> = { organisatie_id: orgId, naam: v.naam.trim() };
+  if (v.kostenplaats) rij.kostenplaats = v.kostenplaats;
+  if (v.leidinggevende) rij.leidinggevende = v.leidinggevende;
+  if (v.vestiging_id) rij.vestiging_id = v.vestiging_id;
+  const { data, error } = await sb.from('afdelingen').insert(rij).select('id').single();
+  if (error || !data) return null;
+  return (data as { id: string }).id;
+}
+
+/**
+ * Hoeveel werknemers en assortimentregels aan een afdeling hangen. Gebruikt om
+ * te voorkomen dat de wizard een afdeling weggooit waar al iets aan vastzit.
+ */
+export async function afdelingInGebruik(afdelingId: string): Promise<{ werknemers: number; artikelen: number }> {
+  const sb = kmsAdmin(); if (!sb) return { werknemers: 0, artikelen: 0 };
+  const [w, a] = await Promise.all([
+    sb.from('medewerkers').select('id', { count: 'exact', head: true }).eq('afdeling_id', afdelingId),
+    sb.from('assortiment').select('id', { count: 'exact', head: true }).eq('afdeling_id', afdelingId),
+  ]);
+  return { werknemers: w.count ?? 0, artikelen: a.count ?? 0 };
+}
+
 export async function werkAfdeling(id: string, v: Partial<AfdelingVelden>): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
   const patch: Record<string, unknown> = {};

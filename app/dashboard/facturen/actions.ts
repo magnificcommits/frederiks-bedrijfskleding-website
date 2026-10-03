@@ -1,5 +1,6 @@
 'use server';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
 import { maakFactuurVanOrder, maakLegeFactuur, zetBoekhouderEmail, mailFacturenNaarBoekhouder, listFactureerbareOrders, zetFactuurStatus } from '@/lib/kms/facturen';
 import { logAudit } from '@/lib/kms/audit';
@@ -10,8 +11,12 @@ export async function factuurVanOrder(formData: FormData) {
   const orderId = String(formData.get('order_id') ?? '').trim();
   if (!orderId) redirect('/dashboard/facturen');
   const id = await maakFactuurVanOrder(orderId);
-  if (id) redirect('/dashboard/facturen/' + id);
-  redirect('/dashboard/facturen');
+  if (id) {
+    await logAudit('factuur_aangemaakt', { entiteit: 'facturen', entiteitId: id, details: { orderId } });
+    revalidatePath('/dashboard/facturen');
+    redirect('/dashboard/facturen/' + id);
+  }
+  redirect('/dashboard/facturen?mailfout=' + encodeURIComponent('De factuur kon niet van deze order worden gemaakt.'));
 }
 
 export async function factureerAlleActie() {
@@ -24,6 +29,7 @@ export async function factureerAlleActie() {
     if (id) aantal++;
   }
   await logAudit('facturen_bulk_aangemaakt', { entiteit: 'facturen', details: { aantal } });
+  revalidatePath('/dashboard/facturen');
   redirect(`/dashboard/facturen?ok=bulk&aantal=${aantal}`);
 }
 
@@ -33,8 +39,12 @@ export async function legeFactuur(formData: FormData) {
   const organisatieId = String(formData.get('organisatie_id') ?? '').trim();
   if (!organisatieId) redirect('/dashboard/facturen');
   const id = await maakLegeFactuur(organisatieId);
-  if (id) redirect('/dashboard/facturen/' + id);
-  redirect('/dashboard/facturen');
+  if (id) {
+    await logAudit('factuur_aangemaakt', { entiteit: 'facturen', entiteitId: id, details: { organisatieId } });
+    revalidatePath('/dashboard/facturen');
+    redirect('/dashboard/facturen/' + id);
+  }
+  redirect('/dashboard/facturen?mailfout=' + encodeURIComponent('De factuur kon niet worden aangemaakt.'));
 }
 
 export async function zetBoekhouderEmailActie(formData: FormData) {

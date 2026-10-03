@@ -15,6 +15,8 @@ import Drawer from '@/components/dashboard/Drawer';
 import AssortimentBeheer from './AssortimentBeheer';
 import WerknemersTab from './WerknemersTab';
 import AfdelingenTab from './AfdelingenTab';
+import InrichtingChecklist from './InrichtingChecklist';
+import { inrichtingPunten, eersteOpenStap, wizardUrl, type InrichtingTelling } from '../_delen/inrichting';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klant', robots: { index: false, follow: false } };
@@ -51,11 +53,11 @@ export default async function KlantPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; afdeling?: string; maten?: string; melding?: string }>;
 }) {
   if (!(await authed())) redirect('/dashboard');
   const { id } = await params;
-  const { tab } = await searchParams;
+  const { tab, afdeling: afdelingParam, maten: matenParam, melding: meldingParam } = await searchParams;
   const startTab = tab && TAB_IDS.includes(tab) ? tab : 'gegevens';
 
   if (!isLeadsDbConfigured) {
@@ -83,6 +85,13 @@ export default async function KlantPage({
     );
   }
   const retourenAan = (org as { retouren_actief?: boolean | null }).retouren_actief !== false;
+  // Kolommen die select('*') meelevert maar niet in het type Organisatie staan.
+  const orgExtra = org as unknown as {
+    email_algemeen?: string | null;
+    factuur_email?: string | null;
+    kvk?: string | null;
+    btw_nummer?: string | null;
+  };
 
   const [gebruikers, items, bestellingen, contactpersonen, activiteiten, verkoop, logos, assortiment, werknemers, afdelingen, vestigingen, branches] = await Promise.all([
     getGebruikers(id),
@@ -103,6 +112,29 @@ export default async function KlantPage({
   const afdelingKeuzes = afdelingen.map((a) => ({ id: a.id, naam: a.naam }));
   const hoofdcontact = contactpersonen.find((c) => c.hoofdcontact) ?? null;
   const facturatiecontact = contactpersonen.find((c) => c.facturatie) ?? null;
+  // Filter op één afdeling (link 'Artikelen voor deze afdeling'), alleen als die bij deze klant hoort.
+  const startGroep = afdelingParam && afdelingen.some((a) => a.id === afdelingParam) ? afdelingParam : '';
+
+  const telling: InrichtingTelling = {
+    contactpersonen: contactpersonen.length,
+    // Ook goed: een factuur-e-mailadres op de klant (daar gaan facturen dan heen).
+    facturatiecontact: Boolean(facturatiecontact) || Boolean(orgExtra.factuur_email?.trim()),
+    afdelingen: afdelingen.length,
+    werknemers: actieveWerknemers.length,
+    assortiment: assortiment.length,
+    portaalgebruikers: gebruikers.length,
+  };
+  const inrichting = inrichtingPunten(id, telling);
+
+  // Wie van de contactpersonen al werknemer is of al kan inloggen (zelfde e-mail, anders zelfde naam).
+  const werknemerSleutels = new Set(
+    werknemers.flatMap((w) => [w.naam.trim().toLowerCase(), (w.email ?? '').trim().toLowerCase()]).filter(Boolean),
+  );
+  const isWerknemer = (c: Contactpersoon) =>
+    c.email?.trim()
+      ? werknemerSleutels.has(c.email.trim().toLowerCase())
+      : werknemerSleutels.has(c.naam.trim().toLowerCase());
+  const portaalMails = new Set(gebruikers.map((g) => (g.email ?? '').trim().toLowerCase()).filter(Boolean));
 
   const vandaag = new Date(); vandaag.setHours(0, 0, 0, 0);
   const isOpvolgingDue = (d: string | null) => {
@@ -152,6 +184,23 @@ export default async function KlantPage({
           <div>
             <label className="veld-label">Telefoon</label>
             <input name="telefoon" defaultValue={org.telefoon ?? ''} placeholder="06 12 34 56 78" className={inputCls} />
+          </div>
+          <div>
+            <label className="veld-label" htmlFor="org-email">Algemeen e-mailadres</label>
+            <input id="org-email" name="email_algemeen" type="email" defaultValue={orgExtra.email_algemeen ?? ''} placeholder="info@bedrijf.nl" className={inputCls} />
+          </div>
+          <div>
+            <label className="veld-label" htmlFor="org-factuur">Factuur-e-mailadres</label>
+            <input id="org-factuur" name="factuur_email" type="email" defaultValue={orgExtra.factuur_email ?? ''} placeholder="administratie@bedrijf.nl" className={inputCls} />
+            <p className="veld-hint">Heeft een contactpersoon het vinkje Facturatie, dan gaan facturen naar die persoon.</p>
+          </div>
+          <div>
+            <label className="veld-label" htmlFor="org-kvk">KvK</label>
+            <input id="org-kvk" name="kvk" defaultValue={orgExtra.kvk ?? ''} inputMode="numeric" className={inputCls} />
+          </div>
+          <div>
+            <label className="veld-label" htmlFor="org-btw">Btw-nummer</label>
+            <input id="org-btw" name="btw_nummer" defaultValue={orgExtra.btw_nummer ?? ''} placeholder="NL..." className={inputCls} />
           </div>
           <div className="flex items-end">
             <button type="submit" className="knop-donker">Gegevens opslaan</button>
@@ -385,6 +434,8 @@ export default async function KlantPage({
                       <span className="mt-1 flex flex-wrap gap-1.5">
                         {c.hoofdcontact && <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">hoofdcontact</span>}
                         {c.facturatie && <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">facturatie</span>}
+                        {isWerknemer(c) && <span className="badge-rust">ook werknemer</span>}
+                        {c.email && portaalMails.has(c.email.trim().toLowerCase()) && <span className="badge-rust">kan inloggen</span>}
                       </span>
                     </td>
                     <td className="text-warm">{c.functie || '-'}</td>
@@ -395,11 +446,13 @@ export default async function KlantPage({
                         <Drawer knop="Bewerken" titel={`Contactpersoon bewerken: ${c.naam}`} knopKlasse="knop-stil">
                           {contactFormulier(c)}
                         </Drawer>
-                        <form action={contactNaarWerknemerActie}>
-                          <input type="hidden" name="orgId" value={id} />
-                          <input type="hidden" name="contactId" value={c.id} />
-                          <button type="submit" className="knop-stil" title="Maakt een werknemer met dezelfde naam, e-mail en telefoon">Maak werknemer</button>
-                        </form>
+                        {!isWerknemer(c) && (
+                          <form action={contactNaarWerknemerActie}>
+                            <input type="hidden" name="orgId" value={id} />
+                            <input type="hidden" name="contactId" value={c.id} />
+                            <button type="submit" className="knop-stil" title="Maakt een werknemer met dezelfde naam, e-mail en telefoon en opent meteen zijn maten">Maak werknemer</button>
+                          </form>
+                        )}
                         <form action={verwijderContactActie}>
                           <input type="hidden" name="orgId" value={id} />
                           <input type="hidden" name="contactId" value={c.id} />
@@ -487,7 +540,7 @@ export default async function KlantPage({
         )}
       </section>
 
-      <section className="mt-12">
+      <section id="gebruikers" className="mt-12 scroll-mt-24">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-xl font-bold text-ink-900">Gebruikers</h2>
           <Drawer knop="E-mail koppelen" titel="E-mail koppelen">
@@ -541,7 +594,7 @@ export default async function KlantPage({
             de passessie gebruiken, dus foto, maten en prijs komen recht uit de catalogus.
           </p>
         </div>
-        <AssortimentBeheer orgId={id} regels={assortiment} afdelingen={afdelingKeuzes} />
+        <AssortimentBeheer key={startGroep || 'alles'} orgId={id} regels={assortiment} afdelingen={afdelingKeuzes} startGroep={startGroep} />
         <p className="mt-6 max-w-3xl text-[13px] text-warm">
           Bij elk artikel kies je of het voor de hele klant is of alleen voor bepaalde afdelingen, bijvoorbeeld
           laskleding alleen voor de lassers. Afdelingen maak je aan op het tabblad Afdelingen. Een werknemer ziet in het
@@ -723,6 +776,8 @@ export default async function KlantPage({
       vestigingen={vestigingen}
       contactpersonen={contactpersonen}
       pasdag={pasdag}
+      openWerknemerId={startTab === 'werknemers' ? matenParam ?? null : null}
+      melding={startTab === 'werknemers' ? meldingParam ?? null : null}
     />
   );
   const afdelingenTab = (
@@ -760,6 +815,8 @@ export default async function KlantPage({
           <Link href="/dashboard/klanten" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar klanten</Link>
         </div>
       </div>
+
+      <InrichtingChecklist orgId={id} punten={inrichting} wizardHref={wizardUrl(id, eersteOpenStap(telling))} />
 
       <div className="mt-8">
         {/* key: na opslaan stuurt de actie terug met ?tab=..., dan opent dat tabblad. */}

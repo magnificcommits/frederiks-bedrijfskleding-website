@@ -85,8 +85,9 @@ export default function AfdelingenTab({
         <div className="max-w-3xl">
           <h2 className="font-display text-xl font-bold text-ink-900">Afdelingen</h2>
           <p className="mt-1 text-[14px] text-warm">
-            Deel de werknemers in per afdeling. Een afdeling kan een eigen assortiment krijgen: kies bij het
-            toevoegen van een artikel op het tabblad Assortiment voor welke afdelingen het is. Adressen, vestigingen en
+            Deel de werknemers in per afdeling. Een afdeling kan een eigen assortiment krijgen: klik bij de afdeling op
+            Artikelen voor deze afdeling, of kies bij het toevoegen van een artikel op het tabblad Assortiment voor welke
+            afdelingen het is. Adressen, vestigingen en
             de rechten van leidinggevenden in het portaal regel je bij{' '}
             <Link href={`/dashboard/klanten/${orgId}/structuur`} className="font-semibold text-amber-700 hover:text-amber-800">
               Inrichting
@@ -94,10 +95,28 @@ export default function AfdelingenTab({
             .
           </p>
         </div>
-        <Drawer knop="Afdeling toevoegen" titel="Afdeling toevoegen">
+        <Drawer knop="Uitgebreid toevoegen" titel="Afdeling toevoegen" knopKlasse="knop-stil">
           {formulier(null)}
         </Drawer>
       </div>
+
+      {/* Snel een afdeling erbij: alleen de naam. Leidinggevende en kostenplaats
+          kunnen later via Bewerken. */}
+      <form action={nieuweAfdelingActie} className="panel mt-4 flex flex-wrap items-end gap-3 p-4">
+        <input type="hidden" name="orgId" value={orgId} />
+        <div className="min-w-[16rem] flex-1">
+          <label className="veld-label" htmlFor="snel-afdeling">Afdeling toevoegen</label>
+          <input
+            id="snel-afdeling"
+            name="naam"
+            required
+            placeholder="Bijv. Lassers, Logistiek, Kantoor"
+            autoComplete="off"
+            className="veld"
+          />
+        </div>
+        <button type="submit" className="knop-primair">Toevoegen</button>
+      </form>
 
       {afdelingen.length === 0 ? (
         <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-[14px] text-warm">
@@ -130,6 +149,13 @@ export default function AfdelingenTab({
                   <td className="num stil">{artikelenPer.get(a.id) ?? 0}</td>
                   <td>
                     <div className="flex flex-wrap justify-end gap-2">
+                      <Link
+                        href={`/dashboard/klanten/${orgId}?tab=assortiment&afdeling=${a.id}`}
+                        className="knop-donker"
+                        title={`Artikelen die alleen ${a.naam} krijgt, bijv. laskleding voor de lassers`}
+                      >
+                        Artikelen voor deze afdeling
+                      </Link>
                       <Drawer knop="Bewerken" titel={`Afdeling bewerken: ${a.naam}`} knopKlasse="knop-stil">
                         {formulier(a)}
                       </Drawer>

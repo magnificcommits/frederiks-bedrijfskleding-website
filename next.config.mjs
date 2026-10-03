@@ -13,7 +13,7 @@ const CSP = [
   "form-action 'self'",
   "frame-ancestors 'self'",
   "object-src 'none'",
-  "img-src 'self' data: https:",
+  "img-src 'self' data: blob: https:", // blob: voor foto-voorbeelden/verkleinen in de editors
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://www.googletagmanager.com`,

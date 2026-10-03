@@ -34,6 +34,9 @@ export type Werknemer = {
 
 export type WerknemerVelden = {
   naam: string;
+  /** Optioneel los bewaren (bijv. vanuit de wizard of een Excel-lijst). De kolom naam blijft leidend. */
+  voornaam?: string | null;
+  achternaam?: string | null;
   email?: string | null;
   telefoon?: string | null;
   personeelsnummer?: string | null;
@@ -108,17 +111,44 @@ export async function getWerknemer(id: string): Promise<Werknemer | null> {
 export async function maakWerknemer(orgId: string, v: WerknemerVelden): Promise<string | null> {
   const sb = kmsAdmin();
   if (!sb || !orgId || !v.naam.trim()) return null;
+  const { data, error } = await sb.from('medewerkers').insert(nieuweRij(orgId, v)).select('id').single();
+  if (error || !data) return null;
+  return (data as { id: string }).id;
+}
+
+/** De rij voor een nieuwe werknemer. Lege velden weglaten: dan blijft de standaard van de database staan. */
+function nieuweRij(orgId: string, v: WerknemerVelden): Record<string, unknown> {
   const rij: Record<string, unknown> = { organisatie_id: orgId, naam: v.naam.trim(), actief: true };
-  // Lege velden weglaten: dan blijft de standaard van de database staan.
+  if (v.voornaam?.trim()) rij.voornaam = v.voornaam.trim();
+  if (v.achternaam?.trim()) rij.achternaam = v.achternaam.trim();
   if (v.email) rij.email = v.email;
   if (v.telefoon) rij.telefoon = v.telefoon;
   if (v.personeelsnummer) rij.personeelsnummer = v.personeelsnummer;
   if (v.afdeling_id) rij.afdeling_id = v.afdeling_id;
   if (v.vestiging_id) rij.vestiging_id = v.vestiging_id;
   if (v.opmerkingen) rij.opmerkingen = v.opmerkingen;
-  const { data, error } = await sb.from('medewerkers').insert(rij).select('id').single();
-  if (error || !data) return null;
-  return (data as { id: string }).id;
+  return rij;
+}
+
+/**
+ * Meerdere werknemers in één keer aanmaken (wizard, plakken uit Excel). Eén
+ * verzoek per 200 rijen in plaats van één per werknemer. Geeft de nieuwe ids
+ * met naam terug; lukt een blok niet, dan ontbreken die in de uitkomst.
+ */
+export async function maakWerknemers(
+  orgId: string,
+  lijst: WerknemerVelden[],
+): Promise<{ id: string; naam: string }[]> {
+  const sb = kmsAdmin();
+  if (!sb || !orgId) return [];
+  const rijen = lijst.filter((v) => v.naam.trim()).map((v) => nieuweRij(orgId, v));
+  const uit: { id: string; naam: string }[] = [];
+  for (const stuk of inStukken(rijen, 200)) {
+    const { data, error } = await sb.from('medewerkers').insert(stuk).select('id, naam');
+    if (error || !data) continue;
+    uit.push(...(data as { id: string; naam: string }[]));
+  }
+  return uit;
 }
 
 /**

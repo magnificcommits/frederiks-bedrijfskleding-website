@@ -3,9 +3,7 @@ import { redirect } from 'next/navigation';
 import { isLeadsDbConfigured } from '@/lib/env';
 import { listOrganisatiesPaged, type Organisatie } from '@/lib/portaalAdmin';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import Drawer from '@/components/dashboard/Drawer';
 import { mogelijkDubbeleKlanten } from '@/lib/kms/tellingen';
-import { nieuweOrganisatie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klanten', robots: { index: false, follow: false } };
@@ -153,66 +151,9 @@ export default async function KlantenPage({
             {heeftFilter ? `${totaal} van ${alleKlanten}` : alleKlanten}
           </span>
         </div>
-        <Drawer
-          knop="Nieuwe klant"
-          titel="Nieuwe klant"
-          beschrijving="Vul direct de contactpersoon en het inlog-e-mailadres in, dan kan de klant meteen inloggen op het portaal. Na opslaan ga je door naar de klantpagina voor assortiment, werknemers en afdelingen."
-        >
-          <form action={nieuweOrganisatie} className="flex flex-col gap-4">
-            <div>
-              <label className="veld-label" htmlFor="k-naam">Bedrijfsnaam</label>
-              <input id="k-naam" name="naam" required placeholder="Bedrijfsnaam" className="veld" />
-            </div>
-            <div>
-              <label className="veld-label" htmlFor="k-branche">Branche</label>
-              <input
-                id="k-branche"
-                name="branche"
-                list="k-branche-suggesties"
-                placeholder="Kies of typ een branche"
-                autoComplete="off"
-                className="veld"
-              />
-              <datalist id="k-branche-suggesties">
-                {branches.map((b) => <option key={b.branche} value={b.branche} />)}
-              </datalist>
-              <p className="veld-hint">Kies bij voorkeur een bestaande branche, dan werkt het filter op de klantenlijst.</p>
-            </div>
-            <div>
-              <label className="veld-label" htmlFor="k-adres">Adres</label>
-              <input id="k-adres" name="adres" placeholder="Straat en huisnummer" className="veld" />
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="veld-label" htmlFor="k-postcode">Postcode</label>
-                <input id="k-postcode" name="postcode" placeholder="0000 AA" className="veld" />
-              </div>
-              <div>
-                <label className="veld-label" htmlFor="k-plaats">Plaats</label>
-                <input id="k-plaats" name="plaats" placeholder="Plaats" className="veld" />
-              </div>
-            </div>
-            <div>
-              <label className="veld-label" htmlFor="k-telefoon">Telefoon</label>
-              <input id="k-telefoon" name="telefoon" placeholder="06 12 34 56 78" className="veld" />
-            </div>
-
-            <p className="mt-2 border-t border-line pt-3 text-[11px] font-semibold uppercase tracking-wide text-warm">
-              Contactpersoon (optioneel)
-            </p>
-            <div>
-              <label className="veld-label" htmlFor="k-contact">Naam contactpersoon</label>
-              <input id="k-contact" name="contactpersoon" placeholder="Voor- en achternaam" className="veld" />
-            </div>
-            <div>
-              <label className="veld-label" htmlFor="k-email">Inlog-e-mail</label>
-              <input id="k-email" name="email" type="email" placeholder="naam@bedrijf.nl" className="veld" />
-              <p className="veld-hint">Dit adres kan straks inloggen op /portaal via een e-maillink.</p>
-            </div>
-
-            <button type="submit" className="knop-primair mt-2 self-start px-4 py-2.5 text-[15px]">Klant aanmaken</button>
-          </form>
-        </Drawer>
+        {/* Nieuwe klant gaat stap voor stap: bedrijf, contactpersonen, afdelingen,
+            werknemers en assortiment. Elke stap slaat meteen op. */}
+        <Link href="/dashboard/klanten/nieuw" className="knop-primair">Nieuwe klant</Link>
       </div>
 
       <div className="dash-filter flex flex-wrap items-center gap-2">

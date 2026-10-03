@@ -23,16 +23,20 @@ export default function AssortimentBeheer({
   orgId,
   regels,
   afdelingen,
+  startGroep = '',
 }: {
   orgId: string;
   regels: AssortimentRij[];
   afdelingen: { id: string; naam: string }[];
+  /** Filter bij binnenkomst: '' = alles, 'klant' of een afdeling-id (vanaf het tabblad Afdelingen). */
+  startGroep?: string;
 }) {
   const router = useRouter();
   const [zoek, setZoek] = useState('');
   const [merk, setMerk] = useState('');
   // '' = alles, 'klant' = alleen voor de hele klant, anders een afdeling-id.
-  const [groep, setGroep] = useState('');
+  const [groep, setGroep] = useState(startGroep);
+  const gekozenAfdeling = afdelingen.find((a) => a.id === groep) ?? null;
   const [kiezerOpen, setKiezerOpen] = useState(false);
   const [melding, setMelding] = useState<{
     ok: boolean;
@@ -132,9 +136,22 @@ export default function AssortimentBeheer({
           )}
         </div>
         <button type="button" onClick={() => setKiezerOpen(true)} className="knop-donker">
-          Artikel zoeken en toevoegen
+          {gekozenAfdeling ? `Artikel toevoegen voor ${gekozenAfdeling.naam}` : 'Artikel zoeken en toevoegen'}
         </button>
       </div>
+
+      {gekozenAfdeling && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-[13px] text-amber-900">
+          <p>
+            Je ziet alleen de artikelen die apart voor afdeling <strong>{gekozenAfdeling.naam}</strong> klaarstaan. Werknemers
+            van deze afdeling krijgen daarnaast alles wat voor de hele klant geldt. Een artikel dat je nu toevoegt, staat
+            meteen op deze afdeling.
+          </p>
+          <button type="button" onClick={() => setGroep('')} className="knop-stil">
+            Alles tonen
+          </button>
+        </div>
+      )}
 
       {melding && (
         <div
@@ -153,6 +170,11 @@ export default function AssortimentBeheer({
         <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-[13px] text-warm">
           Er staat nog niets in het assortiment. Klik op Artikel zoeken en toevoegen, zoek een artikel op
           naam, merk of artikelnummer en kies daar de kleur en voor wie het is.
+        </p>
+      ) : gevonden.length === 0 && gekozenAfdeling && !zoek && !merk ? (
+        <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-[13px] text-warm">
+          Er staan nog geen artikelen apart voor afdeling {gekozenAfdeling.naam}. Klik op Artikel toevoegen voor{' '}
+          {gekozenAfdeling.naam} om bijvoorbeeld laskleding alleen voor deze groep klaar te zetten.
         </p>
       ) : gevonden.length === 0 ? (
         <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-[13px] text-warm">
@@ -204,6 +226,7 @@ export default function AssortimentBeheer({
           afdelingen={afdelingen}
           onSluiten={sluitKiezer}
           onToegevoegd={naToevoegen}
+          startAfdelingen={gekozenAfdeling ? [gekozenAfdeling.id] : []}
         />
       )}
     </div>

@@ -1,7 +1,9 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { isEmailConfigured, env } from '@/lib/env';
 import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
 import { factuurEmailVoor, type FactuurEmailBron } from '@/lib/kms/factuurEmail';
+import { artikelOmschrijving } from '@/lib/kms/productZoeker';
 import { bedrijf } from '@/content/bedrijf';
 
 /**
@@ -39,6 +41,18 @@ export type Factuurregel = {
   stukprijs: number;
   btw_pct: number;
   bedrag: number;
+  /**
+   * Kolommen uit migratie 20261003_factuurregels.sql. Zolang die niet gedraaid
+   * is ontbreken ze (undefined); de code werkt dan zoals voorheen.
+   */
+  korting_pct?: number | null;
+  product_id?: string | null;
+  kleur?: string | null;
+  maat?: string | null;
+  positie?: number | null;
+  created_at?: string | null;
+  /** Artikelfoto in de gekozen kleur; niet in de tabel, bijgezocht door getFactuur. */
+  afbeelding?: string | null;
 };
 
 export type Organisatie = {
@@ -71,22 +85,82 @@ export type FactuurregelVelden = {
   aantal?: number;
   stukprijs?: number;
   btw_pct?: number;
+  korting_pct?: number;
+  /** Alleen bij een artikelregel; een vrije regel laat ze weg. */
+  product_id?: string | null;
+  kleur?: string | null;
+  /** undefined = niet wijzigen; null of '' = wissen. */
+  maat?: string | null;
 };
 
 const ORG_SELECT = 'id, naam, factuur_email, btw_nummer, adres, postcode, plaats, klantnummer';
+const TIJDZONE = 'Europe/Amsterdam';
+const r2 = (n: number) => Math.round(n * 100) / 100;
 
+/** Vandaag als JJJJ-MM-DD in Nederlandse tijd (niet UTC: tussen 0 en 2 uur 's nachts scheelt dat een dag). */
 function vandaagISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TIJDZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
+/** Datum (JJJJ-MM-DD) plus een aantal dagen, zonder tijdzone-verschuiving. */
 function plusDagen(datum: string | null, dagen: number): string {
-  const basis = datum ? new Date(datum) : new Date();
-  basis.setDate(basis.getDate() + dagen);
-  return basis.toISOString().slice(0, 10);
+  const basis = datum && /^\d{4}-\d{2}-\d{2}/.test(datum) ? datum.slice(0, 10) : vandaagISO();
+  const d = new Date(`${basis}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dagen);
+  return d.toISOString().slice(0, 10);
 }
 
-async function volgendFactuurnummer(sb: NonNullable<ReturnType<typeof kmsAdmin>>): Promise<string> {
-  const jaar = new Date().getFullYear();
+/** Vervaldatum die bij een factuurdatum hoort: factuurdatum plus de betaaltermijn uit content/bedrijf.ts. */
+export function vervaldatumVoor(factuurdatum: string | null): string {
+  return plusDagen(factuurdatum, bedrijf.betaaltermijnDagen);
+}
+
+/** Bedrag excl. btw van één regel: aantal x stukprijs min de regelkorting, op centen. */
+export function regelBedrag(r: { aantal: number | null; stukprijs: number | null; korting_pct?: number | null }): number {
+  const aantal = Number(r.aantal) || 0;
+  const stuk = Number(r.stukprijs) || 0;
+  const kort = Math.min(100, Math.max(0, Number(r.korting_pct) || 0));
+  return r2(aantal * stuk * (1 - kort / 100));
+}
+
+export type FactuurTotalen = {
+  /** Subtotaal excl. btw, na regelkorting. */
+  excl: number;
+  /** Totale korting (bruto min netto), voor de weergave. */
+  korting: number;
+  btw: number;
+  incl: number;
+  /** Btw per tarief, oplopend: grondslag en btw-bedrag. */
+  perTarief: { pct: number; grondslag: number; btw: number }[];
+};
+
+/**
+ * Totalen van een factuur. Btw wordt per tarief over de som van de regels
+ * berekend en dan afgerond (zoals de Belastingdienst het wil), niet per regel.
+ */
+export function factuurTotalen(
+  regels: { aantal: number | null; stukprijs: number | null; korting_pct?: number | null; btw_pct: number | null }[],
+): FactuurTotalen {
+  let bruto = 0;
+  let excl = 0;
+  const tarieven = new Map<number, number>();
+  for (const r of regels) {
+    const bedrag = regelBedrag(r);
+    bruto += r2((Number(r.aantal) || 0) * (Number(r.stukprijs) || 0));
+    excl += bedrag;
+    const pct = Number.isFinite(Number(r.btw_pct)) ? Number(r.btw_pct) : 21;
+    tarieven.set(pct, (tarieven.get(pct) ?? 0) + bedrag);
+  }
+  const perTarief = [...tarieven.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([pct, grondslag]) => ({ pct, grondslag: r2(grondslag), btw: r2((grondslag * pct) / 100) }));
+  const btw = r2(perTarief.reduce((t, x) => t + x.btw, 0));
+  excl = r2(excl);
+  return { excl, korting: r2(bruto - excl), btw, incl: r2(excl + btw), perTarief };
+}
+
+async function volgendFactuurnummer(sb: SupabaseClient): Promise<string> {
+  const jaar = vandaagISO().slice(0, 4);
   const prefix = `FR-${jaar}-`;
   const { data } = await sb
     .from('facturen')
@@ -101,6 +175,45 @@ async function volgendFactuurnummer(sb: NonNullable<ReturnType<typeof kmsAdmin>>
     if (Number.isFinite(staart)) volgnr = staart + 1;
   }
   return `${prefix}${String(volgnr).padStart(4, '0')}`;
+}
+
+/** Fout van PostgREST/Postgres omdat een kolom (nog) niet bestaat: migratie niet gedraaid. */
+function kolomOntbreekt(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === '42703' || error.code === 'PGRST204' || /column .* (does not exist|not find)/i.test(error.message ?? '');
+}
+
+const EXTRA_KOLOMMEN = ['korting_pct', 'product_id', 'kleur', 'maat', 'positie'] as const;
+
+/**
+ * Zonder de nieuwe kolommen: korting gaat in de stukprijs (nettoprijs), zodat het
+ * bedrag en de totalen kloppen, en artikel/kleur/maat staan al in de omschrijving.
+ */
+function zonderExtraKolommen(rij: Record<string, unknown>): Record<string, unknown> {
+  const uit: Record<string, unknown> = { ...rij };
+  const kort = Number(rij.korting_pct) || 0;
+  if (kort && rij.stukprijs !== undefined) {
+    uit.stukprijs = r2((Number(rij.stukprijs) || 0) * (1 - kort / 100));
+  }
+  for (const k of EXTRA_KOLOMMEN) delete uit[k];
+  return uit;
+}
+
+async function voegRegelsIn(sb: SupabaseClient, rijen: Record<string, unknown>[]): Promise<boolean> {
+  if (rijen.length === 0) return true;
+  const { error } = await sb.from('factuurregels').insert(rijen);
+  if (!error) return true;
+  if (!kolomOntbreekt(error)) return false;
+  const { error: fout2 } = await sb.from('factuurregels').insert(rijen.map(zonderExtraKolommen));
+  return !fout2;
+}
+
+async function volgendePositie(sb: SupabaseClient, factuurId: string): Promise<number> {
+  const { data, error } = await sb.from('factuurregels').select('positie').eq('factuur_id', factuurId);
+  if (error) return 1;
+  const rijen = (data as { positie: number | null }[]) ?? [];
+  const hoogste = rijen.reduce((m, r) => (r.positie != null && r.positie > m ? r.positie : m), 0);
+  return Math.max(hoogste, rijen.length) + 1;
 }
 
 export async function listFacturen(statusFilter?: string): Promise<FactuurMetKlant[]> {
@@ -138,13 +251,12 @@ export async function listFacturenPaged(opts: { pagina: number; perPagina: numbe
   // daar niet zonder meer op filteren; daarom eerst de organisatie-ids ophalen.
   if (opts.zoek && opts.zoek.trim()) {
     const term = opts.zoek.trim().replace(/[%,()]/g, ' ');
-    const { data: orgRijen } = await sb.from('organisaties').select('id').ilike('naam', `%${term}%`);
+    const { data: orgRijen } = await sb.from('organisaties').select('id').ilike('naam', `%${term}%`).limit(150);
     const orgIds = ((orgRijen as { id: string }[]) ?? []).map((o) => o.id);
     const delen: string[] = [];
     if (orgIds.length) delen.push(`organisatie_id.in.(${orgIds.join(',')})`);
     delen.push(`factuurnummer.ilike.%${term}%`);
-    // Niets dat kan matchen: dan liever nul rijen dan de hele lijst.
-    q = delen.length ? q.or(delen.join(',')) : q.eq('id', '00000000-0000-0000-0000-000000000000');
+    q = q.or(delen.join(','));
   }
 
   const { data, count } = await q.range(from, to);
@@ -156,20 +268,69 @@ export async function listFacturenPaged(opts: { pagina: number; perPagina: numbe
   return { rijen, totaal: count ?? 0 };
 }
 
+/** Regels van een factuur in de volgorde waarin ze zijn toegevoegd. */
+async function regelsVan(sb: SupabaseClient, factuurId: string): Promise<Factuurregel[]> {
+  // Volgorde op positie en aanmaakmoment. Bestaan die kolommen nog niet (migratie
+  // niet gedraaid), dan zonder; een volgorde op id alleen is willekeurig (uuid).
+  const metVolgorde = await sb
+    .from('factuurregels')
+    .select('*')
+    .eq('factuur_id', factuurId)
+    .order('positie', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: true })
+    .order('id');
+  if (!metVolgorde.error) return (metVolgorde.data as Factuurregel[]) ?? [];
+  const { data } = await sb.from('factuurregels').select('*').eq('factuur_id', factuurId).order('id');
+  return (data as Factuurregel[]) ?? [];
+}
+
+/** Artikelfoto per regel: kleurfoto, anders de eerste foto van het artikel. */
+async function voegFotosToe(sb: SupabaseClient, regels: Factuurregel[]): Promise<Factuurregel[]> {
+  const ids = [...new Set(regels.map((r) => r.product_id).filter((x): x is string => !!x))];
+  if (ids.length === 0) return regels;
+  const [{ data: prodData }, { data: fotoData }] = await Promise.all([
+    sb.from('producten').select('id, afbeeldingen').in('id', ids),
+    sb.from('product_kleur_afbeeldingen').select('product_id, kleur, afbeelding_url').in('product_id', ids).limit(1000),
+  ]);
+  const hoofd = new Map<string, string>();
+  for (const p of (prodData as { id: string; afbeeldingen: string[] | null }[]) ?? []) {
+    const f = (p.afbeeldingen ?? [])[0];
+    if (f) hoofd.set(p.id, f);
+  }
+  const kleurFoto = new Map<string, string>();
+  for (const k of (fotoData as { product_id: string; kleur: string | null; afbeelding_url: string | null }[]) ?? []) {
+    if (k.afbeelding_url) kleurFoto.set(`${k.product_id}|${(k.kleur ?? '').trim().toLowerCase()}`, k.afbeelding_url);
+  }
+  return regels.map((r) =>
+    r.product_id
+      ? { ...r, afbeelding: kleurFoto.get(`${r.product_id}|${(r.kleur ?? '').trim().toLowerCase()}`) ?? hoofd.get(r.product_id) ?? null }
+      : r,
+  );
+}
+
 export async function getFactuur(id: string): Promise<FactuurDetail | null> {
   const sb = kmsAdmin(); if (!sb) return null;
   const { data } = await sb.from('facturen').select('*').eq('id', id).maybeSingle();
   if (!data) return null;
   const factuur = data as Factuur;
-  const [{ data: regelData }, { data: orgData }] = await Promise.all([
-    sb.from('factuurregels').select('*').eq('factuur_id', id).order('id'),
+  const [regels, { data: orgData }] = await Promise.all([
+    regelsVan(sb, id).then((rs) => voegFotosToe(sb, rs)),
     sb.from('organisaties').select(ORG_SELECT).eq('id', factuur.organisatie_id).maybeSingle(),
   ]);
   return {
     ...factuur,
-    regels: (regelData as Factuurregel[]) ?? [],
+    regels,
     organisatie: (orgData as Organisatie | null) ?? null,
   };
+}
+
+/** Kortingspercentage van de klant (organisaties.korting_pct, o.a. voor de webshop); null als er geen is. */
+export async function klantKortingPct(organisatieId: string): Promise<number | null> {
+  const sb = kmsAdmin(); if (!sb || !organisatieId) return null;
+  const { data, error } = await sb.from('organisaties').select('korting_pct').eq('id', organisatieId).maybeSingle();
+  if (error) return null;
+  const pct = Number((data as { korting_pct: number | null } | null)?.korting_pct);
+  return Number.isFinite(pct) && pct > 0 && pct <= 100 ? pct : null;
 }
 
 export async function maakLegeFactuur(organisatieId: string): Promise<string | null> {
@@ -195,23 +356,66 @@ export async function maakLegeFactuur(organisatieId: string): Promise<string | n
   return (data as { id: string }).id;
 }
 
+type OrderregelRij = {
+  item_naam: string | null;
+  product_id: string | null;
+  variant_id: string | null;
+  maat: string | null;
+  kleur: string | null;
+  lengte: number | null;
+  aantal: number | null;
+  stukprijs: number | null;
+};
+
+/**
+ * Maakt een conceptfactuur van een order en neemt alle orderregels over:
+ * artikel, kleur, maat (en lengte) en de stukprijs van de order. Staat er op een
+ * orderregel geen prijs, dan nemen we de verkoopprijs van de variant (plus
+ * meerprijs) of anders de basisprijs van het artikel, zodat er geen regels van
+ * nul euro op de factuur komen. Btw volgt het tarief van het artikel (standaard 21%).
+ */
 export async function maakFactuurVanOrder(orderId: string): Promise<string | null> {
   const sb = kmsAdmin(); if (!sb) return null;
   const { data: orderData } = await sb
     .from('orders')
-    .select('id, organisatie_id')
+    .select('id, organisatie_id, ordernummer')
     .eq('id', orderId)
     .maybeSingle();
-  const order = orderData as { id: string; organisatie_id: string } | null;
+  const order = orderData as { id: string; organisatie_id: string; ordernummer: number | null } | null;
   if (!order) return null;
 
   const [{ data: regelData }, gevonden] = await Promise.all([
-    sb.from('orderregels').select('item_naam, maat, kleur, aantal, stukprijs').eq('order_id', orderId).order('created_at'),
+    sb
+      .from('orderregels')
+      .select('item_naam, product_id, variant_id, maat, kleur, lengte, aantal, stukprijs')
+      .eq('order_id', orderId)
+      .order('created_at')
+      .limit(1000),
     factuurEmailVoor(order.organisatie_id),
   ]);
-  const orderregels = (regelData as { item_naam: string; maat: string | null; kleur: string | null; aantal: number; stukprijs: number | null }[]) ?? [];
+  const orderregels = (regelData as OrderregelRij[]) ?? [];
   // Adres van het facturatiecontact van de klant (met terugval, zie factuurEmailVoor).
   const factuurEmail = gevonden?.email ?? null;
+
+  // Ontbrekende prijzen en btw-tarieven opzoeken bij variant en artikel.
+  const productIds = [...new Set(orderregels.map((r) => r.product_id).filter((x): x is string => !!x))];
+  const variantIds = [...new Set(orderregels.filter((r) => r.stukprijs == null && r.variant_id).map((r) => r.variant_id as string))];
+  const [prodRes, varRes] = await Promise.all([
+    productIds.length
+      ? sb.from('producten').select('id, naam, merk, btw, verkoopprijs_basis').in('id', productIds)
+      : Promise.resolve({ data: [] as unknown[] }),
+    variantIds.length
+      ? sb.from('product_varianten').select('id, verkoopprijs, meerprijs').in('id', variantIds)
+      : Promise.resolve({ data: [] as unknown[] }),
+  ]);
+  const producten = new Map<string, { naam: string | null; merk: string | null; btw: number | null; verkoopprijs_basis: number | null }>();
+  for (const p of (prodRes.data as { id: string; naam: string | null; merk: string | null; btw: number | null; verkoopprijs_basis: number | null }[]) ?? []) {
+    producten.set(p.id, p);
+  }
+  const varPrijs = new Map<string, number>();
+  for (const v of (varRes.data as { id: string; verkoopprijs: number | null; meerprijs: number | null }[]) ?? []) {
+    if (v.verkoopprijs != null) varPrijs.set(v.id, r2((Number(v.verkoopprijs) || 0) + (Number(v.meerprijs) || 0)));
+  }
 
   const factuurnummer = await volgendFactuurnummer(sb);
   const { data: factuurData, error } = await sb
@@ -232,22 +436,42 @@ export async function maakFactuurVanOrder(orderId: string): Promise<string | nul
   if (error || !factuurData) return null;
   const factuurId = (factuurData as { id: string }).id;
 
-  if (orderregels.length > 0) {
-    const rijen = orderregels.map((r) => {
-      const aantal = Number(r.aantal) || 0;
-      const stukprijs = Number(r.stukprijs) || 0;
-      const extra = [r.maat, r.kleur].filter(Boolean).join(' / ');
-      const omschrijving = extra ? `${r.item_naam} (${extra})` : r.item_naam;
-      return {
-        factuur_id: factuurId,
-        omschrijving,
-        aantal,
-        stukprijs,
-        btw_pct: 21,
-        bedrag: aantal * stukprijs,
-      };
-    });
-    await sb.from('factuurregels').insert(rijen);
+  const rijen = orderregels.map((r, i) => {
+    const aantal = Number(r.aantal) || 0;
+    const prod = r.product_id ? producten.get(r.product_id) ?? null : null;
+    let stukprijs = r.stukprijs != null ? Number(r.stukprijs) || 0 : null;
+    if (stukprijs == null && r.variant_id) stukprijs = varPrijs.get(r.variant_id) ?? null;
+    if (stukprijs == null && prod?.verkoopprijs_basis != null) stukprijs = Number(prod.verkoopprijs_basis) || 0;
+    stukprijs = stukprijs ?? 0;
+    const kleur = r.kleur?.trim() || null;
+    const maat = r.maat?.trim() || null;
+    const naam = (r.item_naam ?? '').trim() || prod?.naam || 'Regel';
+    // Kleur en maat staan soms al in de itemnaam (oudere orders); dan niet dubbel.
+    const laag = naam.toLowerCase();
+    const kleurErbij = kleur && !laag.includes(kleur.toLowerCase()) ? kleur : null;
+    const maatErbij = maat && !laag.includes(`maat ${maat.toLowerCase()}`) ? maat : null;
+    let omschrijving = artikelOmschrijving({ naam, merk: null }, kleurErbij, maatErbij);
+    if (r.lengte != null && Number(r.lengte) > 0) omschrijving += `, lengte ${r.lengte} cm`;
+    const btwPct = prod?.btw != null && Number.isFinite(Number(prod.btw)) ? Number(prod.btw) : 21;
+    const rij: Record<string, unknown> = {
+      factuur_id: factuurId,
+      omschrijving,
+      aantal,
+      stukprijs,
+      btw_pct: btwPct,
+      korting_pct: 0,
+      bedrag: regelBedrag({ aantal, stukprijs }),
+      positie: i + 1,
+    };
+    if (r.product_id) rij.product_id = r.product_id;
+    if (kleur) rij.kleur = kleur;
+    if (maat) rij.maat = maat;
+    return rij;
+  });
+  if (!(await voegRegelsIn(sb, rijen))) {
+    // Geen halve factuur laten staan: zonder regels is hij niets waard.
+    await sb.from('facturen').delete().eq('id', factuurId);
+    return null;
   }
   await herberekenFactuur(factuurId);
   return factuurId;
@@ -257,33 +481,60 @@ export async function voegFactuurregelToe(factuurId: string, v: FactuurregelVeld
   const sb = kmsAdmin(); if (!sb) return false;
   const aantal = Number(v.aantal) || 0;
   const stukprijs = Number(v.stukprijs) || 0;
-  const btw_pct = v.btw_pct == null ? 21 : Number(v.btw_pct);
-  const { error } = await sb.from('factuurregels').insert({
+  const korting_pct = Math.min(100, Math.max(0, Number(v.korting_pct) || 0));
+  const btw_pct = v.btw_pct == null || !Number.isFinite(Number(v.btw_pct)) ? 21 : Number(v.btw_pct);
+  const rij: Record<string, unknown> = {
     factuur_id: factuurId,
     omschrijving: v.omschrijving,
     aantal,
     stukprijs,
     btw_pct,
-    bedrag: aantal * stukprijs,
-  });
-  if (error) return false;
+    korting_pct,
+    bedrag: regelBedrag({ aantal, stukprijs, korting_pct }),
+    positie: await volgendePositie(sb, factuurId),
+  };
+  // Alleen meesturen als er echt een artikel gekozen is; een vrije regel laat ze weg.
+  if (v.product_id) rij.product_id = v.product_id;
+  if (v.kleur && v.kleur.trim()) rij.kleur = v.kleur.trim();
+  if (v.maat && v.maat.trim()) rij.maat = v.maat.trim();
+  const ok = await voegRegelsIn(sb, [rij]);
+  if (!ok) return false;
   await herberekenFactuur(factuurId);
   return true;
 }
 
+/** Huidige waarden van een regel (voor het auditlog en om de factuur te vinden). */
+export async function getFactuurregel(id: string): Promise<Factuurregel | null> {
+  const sb = kmsAdmin(); if (!sb) return null;
+  const { data } = await sb.from('factuurregels').select('*').eq('id', id).maybeSingle();
+  return (data as Factuurregel | null) ?? null;
+}
+
 export async function werkFactuurregel(id: string, v: FactuurregelVelden): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
-  const { data } = await sb.from('factuurregels').select('factuur_id').eq('id', id).maybeSingle();
-  const factuurId = (data as { factuur_id: string } | null)?.factuur_id ?? null;
+  const huidig = await getFactuurregel(id);
+  if (!huidig) return false;
   const aantal = Number(v.aantal) || 0;
   const stukprijs = Number(v.stukprijs) || 0;
-  const btw_pct = v.btw_pct == null ? 21 : Number(v.btw_pct);
-  const { error } = await sb
-    .from('factuurregels')
-    .update({ omschrijving: v.omschrijving, aantal, stukprijs, btw_pct, bedrag: aantal * stukprijs })
-    .eq('id', id);
+  const btw_pct = v.btw_pct == null || !Number.isFinite(Number(v.btw_pct)) ? 21 : Number(v.btw_pct);
+  // Korting alleen als de kolom bestaat (dan staat hij in de rij) of als hij is meegegeven.
+  const korting_pct = v.korting_pct !== undefined ? Math.min(100, Math.max(0, Number(v.korting_pct) || 0)) : Number(huidig.korting_pct) || 0;
+  const patch: Record<string, unknown> = {
+    omschrijving: v.omschrijving,
+    aantal,
+    stukprijs,
+    btw_pct,
+    bedrag: regelBedrag({ aantal, stukprijs, korting_pct }),
+  };
+  if (v.korting_pct !== undefined) patch.korting_pct = korting_pct;
+  // Maat mag later alsnog ingevuld of gewist worden; artikel en kleur blijven staan.
+  if (v.maat !== undefined) patch.maat = v.maat && v.maat.trim() ? v.maat.trim() : null;
+  let { error } = await sb.from('factuurregels').update(patch).eq('id', id);
+  if (error && kolomOntbreekt(error)) {
+    ({ error } = await sb.from('factuurregels').update(zonderExtraKolommen(patch)).eq('id', id));
+  }
   if (error) return false;
-  if (factuurId) await herberekenFactuur(factuurId);
+  await herberekenFactuur(huidig.factuur_id);
   return true;
 }
 
@@ -297,35 +548,41 @@ export async function verwijderFactuurregel(id: string): Promise<boolean> {
   return true;
 }
 
+/** Zet de bedragen op de factuur gelijk aan de som van de regels (btw per tarief). */
 export async function herberekenFactuur(factuurId: string): Promise<void> {
   const sb = kmsAdmin(); if (!sb) return;
-  const { data } = await sb.from('factuurregels').select('bedrag, btw_pct').eq('factuur_id', factuurId);
-  const regels = (data as { bedrag: number | null; btw_pct: number | null }[]) ?? [];
-  const bedrag_excl = regels.reduce((t, r) => t + (Number(r.bedrag) || 0), 0);
-  const btw_bedrag = regels.reduce((t, r) => t + (Number(r.bedrag) || 0) * (Number(r.btw_pct) || 0) / 100, 0);
-  const bedrag_incl = bedrag_excl + btw_bedrag;
+  const regels = await regelsVan(sb, factuurId);
+  const t = factuurTotalen(regels);
   await sb
     .from('facturen')
-    .update({
-      bedrag_excl: Math.round(bedrag_excl * 100) / 100,
-      btw_bedrag: Math.round(btw_bedrag * 100) / 100,
-      bedrag_incl: Math.round(bedrag_incl * 100) / 100,
-    })
+    .update({ bedrag_excl: t.excl, btw_bedrag: t.btw, bedrag_incl: t.incl })
     .eq('id', factuurId);
 }
 
+export function isFactuurStatus(s: string): s is FactuurStatus {
+  return (FACTUUR_STATUSSEN as readonly string[]).includes(s);
+}
+
+/**
+ * Zet de status. Verzonden: vervaldatum wordt factuurdatum + betaaltermijn als
+ * die nog leeg is. Betaald: betaaldatum vandaag (of de meegegeven datum).
+ * Terug naar concept of verzonden: de betaaldatum gaat eraf, anders blijft
+ * "Betaald op" staan bij een factuur die niet betaald is.
+ */
 export async function zetFactuurStatus(id: string, status: string, betaaldatum?: string | null): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
+  if (!isFactuurStatus(status)) return false;
+  const { data } = await sb.from('facturen').select('factuurdatum, vervaldatum, betaaldatum').eq('id', id).maybeSingle();
+  const huidig = data as { factuurdatum: string | null; vervaldatum: string | null; betaaldatum: string | null } | null;
+  if (!huidig) return false;
   const patch: Record<string, unknown> = { status };
   if (status === 'betaald') {
-    patch.betaaldatum = betaaldatum ?? vandaagISO();
+    patch.betaaldatum = betaaldatum ?? huidig.betaaldatum ?? vandaagISO();
+  } else if (huidig.betaaldatum) {
+    patch.betaaldatum = null;
   }
-  if (status === 'verzonden') {
-    const { data } = await sb.from('facturen').select('factuurdatum, vervaldatum').eq('id', id).maybeSingle();
-    const huidig = data as { factuurdatum: string | null; vervaldatum: string | null } | null;
-    if (huidig && !huidig.vervaldatum) {
-      patch.vervaldatum = plusDagen(huidig.factuurdatum, bedrijf.betaaltermijnDagen);
-    }
+  if (status !== 'concept' && !huidig.vervaldatum) {
+    patch.vervaldatum = vervaldatumVoor(huidig.factuurdatum);
   }
   const { error } = await sb.from('facturen').update(patch).eq('id', id);
   return !error;
@@ -333,20 +590,42 @@ export async function zetFactuurStatus(id: string, status: string, betaaldatum?:
 
 export async function listOrganisaties(): Promise<{ id: string; naam: string }[]> {
   const sb = kmsAdmin(); if (!sb) return [];
-  const { data } = await sb.from('organisaties').select('id, naam').order('naam');
-  return (data as { id: string; naam: string }[]) ?? [];
+  const uit: { id: string; naam: string }[] = [];
+  for (let van = 0; van < 50000; van += 1000) {
+    const { data, error } = await sb.from('organisaties').select('id, naam').order('naam').order('id').range(van, van + 999);
+    if (error) break;
+    const rijen = (data as { id: string; naam: string }[]) ?? [];
+    uit.push(...rijen);
+    if (rijen.length < 1000) break;
+  }
+  return uit;
 }
 
 export async function listFactureerbareOrders(): Promise<{ id: string; ordernummer: number; organisatie_naam: string | null; bedrag: number | null }[]> {
   const sb = kmsAdmin(); if (!sb) return [];
-  const { data: factuurData } = await sb.from('facturen').select('order_id').not('order_id', 'is', null);
-  const metFactuur = new Set(((factuurData as { order_id: string | null }[]) ?? []).map((f) => f.order_id).filter(Boolean) as string[]);
-  const { data } = await sb
-    .from('orders')
-    .select('id, ordernummer, bedrag, organisaties(naam)')
-    .order('ordernummer', { ascending: false });
-  const rows = (data as unknown as { id: string; ordernummer: number; bedrag: number | null; organisaties: { naam: string } | null }[]) ?? [];
-  return rows
+  // Beide lijsten in blokken van 1000: Supabase geeft er per verzoek niet meer.
+  const metFactuur = new Set<string>();
+  for (let van = 0; van < 100000; van += 1000) {
+    const { data, error } = await sb.from('facturen').select('order_id').not('order_id', 'is', null).order('id').range(van, van + 999);
+    if (error) break;
+    const rijen = (data as { order_id: string | null }[]) ?? [];
+    for (const f of rijen) if (f.order_id) metFactuur.add(f.order_id);
+    if (rijen.length < 1000) break;
+  }
+  type Rij = { id: string; ordernummer: number; bedrag: number | null; organisaties: { naam: string } | null };
+  const orders: Rij[] = [];
+  for (let van = 0; van < 100000; van += 1000) {
+    const { data, error } = await sb
+      .from('orders')
+      .select('id, ordernummer, bedrag, organisaties(naam)')
+      .order('ordernummer', { ascending: false })
+      .range(van, van + 999);
+    if (error) break;
+    const rijen = (data as unknown as Rij[]) ?? [];
+    orders.push(...rijen);
+    if (rijen.length < 1000) break;
+  }
+  return orders
     .filter((o) => !metFactuur.has(o.id))
     .map((o) => ({ id: o.id, ordernummer: o.ordernummer, bedrag: o.bedrag, organisatie_naam: o.organisaties?.naam ?? null }));
 }
@@ -501,25 +780,33 @@ export async function mailFactuurNaarKlant(id: string, to: string): Promise<{ ok
     try { return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric' }); }
     catch { return d; }
   };
-  const vervaldatum = f.vervaldatum ?? plusDagen(f.factuurdatum, bedrijf.betaaltermijnDagen);
+  const vervaldatum = f.vervaldatum ?? vervaldatumVoor(f.factuurdatum);
   const nummer = f.factuurnummer || 'concept';
+  const totalen = factuurTotalen(f.regels);
   const td = 'padding:6px 0;border-bottom:1px solid #eee;';
+  const getal = (n: number) => String(Number(n) || 0).replace('.', ',');
   const rijen = f.regels
-    .map(
-      (r) => `<tr><td style="${td}color:#1c1c1c;">${escapeHtml(r.omschrijving)}</td><td style="${td}text-align:right;color:#52504e;">${escapeHtml(String(r.aantal).replace('.', ','))}</td><td style="${td}text-align:right;color:#52504e;">${euro(Number(r.stukprijs) || 0)}</td><td style="${td}text-align:right;color:#1c1c1c;">${euro(Number(r.bedrag) || 0)}</td></tr>`,
-    )
+    .map((r) => {
+      const kort = Number(r.korting_pct) || 0;
+      const stuk = `${euro(Number(r.stukprijs) || 0)}${kort ? `<br><span style="font-size:12px;">-${escapeHtml(getal(kort))}% korting</span>` : ''}`;
+      return `<tr><td style="${td}color:#1c1c1c;">${escapeHtml(r.omschrijving)}</td><td style="${td}text-align:right;color:#52504e;">${escapeHtml(getal(r.aantal))}</td><td style="${td}text-align:right;color:#52504e;">${stuk}</td><td style="${td}text-align:right;color:#52504e;">${escapeHtml(getal(r.btw_pct))}%</td><td style="${td}text-align:right;color:#1c1c1c;">${euro(regelBedrag(r))}</td></tr>`;
+    })
+    .join('');
+  const th = 'padding:6px 0;border-bottom:2px solid #1c1c1c;';
+  const btwRijen = totalen.perTarief
+    .map((t) => `<tr><td style="padding:2px 12px 2px 0;color:#52504e;">Btw ${escapeHtml(getal(t.pct))}% over ${euro(t.grondslag)}</td><td style="text-align:right;color:#1c1c1c;">${euro(t.btw)}</td></tr>`)
     .join('');
   const bodyHtml = `
     <p style="margin:0;">Beste relatie,</p>
     <p style="margin:14px 0 0;">Hierbij factuur <strong>${escapeHtml(nummer)}</strong> van ${escapeHtml(datum(f.factuurdatum))}${f.organisatie?.naam ? ` voor ${escapeHtml(f.organisatie.naam)}` : ''}.</p>
     <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
-      <thead><tr><th style="text-align:left;padding:6px 0;border-bottom:2px solid #1c1c1c;">Omschrijving</th><th style="text-align:right;padding:6px 0;border-bottom:2px solid #1c1c1c;">Aantal</th><th style="text-align:right;padding:6px 0;border-bottom:2px solid #1c1c1c;">Stukprijs</th><th style="text-align:right;padding:6px 0;border-bottom:2px solid #1c1c1c;">Bedrag</th></tr></thead>
-      <tbody>${rijen || '<tr><td colspan="4" style="padding:8px 0;color:#52504e;">Geen regels.</td></tr>'}</tbody>
+      <thead><tr><th style="text-align:left;${th}">Omschrijving</th><th style="text-align:right;${th}">Aantal</th><th style="text-align:right;${th}">Stukprijs</th><th style="text-align:right;${th}">Btw</th><th style="text-align:right;${th}">Bedrag</th></tr></thead>
+      <tbody>${rijen || '<tr><td colspan="5" style="padding:8px 0;color:#52504e;">Geen regels.</td></tr>'}</tbody>
     </table>
     <table style="margin-left:auto;font-size:14px;">
-      <tr><td style="padding:2px 12px 2px 0;color:#52504e;">Subtotaal excl. btw</td><td style="text-align:right;color:#1c1c1c;">${euro(Number(f.bedrag_excl) || 0)}</td></tr>
-      <tr><td style="padding:2px 12px 2px 0;color:#52504e;">Btw</td><td style="text-align:right;color:#1c1c1c;">${euro(Number(f.btw_bedrag) || 0)}</td></tr>
-      <tr><td style="padding:6px 12px 2px 0;font-weight:800;color:#1c1c1c;">Totaal incl. btw</td><td style="text-align:right;font-weight:800;color:#1c1c1c;">${euro(Number(f.bedrag_incl) || 0)}</td></tr>
+      <tr><td style="padding:2px 12px 2px 0;color:#52504e;">Subtotaal excl. btw</td><td style="text-align:right;color:#1c1c1c;">${euro(totalen.excl)}</td></tr>
+      ${btwRijen || `<tr><td style="padding:2px 12px 2px 0;color:#52504e;">Btw</td><td style="text-align:right;color:#1c1c1c;">${euro(0)}</td></tr>`}
+      <tr><td style="padding:6px 12px 2px 0;font-weight:800;color:#1c1c1c;">Totaal incl. btw</td><td style="text-align:right;font-weight:800;color:#1c1c1c;">${euro(totalen.incl)}</td></tr>
     </table>
     <p style="margin:18px 0 0;">Wij verzoeken u het bedrag vóór <strong>${escapeHtml(datum(vervaldatum))}</strong> over te maken op <strong>${escapeHtml(bedrijf.iban)}</strong> t.n.v. ${escapeHtml(bedrijf.naam)}, onder vermelding van factuurnummer ${escapeHtml(nummer)}${f.organisatie?.klantnummer ? ` en debiteurnummer ${escapeHtml(f.organisatie.klantnummer)}` : ''}.</p>
     <p style="margin:14px 0 0;">Vragen over deze factuur? Antwoord gerust op deze mail of bel ${escapeHtml(bedrijf.telefoon)}.</p>

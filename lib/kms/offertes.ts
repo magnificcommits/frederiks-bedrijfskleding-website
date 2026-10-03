@@ -1,4 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { zoekWoorden, klantIdsVoorZoekterm } from '@/lib/kms/zoeken';
 import { maakOrder, voegOrderregelToe, type OrderregelVelden } from '@/lib/kms/orders';
 
 /**
@@ -17,7 +18,13 @@ export type Offerte = {
   offertenummer: number | null;
   organisatie_id: string | null;
   lead_id: string | null;
+  /** Naam van de contactpersoon, voor weergave en voor oudere offertes zonder koppeling. */
   contactpersoon: string | null;
+  /**
+   * Verwijzing naar contactpersonen.id. Ontbreekt zolang migratie
+   * 20261004_offerte_contact_id.sql nog niet gedraaid is.
+   */
+  contactpersoon_id?: string | null;
   status: string;
   geldig_tot: string | null;
   notitie: string | null;
@@ -49,16 +56,29 @@ export type OfferteregelMetFoto = Offerteregel & { afbeelding: string | null };
 
 export type OfferteMetKlant = Offerte & { organisatie_naam: string | null };
 export type OfferteMetTotaal = OfferteMetKlant & { totaal: number };
+/** De contactpersoon van een offerte zoals die uit de contactpersonen van de klant komt. */
+export type OfferteGekozenContact = { id: string; naam: string; email: string | null };
+
 export type OfferteDetail = Offerte & {
   organisatie_naam: string | null;
+  /**
+   * De gekoppelde contactpersoon: via contactpersoon_id, of bij een oudere offerte
+   * gevonden op naam binnen de klant. Null als de naam niet (meer) bij de klant staat.
+   */
+  contact: OfferteGekozenContact | null;
+  /** Hoe `contact` gevonden is: via de koppeling, alleen op naam, of niet. */
+  contact_bron: 'koppeling' | 'naam' | null;
   /** Beste adres om de offerte naartoe te mailen (contactpersoon eerst). */
   organisatie_email: string | null;
+  /** Algemeen adres van de klant, als de gekozen contactpersoon geen e-mail heeft. */
+  klant_email: string | null;
   regels: OfferteregelMetFoto[];
 };
 
 export type OfferteVelden = {
   organisatie_id?: string | null;
   contactpersoon?: string | null;
+  contactpersoon_id?: string | null;
   geldig_tot?: string | null;
   notitie?: string | null;
   btw_pct?: number | null;
@@ -91,36 +111,11 @@ export function regelOmschrijving(p: { merk: string | null; naam: string }, kleu
 }
 
 /**
- * Totalen voor een set regels: subtotaal (na regelkorting, excl. btw), het kortingsbedrag,
- * btw, totaal, en de marge (subtotaal min inkoopkosten, voor regels met een inkoopprijs).
+ * Totalen (subtotaal, korting, btw, totaal, marge). De berekening staat in het gedeelde
+ * offertedocument, zodat het live voorbeeld in de browser exact hetzelfde rekent als
+ * deze pagina's, de afdruk en de mail.
  */
-export function offerteTotalen(
-  regels: { aantal: number | null; stukprijs: number | null; korting_pct?: number | null; inkoop?: number | null }[],
-  btwPct: number | null | undefined,
-): { subtotaal: number; korting: number; btw: number; totaal: number; marge: number } {
-  let bruto = 0;
-  let netto = 0;
-  let kostprijs = 0;
-  for (const r of regels) {
-    const aantal = Number(r.aantal) || 0;
-    const stuk = Number(r.stukprijs) || 0;
-    const kort = Number(r.korting_pct) || 0;
-    const regelBruto = aantal * stuk;
-    bruto += regelBruto;
-    netto += regelBruto * (1 - kort / 100);
-    if (r.inkoop != null && Number.isFinite(Number(r.inkoop))) kostprijs += aantal * Number(r.inkoop);
-  }
-  const pct = Number(btwPct);
-  const btw = netto * (Number.isFinite(pct) ? pct : 0) / 100;
-  const r2 = (n: number) => Math.round(n * 100) / 100;
-  return {
-    subtotaal: r2(netto),
-    korting: r2(bruto - netto),
-    btw: r2(btw),
-    totaal: r2(netto + btw),
-    marge: r2(netto - kostprijs),
-  };
-}
+export { offerteTotalen } from '@/components/dashboard/OfferteDocument';
 
 export async function listOffertes(statusFilter?: string): Promise<OfferteMetKlant[]> {
   const sb = kmsAdmin(); if (!sb) return [];
@@ -163,16 +158,18 @@ export async function listOffertesPaged(opts: {
     .select('*, organisaties(naam)', { count: 'exact' })
     .order(kolom, { ascending: oplopend });
   if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
-  // Zoeken op klantnaam of offertenummer. De klant zit in een join, en PostgREST
-  // kan daar niet zonder meer op filteren; daarom eerst de organisatie-ids ophalen.
-  if (opts.zoek && opts.zoek.trim()) {
-    const term = opts.zoek.trim().replace(/[%,()]/g, ' ');
-    const { data: orgRijen } = await sb.from('organisaties').select('id').ilike('naam', `%${term}%`);
-    const orgIds = ((orgRijen as { id: string }[]) ?? []).map((o) => o.id);
-    const delen: string[] = [];
+  // Zoeken op klant (naam, plaats, klantnummer, contactpersoon; elk woord moet
+  // passen), offertenummer of de contactpersoon op de offerte. De klant zit in een
+  // join, en PostgREST kan daar niet zonder meer op filteren; daarom eerst de klant-ids.
+  const woorden = zoekWoorden(opts.zoek);
+  if (woorden.length) {
+    const term = woorden.join(' ');
+    const orgIds = await klantIdsVoorZoekterm(sb, woorden);
+    const delen: string[] = [`contactpersoon.ilike.%${term}%`];
     if (orgIds.length) delen.push(`organisatie_id.in.(${orgIds.join(',')})`);
-    if (/^\d+$/.test(term)) delen.push(`offertenummer.eq.${Number(term)}`);
-    q = delen.length ? q.or(delen.join(',')) : q.eq('id', '00000000-0000-0000-0000-000000000000');
+    const nummer = term.replace(/^#/, '');
+    if (/^\d{1,9}$/.test(nummer)) delen.push(`offertenummer.eq.${Number(nummer)}`);
+    q = q.or(delen.join(','));
   }
 
   const { data, count } = await q.range(from, to);
@@ -261,43 +258,100 @@ export async function getOfferte(id: string): Promise<OfferteDetail | null> {
   const regels = (regelData as Offerteregel[]) ?? [];
   const fotos = await fotoPerRegel(regels);
 
-  // Mailadres: van de gekozen contactpersoon als die er een heeft, anders het
-  // algemene adres van de klant. Een offerte gaat naar de inkoper, niet naar de boekhouding.
-  let contactEmail: string | null = null;
-  if (rest.organisatie_id && rest.contactpersoon?.trim()) {
+  // Contactpersoon: eerst via de koppeling (contactpersoon_id), anders bij een oudere
+  // offerte op naam binnen de klant. Het mailadres komt van die contactpersoon, anders
+  // het algemene adres van de klant. Een offerte gaat naar de inkoper, niet naar de boekhouding.
+  let contact: OfferteGekozenContact | null = null;
+  let contactBron: OfferteDetail['contact_bron'] = null;
+  const koppelId = rest.contactpersoon_id ?? null;
+  if (rest.organisatie_id && (koppelId || rest.contactpersoon?.trim())) {
     const { data: cp } = await sb
       .from('contactpersonen')
-      .select('naam, email')
+      .select('id, naam, email')
       .eq('organisatie_id', rest.organisatie_id);
-    const gezocht = rest.contactpersoon.trim().toLowerCase();
-    const match = ((cp as { naam: string | null; email: string | null }[]) ?? []).find(
-      (c) => (c.naam ?? '').trim().toLowerCase() === gezocht && (c.email ?? '').trim(),
-    );
-    contactEmail = match?.email?.trim() || null;
+    const lijst = (cp as { id: string; naam: string | null; email: string | null }[]) ?? [];
+    const opId = koppelId ? lijst.find((c) => c.id === koppelId) : undefined;
+    const gezocht = (rest.contactpersoon ?? '').trim().toLowerCase();
+    const opNaam = !opId && gezocht ? lijst.filter((c) => (c.naam ?? '').trim().toLowerCase() === gezocht) : [];
+    // Op naam alleen koppelen als het eenduidig is: twee keer "Michael" bij één klant raden we niet.
+    const gevonden = opId ?? (opNaam.length === 1 ? opNaam[0] : undefined);
+    if (gevonden) {
+      contact = { id: gevonden.id, naam: (gevonden.naam ?? '').trim(), email: gevonden.email?.trim() || null };
+      contactBron = opId ? 'koppeling' : 'naam';
+    }
   }
 
+  const klantEmail = organisaties?.email_algemeen?.trim() || organisaties?.factuur_email?.trim() || null;
   return {
     ...(rest as Offerte),
     organisatie_naam: organisaties?.naam ?? null,
-    organisatie_email: contactEmail || organisaties?.email_algemeen?.trim() || organisaties?.factuur_email?.trim() || null,
+    contact,
+    contact_bron: contactBron,
+    organisatie_email: contact?.email || klantEmail,
+    klant_email: klantEmail,
     regels: regels.map((r) => ({ ...r, afbeelding: fotos.get(r.id) ?? null })),
   };
 }
 
-export type OfferteContact = { id: string; naam: string; functie: string | null; email: string | null; hoofdcontact: boolean };
+/**
+ * Eén contactpersoon, alleen als hij bij deze klant hoort. Gebruikt bij het opslaan
+ * van een offerte: de naam op de offerte komt dan altijd uit de contactpersonen.
+ */
+export async function getContactVanKlant(contactId: string, orgId: string): Promise<OfferteContact | null> {
+  const sb = kmsAdmin(); if (!sb || !contactId || !orgId) return null;
+  const { data } = await sb
+    .from('contactpersonen')
+    .select('id, naam, functie, email, telefoon, hoofdcontact')
+    .eq('id', contactId)
+    .eq('organisatie_id', orgId)
+    .maybeSingle();
+  const c = data as { id: string; naam: string | null; functie: string | null; email: string | null; telefoon: string | null; hoofdcontact: boolean | null } | null;
+  if (!c || !(c.naam ?? '').trim()) return null;
+  return { id: c.id, naam: (c.naam ?? '').trim(), functie: c.functie, email: c.email, telefoon: c.telefoon, hoofdcontact: !!c.hoofdcontact };
+}
+
+/**
+ * Contactvelden voor het opslaan van een offerte. Met een gekozen contactpersoon van
+ * de klant komt de naam uit de tabel contactpersonen (niet uit het formulier). Zonder
+ * keuze blijft de oude losse naam staan, zodat oudere offertes niets kwijtraken.
+ */
+export async function bepaalOfferteContact(
+  orgId: string | null,
+  contactId: string | null,
+  losseNaam: string | null,
+): Promise<{ contactpersoon: string | null; contactpersoon_id: string | null }> {
+  if (orgId && contactId) {
+    const c = await getContactVanKlant(contactId, orgId);
+    if (c) return { contactpersoon: c.naam, contactpersoon_id: c.id };
+  }
+  return { contactpersoon: losseNaam?.trim() || null, contactpersoon_id: null };
+}
+
+/**
+ * Herkent de fout "kolom bestaat niet" (Postgres 42703, of PostgREST PGRST204 als de
+ * schemacache de kolom niet kent). Dan is de migratie voor contactpersoon_id nog niet
+ * gedraaid en slaan we alleen de naam op.
+ */
+function kolomOntbreekt(error: { code?: string; message?: string } | null, kolom: string): boolean {
+  if (!error) return false;
+  if (error.code === '42703' || error.code === 'PGRST204') return true;
+  return (error.message ?? '').includes(kolom);
+}
+
+export type OfferteContact = { id: string; naam: string; functie: string | null; email: string | null; telefoon: string | null; hoofdcontact: boolean };
 
 /** Contactpersonen van een klant voor de kiezer op de offerte (hoofdcontact eerst). */
 export async function listContactenVoorOfferte(orgId: string): Promise<OfferteContact[]> {
   const sb = kmsAdmin(); if (!sb || !orgId) return [];
   const { data } = await sb
     .from('contactpersonen')
-    .select('id, naam, functie, email, hoofdcontact')
+    .select('id, naam, functie, email, telefoon, hoofdcontact')
     .eq('organisatie_id', orgId)
     .order('hoofdcontact', { ascending: false })
     .order('naam');
-  return ((data as { id: string; naam: string | null; functie: string | null; email: string | null; hoofdcontact: boolean | null }[]) ?? [])
+  return ((data as { id: string; naam: string | null; functie: string | null; email: string | null; telefoon: string | null; hoofdcontact: boolean | null }[]) ?? [])
     .filter((c) => (c.naam ?? '').trim())
-    .map((c) => ({ id: c.id, naam: (c.naam ?? '').trim(), functie: c.functie, email: c.email, hoofdcontact: !!c.hoofdcontact }));
+    .map((c) => ({ id: c.id, naam: (c.naam ?? '').trim(), functie: c.functie, email: c.email, telefoon: c.telefoon, hoofdcontact: !!c.hoofdcontact }));
 }
 
 export type OfferteKlant = { id: string; naam: string; plaats: string | null; klantnummer: string | null };
@@ -317,18 +371,21 @@ export async function listKlantenVoorOfferte(): Promise<OfferteKlant[]> {
 export async function maakOfferte(v: OfferteVelden): Promise<string | null> {
   const sb = kmsAdmin(); if (!sb) return null;
   const btw = v.btw_pct == null ? 21 : Number(v.btw_pct);
-  const { data, error } = await sb
-    .from('offertes')
-    .insert({
-      organisatie_id: v.organisatie_id || null,
-      contactpersoon: v.contactpersoon?.trim() || null,
-      geldig_tot: v.geldig_tot || null,
-      notitie: v.notitie?.trim() || null,
-      btw_pct: Number.isFinite(btw) ? btw : 21,
-      status: 'concept',
-    })
-    .select('id')
-    .single();
+  const rij: Record<string, unknown> = {
+    organisatie_id: v.organisatie_id || null,
+    contactpersoon: v.contactpersoon?.trim() || null,
+    geldig_tot: v.geldig_tot || null,
+    notitie: v.notitie?.trim() || null,
+    btw_pct: Number.isFinite(btw) ? btw : 21,
+    status: 'concept',
+  };
+  if (v.contactpersoon_id) rij.contactpersoon_id = v.contactpersoon_id;
+  let { data, error } = await sb.from('offertes').insert(rij).select('id').single();
+  // Kolom contactpersoon_id bestaat nog niet: dan alleen de naam bewaren.
+  if (error && 'contactpersoon_id' in rij && kolomOntbreekt(error, 'contactpersoon_id')) {
+    delete rij.contactpersoon_id;
+    ({ data, error } = await sb.from('offertes').insert(rij).select('id').single());
+  }
   if (error || !data) return null;
   return (data as { id: string }).id;
 }
@@ -338,13 +395,19 @@ export async function werkOfferte(id: string, v: OfferteVelden): Promise<boolean
   const patch: Record<string, unknown> = {};
   if ('organisatie_id' in v) patch.organisatie_id = v.organisatie_id || null;
   if ('contactpersoon' in v) patch.contactpersoon = v.contactpersoon?.trim() || null;
+  if ('contactpersoon_id' in v) patch.contactpersoon_id = v.contactpersoon_id || null;
   if ('geldig_tot' in v) patch.geldig_tot = v.geldig_tot || null;
   if ('notitie' in v) patch.notitie = v.notitie?.trim() || null;
   if ('btw_pct' in v) {
     const btw = Number(v.btw_pct);
     patch.btw_pct = Number.isFinite(btw) ? btw : 21;
   }
-  const { error } = await sb.from('offertes').update(patch).eq('id', id);
+  let { error } = await sb.from('offertes').update(patch).eq('id', id);
+  // Kolom contactpersoon_id bestaat nog niet: dan alleen de naam bewaren.
+  if (error && 'contactpersoon_id' in patch && kolomOntbreekt(error, 'contactpersoon_id')) {
+    delete patch.contactpersoon_id;
+    ({ error } = await sb.from('offertes').update(patch).eq('id', id));
+  }
   return !error;
 }
 

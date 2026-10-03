@@ -1,41 +1,40 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/dashboard/actions';
+import { bewaarNavFavorieten } from '@/app/dashboard/navActions';
 import CommandPalette from './CommandPalette';
 import BezigBalk from './BezigBalk';
 import Toast from './Toast';
 
+/** Waar de menu-favorieten bewaard worden: bij de beheerder in de database, of in deze browser. */
+export type NavOpslag = 'db' | 'lokaal';
+
 type Item = { href: string; label: string };
 type Groep = { titel: string; items: Item[] };
 
-/**
- * Wat je elke dag nodig hebt, altijd zichtbaar bovenaan. Deze links staan
- * hieronder ook in hun eigen groep; dat is bewust, dit is een snelspoor.
- */
-const DAGELIJKS: Item[] = [
-  { href: '/dashboard', label: 'Overzicht' },
-  { href: '/dashboard/orders', label: 'Orders' },
-  { href: '/dashboard/offertes', label: 'Offertes' },
-  { href: '/dashboard/klanten', label: 'Klanten' },
-  { href: '/dashboard/passessie', label: 'Passessies' },
-  { href: '/dashboard/producten', label: 'Producten' },
+/** Favorieten voor wie nog niets gekozen heeft: wat je elke dag nodig hebt. */
+const STANDAARD_FAVORIETEN: string[] = [
+  '/dashboard',
+  '/dashboard/orders',
+  '/dashboard/offertes',
+  '/dashboard/klanten',
+  '/dashboard/passessie',
+  '/dashboard/producten',
 ];
 
+/** Alleen zichtbaar voor de eigenaar en bij wachtwoordlogin (zie toonBeheerders). */
+const BEHEER_HREF = '/dashboard/admins';
+
 const groepen: Groep[] = [
-  { titel: 'Overzicht', items: [
+  { titel: 'Werk', items: [
     { href: '/dashboard', label: 'Overzicht' },
-    { href: '/dashboard/leads', label: 'Leads' },
     { href: '/dashboard/taken', label: 'Taken en afspraken' },
-    { href: '/dashboard/nieuwsbrief', label: 'Nieuwsbrief' },
-  ] },
-  { titel: 'Groei', items: [
-    { href: '/dashboard/prospects', label: 'Prospects' },
-    { href: '/dashboard/prospects/brieven', label: 'Brieven met QR' },
-    { href: '/dashboard/campagnes', label: 'Campagnes' },
+    { href: '/dashboard/meldingen', label: 'Meldingen' },
   ] },
   { titel: 'Verkoop', items: [
+    { href: '/dashboard/leads', label: 'Leads' },
     { href: '/dashboard/klanten', label: 'Klanten' },
     { href: '/dashboard/passessie', label: 'Passessies' },
     { href: '/dashboard/medewerker-verzoeken', label: 'Medewerker-verzoeken' },
@@ -43,6 +42,12 @@ const groepen: Groep[] = [
     { href: '/dashboard/orders', label: 'Orders' },
     { href: '/dashboard/facturen', label: 'Facturen' },
     { href: '/dashboard/sparen', label: 'Sparen' },
+  ] },
+  { titel: 'Groei', items: [
+    { href: '/dashboard/prospects', label: 'Prospects' },
+    { href: '/dashboard/prospects/brieven', label: 'Brieven met QR' },
+    { href: '/dashboard/campagnes', label: 'Campagnes' },
+    { href: '/dashboard/nieuwsbrief', label: 'Nieuwsbrief' },
   ] },
   { titel: 'Catalogus', items: [
     { href: '/dashboard/producten', label: 'Producten' },
@@ -60,21 +65,22 @@ const groepen: Groep[] = [
   ] },
   { titel: 'Inzicht', items: [
     { href: '/dashboard/analyse', label: 'Analyse' },
-    { href: '/dashboard/ai-assistent', label: 'AI-assistent' },
     { href: '/dashboard/rapportages', label: 'Rapportages' },
-    { href: '/dashboard/meldingen', label: 'Meldingen' },
+    { href: '/dashboard/ai-assistent', label: 'AI-assistent' },
   ] },
   { titel: 'Systeem', items: [
+    { href: '/dashboard/instellingen', label: 'Instellingen' },
+    { href: BEHEER_HREF, label: 'Beheerders' },
+    { href: '/dashboard/beveiliging', label: 'Beveiliging (2FA)' },
     { href: '/dashboard/import', label: 'Import' },
     { href: '/dashboard/export', label: 'Export CSV' },
     { href: '/dashboard/audit', label: 'Logboek' },
-    { href: '/dashboard/instellingen', label: 'Instellingen' },
-    { href: '/dashboard/beveiliging', label: 'Beveiliging (2FA)' },
   ] },
 ];
 
 // Onderdelen die alleen de eigenaar ziet (instellingen, beheer, financien, groei, systeem).
-// Medewerkers en lezers krijgen deze niet in de nav en worden server-side geweerd.
+// Medewerkers en lezers krijgen deze niet in de nav (ook niet in favorieten) en worden
+// server-side geweerd.
 const EIGENAAR_ONLY = new Set<string>([
   '/dashboard/prospects',
   '/dashboard/prospects/brieven',
@@ -90,41 +96,141 @@ const EIGENAAR_ONLY = new Set<string>([
 ]);
 
 const NAV_SLEUTEL = 'fb_nav_groepen';
+const FAV_SLEUTEL = 'fb_nav_favorieten';
+/** Wacht even met opslaan, zodat snel achter elkaar klikken één schrijfactie wordt. */
+const BEWAAR_VERTRAGING_MS = 400;
 
 function isActief(pathname: string, href: string) {
   if (href === '/dashboard') return pathname === '/dashboard';
   return pathname === href || pathname.startsWith(href + '/');
 }
 
+function leesLokaleFavorieten(): string[] | null {
+  try {
+    const ruw = localStorage.getItem(FAV_SLEUTEL);
+    if (!ruw) return null;
+    const lijst: unknown = JSON.parse(ruw);
+    return Array.isArray(lijst) ? lijst.filter((h): h is string => typeof h === 'string') : null;
+  } catch {
+    return null;
+  }
+}
+
+function schrijfLokaleFavorieten(lijst: string[]) {
+  try {
+    localStorage.setItem(FAV_SLEUTEL, JSON.stringify(lijst));
+  } catch {
+    // Bewaren is een gemak, geen vereiste.
+  }
+}
+
+function SterIcoon({ gevuld }: { gevuld: boolean }) {
+  return (
+    <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true" focusable="false">
+      <path
+        d="M10 2.5l2.3 4.7 5.2.8-3.8 3.6.9 5.1L10 14.3l-4.6 2.4.9-5.1-3.8-3.6 5.2-.8z"
+        fill={gevuld ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function PijlIcoon({ omhoog }: { omhoog: boolean }) {
+  return (
+    <svg viewBox="0 0 20 20" width="12" height="12" aria-hidden="true" focusable="false">
+      <path
+        d={omhoog ? 'M5 12.5l5-5 5 5' : 'M5 7.5l5 5 5-5'}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function DashboardShell({
   children,
   adminNaam = null,
   adminRol = null,
+  navOpslag = 'lokaal',
+  navFavorieten = null,
 }: {
   children: React.ReactNode;
   adminNaam?: string | null;
   adminRol?: string | null;
+  /** 'db' als de favorieten bij de beheerder in de database staan; anders localStorage. */
+  navOpslag?: NavOpslag;
+  /** Bewaarde favorieten (hrefs, op volgorde). Null = nog niets gekozen. */
+  navFavorieten?: string[] | null;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [uitgeklapt, setUitgeklapt] = useState<Record<string, boolean>>({});
+  const [favorieten, setFavorieten] = useState<string[] | null>(navFavorieten);
+  const [bewerken, setBewerken] = useState(false);
+  const [melding, setMelding] = useState('');
+  const opslagRef = useRef<NavOpslag>(navOpslag);
+  const beginFavorieten = useRef<string[] | null>(navFavorieten);
+  const bewaarTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Beheerders-link tonen voor een eigenaar, of bij wachtwoord-login (geen admin-account => adminRol null).
   const toonBeheerders = adminRol === 'eigenaar' || adminRol === null;
-  const beheerItem: Item | null = toonBeheerders ? { href: '/dashboard/admins', label: 'Beheerders' } : null;
-
   // Medewerker/lezer: verberg de eigenaar-only onderdelen en lege groepen.
   const beperkt = adminRol === 'medewerker' || adminRol === 'lezer';
-  const zichtbareGroepen = beperkt
-    ? groepen
-        .map((g) => ({ ...g, items: g.items.filter((it) => !EIGENAAR_ONLY.has(it.href)) }))
-        .filter((g) => g.items.length > 0)
-    : groepen;
-  const zichtbaarDagelijks = beperkt ? DAGELIJKS.filter((it) => !EIGENAAR_ONLY.has(it.href)) : DAGELIJKS;
 
+  function magZien(href: string) {
+    if (href === BEHEER_HREF) return toonBeheerders;
+    return !(beperkt && EIGENAAR_ONLY.has(href));
+  }
+
+  const zichtbareGroepen = groepen
+    .map((g) => ({ ...g, items: g.items.filter((it) => magZien(it.href)) }))
+    .filter((g) => g.items.length > 0);
+
+  const zichtbareItems = new Map<string, Item>();
+  for (const g of zichtbareGroepen) for (const it of g.items) zichtbareItems.set(it.href, it);
+
+  // Alleen wat deze gebruiker mag zien komt in favorieten; onbekende hrefs vallen weg.
+  const favorietenLijst = favorieten ?? STANDAARD_FAVORIETEN;
+  const zichtbareFavorieten = favorietenLijst
+    .map((h) => zichtbareItems.get(h))
+    .filter((it): it is Item => Boolean(it));
+  const favorietSet = new Set(zichtbareFavorieten.map((it) => it.href));
+
+  // Precies één actieve pagina: de langste href die bij het pad past. Zo is op
+  // /dashboard/prospects/brieven alleen "Brieven met QR" actief, niet ook "Prospects".
+  let actieveHref: string | null = null;
+  for (const href of zichtbareItems.keys()) {
+    if (isActief(pathname, href) && (!actieveHref || href.length > actieveHref.length)) actieveHref = href;
+  }
+  const actiefInFavorieten = actieveHref !== null && favorietSet.has(actieveHref);
   const actieveGroep =
-    zichtbareGroepen.find((g) => g.items.some((it) => isActief(pathname, it.href)))?.titel ?? null;
+    zichtbareGroepen.find((g) => g.items.some((it) => it.href === actieveHref))?.titel ?? null;
+
+  const bewaar = useCallback((lijst: string[]) => {
+    if (opslagRef.current === 'lokaal') {
+      schrijfLokaleFavorieten(lijst);
+      return;
+    }
+    if (bewaarTimer.current) clearTimeout(bewaarTimer.current);
+    bewaarTimer.current = setTimeout(() => {
+      bewaarTimer.current = null;
+      bewaarNavFavorieten(lijst)
+        .then((r) => {
+          if (r.ok) return;
+          // Kolom ontbreekt of geen admin-account: voortaan in deze browser bewaren.
+          if (r.reden === 'lokaal') opslagRef.current = 'lokaal';
+          schrijfLokaleFavorieten(lijst);
+        })
+        .catch(() => schrijfLokaleFavorieten(lijst));
+    }, BEWAAR_VERTRAGING_MS);
+  }, []);
 
   useEffect(() => {
     try {
@@ -133,7 +239,17 @@ export function DashboardShell({
     } catch {
       // Geen voorkeur bewaard of onleesbaar: dan geldt gewoon de standaard.
     }
-  }, []);
+
+    const lokaal = leesLokaleFavorieten();
+    if (!lokaal) return;
+    if (opslagRef.current === 'lokaal') {
+      setFavorieten(lokaal);
+    } else if (beginFavorieten.current === null) {
+      // Eerder in de browser bewaard (voordat de kolom bestond): neem die keuze mee naar de database.
+      setFavorieten(lokaal);
+      bewaar(lokaal);
+    }
+  }, [bewaar]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -146,9 +262,16 @@ export function DashboardShell({
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  /** Zonder eigen keuze staat alleen de groep van de huidige pagina open. */
+  useEffect(() => () => {
+    if (bewaarTimer.current) clearTimeout(bewaarTimer.current);
+  }, []);
+
+  /**
+   * Zonder eigen keuze staat alleen de groep van de huidige pagina open, behalve als
+   * die pagina al in favorieten staat: dan is de groep niet nodig om hem te vinden.
+   */
   function groepOpen(titel: string) {
-    return uitgeklapt[titel] ?? titel === actieveGroep;
+    return uitgeklapt[titel] ?? (titel === actieveGroep && !actiefInFavorieten);
   }
 
   function schakelGroep(titel: string) {
@@ -161,25 +284,135 @@ export function DashboardShell({
     }
   }
 
-  function navLink(it: Item, key?: string) {
-    const aan = isActief(pathname, it.href);
+  function wijzigFavorieten(volgende: string[], tekst: string) {
+    setFavorieten(volgende);
+    setMelding(tekst);
+    bewaar(volgende);
+  }
+
+  function schakelFavoriet(it: Item) {
+    if (favorietSet.has(it.href)) {
+      wijzigFavorieten(favorietenLijst.filter((h) => h !== it.href), `${it.label} uit favorieten gehaald`);
+    } else {
+      const zonder = favorietenLijst.filter((h) => h !== it.href);
+      wijzigFavorieten([...zonder, it.href], `${it.label} vastgezet in favorieten`);
+    }
+  }
+
+  function verplaats(it: Item, richting: -1 | 1) {
+    // Alleen de zichtbare favorieten schuiven; verborgen hrefs (bijv. na een rolwijziging) blijven achteraan bewaard.
+    const zichtbaar = zichtbareFavorieten.map((f) => f.href);
+    const verborgen = favorietenLijst.filter((h) => !favorietSet.has(h));
+    const van = zichtbaar.indexOf(it.href);
+    const naar = van + richting;
+    if (van < 0 || naar < 0 || naar >= zichtbaar.length) return;
+    [zichtbaar[van], zichtbaar[naar]] = [zichtbaar[naar], zichtbaar[van]];
+    wijzigFavorieten([...zichtbaar, ...verborgen], `${it.label} staat nu op plek ${naar + 1}`);
+  }
+
+  function standaardTerug() {
+    wijzigFavorieten([...STANDAARD_FAVORIETEN], 'Standaardfavorieten teruggezet');
+  }
+
+  const linkBasis = 'block min-w-0 flex-1 truncate rounded py-1.5 pl-2 pr-8 text-[13px] font-medium';
+  const fel = 'bg-amber-500 text-ink-900';
+  const rustig = 'text-ink-200 hover:bg-ink-800 hover:text-white';
+  // Subtiel: de pagina is al fel gemarkeerd in favorieten, hier alleen een streepje links.
+  const subtiel = 'text-white shadow-[inset_2px_0_0_theme(colors.amber.500)] hover:bg-ink-800';
+
+  function sterKnop(it: Item, opFel: boolean, altijdZichtbaar: boolean) {
+    const isFav = favorietSet.has(it.href);
+    const label = isFav ? `${it.label} uit favorieten halen` : `${it.label} vastzetten in favorieten`;
+    const kleur = opFel
+      ? 'text-ink-900 hover:bg-amber-400'
+      : isFav
+        ? 'text-amber-500 hover:bg-ink-700'
+        : 'text-ink-400 hover:bg-ink-700 hover:text-amber-400';
     return (
-      <Link
-        key={key ?? it.href}
-        href={it.href}
-        onClick={() => setOpen(false)}
-        aria-current={aan ? 'page' : undefined}
-        className={`rounded px-2 py-1.5 text-[13px] font-medium ${
-          aan ? 'bg-amber-500 text-ink-900' : 'text-ink-100 hover:bg-ink-800'
-        }`}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          schakelFavoriet(it);
+        }}
+        aria-label={label}
+        title={label}
+        className={`absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 group-focus-within:opacity-100 group-hover:opacity-100 ${
+          altijdZichtbaar ? 'opacity-100' : 'opacity-0 [@media(hover:none)]:opacity-100'
+        } ${kleur}`}
       >
-        {it.label}
-      </Link>
+        <SterIcoon gevuld={isFav} />
+      </button>
+    );
+  }
+
+  function groepRij(it: Item) {
+    const isActiefItem = it.href === actieveHref;
+    const stijl = !isActiefItem ? rustig : actiefInFavorieten ? subtiel : fel;
+    const opFel = isActiefItem && !actiefInFavorieten;
+    return (
+      <div key={it.href} className="group relative">
+        <Link
+          href={it.href}
+          onClick={() => setOpen(false)}
+          aria-current={isActiefItem ? 'page' : undefined}
+          className={`${linkBasis} ${stijl}`}
+        >
+          {it.label}
+        </Link>
+        {sterKnop(it, opFel, bewerken)}
+      </div>
+    );
+  }
+
+  function favorietRij(it: Item, i: number, aantal: number) {
+    const isActiefItem = it.href === actieveHref;
+    if (bewerken) {
+      const pijl =
+        'flex h-6 w-5 shrink-0 items-center justify-center rounded text-ink-300 hover:bg-ink-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 aria-disabled:cursor-default aria-disabled:text-ink-700 aria-disabled:hover:bg-transparent';
+      return (
+        <div key={it.href} className="group relative flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => verplaats(it, -1)}
+            aria-disabled={i === 0 || undefined}
+            aria-label={`${it.label} omhoog`}
+            className={pijl}
+          >
+            <PijlIcoon omhoog />
+          </button>
+          <button
+            type="button"
+            onClick={() => verplaats(it, 1)}
+            aria-disabled={i === aantal - 1 || undefined}
+            aria-label={`${it.label} omlaag`}
+            className={pijl}
+          >
+            <PijlIcoon omhoog={false} />
+          </button>
+          <span className={`${linkBasis} ${isActiefItem ? fel : 'text-ink-200'}`}>{it.label}</span>
+          {sterKnop(it, isActiefItem, true)}
+        </div>
+      );
+    }
+    return (
+      <div key={it.href} className="group relative">
+        <Link
+          href={it.href}
+          onClick={() => setOpen(false)}
+          aria-current={isActiefItem ? 'page' : undefined}
+          className={`${linkBasis} ${isActiefItem ? fel : rustig}`}
+        >
+          {it.label}
+        </Link>
+        {sterKnop(it, isActiefItem, false)}
+      </div>
     );
   }
 
   const nav = (
-    <nav className="flex h-full flex-col gap-4 overflow-y-auto p-4">
+    <nav aria-label="Dashboard" className="flex h-full flex-col gap-4 overflow-y-auto p-4">
       <div>
         <p className="font-display text-lg font-extrabold tracking-tight text-white">FREDERIKS</p>
         <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-amber-500">KMS</p>
@@ -194,16 +427,48 @@ export function DashboardShell({
         <kbd className="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] font-semibold text-ink-200">⌘K</kbd>
       </button>
 
-      <div>
-        <p className="mb-1 px-2 text-[10px] font-bold uppercase tracking-wider text-ink-400">Dagelijks</p>
-        <div className="flex flex-col">{zichtbaarDagelijks.map((it) => navLink(it, `dag-${it.href}`))}</div>
-      </div>
+      <section aria-label="Favorieten">
+        <div className="mb-1 flex items-center justify-between px-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-400">Favorieten</p>
+          <button
+            type="button"
+            onClick={() => setBewerken((v) => !v)}
+            aria-label={bewerken ? 'Klaar met favorieten bewerken' : 'Favorieten bewerken'}
+            className="rounded px-1 text-[11px] font-semibold text-ink-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            {bewerken ? 'Klaar' : 'Bewerken'}
+          </button>
+        </div>
+        {zichtbareFavorieten.length === 0 ? (
+          <p className="px-2 py-1 text-[12px] leading-snug text-ink-400">
+            Zet een ster bij een menu-item om het hier vast te zetten.
+          </p>
+        ) : (
+          <div className="flex flex-col">
+            {zichtbareFavorieten.map((it, i) => favorietRij(it, i, zichtbareFavorieten.length))}
+          </div>
+        )}
+        {bewerken && (
+          <div className="mt-1.5 flex flex-col gap-1 px-2 text-[11px] leading-snug text-ink-400">
+            <p>Pijltjes zetten de volgorde, de ster haalt een item weg. Toevoegen doe je met de ster in de lijst hieronder.</p>
+            {favorieten !== null && (
+              <button
+                type="button"
+                onClick={standaardTerug}
+                className="self-start font-semibold text-ink-300 underline-offset-2 hover:text-white hover:underline"
+              >
+                Standaardlijst terugzetten
+              </button>
+            )}
+          </div>
+        )}
+        <p className="sr-only" aria-live="polite">{melding}</p>
+      </section>
 
       <div className="flex flex-col gap-0.5 border-t border-ink-800 pt-3">
         {zichtbareGroepen.map((g) => {
-          const items = g.titel === 'Overzicht' && beheerItem ? [...g.items, beheerItem] : g.items;
           const uit = groepOpen(g.titel);
-          const bevatActief = items.some((it) => isActief(pathname, it.href));
+          const heeftFel = g.titel === actieveGroep && !actiefInFavorieten;
           return (
             <div key={g.titel}>
               <button
@@ -212,10 +477,12 @@ export function DashboardShell({
                 aria-expanded={uit}
                 className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-400 hover:bg-ink-800 hover:text-ink-200"
               >
-                <span className={bevatActief ? 'text-amber-500' : undefined}>{g.titel}</span>
+                <span className={heeftFel ? 'text-amber-500' : g.titel === actieveGroep ? 'text-ink-200' : undefined}>
+                  {g.titel}
+                </span>
                 <span aria-hidden="true" className="text-[9px]">{uit ? '▾' : '▸'}</span>
               </button>
-              {uit && <div className="mb-1 flex flex-col pl-1">{items.map((it) => navLink(it))}</div>}
+              {uit && <div className="mb-1 flex flex-col pl-1">{g.items.map((it) => groepRij(it))}</div>}
             </div>
           );
         })}
@@ -241,7 +508,7 @@ export function DashboardShell({
           <span className="font-display text-base font-extrabold text-white">FREDERIKS</span>
           <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-500">KMS</span>
         </div>
-        <button onClick={() => setOpen((v) => !v)} aria-label="Menu" className="rounded border border-ink-700 px-3 py-1 text-sm font-semibold text-white">Menu</button>
+        <button onClick={() => setOpen((v) => !v)} aria-label="Menu" aria-expanded={open} className="rounded border border-ink-700 px-3 py-1 text-sm font-semibold text-white">Menu</button>
       </div>
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">

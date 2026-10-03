@@ -11,6 +11,7 @@ import {
   alsCsv,
 } from '@/lib/kms/nieuwsbrief';
 import Drawer from '@/components/dashboard/Drawer';
+import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { ensureBasisTemplate, listNieuwsbrieven, webversieUrl, STATUS_LABEL, type NieuwsbriefKop } from '@/lib/nieuwsbrief/opslag';
 import AdressenKopieren from './AdressenKopieren';
@@ -96,31 +97,18 @@ async function AdressenTab({ branche, zoek, ok }: { branche?: string; zoek?: str
       )}
 
       <div className="dash-filter flex flex-wrap items-center gap-2">
-        <form method="get" className="flex items-center gap-2">
-          <input type="hidden" name="tab" value="adressen" />
-          {brancheFilter && <input type="hidden" name="branche" value={brancheFilter} />}
-          <input
-            name="zoek"
-            defaultValue={zoekTerm}
-            placeholder="Zoek op bedrijf of e-mailadres"
-            aria-label="Zoeken in de nieuwsbrieflijst"
-            className="veld w-72"
-          />
-          <button type="submit" className="knop-stil">
-            Zoeken
-          </button>
-        </form>
+        <LiveZoekveld
+          param="zoek"
+          vast={{ tab: 'adressen' }}
+          placeholder="Zoek op bedrijf, naam of e-mailadres"
+          ariaLabel="Zoeken in de nieuwsbrieflijst"
+        />
 
         {brancheFilter && (
           <Link href={url({ branche: '' })} className="chip chip-aan" title="Filter op branche wissen">
             {brancheFilter}
             <span aria-hidden="true">×</span>
             <span className="sr-only">wissen</span>
-          </Link>
-        )}
-        {zoekTerm && (
-          <Link href={url({ zoek: '' })} className="chip" title="Zoekterm wissen">
-            “{zoekTerm}” <span aria-hidden="true">×</span>
           </Link>
         )}
         {heeftFilter && (

@@ -1,5 +1,7 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { zoekWoorden, klantIdsVoorZoekterm } from '@/lib/kms/zoeken';
 import { stuurStatusMail, stuurLeverancierBestelmail } from '@/lib/kms/notificaties';
+import { metIdTerugval, orderIdsVoorAanvrager } from '@/lib/kms/personen';
 
 /**
  * Data-access voor de module Orders.
@@ -49,7 +51,17 @@ export type Order = {
   track_trace_code: string | null;
   vervoerder: string | null;
   vestiging_id: string | null;
+  // Koppeling naar de persoon achter de naam (migratie 20261004_persoon_verwijzingen).
+  // Optioneel: vóór die migratie bestaan de kolommen nog niet.
+  aangevraagd_door_contact_id?: string | null;
+  aangevraagd_door_medewerker_id?: string | null;
+  goedgekeurd_door_contact_id?: string | null;
+  goedgekeurd_door_medewerker_id?: string | null;
 };
+
+/** De id-kolommen achter "aangevraagd door"; vallen weg als de migratie nog niet gedraaid is. */
+export const AANVRAGER_ID_KOLOMMEN = ['aangevraagd_door_contact_id', 'aangevraagd_door_medewerker_id'];
+const GOEDKEURDER_ID_KOLOMMEN = ['goedgekeurd_door_contact_id', 'goedgekeurd_door_medewerker_id'];
 
 export type Orderregel = {
   id: string;
@@ -109,6 +121,8 @@ export type OrderVelden = {
   besteldatum?: string;
   referentienr?: string | null;
   aangevraagd_door?: string | null;
+  aangevraagd_door_contact_id?: string | null;
+  aangevraagd_door_medewerker_id?: string | null;
   notitie?: string | null;
   interne_notitie?: string | null;
   status?: string;
@@ -130,6 +144,8 @@ export type OrderregelVelden = {
 export type OrderGegevens = {
   referentienr: string | null;
   aangevraagd_door: string | null;
+  aangevraagd_door_contact_id?: string | null;
+  aangevraagd_door_medewerker_id?: string | null;
   notitie: string | null;
   interne_notitie: string | null;
 };
@@ -153,7 +169,7 @@ export async function listOrders(status?: string): Promise<OrderMetKlant[]> {
 const SORTEERKOLOMMEN = ['ordernummer', 'besteldatum', 'bedrag', 'status', 'goedkeuring_status'] as const;
 
 /** Eén pagina orders met optioneel statusfilter en sortering, plus het totaal aantal rijen voor paginering. */
-export async function listOrdersPaged(opts: { pagina: number; perPagina: number; status?: string; zoek?: string; sort?: string; dir?: 'asc' | 'desc' }): Promise<{ rijen: OrderMetKlant[]; totaal: number }> {
+export async function listOrdersPaged(opts: { pagina: number; perPagina: number; status?: string; zoek?: string; sort?: string; dir?: 'asc' | 'desc'; aanvrager?: string }): Promise<{ rijen: OrderMetKlant[]; totaal: number }> {
   const sb = kmsAdmin(); if (!sb) return { rijen: [], totaal: 0 };
   const pagina = Math.max(1, opts.pagina);
   const from = (pagina - 1) * opts.perPagina;
@@ -164,18 +180,25 @@ export async function listOrdersPaged(opts: { pagina: number; perPagina: number;
     .from('orders')
     .select('*, organisaties(naam), medewerkers(naam)', { count: 'exact' })
     .order(kolom, { ascending: oplopend });
+  // Filter "Aangevraagd door": de order-ids van die persoon, ook van oude orders
+  // waar alleen de naam of het e-mailadres als tekst staat.
+  if (opts.aanvrager && opts.aanvrager.trim()) {
+    const ids = await orderIdsVoorAanvrager(opts.aanvrager);
+    q = ids.length ? q.in('id', ids) : q.eq('id', '00000000-0000-0000-0000-000000000000');
+  }
   if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
-  // Zoeken op klantnaam of op nummer. De klant zit in een join, en PostgREST kan
-  // daar niet zonder meer op filteren; daarom eerst de organisatie-ids ophalen.
-  if (opts.zoek && opts.zoek.trim()) {
-    const term = opts.zoek.trim().replace(/[%,()]/g, ' ');
-    const { data: orgRijen } = await sb.from('organisaties').select('id').ilike('naam', `%${term}%`);
-    const orgIds = ((orgRijen as { id: string }[]) ?? []).map((o) => o.id);
-    const delen: string[] = [];
+  // Zoeken op klant (naam, plaats, klantnummer, contactpersoon; elk woord moet
+  // passen), ordernummer, referentie of aanvrager. De klant zit in een join, en
+  // PostgREST kan daar niet zonder meer op filteren; daarom eerst de klant-ids.
+  const woorden = zoekWoorden(opts.zoek);
+  if (woorden.length) {
+    const term = woorden.join(' ');
+    const orgIds = await klantIdsVoorZoekterm(sb, woorden);
+    const delen: string[] = [`referentienr.ilike.%${term}%`, `aangevraagd_door.ilike.%${term}%`];
     if (orgIds.length) delen.push(`organisatie_id.in.(${orgIds.join(',')})`);
-    if (/^\d+$/.test(term)) delen.push(`ordernummer.eq.${Number(term)}`);
-    // Niets dat kan matchen: dan liever nul rijen dan de hele lijst.
-    q = delen.length ? q.or(delen.join(',')) : q.eq('id', '00000000-0000-0000-0000-000000000000');
+    const nummer = term.replace(/^#/, '');
+    if (/^\d{1,9}$/.test(nummer)) delen.push(`ordernummer.eq.${Number(nummer)}`);
+    q = q.or(delen.join(','));
   }
 
   const { data, count } = await q.range(from, to);
@@ -300,7 +323,9 @@ export async function inkoopwaardeVanOrder(regels: Orderregel[]): Promise<number
 export async function werkOrderGegevens(id: string, v: OrderGegevens): Promise<boolean> {
   const sb = kmsAdmin();
   if (!sb || !id) return false;
-  const { error } = await sb.from('orders').update(v).eq('id', id);
+  const { error } = await metIdTerugval({ ...v }, AANVRAGER_ID_KOLOMMEN, (rij) =>
+    sb.from('orders').update(rij).eq('id', id),
+  );
   return !error;
 }
 
@@ -437,11 +462,11 @@ export async function listVariantenVoorProduct(productId: string): Promise<Order
 
 export async function maakOrder(v: OrderVelden): Promise<string | null> {
   const sb = kmsAdmin(); if (!sb) return null;
-  const { data, error } = await sb
-    .from('orders')
-    .insert({ status: 'concept', goedkeuring_status: 'niet_nodig', besteldatum: new Date().toISOString(), ...v })
-    .select('id')
-    .single();
+  const { data, error } = await metIdTerugval(
+    { status: 'concept', goedkeuring_status: 'niet_nodig', besteldatum: new Date().toISOString(), ...v },
+    AANVRAGER_ID_KOLOMMEN,
+    (rij) => sb.from('orders').insert(rij).select('id').single(),
+  );
   if (error || !data) return null;
   return (data as { id: string }).id;
 }
@@ -473,11 +498,28 @@ export async function zetOrderStatus(id: string, status: string): Promise<boolea
   return true;
 }
 
-export async function zetGoedkeuring(id: string, status: string, doorWie?: string | null): Promise<boolean> {
+/**
+ * Goedkeuring vastleggen. `persoon` koppelt "door wie" aan een contactpersoon of
+ * werknemer van de klant; zonder migratie blijft alleen de naam staan.
+ */
+export async function zetGoedkeuring(
+  id: string,
+  status: string,
+  doorWie?: string | null,
+  persoon?: { contactId?: string | null; medewerkerId?: string | null },
+): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
-  const patch: { goedkeuring_status: string; goedgekeurd_door?: string | null } = { goedkeuring_status: status };
-  if (status === 'goedgekeurd' || status === 'afgewezen') patch.goedgekeurd_door = doorWie ?? null;
-  const { error } = await sb.from('orders').update(patch).eq('id', id);
+  const patch: Record<string, unknown> = { goedkeuring_status: status };
+  if (status === 'goedgekeurd' || status === 'afgewezen') {
+    patch.goedgekeurd_door = doorWie ?? null;
+    if (persoon) {
+      patch.goedgekeurd_door_contact_id = persoon.contactId ?? null;
+      patch.goedgekeurd_door_medewerker_id = persoon.medewerkerId ?? null;
+    }
+  }
+  const { error } = await metIdTerugval(patch, GOEDKEURDER_ID_KOLOMMEN, (rij) =>
+    sb.from('orders').update(rij).eq('id', id),
+  );
   if (error) return false;
   // Statusupdate naar de besteller; bij goedkeuring ook de bestelmail naar de leverancier(s).
   await stuurStatusMail(id).catch(() => {});

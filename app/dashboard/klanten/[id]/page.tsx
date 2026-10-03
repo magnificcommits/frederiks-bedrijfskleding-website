@@ -12,6 +12,8 @@ import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetSta
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import Tabs, { type TabDef } from '@/components/dashboard/Tabs';
 import Drawer from '@/components/dashboard/Drawer';
+import PersoonKiezer from '@/components/dashboard/PersoonKiezer';
+import { standaardInternePersoon } from '@/lib/kms/personen';
 import InloglinkKnop from './InloglinkKnop';
 import AssortimentBeheer from './AssortimentBeheer';
 import WerknemersTab from './WerknemersTab';
@@ -94,7 +96,7 @@ export default async function KlantPage({
     btw_nummer?: string | null;
   };
 
-  const [gebruikers, items, bestellingen, contactpersonen, activiteiten, verkoop, logos, assortiment, werknemers, afdelingen, vestigingen, branches] = await Promise.all([
+  const [gebruikers, items, bestellingen, contactpersonen, activiteiten, verkoop, logos, assortiment, werknemers, afdelingen, vestigingen, branches, standaardDoor] = await Promise.all([
     getGebruikers(id),
     listItems(id),
     listBestellingen(id),
@@ -107,6 +109,7 @@ export default async function KlantPage({
     listAfdelingen(id),
     listVestigingen(id),
     listBranches(),
+    standaardInternePersoon(),
   ]);
   const actieveWerknemers = werknemers.filter((w) => w.actief);
   const pasdag = await pasdagGegevens(id, actieveWerknemers);
@@ -497,10 +500,13 @@ export default async function KlantPage({
                 <label className="veld-label">Opvolgdatum (optioneel)</label>
                 <input name="opvolgdatum" type="date" className={inputCls} />
               </div>
-              <div>
-                <label className="veld-label">Door</label>
-                <input name="door" placeholder="Naam medewerker" className={inputCls} />
-              </div>
+              <PersoonKiezer
+                naam="door"
+                label="Door"
+                bron="intern"
+                begin={standaardDoor ? { id: standaardDoor.id, soort: 'intern', naam: standaardDoor.naam } : undefined}
+                hint="Collega's beheer je onder Taken, Instellingen."
+              />
               <button type="submit" className="self-start knop-donker">Vastleggen</button>
             </form>
           </Drawer>

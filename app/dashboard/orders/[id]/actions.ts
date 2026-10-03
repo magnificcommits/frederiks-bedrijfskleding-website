@@ -14,6 +14,16 @@ import {
   type OrderProduct,
 } from '@/lib/kms/orders';
 import { genereerInkoopregels } from '@/lib/kms/inkoop';
+import { bevestigPersoon, leesPersoonKeuze } from '@/lib/kms/personen';
+import { lijktOpEmail, normaleNaam } from '@/lib/personen';
+
+/** De klant van een order, om te controleren dat een gekozen persoon daarbij hoort. */
+async function orderKlant(orderId: string): Promise<{ organisatie_id: string; aangevraagd_door: string | null } | null> {
+  const sb = kmsAdmin();
+  if (!sb || !orderId) return null;
+  const { data } = await sb.from('orders').select('organisatie_id, aangevraagd_door').eq('id', orderId).maybeSingle();
+  return (data as { organisatie_id: string; aangevraagd_door: string | null } | null) ?? null;
+}
 
 /**
  * Bedrag of aantal uit een invoerveld. Nederlandse notatie: staat er een komma,
@@ -102,9 +112,24 @@ export async function zetOrderGegevens(formData: FormData) {
   const orderId = String(formData.get('orderId') ?? '').trim();
   if (!orderId) redirect('/dashboard/orders');
 
+  const order = await orderKlant(orderId);
+  const aanvrager = await bevestigPersoon(leesPersoonKeuze(formData, 'aangevraagd_door'), order?.organisatie_id ?? null);
+  // Portaalbestellingen hebben het e-mailadres van de besteller als aanvrager;
+  // daar gaan de statusmails heen. Is dat dezelfde persoon, dan blijft het adres staan.
+  let aanvragerTekst = aanvrager.naam;
+  const oud = order?.aangevraagd_door?.trim() ?? '';
+  if (aanvrager.id && lijktOpEmail(oud)) {
+    const sb = kmsAdmin();
+    const tabel = aanvrager.soort === 'contact' ? 'contactpersonen' : 'medewerkers';
+    const { data } = sb ? await sb.from(tabel).select('email').eq('id', aanvrager.id).maybeSingle() : { data: null };
+    if (normaleNaam((data as { email: string | null } | null)?.email) === normaleNaam(oud)) aanvragerTekst = oud;
+  }
+
   const gelukt = await werkOrderGegevens(orderId, {
     referentienr: String(formData.get('referentienr') ?? '').trim() || null,
-    aangevraagd_door: String(formData.get('aangevraagd_door') ?? '').trim() || null,
+    aangevraagd_door: aanvragerTekst,
+    aangevraagd_door_contact_id: aanvrager.soort === 'contact' ? aanvrager.id : null,
+    aangevraagd_door_medewerker_id: aanvrager.soort === 'medewerker' ? aanvrager.id : null,
     notitie: String(formData.get('notitie') ?? '').trim() || null,
     interne_notitie: String(formData.get('interne_notitie') ?? '').trim() || null,
   });
@@ -128,9 +153,14 @@ export async function beslisGoedkeuring(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const orderId = String(formData.get('orderId') ?? '').trim();
   const status = String(formData.get('goedkeuring') ?? '').trim();
-  const doorWie = String(formData.get('door_wie') ?? '').trim() || null;
+  const order = await orderKlant(orderId);
+  const goedkeurder = await bevestigPersoon(leesPersoonKeuze(formData, 'goedgekeurd_door'), order?.organisatie_id ?? null);
+  const doorWie = goedkeurder.naam;
   if (orderId && status) {
-    await zetGoedkeuring(orderId, status, doorWie);
+    await zetGoedkeuring(orderId, status, doorWie, {
+      contactId: goedkeurder.soort === 'contact' ? goedkeurder.id : null,
+      medewerkerId: goedkeurder.soort === 'medewerker' ? goedkeurder.id : null,
+    });
     // Bij goedkeuring meteen inkoopregels aanmaken voor wat niet op voorraad is,
     // zodat ze klaarstaan in het inkoop-bulkscherm. genereerInkoopregels voorkomt dubbels.
     if (status === 'goedgekeurd') await genereerInkoopregels(orderId);

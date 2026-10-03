@@ -22,6 +22,7 @@ import {
 import RegelToevoegen from './RegelToevoegen';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import TotaalKaart from '@/components/dashboard/TotaalKaart';
+import PersoonKiezer, { type PersoonBegin } from '@/components/dashboard/PersoonKiezer';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Order', robots: { index: false, follow: false } };
@@ -106,6 +107,17 @@ export default async function OrderDetailPage({
     inkoopwaardeVanOrder(order.regels),
   ]);
 
+  // Begin van de persoonsvelden: het gekoppelde id als dat er is, anders alleen de
+  // tekst. De kiezer probeert die tekst dan op naam of e-mail te koppelen.
+  const persoonBegin = (contactId?: string | null, medewerkerId?: string | null, naam?: string | null): PersoonBegin =>
+    contactId
+      ? { id: contactId, soort: 'contact', naam }
+      : medewerkerId
+        ? { id: medewerkerId, soort: 'medewerker', naam }
+        : { naam };
+  const aanvragerBegin = persoonBegin(order.aangevraagd_door_contact_id, order.aangevraagd_door_medewerker_id, order.aangevraagd_door);
+  const goedkeurderBegin = persoonBegin(order.goedgekeurd_door_contact_id, order.goedgekeurd_door_medewerker_id, order.goedgekeurd_door);
+
   const totaal = order.regels.reduce((t, r) => t + (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0), 0);
 
   return (
@@ -185,14 +197,23 @@ export default async function OrderDetailPage({
               />
             </div>
             <div>
-              <label className="veld-label" htmlFor="og-aanvrager">Aangevraagd door</label>
-              <input
-                id="og-aanvrager"
-                name="aangevraagd_door"
-                defaultValue={order.aangevraagd_door ?? ''}
-                placeholder="Naam van de aanvrager"
-                className={inputCls}
+              <PersoonKiezer
+                naam="aangevraagd_door"
+                label="Aangevraagd door"
+                bron="klant"
+                orgId={order.organisatie_id}
+                soorten={['contact', 'medewerker']}
+                nieuw={['contact']}
+                begin={aanvragerBegin}
               />
+              {(order.aangevraagd_door_contact_id || order.aangevraagd_door_medewerker_id) && (
+                <Link
+                  href={`/dashboard/orders?aanvrager=${order.aangevraagd_door_contact_id ? `c:${order.aangevraagd_door_contact_id}` : `m:${order.aangevraagd_door_medewerker_id}`}`}
+                  className="mt-1 inline-block text-[12px] font-semibold text-amber-700 hover:text-amber-800"
+                >
+                  Alle orders van deze aanvrager
+                </Link>
+              )}
             </div>
             <div>
               <label className="veld-label" htmlFor="og-notitie">Notitie bij de order</label>
@@ -400,7 +421,15 @@ export default async function OrderDetailPage({
           <p className="mt-1 text-xs text-warm">Huidig: <span className="font-semibold text-ink-900">{order.goedkeuring_status.replace(/_/g, ' ')}</span>{order.goedgekeurd_door ? ` (${order.goedgekeurd_door})` : ''}</p>
           <form action={beslisGoedkeuring} className="mt-3 flex flex-col gap-2">
             <input type="hidden" name="orderId" value={order.id} />
-            <input name="door_wie" placeholder="Door wie" defaultValue={order.goedgekeurd_door ?? ''} className={inputCls} />
+            <PersoonKiezer
+              naam="goedgekeurd_door"
+              label="Door wie"
+              bron="klant"
+              orgId={order.organisatie_id}
+              soorten={['contact', 'medewerker']}
+              nieuw={['contact']}
+              begin={goedkeurderBegin}
+            />
             <div className="flex flex-wrap gap-2">
               <button type="submit" name="goedkeuring" value="goedgekeurd" className="rounded-md bg-ink-900 px-3 py-2 text-sm font-semibold text-white hover:bg-ink-800">Goedkeuren</button>
               <button type="submit" name="goedkeuring" value="afgewezen" className="rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink-700 hover:bg-mist">Afwijzen</button>

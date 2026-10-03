@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { logAudit } from '@/lib/kms/audit';
 import { maakOrder, zetOrderStatus, type OrderVelden } from '@/lib/kms/orders';
+import { bevestigPersoon, leesPersoonKeuze } from '@/lib/kms/personen';
 
 /** Leeg veld = niet ingevuld; die laten we uit de insert zodat de kolom leeg blijft. */
 function tekstOfNull(formData: FormData, veld: string): string | null {
@@ -31,7 +32,9 @@ export async function nieuweOrder(formData: FormData) {
   const vestiging_id = tekstOfNull(formData, 'vestiging_id');
   const besteldatum = tekstOfNull(formData, 'besteldatum');
   const referentienr = tekstOfNull(formData, 'referentienr');
-  const aangevraagd_door = tekstOfNull(formData, 'aangevraagd_door');
+  // Aanvrager komt uit de PersoonKiezer: een contactpersoon of werknemer van deze klant.
+  const aanvrager = await bevestigPersoon(leesPersoonKeuze(formData, 'aangevraagd_door'), organisatie_id);
+  const aangevraagd_door = aanvrager.naam;
   const notitie = tekstOfNull(formData, 'notitie');
   const interne_notitie = tekstOfNull(formData, 'interne_notitie');
 
@@ -43,6 +46,8 @@ export async function nieuweOrder(formData: FormData) {
   if (besteldatum) velden.besteldatum = besteldatum;
   if (referentienr) velden.referentienr = referentienr;
   if (aangevraagd_door) velden.aangevraagd_door = aangevraagd_door;
+  if (aanvrager.soort === 'contact') velden.aangevraagd_door_contact_id = aanvrager.id;
+  if (aanvrager.soort === 'medewerker') velden.aangevraagd_door_medewerker_id = aanvrager.id;
   if (notitie) velden.notitie = notitie;
   if (interne_notitie) velden.interne_notitie = interne_notitie;
 

@@ -264,12 +264,13 @@ export function filterAdressen(
   opties: { branche?: string; zoek?: string },
 ): NieuwsbriefAdres[] {
   const branche = (opties.branche ?? '').trim();
-  const zoek = (opties.zoek ?? '').trim().toLowerCase();
+  // Elk woord moet ergens voorkomen: "bouw achterhoek" vindt ook "Achterhoek Bouw".
+  const woorden = (opties.zoek ?? '').toLowerCase().split(/\s+/).filter(Boolean);
   return adressen.filter((a) => {
     if (branche && (a.branche || ZONDER_BRANCHE) !== branche) return false;
-    if (!zoek) return true;
+    if (!woorden.length) return true;
     const hooiberg = `${a.email} ${a.bedrijf ?? ''} ${a.naam ?? ''} ${a.branche ?? ''}`.toLowerCase();
-    return hooiberg.includes(zoek);
+    return woorden.every((w) => hooiberg.includes(w));
   });
 }
 

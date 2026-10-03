@@ -20,6 +20,8 @@ import {
 } from './actions';
 import KopieerKnop from './KopieerKnop';
 import VerzendKnop from '@/components/dashboard/VerzendKnop';
+import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
+import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
 
 export const dynamic = 'force-dynamic';
 // "Logo ophalen" mag tot ~16 s duren (homepage + afbeelding, elk max 8 s).
@@ -356,19 +358,28 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
                 ))}
               </ol>
 
-              <form method="get" className="mt-4 flex flex-wrap items-end gap-2">
-                <div>
-                  <label className="veld-label" htmlFor="plek">Plek</label>
-                  <select id="plek" name="plek" defaultValue={String(plek)} className="veld">
-                    {[0, 1, 2, 3].map((n) => <option key={n} value={n}>{n + 1}</option>)}
-                  </select>
-                </div>
-                <div className="grow">
-                  <label className="veld-label" htmlFor="artikelzoek">Zoek in de catalogus</label>
-                  <input id="artikelzoek" name="artikelzoek" defaultValue={sp.artikelzoek ?? ''} placeholder="Bijv. softshell, polo, Snickers, koksbuis" className="veld" />
-                </div>
-                <button className="knop-stil">Zoeken</button>
-              </form>
+              <div className="mt-4 flex flex-wrap items-end gap-2">
+                {/* Plek kiezen verstuurt meteen; de zoekterm reist mee. */}
+                <form method="get">
+                  <span className="veld-label" aria-hidden="true">Plek</span>
+                  <AutoSubmitSelect
+                    name="plek"
+                    aria-label="Plek"
+                    defaultValue={String(plek)}
+                    options={[0, 1, 2, 3].map((n) => ({ value: String(n), label: String(n + 1) }))}
+                    className="veld"
+                  />
+                  <input type="hidden" name="artikelzoek" value={sp.artikelzoek ?? ''} />
+                </form>
+                {/* Zoekt live terwijl je typt; de gekozen plek blijft staan. */}
+                <LiveZoekveld
+                  param="artikelzoek"
+                  label="Zoek in de catalogus"
+                  placeholder="Bijv. softshell, polo, Snickers, koksbuis"
+                  breedte="grow min-w-[14rem]"
+                  leegBehouden
+                />
+              </div>
               {sp.artikelzoek && sp.artikelzoek.trim().length >= 2 && (
                 zoekResultaten.length === 0 ? (
                   <p className="mt-3 text-[13px] text-warm">Niets gevonden met een foto voor &quot;{sp.artikelzoek}&quot;.</p>

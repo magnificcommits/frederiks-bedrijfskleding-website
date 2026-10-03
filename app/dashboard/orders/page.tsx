@@ -6,6 +6,8 @@ import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
 import SortableTh from '@/components/dashboard/SortableTh';
 import Zoekbalk from '@/components/dashboard/Zoekbalk';
 import { wijzigOrderStatusInline, bulkOrderStatusActie } from './actions';
+import { aanvragersVoorOrderFilter } from '@/lib/kms/personen';
+import AanvragerFilter from './AanvragerFilter';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Orders', robots: { index: false, follow: false } };
@@ -64,7 +66,7 @@ async function ordersPerStatus(): Promise<Record<string, number>> {
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; pagina?: string; sort?: string; dir?: string; zoek?: string; ok?: string }>;
+  searchParams: Promise<{ status?: string; pagina?: string; sort?: string; dir?: string; zoek?: string; ok?: string; aanvrager?: string }>;
 }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const sb = kmsAdmin();
@@ -81,15 +83,17 @@ export default async function OrdersPage({
     );
   }
 
-  const { status, pagina, sort, dir, zoek, ok } = await searchParams;
+  const { status, pagina, sort, dir, zoek, ok, aanvrager } = await searchParams;
+  const huidigeAanvrager = (aanvrager ?? '').trim();
   const zoekTerm = (zoek ?? '').trim();
   const huidigePagina = Math.max(1, Number(pagina) || 1);
   const richting: 'asc' | 'desc' = dir === 'asc' ? 'asc' : 'desc';
   const huidigeStatus = (status ?? '').trim();
 
-  const [{ rijen: orders, totaal }, perStatus] = await Promise.all([
-    listOrdersPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, zoek: zoekTerm, status: huidigeStatus, sort, dir: richting }),
+  const [{ rijen: orders, totaal }, perStatus, aanvragers] = await Promise.all([
+    listOrdersPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, zoek: zoekTerm, status: huidigeStatus, sort, dir: richting, aanvrager: huidigeAanvrager }),
     ordersPerStatus(),
+    aanvragersVoorOrderFilter(),
   ]);
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
   const alleOrders = Object.values(perStatus).reduce((n, a) => n + a, 0);
@@ -104,6 +108,7 @@ export default async function OrdersPage({
     const s = opties.status ?? huidigeStatus;
     if (s) p.set('status', s);
     if (zoekTerm) p.set('zoek', zoekTerm);
+    if (huidigeAanvrager) p.set('aanvrager', huidigeAanvrager);
     if (sort) { p.set('sort', sort); p.set('dir', richting); }
     const pag = opties.pagina ?? 1;
     if (pag > 1) p.set('pagina', String(pag));
@@ -138,8 +143,9 @@ export default async function OrdersPage({
         <Zoekbalk
           waarde={zoekTerm}
           placeholder="Zoek op klant of ordernummer"
-          bewaar={{ status: huidigeStatus, sort, dir: sort ? richting : undefined }}
+          bewaar={{ status: huidigeStatus, sort, dir: sort ? richting : undefined, aanvrager: huidigeAanvrager || undefined }}
         />
+        <AanvragerFilter opties={aanvragers} waarde={huidigeAanvrager} />
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">

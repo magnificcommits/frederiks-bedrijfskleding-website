@@ -8,6 +8,7 @@ import { saveLeadEdit } from '../actions';
 import { converteerLead, bulkConverteerLeads } from './actions';
 import AiOpvolg from './AiOpvolg';
 import NavigateSelect from '@/components/dashboard/NavigateSelect';
+import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
 
 export const metadata: Metadata = { title: 'Leads', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -38,10 +39,15 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const bronnen = Array.from(new Set(alle.map((l) => l.bron).filter(Boolean))) as string[];
 
   const q = (sp.q ?? '').toLowerCase().trim();
+  // Elk woord moet ergens voorkomen: "jansen bouw" vindt Piet Jansen van Jansen Bouw.
+  const woorden = q.split(/\s+/).filter(Boolean);
   const leads = alle.filter((l) => {
     if (sp.status && l.status !== sp.status) return false;
     if (sp.bron && l.bron !== sp.bron) return false;
-    if (q && !`${l.name} ${l.company ?? ''} ${l.email}`.toLowerCase().includes(q)) return false;
+    if (woorden.length) {
+      const hooiberg = `${l.name} ${l.company ?? ''} ${l.email} ${l.phone ?? ''}`.toLowerCase();
+      if (!woorden.every((w) => hooiberg.includes(w))) return false;
+    }
     return true;
   });
   const qs = new URLSearchParams();
@@ -111,16 +117,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
             options={bronnen.map((b) => ({ value: b, label: b.length > 40 ? b.slice(0, 40) + '...' : b }))}
           />
         </div>
-        {/* Zoeken blijft een tekstveld met submit; status en bron reizen mee als hidden velden. */}
-        <form method="get" className="flex items-end gap-3">
-          <div>
-            <label className="veld-label">Zoek (naam, bedrijf, e-mail)</label>
-            <input name="q" defaultValue={sp.q ?? ''} placeholder="zoeken" className="mt-1 rounded-md border border-line px-3 py-2 text-sm" />
-          </div>
-          {sp.status && <input type="hidden" name="status" value={sp.status} />}
-          {sp.bron && <input type="hidden" name="bron" value={sp.bron} />}
-          <button type="submit" className="knop-donker">Zoeken</button>
-        </form>
+        {/* Zoekt live terwijl je typt; status en herkomst blijven staan. */}
+        <LiveZoekveld
+          param="q"
+          label="Zoeken"
+          placeholder="Naam, bedrijf, e-mail of telefoon"
+          breedte="w-72"
+          className="py-2 text-sm"
+        />
         {(sp.status || sp.bron || sp.q) && <Link href="/dashboard/leads" className="py-2 text-sm font-semibold text-warm hover:text-ink-800">Wis filters</Link>}
       </div>
 

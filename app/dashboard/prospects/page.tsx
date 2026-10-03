@@ -6,6 +6,7 @@ import { listProspectenPaged, PROSPECT_STATUSSEN } from '@/lib/kms/prospecten';
 import NavigateSelect from '@/components/dashboard/NavigateSelect';
 import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
 import SortableTh from '@/components/dashboard/SortableTh';
+import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { importeerCsvActie, nieuweProspectActie, zetProspectStatusActie, bulkLogosOphalenActie } from './actions';
 import VerzendKnop from '@/components/dashboard/VerzendKnop';
@@ -149,12 +150,12 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
             options={PROSPECT_STATUSSEN.map((s) => ({ value: s, label: s }))}
           />
         </div>
-        <form method="get" className="grow">
-          {status && <input type="hidden" name="status" value={status} />}
-          {gescand && <input type="hidden" name="gescand" value={gescand} />}
-          <label className="veld-label">Zoeken</label>
-          <input name="zoek" defaultValue={zoek ?? ''} placeholder="Bedrijf, contactpersoon, e-mail of plaats" className={`${inputCls} min-w-[16rem]`} />
-        </form>
+        <LiveZoekveld
+          param="zoek"
+          label="Zoeken"
+          placeholder="Bedrijf, contactpersoon, e-mail of plaats"
+          breedte="grow min-w-[16rem]"
+        />
         <div>
           <span className="veld-label">QR-code</span>
           <div className="flex gap-1.5">

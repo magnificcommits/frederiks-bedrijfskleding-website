@@ -2,6 +2,7 @@
 import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { uploadMedia } from '@/lib/kms/storage';
+import { bevestigPersoon, leesPersoonKeuze } from '@/lib/kms/personen';
 import {
   werkInstellingen,
   maakVestiging,
@@ -92,10 +93,13 @@ export async function voegAfdelingToe(formData: FormData) {
   const id = String(formData.get('orgId') ?? '');
   const naam = String(formData.get('naam') ?? '').trim();
   if (id && naam) {
+    // Leidinggevende is een werknemer van deze klant (PersoonKiezer).
+    const leiding = await bevestigPersoon(leesPersoonKeuze(formData, 'leidinggevende'), id);
     await maakAfdeling(id, {
       naam,
       kostenplaats: String(formData.get('kostenplaats') ?? '').trim() || null,
-      leidinggevende: String(formData.get('leidinggevende') ?? '').trim() || null,
+      leidinggevende: leiding.naam,
+      leidinggevende_medewerker_id: leiding.soort === 'medewerker' ? leiding.id : null,
       vestiging_id: String(formData.get('vestiging_id') ?? '').trim() || null,
       leveradres: String(formData.get('leveradres') ?? '').trim() || null,
       leverpostcode: String(formData.get('leverpostcode') ?? '').trim() || null,

@@ -58,7 +58,8 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
   const voorgeselecteerd = order && factureerbaar.some((o) => o.id === order) ? order : '';
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
   const statusQs = status ? `&status=${encodeURIComponent(status)}` : '';
-  const sorteerQs = `${sort ? `&sort=${encodeURIComponent(sort)}` : ''}${dir ? `&dir=${encodeURIComponent(richting)}` : ''}`;
+  // De zoekterm reist mee met bladeren, anders verdwijnt je zoekresultaat op pagina 2.
+  const sorteerQs = `${sort ? `&sort=${encodeURIComponent(sort)}` : ''}${dir ? `&dir=${encodeURIComponent(richting)}` : ''}${zoekTerm ? `&zoek=${encodeURIComponent(zoekTerm)}` : ''}`;
 
   const perStatus = await telPerStatus('facturen');
   return (
@@ -148,7 +149,7 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
         huidig={status ?? ''}
         statussen={FACTUUR_STATUSSEN}
         aantallen={perStatus}
-        bewaar={{ sort, dir: sort ? richting : undefined }}
+        bewaar={{ sort, dir: sort ? richting : undefined, zoek: zoekTerm || undefined }}
       />
 
         {facturen.length === 0 ? (

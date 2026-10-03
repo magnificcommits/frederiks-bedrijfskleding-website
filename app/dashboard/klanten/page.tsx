@@ -4,14 +4,17 @@ import { isLeadsDbConfigured } from '@/lib/env';
 import { listOrganisatiesPaged, type Organisatie } from '@/lib/portaalAdmin';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { mogelijkDubbeleKlanten } from '@/lib/kms/tellingen';
+import { zoekWoorden, ilikeInKolommen, KLANT_ZOEKKOLOMMEN, klantIdsViaContactpersonen } from '@/lib/kms/zoeken';
+import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klanten', robots: { index: false, follow: false } };
 const PER_PAGINA = 25;
 
 /**
- * Eén pagina klanten met server-side filter op zoekterm (naam, plaats,
- * contactpersoon) en op branche. Zonder filters valt de pagina terug op de
+ * Eén pagina klanten met server-side filter op zoekterm en op branche. Elk
+ * woord moet voorkomen in naam, plaats, klantnummer of contactpersoon, of in de
+ * naam of het e-mailadres van een van de contactpersonen van de klant. Zonder filters valt de pagina terug op de
  * bestaande helper `listOrganisatiesPaged`, zodat het gedrag identiek blijft.
  * Filteren en pagineren gebeuren beide server-side in de query.
  */
@@ -22,19 +25,23 @@ async function zoekOrganisatiesPaged(opts: {
   branche?: string;
   ids?: string[];
 }): Promise<{ rijen: Organisatie[]; totaal: number }> {
-  const term = (opts.zoek ?? '').trim();
+  const woorden = zoekWoorden(opts.zoek);
   const branche = (opts.branche ?? '').trim();
-  if (!term && !branche && !opts.ids) return listOrganisatiesPaged({ pagina: opts.pagina, perPagina: opts.perPagina });
+  if (!woorden.length && !branche && !opts.ids) return listOrganisatiesPaged({ pagina: opts.pagina, perPagina: opts.perPagina });
   const sb = kmsAdmin();
   if (!sb) return { rijen: [], totaal: 0 };
   const pagina = Math.max(1, opts.pagina);
   const from = (pagina - 1) * opts.perPagina;
   const to = from + opts.perPagina - 1;
   let q = sb.from('organisaties').select('*', { count: 'exact' });
-  if (term) {
-    // Escape PostgREST-tekens (% , ) die de or-filter zouden kunnen breken.
-    const patroon = `%${term.replace(/[%,()]/g, ' ')}%`;
-    q = q.or(`naam.ilike.${patroon},plaats.ilike.${patroon},contactpersoon.ilike.${patroon}`);
+  if (woorden.length) {
+    // Per woord één or-filter; meerdere or-filters gelden samen (EN).
+    const viaContact = await klantIdsViaContactpersonen(sb, woorden);
+    woorden.forEach((w, i) => {
+      const ids = viaContact[i] ?? [];
+      const extra = ids.length ? `,id.in.(${ids.join(',')})` : '';
+      q = q.or(ilikeInKolommen(KLANT_ZOEKKOLOMMEN, w) + extra);
+    });
   }
   if (branche) q = q.eq('branche', branche);
   if (opts.ids) q = q.in('id', opts.ids.length ? opts.ids : ['00000000-0000-0000-0000-000000000000']);
@@ -157,28 +164,18 @@ export default async function KlantenPage({
       </div>
 
       <div className="dash-filter flex flex-wrap items-center gap-2">
-        <form method="get" className="flex items-center gap-2">
-          {brancheFilter && <input type="hidden" name="branche" value={brancheFilter} />}
-          <input
-            name="zoek"
-            defaultValue={zoekTerm}
-            placeholder="Zoek op naam, plaats of contactpersoon"
-            aria-label="Zoeken in klanten"
-            className="veld w-72"
-          />
-          <button type="submit" className="knop-stil">Zoeken</button>
-        </form>
+        <LiveZoekveld
+          param="zoek"
+          placeholder="Zoek op naam, plaats, klantnummer of contactpersoon"
+          ariaLabel="Zoeken in klanten"
+          breedte="w-80 max-w-full"
+        />
 
         {brancheFilter && (
           <Link href={url({ branche: '' })} className="chip chip-aan" title="Filter op branche wissen">
             {brancheFilter}
             <span aria-hidden="true">×</span>
             <span className="sr-only">wissen</span>
-          </Link>
-        )}
-        {zoekTerm && (
-          <Link href={url({ zoek: '' })} className="chip" title="Zoekterm wissen">
-            “{zoekTerm}” <span aria-hidden="true">×</span>
           </Link>
         )}
         {dubbelGroepen.length > 0 && (

@@ -46,7 +46,7 @@ export default async function OffertesPage({ searchParams }: { searchParams: Pro
   const { rijen: offertes, totaal } = await listOffertesPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, zoek: zoekTerm, status, sort, dir: richting });
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
   const statusQs = status ? `&status=${encodeURIComponent(status)}` : '';
-  const sorteerQs = `${sort ? `&sort=${encodeURIComponent(sort)}` : ''}${dir ? `&dir=${encodeURIComponent(richting)}` : ''}`;
+  const sorteerQs = `${sort ? `&sort=${encodeURIComponent(sort)}` : ''}${dir ? `&dir=${encodeURIComponent(richting)}` : ''}${zoekTerm ? `&zoek=${encodeURIComponent(zoekTerm)}` : ''}`;
   // URL van de huidige weergave: na een bulk-statuswijziging keren we hier terug
   // zodat statusfilter, sortering en pagina behouden blijven.
   const huidigeUrl = `/dashboard/offertes?pagina=${huidigePagina}${statusQs}${sorteerQs}`;
@@ -64,7 +64,7 @@ export default async function OffertesPage({ searchParams }: { searchParams: Pro
       <p className="mt-2 text-sm text-warm">Offertes met hun status. Klik op een offertenummer om de regels te beheren en de offerte af te drukken.</p>
 
       <div className="dash-filter flex flex-wrap items-center gap-3">
-        <Zoekbalk waarde={zoekTerm} placeholder="Zoek op klant of offertenummer" bewaar={{ status }} />
+        <Zoekbalk waarde={zoekTerm} placeholder="Zoek op klant, plaats, contactpersoon of nummer" bewaar={{ status }} />
       </div>
 
       <StatusChips
@@ -72,7 +72,7 @@ export default async function OffertesPage({ searchParams }: { searchParams: Pro
         huidig={status ?? ''}
         statussen={OFFERTE_STATUSSEN}
         aantallen={perStatus}
-        bewaar={{ sort, dir: sort ? richting : undefined }}
+        bewaar={{ sort, dir: sort ? richting : undefined, zoek: zoekTerm || undefined }}
       />
 
         {offertes.length === 0 ? (

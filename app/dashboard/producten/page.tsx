@@ -5,6 +5,7 @@ import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { listProductenPaged, listMerken, listLeveranciers } from '@/lib/kms/producten';
 import NavigateSelect from '@/components/dashboard/NavigateSelect';
 import SortableTh from '@/components/dashboard/SortableTh';
+import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { telProductenZonderFoto } from '@/lib/kms/tellingen';
 import { nieuwProduct } from './actions';
@@ -87,16 +88,8 @@ export default async function ProductenPage({ searchParams }: { searchParams: Pr
       <p className="mt-2 text-sm text-warm">De productcatalogus met varianten en prijzen. Klik op een product om het te bewerken.</p>
 
       <div className="mt-6 flex flex-wrap items-end gap-3">
-        {/* Zoeken blijft een tekstveld met submit (per toetsaanslag auto-submitten zou een debounce vergen).
-            Het actieve merk reist mee als hidden veld zodat zoeken het merkfilter behoudt. */}
-        <form method="get" className="flex items-end gap-3">
-          <div>
-            <label className="veld-label">Zoeken</label>
-            <input name="zoek" defaultValue={zoek ?? ''} placeholder="Naam, SKU, merk, categorie" className={inputCls} />
-          </div>
-          {merk && <input type="hidden" name="merk" value={merk} />}
-          <button type="submit" className="knop-donker">Zoeken</button>
-        </form>
+        {/* Zoekt live terwijl je typt; merk, foto-filter en sortering blijven staan. */}
+        <LiveZoekveld param="zoek" label="Zoeken" placeholder="Naam, SKU, merk, categorie" breedte="w-72" />
         {/* Merk auto-navigeert (geen aparte knop). De zoekterm reist mee via de param-injectie. */}
         <div>
           <label className="veld-label">Merk</label>

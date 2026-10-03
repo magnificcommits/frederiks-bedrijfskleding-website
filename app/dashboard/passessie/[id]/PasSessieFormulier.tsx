@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import type { AssortimentArtikel, CatalogusItem, PasMedewerker, VariantKeuze } from '@/lib/kms/passessies';
 import { haalCatalogus, haalVarianten, voegRegelToe } from '../actions';
+import { maakPersoonActie } from '@/lib/kms/persoonActies';
 
 /**
  * Het pasformulier zoals je het op een tablet gebruikt: eerst de medewerker die voor je
@@ -19,7 +20,7 @@ import { haalCatalogus, haalVarianten, voegRegelToe } from '../actions';
 export default function PasSessieFormulier({
   passessieId,
   organisatieId,
-  medewerkers,
+  medewerkers: beginMedewerkers,
   assortiment,
   gesloten,
 }: {
@@ -30,7 +31,11 @@ export default function PasSessieFormulier({
   gesloten: boolean;
 }) {
   const [medewerkerId, setMedewerkerId] = useState<string>('');
-  const [losseNaam, setLosseNaam] = useState('');
+  // Wie past, staat altijd als werknemer bij de klant: zo zijn de maten later
+  // per persoon terug te vinden. Nieuwe mensen maak je hier meteen aan.
+  const [medewerkers, setMedewerkers] = useState<PasMedewerker[]>(beginMedewerkers);
+  const [nieuweNaam, setNieuweNaam] = useState('');
+  const [aanmaken, startAanmaken] = useTransition();
   const [filter, setFilter] = useState('');
   const [zoek, setZoek] = useState('');
   // Heeft de klant nog geen assortiment, dan meteen de catalogus tonen; anders zou het
@@ -115,8 +120,7 @@ export default function PasSessieFormulier({
   }
 
   function opslaan() {
-    const naam = medewerkerId ? null : losseNaam.trim() || null;
-    if (!medewerkerId && !naam) return setMelding({ soort: 'fout', tekst: 'Kies eerst wie er past.' });
+    if (!medewerkerId) return setMelding({ soort: 'fout', tekst: 'Kies eerst wie er past.' });
     if (!artikel) return setMelding({ soort: 'fout', tekst: 'Kies eerst een artikel.' });
     if (!maat) return setMelding({ soort: 'fout', tekst: 'Kies een maat.' });
     // Alleen om een lengte vragen als er ook lengtes te kiezen zijn. Staat het merk niet
@@ -129,8 +133,8 @@ export default function PasSessieFormulier({
     start(async () => {
       const res = await voegRegelToe({
         passessieId,
-        medewerkerId: medewerkerId || null,
-        medewerkerNaam: naam,
+        medewerkerId,
+        medewerkerNaam: null,
         productId: artikel.id,
         variantId,
         itemNaam: artikel.naam,
@@ -147,6 +151,32 @@ export default function PasSessieFormulier({
       } else {
         setMelding({ soort: 'fout', tekst: res.fout ?? 'Opslaan mislukt.' });
       }
+    });
+  }
+
+  function voegWerknemerToe() {
+    const naam = nieuweNaam.trim();
+    if (!naam) return;
+    startAanmaken(async () => {
+      const uit = await maakPersoonActie({ orgId: organisatieId, soort: 'medewerker', naam });
+      if (!uit.ok) {
+        setMelding({ soort: 'fout', tekst: uit.melding });
+        return;
+      }
+      const p = uit.persoon;
+      setMedewerkers((lijst) =>
+        lijst.some((m) => m.id === p.id)
+          ? lijst
+          : [...lijst, { id: p.id, naam: p.naam, functie: p.functie, personeelsnummer: null }].sort((a, b) =>
+              a.naam.localeCompare(b.naam, 'nl'),
+            ),
+      );
+      setMedewerkerId(p.id);
+      setNieuweNaam('');
+      setMelding({
+        soort: 'ok',
+        tekst: uit.bestond ? `${p.naam} stond al als werknemer en is gekozen.` : `${p.naam} is als werknemer toegevoegd en gekozen.`,
+      });
     });
   }
 
@@ -183,7 +213,6 @@ export default function PasSessieFormulier({
               aria-pressed={medewerkerId === m.id}
               onClick={() => {
                 setMedewerkerId(m.id === medewerkerId ? '' : m.id);
-                setLosseNaam('');
                 setMelding(null);
               }}
               className={`min-h-[52px] rounded-xl border px-4 py-2 text-left text-sm font-semibold transition ${
@@ -197,21 +226,38 @@ export default function PasSessieFormulier({
             </button>
           ))}
           {medewerkers.length === 0 && (
-            <p className="text-sm text-warm">Deze klant heeft nog geen medewerkers. Vul hieronder een naam in.</p>
+            <p className="text-sm text-warm">Deze klant heeft nog geen werknemers. Voeg hieronder de eerste toe.</p>
           )}
         </div>
-        <label className="mt-4 block text-sm font-medium text-ink-800">
-          Of iemand die nog niet in het systeem staat
-          <input
-            value={losseNaam}
-            onChange={(e) => {
-              setLosseNaam(e.target.value);
-              if (e.target.value) setMedewerkerId('');
-            }}
-            placeholder="Naam"
-            className="mt-1 w-full rounded-md border border-line px-3 py-3 text-base focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
-          />
-        </label>
+        <div className="mt-4">
+          <label htmlFor="pas-nieuwe-werknemer" className="block text-sm font-medium text-ink-800">
+            Staat iemand er nog niet bij? Voeg hem toe als werknemer
+          </label>
+          <div className="mt-1 flex gap-2">
+            <input
+              id="pas-nieuwe-werknemer"
+              value={nieuweNaam}
+              onChange={(e) => setNieuweNaam(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  voegWerknemerToe();
+                }
+              }}
+              placeholder="Voor- en achternaam"
+              autoComplete="off"
+              className="min-w-0 flex-1 rounded-md border border-line px-3 py-3 text-base focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+            />
+            <button
+              type="button"
+              onClick={voegWerknemerToe}
+              disabled={aanmaken || !nieuweNaam.trim()}
+              className="knop-donker shrink-0 px-4"
+            >
+              {aanmaken ? 'Bezig...' : 'Toevoegen'}
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* 2. Artikel */}

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
 import { listAudit, auditFilterOpties, berekenWijzigingen, type Wijzigingen } from '@/lib/kms/audit';
 import { formatStatus } from '@/lib/format';
+import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Logboek', robots: { index: false, follow: false } };
@@ -89,25 +90,30 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
       <p className="mt-2 text-sm text-warm">Overzicht van de laatste wijzigingen in het dashboard: wie deed wat, wanneer, en wat er veranderde.</p>
 
       <form method="get" className="mt-5 flex flex-wrap items-end gap-3">
+        {/* Een keuze filtert meteen; de knop is er alleen voor als JavaScript uit staat. */}
         <div>
-          <label htmlFor="f-entiteit" className="veld-label">Onderdeel</label>
-          <select id="f-entiteit" name="entiteit" defaultValue={entiteit} className="veld min-w-[12rem]">
-            <option value="">Alles</option>
-            {opties.entiteiten.map((e) => (
-              <option key={e} value={e}>{formatStatus(e)}</option>
-            ))}
-          </select>
+          <span className="veld-label" aria-hidden="true">Onderdeel</span>
+          <AutoSubmitSelect
+            name="entiteit"
+            aria-label="Onderdeel"
+            defaultValue={entiteit}
+            className="veld min-w-[12rem]"
+            options={[{ value: '', label: 'Alles' }, ...opties.entiteiten.map((e) => ({ value: e, label: formatStatus(e) }))]}
+          />
         </div>
         <div>
-          <label htmlFor="f-actor" className="veld-label">Door</label>
-          <select id="f-actor" name="actor" defaultValue={actor} className="veld min-w-[14rem]">
-            <option value="">Iedereen</option>
-            {opties.actoren.map((a) => (
-              <option key={a} value={a}>{actorLabel(a)}</option>
-            ))}
-          </select>
+          <span className="veld-label" aria-hidden="true">Door</span>
+          <AutoSubmitSelect
+            name="actor"
+            aria-label="Door"
+            defaultValue={actor}
+            className="veld min-w-[14rem]"
+            options={[{ value: '', label: 'Iedereen' }, ...opties.actoren.map((a) => ({ value: a, label: actorLabel(a) }))]}
+          />
         </div>
-        <button type="submit" className="knop-donker">Filteren</button>
+        <noscript>
+          <button type="submit" className="knop-donker">Filteren</button>
+        </noscript>
         {(entiteit || actor) && (
           <Link href="/dashboard/audit" className="text-sm font-semibold text-warm hover:text-ink-800">Filters wissen</Link>
         )}

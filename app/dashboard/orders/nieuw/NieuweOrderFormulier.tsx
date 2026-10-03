@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import type { NieuweOrderKeuzes } from '@/lib/kms/orders';
+import PersoonKiezer from '@/components/dashboard/PersoonKiezer';
 import { nieuweOrder } from '../actions';
 import { haalKlantPersonenActie, contactAlsWerknemerActie, type KlantPersonen } from './actions';
 
@@ -307,8 +308,16 @@ export default function NieuweOrderFormulier({
             <input id="o-referentie" name="referentienr" placeholder="Bijv. inkoopordernummer" className="veld" />
           </div>
           <div>
-            <label className="veld-label" htmlFor="o-aanvrager">Aangevraagd door</label>
-            <input id="o-aanvrager" name="aangevraagd_door" placeholder="Naam van de aanvrager" className="veld" />
+            {/* Altijd een bestaande contactpersoon of werknemer, zodat je later op aanvrager kunt filteren. */}
+            <PersoonKiezer
+              naam="aangevraagd_door"
+              label="Aangevraagd door"
+              bron="klant"
+              orgId={klantId || null}
+              soorten={['contact', 'medewerker']}
+              nieuw={['contact']}
+              hint="Contactpersoon of werknemer van deze klant."
+            />
           </div>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">

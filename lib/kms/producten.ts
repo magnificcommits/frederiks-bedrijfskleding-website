@@ -1,4 +1,8 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { zoekWoorden, ilikeInKolommen } from '@/lib/kms/zoeken';
+
+/** Kolommen waarop je een product zoekt; elk woord moet in een ervan voorkomen. */
+const PRODUCT_ZOEKKOLOMMEN = ['naam', 'sku', 'merk', 'categorie', 'art_nr_leverancier'] as const;
 
 /**
  * Data-access voor de module Productbeheer.
@@ -64,10 +68,7 @@ export type ProductMetTelling = Product & { aantal_varianten: number };
 export async function listProducten(zoek?: string, merk?: string): Promise<ProductMetTelling[]> {
   const sb = kmsAdmin(); if (!sb) return [];
   let q = sb.from('producten').select('*, product_varianten(count)').order('naam');
-  if (zoek && zoek.trim()) {
-    const term = `%${zoek.trim()}%`;
-    q = q.or(`naam.ilike.${term},sku.ilike.${term},merk.ilike.${term},categorie.ilike.${term}`);
-  }
+  for (const w of zoekWoorden(zoek)) q = q.or(ilikeInKolommen(PRODUCT_ZOEKKOLOMMEN, w));
   if (merk && merk.trim()) q = q.eq('merk', merk.trim());
   const { data } = await q;
   const rows = (data as (Product & { product_varianten: { count: number }[] })[]) ?? [];
@@ -88,10 +89,8 @@ export async function listProductenPaged(opts: { pagina: number; perPagina: numb
   const kolom = opts.sort && sorteerbaar.includes(opts.sort) ? opts.sort : 'naam';
   const oplopend = opts.dir === 'asc' ? true : opts.dir === 'desc' ? false : true;
   let q = sb.from('producten').select('*, product_varianten(count)', { count: 'exact' }).order(kolom, { ascending: oplopend });
-  if (opts.zoek && opts.zoek.trim()) {
-    const term = `%${opts.zoek.trim()}%`;
-    q = q.or(`naam.ilike.${term},sku.ilike.${term},merk.ilike.${term},categorie.ilike.${term}`);
-  }
+  // Elk woord moet in naam, SKU, merk, categorie of leveranciersnummer voorkomen.
+  for (const w of zoekWoorden(opts.zoek)) q = q.or(ilikeInKolommen(PRODUCT_ZOEKKOLOMMEN, w));
   if (opts.merk && opts.merk.trim()) q = q.eq('merk', opts.merk.trim());
   // Producten zonder foto: een lege array telt in Postgres niet als NULL,
   // dus beide gevallen apart afvangen.

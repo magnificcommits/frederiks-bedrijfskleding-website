@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { zoekWoorden, klantIdsVoorZoekterm } from '@/lib/kms/zoeken';
 import { isEmailConfigured, env } from '@/lib/env';
 import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
 import { factuurEmailVoor, type FactuurEmailBron } from '@/lib/kms/factuurEmail';
@@ -247,15 +248,15 @@ export async function listFacturenPaged(opts: { pagina: number; perPagina: numbe
     .select('*, organisaties(naam)', { count: 'exact' })
     .order(kolom, { ascending: oplopend });
   if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
-  // Zoeken op klantnaam of op nummer. De klant zit in een join, en PostgREST kan
-  // daar niet zonder meer op filteren; daarom eerst de organisatie-ids ophalen.
-  if (opts.zoek && opts.zoek.trim()) {
-    const term = opts.zoek.trim().replace(/[%,()]/g, ' ');
-    const { data: orgRijen } = await sb.from('organisaties').select('id').ilike('naam', `%${term}%`).limit(150);
-    const orgIds = ((orgRijen as { id: string }[]) ?? []).map((o) => o.id);
-    const delen: string[] = [];
+  // Zoeken op klant (naam, plaats, klantnummer, contactpersoon; elk woord moet
+  // passen) of op factuurnummer. De klant zit in een join, en PostgREST kan daar
+  // niet zonder meer op filteren; daarom eerst de klant-ids.
+  const woorden = zoekWoorden(opts.zoek);
+  if (woorden.length) {
+    const term = woorden.join(' ');
+    const orgIds = await klantIdsVoorZoekterm(sb, woorden, 150);
+    const delen: string[] = [`factuurnummer.ilike.%${term}%`];
     if (orgIds.length) delen.push(`organisatie_id.in.(${orgIds.join(',')})`);
-    delen.push(`factuurnummer.ilike.%${term}%`);
     q = q.or(delen.join(','));
   }
 

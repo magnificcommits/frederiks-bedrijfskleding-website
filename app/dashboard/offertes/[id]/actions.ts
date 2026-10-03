@@ -12,6 +12,7 @@ import {
   voegPakketAlsRegels,
   getOfferte,
   getRegel,
+  bepaalOfferteContact,
   offerteTotalen,
   listOfferteArtikelen,
   listOfferteKleuren,
@@ -53,14 +54,18 @@ export async function werkOfferteActie(formData: FormData) {
   const id = String(formData.get('offerteId') ?? '').trim();
   if (!id) redirect('/dashboard/offertes');
   const organisatie_id = String(formData.get('organisatie_id') ?? '').trim();
-  const contactpersoon = String(formData.get('contactpersoon') ?? '').trim();
+  const contactId = String(formData.get('contactpersoon_id') ?? '').trim();
+  const losseNaam = String(formData.get('contactpersoon') ?? '').trim();
   const geldig_tot = String(formData.get('geldig_tot') ?? '').trim();
   const notitie = String(formData.get('notitie') ?? '').trim();
   const btwRuw = String(formData.get('btw_pct') ?? '').trim();
   const btw_pct = btwRuw === '' ? 21 : getalOfNul(btwRuw);
+  // Naam en verwijzing komen uit de gekozen contactpersoon van de klant.
+  const contact = await bepaalOfferteContact(organisatie_id || null, contactId || null, losseNaam || null);
   const nieuw = {
     organisatie_id: organisatie_id || null,
-    contactpersoon: contactpersoon || null,
+    contactpersoon: contact.contactpersoon,
+    contactpersoon_id: contact.contactpersoon_id,
     geldig_tot: geldig_tot || null,
     notitie: notitie || null,
     btw_pct,
@@ -71,6 +76,8 @@ export async function werkOfferteActie(formData: FormData) {
   const na: Record<string, unknown> = {};
   if (oud) {
     for (const [k, v] of Object.entries(nieuw)) {
+      // Zonder migratie bestaat de kolom niet en is er niets opgeslagen om te loggen.
+      if (k === 'contactpersoon_id' && !('contactpersoon_id' in oud)) continue;
       const was = (oud as unknown as Record<string, unknown>)[k] ?? null;
       const gelijk = k === 'geldig_tot' ? String(was ?? '').slice(0, 10) === String(v ?? '') : String(was ?? '') === String(v ?? '');
       if (!gelijk) {

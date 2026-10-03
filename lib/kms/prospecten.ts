@@ -1,4 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { zoekWoorden, ilikeInKolommen } from '@/lib/kms/zoeken';
 
 /**
  * Data-access voor de module Prospects.
@@ -65,16 +66,6 @@ export type ProspectVelden = {
 /** Toegestane sorteerkolommen (echte DB-kolommen op prospecten). */
 const SORTEERKOLOMMEN = ['bedrijfsnaam', 'status', 'plaats', 'created_at', 'score', 'laatste_scan_op', 'aantal_scans', 'brief_verstuurd_op'] as const;
 
-/**
- * Maakt een zoekterm veilig voor een ilike-patroon: tekens die de PostgREST-filter
- * (%, komma, haakjes) kunnen breken vervangen we door een spatie. Daarna bouwen we
- * zelf het `%term%`-patroon.
- */
-function maakZoekpatroon(zoek: string): string {
-  const schoon = zoek.replace(/[%,()]/g, ' ').trim();
-  return `%${schoon}%`;
-}
-
 /** Eén pagina prospects met optioneel status- en zoekfilter en sortering, plus het totaal aantal rijen voor paginering. */
 export async function listProspectenPaged(opts: {
   pagina: number;
@@ -99,9 +90,9 @@ export async function listProspectenPaged(opts: {
   if (opts.gescand === 'ja') q = q.gt('aantal_scans', 0);
   if (opts.gescand === 'nee') q = q.or('aantal_scans.is.null,aantal_scans.eq.0');
   if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
-  if (opts.zoek && opts.zoek.trim()) {
-    const p = maakZoekpatroon(opts.zoek);
-    q = q.or(`bedrijfsnaam.ilike.${p},contactpersoon.ilike.${p},email.ilike.${p},plaats.ilike.${p}`);
+  // Elk woord moet in bedrijfsnaam, contactpersoon, e-mail of plaats voorkomen.
+  for (const w of zoekWoorden(opts.zoek)) {
+    q = q.or(ilikeInKolommen(['bedrijfsnaam', 'contactpersoon', 'email', 'plaats'], w));
   }
   const { data, count } = await q.range(from, to);
   const rijen = (data as Prospect[]) ?? [];

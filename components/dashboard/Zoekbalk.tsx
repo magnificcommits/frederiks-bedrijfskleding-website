@@ -1,35 +1,20 @@
+import LiveZoekveld from './LiveZoekveld';
+
 /**
- * Zoekveld voor een lijstscherm. Verstuurt met GET, zodat de zoekterm in de URL
- * staat en de weergave deelbaar en bookmarkbaar blijft.
+ * Zoekveld voor een lijstscherm met de zoekterm in `?zoek=`. Zoekt live terwijl
+ * je typt (zie LiveZoekveld): de URL wordt bijgewerkt, de lijst ververst
+ * server-side, en status, sortering en andere filters blijven staan. De
+ * paginering gaat terug naar pagina 1.
  *
- * `bewaar` reist mee als verborgen velden: zoeken gooit je statusfilter of
- * sortering dus niet weg. De paginering laten we bewust vallen — na een nieuwe
- * zoekterm is pagina 4 zelden nog waar je wilt zijn.
+ * `waarde` en `bewaar` worden niet meer gebruikt: LiveZoekveld leest de
+ * zoekterm en de andere filters zelf uit de URL. Ze blijven in de props zodat
+ * bestaande aanroepen ongewijzigd werken.
  */
-export default function Zoekbalk({
-  waarde,
-  placeholder,
-  bewaar,
-  breedte = 'w-72',
-}: {
+export default function Zoekbalk(props: {
   waarde?: string;
   placeholder: string;
   bewaar?: Record<string, string | undefined>;
   breedte?: string;
 }) {
-  return (
-    <form method="get" className="flex items-center gap-2">
-      {Object.entries(bewaar ?? {}).map(([k, v]) =>
-        v ? <input key={k} type="hidden" name={k} value={v} /> : null,
-      )}
-      <input
-        name="zoek"
-        defaultValue={waarde ?? ''}
-        placeholder={placeholder}
-        aria-label={placeholder}
-        className={`veld ${breedte}`}
-      />
-      <button type="submit" className="knop-stil">Zoeken</button>
-    </form>
-  );
+  return <LiveZoekveld param="zoek" placeholder={props.placeholder} breedte={props.breedte ?? 'w-72'} />;
 }

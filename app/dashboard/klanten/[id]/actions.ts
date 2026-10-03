@@ -13,6 +13,7 @@ import {
 import { uploadMedia } from '@/lib/kms/storage';
 import { maakLogo, verwijderLogo } from '@/lib/kms/logos';
 import { logAudit } from '@/lib/kms/audit';
+import { bevestigPersoon, leesPersoonKeuze } from '@/lib/kms/personen';
 import { listArtikelKeuze, type ArtikelKeuze } from '@/lib/kms/producten';
 import { maakAfdeling, werkAfdeling, verwijderAfdeling } from '@/lib/kms/structuur';
 import {
@@ -261,8 +262,11 @@ export async function nieuweActiviteit(formData: FormData) {
   const omschrijving = tekst(formData, 'omschrijving');
   const datum = tekst(formData, 'datum') || null;
   const opvolgdatum = tekst(formData, 'opvolgdatum') || null;
-  const door = tekst(formData, 'door') || null;
-  if (id && omschrijving) await maakActiviteit(id, { soort, omschrijving, datum, opvolgdatum, door });
+  // "Door" is een collega van Frederiks uit de PersoonKiezer (taak_personen).
+  const doorKeuze = await bevestigPersoon(leesPersoonKeuze(formData, 'door'), null);
+  const door = doorKeuze.naam;
+  const door_persoon_id = doorKeuze.soort === 'intern' ? doorKeuze.id : null;
+  if (id && omschrijving) await maakActiviteit(id, { soort, omschrijving, datum, opvolgdatum, door, door_persoon_id });
   terug(id, 'contact', 'toegevoegd');
 }
 
@@ -439,10 +443,13 @@ export async function slaPasdagOpActie(invoer: {
 
 async function afdelingVelden(formData: FormData, orgId: string) {
   const vestiging = tekst(formData, 'vestiging_id');
+  // Leidinggevende is een werknemer van deze klant (PersoonKiezer).
+  const leiding = await bevestigPersoon(leesPersoonKeuze(formData, 'leidinggevende'), orgId);
   return {
     naam: tekst(formData, 'naam'),
     kostenplaats: tekst(formData, 'kostenplaats') || null,
-    leidinggevende: tekst(formData, 'leidinggevende') || null,
+    leidinggevende: leiding.naam,
+    leidinggevende_medewerker_id: leiding.soort === 'medewerker' ? leiding.id : null,
     vestiging_id: vestiging && (await hoortBijKlant('vestigingen', orgId, vestiging)) ? vestiging : null,
   };
 }

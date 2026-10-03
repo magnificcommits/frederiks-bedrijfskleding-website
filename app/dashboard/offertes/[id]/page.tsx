@@ -2,11 +2,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { getOfferte, offerteTotalen, OFFERTE_STATUSSEN, listKlantenVoorOfferte } from '@/lib/kms/offertes';
-import KlantContactKiezer from '../KlantContactKiezer';
 import { formatEuro, formatDatum } from '@/lib/format';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import {
-  werkOfferteActie,
   wijzigStatusActie,
   verwijderOfferteActie,
   werkRegelActie,
@@ -18,12 +16,14 @@ import {
 import RegelToevoegen from './RegelToevoegen';
 import TotaalKaart from '@/components/dashboard/TotaalKaart';
 import { listPakketten } from '@/lib/kms/pakketten';
+import { naarDocumentData } from '@/components/dashboard/OfferteDocument';
+import { OfferteVoorbeeldProvider, VoorbeeldKnop, VoorbeeldIndeling, MailNaarVeld } from './OfferteVoorbeeld';
+import KopgegevensForm from './KopgegevensForm';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Offerte', robots: { index: false, follow: false } };
 
 const inputCls = 'veld';
-const groot = 'veld py-2.5 text-[15px]';
 
 /** Getal in een invoerveld met een komma als decimaalteken (34,5 in plaats van 34.5). */
 function getalTekst(n: number | null): string {
@@ -80,51 +80,37 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
   const verlopen = !!offerte.geldig_tot && offerte.status !== 'geaccepteerd' && offerte.status !== 'afgewezen' && new Date(offerte.geldig_tot) < new Date(new Date().toDateString());
 
   return (
+    <OfferteVoorbeeldProvider opgeslagen={naarDocumentData(offerte)} afdrukHref={`/dashboard/offertes/${id}/afdruk`}>
     <main className="container-app py-6">
       <div className="dash-kop justify-between gap-4">
         <div>
           <h1 className="dash-h1">Offerte {offerte.offertenummer != null ? `#${offerte.offertenummer}` : 'concept'}</h1>
         </div>
         <div className="flex items-center gap-2">
+          <VoorbeeldKnop />
           <Link href={`/dashboard/offertes/${id}/afdruk`} className="knop-stil">Afdrukken / PDF</Link>
           <Link href="/dashboard/offertes" className="knop-tekst">Terug naar offertes</Link>
         </div>
       </div>
       <p className="mt-2 text-[13px] text-warm">{offerte.organisatie_naam || 'Geen klant gekoppeld'} · {formatDatum(offerte.created_at)}</p>
 
-      {/* Werkblad links, financiën en acties in een meelopend spoor rechts. */}
-      <div className="mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="min-w-0 space-y-6">
+      {/* Werkblad links, financiën en acties in een meelopend spoor rechts.
+          Met het voorbeeld open (breed scherm) staat het voorbeeld rechts en het spoor onder het werkblad. */}
+      <VoorbeeldIndeling
+        werkblad={
+        <>
           <div className="panel p-4">
             <h2 className="font-display text-base font-bold text-ink-900">Kopgegevens</h2>
-            <form action={werkOfferteActie} className="mt-4 space-y-5">
-              <input type="hidden" name="offerteId" value={offerte.id} />
-              {/* key: na opslaan opnieuw opbouwen met de opgeslagen klant en contactpersoon. */}
-              <KlantContactKiezer
-                key={`${offerte.organisatie_id ?? ''}|${offerte.contactpersoon ?? ''}`}
-                klanten={klanten}
-                beginKlantId={offerte.organisatie_id ?? ''}
-                beginContact={offerte.contactpersoon ?? ''}
-              />
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <label className="veld-label" htmlFor="kop-geldig">Geldig tot</label>
-                  <input id="kop-geldig" type="date" name="geldig_tot" defaultValue={dateInputWaarde(offerte.geldig_tot)} className={groot} />
-                </div>
-                <div>
-                  <label className="veld-label" htmlFor="kop-btw">Btw %</label>
-                  <input id="kop-btw" name="btw_pct" inputMode="decimal" defaultValue={String(offerte.btw_pct ?? 21)} className={groot} />
-                </div>
-              </div>
-              <div>
-                <label className="veld-label" htmlFor="kop-notitie">Notitie</label>
-                <textarea id="kop-notitie" name="notitie" rows={4} defaultValue={offerte.notitie ?? ''} placeholder="Toelichting voor de klant" className={groot} />
-                <p className="veld-hint">Deze tekst staat onderaan de offerte die de klant krijgt.</p>
-              </div>
-              <div>
-                <button type="submit" className="knop-donker">Kopgegevens opslaan</button>
-              </div>
-            </form>
+            <KopgegevensForm
+              offerteId={offerte.id}
+              klanten={klanten}
+              organisatieId={offerte.organisatie_id ?? ''}
+              contactpersoon={offerte.contactpersoon ?? ''}
+              contactId={offerte.contact?.id ?? ''}
+              geldigTot={dateInputWaarde(offerte.geldig_tot)}
+              btwPct={String(offerte.btw_pct ?? 21).replace('.', ',')}
+              notitie={offerte.notitie ?? ''}
+            />
           </div>
 
           <div>
@@ -244,8 +230,10 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
               </form>
             </div>
           )}
-        </div>
-        <aside className="space-y-4 lg:sticky lg:top-16">
+        </>
+        }
+        spoor={
+        <>
           <TotaalKaart
             regels={[
               ...(korting > 0 ? [{ label: 'Korting', waarde: korting, mindering: true }] : []),
@@ -280,7 +268,7 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
             <form action={mailOfferteActie} className="mt-3">
               <input type="hidden" name="offerteId" value={offerte.id} />
               <label className="veld-label">Mail offerte naar</label>
-              <input name="to" type="email" defaultValue={offerte.organisatie_email ?? ''} placeholder="klant@bedrijf.nl" className={inputCls} />
+              <MailNaarVeld standaard={offerte.organisatie_email ?? ''} klantEmail={offerte.klant_email ?? ''} />
               <button type="submit" className="knop-donker mt-2 w-full">Mail naar klant</button>
             </form>
             <form action={maakOrderVanOfferteActie} className="mt-4 border-t border-line pt-4">
@@ -296,8 +284,10 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
             <p className="mt-1 text-[12px] text-red-700">Inclusief alle regels. Dit kan niet ongedaan worden gemaakt.</p>
             <ConfirmSubmit message="Deze offerte en alle regels verwijderen?" className="knop mt-3 border border-red-300 bg-white text-red-700 hover:bg-red-100">Verwijderen</ConfirmSubmit>
           </form>
-        </aside>
-      </div>
+        </>
+        }
+      />
     </main>
+    </OfferteVoorbeeldProvider>
   );
 }

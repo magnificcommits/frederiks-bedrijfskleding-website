@@ -1,4 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { metIdTerugval } from '@/lib/kms/kolomTerugval';
 
 /**
  * Data-access voor het CRM rond de klantkaart: contactpersonen, activiteiten/opvolging
@@ -43,6 +44,8 @@ export type Activiteit = {
   datum: string;
   opvolgdatum: string | null;
   door: string | null;
+  /** Collega (taak_personen) achter `door`; bestaat pas na migratie 20261004_persoon_verwijzingen. */
+  door_persoon_id?: string | null;
   created_at: string;
 };
 
@@ -52,6 +55,7 @@ export type ActiviteitVelden = {
   datum?: string | null;
   opvolgdatum?: string | null;
   door?: string | null;
+  door_persoon_id?: string | null;
 };
 
 export type VerkoopOrder = { id: string; ordernummer: number | null; status: string; bedrag: number | null; besteldatum: string | null };
@@ -240,7 +244,8 @@ export async function maakActiviteit(orgId: string, v: ActiviteitVelden): Promis
   if (v.datum) row.datum = v.datum;
   if (v.opvolgdatum) row.opvolgdatum = v.opvolgdatum;
   if (v.door) row.door = v.door;
-  const { error } = await sb.from('klant_activiteiten').insert(row);
+  if (v.door_persoon_id) row.door_persoon_id = v.door_persoon_id;
+  const { error } = await metIdTerugval(row, ['door_persoon_id'], (r) => sb.from('klant_activiteiten').insert(r));
   return !error;
 }
 

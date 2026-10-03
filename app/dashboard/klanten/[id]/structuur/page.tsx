@@ -18,6 +18,7 @@ import {
   bewaarManagerScope,
 } from './actions';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
+import PersoonKiezer from '@/components/dashboard/PersoonKiezer';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Inrichting', robots: { index: false, follow: false } };
@@ -257,10 +258,15 @@ export default async function InrichtingPage({ params }: { params: Promise<{ id:
                 <label className="veld-label">Kostenplaats</label>
                 <input name="kostenplaats" placeholder="Bijv. KP-100" className={inputCls} />
               </div>
-              <div>
-                <label className="veld-label">Leidinggevende</label>
-                <input name="leidinggevende" placeholder="Naam" className={inputCls} />
-              </div>
+              <PersoonKiezer
+                naam="leidinggevende"
+                label="Leidinggevende"
+                bron="klant"
+                orgId={id}
+                soorten={['medewerker']}
+                nieuw={['medewerker']}
+                hint="Een werknemer van deze klant."
+              />
               <div>
                 <label className="veld-label">Vestiging</label>
                 <select name="vestiging_id" defaultValue="" className={inputCls}>

@@ -1,4 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { metIdTerugval } from '@/lib/kms/kolomTerugval';
 
 /**
  * Data-access voor de module Organisatie-inrichting: portaalinstellingen van de
@@ -78,6 +79,8 @@ export type Afdeling = {
   naam: string;
   kostenplaats: string | null;
   leidinggevende: string | null;
+  /** Werknemer achter `leidinggevende`; bestaat pas na migratie 20261004_persoon_verwijzingen. */
+  leidinggevende_medewerker_id?: string | null;
   vestiging_id: string | null;
   vestiging_naam: string | null;
   leveradres: string | null;
@@ -92,6 +95,7 @@ export type AfdelingVelden = {
   naam: string;
   kostenplaats?: string | null;
   leidinggevende?: string | null;
+  leidinggevende_medewerker_id?: string | null;
   vestiging_id?: string | null;
   leveradres?: string | null;
   leverpostcode?: string | null;
@@ -211,7 +215,7 @@ export async function listAfdelingen(orgId: string): Promise<Afdeling[]> {
 
 export async function maakAfdeling(orgId: string, v: AfdelingVelden): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
-  const { error } = await sb.from('afdelingen').insert({
+  const rij: Record<string, unknown> = {
     organisatie_id: orgId,
     naam: v.naam,
     kostenplaats: v.kostenplaats || null,
@@ -223,7 +227,9 @@ export async function maakAfdeling(orgId: string, v: AfdelingVelden): Promise<bo
     factuuradres: v.factuuradres || null,
     factuurpostcode: v.factuurpostcode || null,
     factuurplaats: v.factuurplaats || null,
-  });
+  };
+  if (v.leidinggevende_medewerker_id) rij.leidinggevende_medewerker_id = v.leidinggevende_medewerker_id;
+  const { error } = await metIdTerugval(rij, ['leidinggevende_medewerker_id'], (r) => sb.from('afdelingen').insert(r));
   return !error;
 }
 
@@ -258,6 +264,7 @@ export async function werkAfdeling(id: string, v: Partial<AfdelingVelden>): Prom
   if (v.naam !== undefined) patch.naam = v.naam;
   if (v.kostenplaats !== undefined) patch.kostenplaats = v.kostenplaats || null;
   if (v.leidinggevende !== undefined) patch.leidinggevende = v.leidinggevende || null;
+  if (v.leidinggevende_medewerker_id !== undefined) patch.leidinggevende_medewerker_id = v.leidinggevende_medewerker_id || null;
   if (v.vestiging_id !== undefined) patch.vestiging_id = v.vestiging_id || null;
   if (v.leveradres !== undefined) patch.leveradres = v.leveradres || null;
   if (v.leverpostcode !== undefined) patch.leverpostcode = v.leverpostcode || null;
@@ -265,7 +272,9 @@ export async function werkAfdeling(id: string, v: Partial<AfdelingVelden>): Prom
   if (v.factuuradres !== undefined) patch.factuuradres = v.factuuradres || null;
   if (v.factuurpostcode !== undefined) patch.factuurpostcode = v.factuurpostcode || null;
   if (v.factuurplaats !== undefined) patch.factuurplaats = v.factuurplaats || null;
-  const { error } = await sb.from('afdelingen').update(patch).eq('id', id);
+  const { error } = await metIdTerugval(patch, ['leidinggevende_medewerker_id'], (r) =>
+    sb.from('afdelingen').update(r).eq('id', id),
+  );
   return !error;
 }
 

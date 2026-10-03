@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import Drawer from '@/components/dashboard/Drawer';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
+import PersoonKiezer from '@/components/dashboard/PersoonKiezer';
+import type { PersoonOptie } from '@/lib/personen';
 import type { Afdeling, Vestiging } from '@/lib/kms/structuur';
 import type { Werknemer } from '@/lib/kms/werknemers';
 import type { AssortimentRij } from '@/lib/kms/assortiment';
@@ -34,6 +36,11 @@ export default function AfdelingenTab({
     if (r.afdeling_id) artikelenPer.set(r.afdeling_id, (artikelenPer.get(r.afdeling_id) ?? 0) + 1);
   }
 
+  // De werknemers zijn hier al geladen; die gaan als keuzes mee, zonder extra verzoek.
+  const werknemerOpties: PersoonOptie[] = werknemers
+    .filter((w) => w.actief)
+    .map((w) => ({ id: w.id, soort: 'medewerker', naam: w.naam, email: w.email, functie: null }));
+
   function formulier(a: Afdeling | null) {
     const sleutel = a?.id ?? 'nieuw';
     return (
@@ -52,10 +59,20 @@ export default function AfdelingenTab({
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="veld-label" htmlFor={`afd-lg-${sleutel}`}>Leidinggevende (optioneel)</label>
-            <input id={`afd-lg-${sleutel}`} name="leidinggevende" defaultValue={a?.leidinggevende ?? ''} placeholder="Naam" className="veld" />
-          </div>
+          <PersoonKiezer
+            naam="leidinggevende"
+            label="Leidinggevende (optioneel)"
+            bron="klant"
+            orgId={orgId}
+            soorten={['medewerker']}
+            nieuw={['medewerker']}
+            opties={werknemerOpties}
+            begin={
+              a?.leidinggevende_medewerker_id
+                ? { id: a.leidinggevende_medewerker_id, soort: 'medewerker', naam: a.leidinggevende }
+                : { naam: a?.leidinggevende ?? null }
+            }
+          />
           <div>
             <label className="veld-label" htmlFor={`afd-kp-${sleutel}`}>Kostenplaats (optioneel)</label>
             <input id={`afd-kp-${sleutel}`} name="kostenplaats" defaultValue={a?.kostenplaats ?? ''} placeholder="Bijv. KP-100" className="veld" />

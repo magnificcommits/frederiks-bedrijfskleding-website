@@ -63,7 +63,7 @@ export async function getMagazijnData(orderId: string): Promise<MagazijnData | n
     .select(
       'id, ordernummer, referentienr, besteldatum, status, ' +
         'organisatie:organisaties(naam, adres, postcode, plaats), ' +
-        'medewerker:medewerkers(naam, voornaam, achternaam), ' +
+        'medewerker:medewerkers!orders_medewerker_id_fkey(naam, voornaam, achternaam), ' +
         'vestiging:vestigingen(naam, leveradres, leverpostcode, leverplaats), ' +
         'afdeling:afdelingen(naam, leveradres, leverpostcode, leverplaats)',
     )

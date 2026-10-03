@@ -29,9 +29,15 @@ function kop(headers: HeadersInit | undefined, naam: string): string | null {
   return sleutel ? rec[sleutel] : null;
 }
 
+// Tijdstip van de laatste klik, Enter of formulierverzending. Een server-actie die
+// vlak daarna start is "opslaan"; een actie die vanzelf start (bijv. de catalogus
+// ophalen bij het laden van een pagina) is gewoon "laden": alleen de balk, geen
+// "Bezig met opslaan…".
+let laatsteInteractie = 0;
+
 function soortVan(input: RequestInfo | URL, init?: RequestInit): Soort | null {
   const headers = init?.headers ?? (input instanceof Request ? input.headers : undefined);
-  if (kop(headers, 'Next-Action')) return 'opslaan';
+  if (kop(headers, 'Next-Action')) return Date.now() - laatsteInteractie < 1500 ? 'opslaan' : 'laden';
   if (kop(headers, 'Next-Router-Prefetch')) return null;
   if (kop(headers, 'RSC')) return 'laden';
   return null;
@@ -44,6 +50,18 @@ function meld() {
 function installeer() {
   if (geinstalleerd || typeof window === 'undefined') return;
   geinstalleerd = true;
+  const markeer = () => {
+    laatsteInteractie = Date.now();
+  };
+  window.addEventListener('pointerdown', markeer, true);
+  window.addEventListener('submit', markeer, true);
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key === 'Enter' || e.key === ' ') markeer();
+    },
+    true,
+  );
   const origineel = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const soort = soortVan(input, init);

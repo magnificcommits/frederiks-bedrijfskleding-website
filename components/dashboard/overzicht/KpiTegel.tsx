@@ -30,9 +30,9 @@ export function Delta({ nu, vorige, richting, vergelijk, voorvoegsel }: DeltaPro
     <span className="inline-flex flex-wrap items-center gap-1.5 text-[11px]">
       {voorvoegsel && <span className="font-semibold text-ink-700">{voorvoegsel}</span>}
       <span className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 font-semibold tabular-nums ${kleur}`}>
-        <span aria-hidden>{pijl}</span>
-        <span className="sr-only">{gelijk ? 'gelijk' : omhoog ? 'gestegen' : 'gedaald'}</span>
-        {gelijk ? '0%' : tekst}
+        {!gelijk && <span aria-hidden>{pijl}</span>}
+        {!gelijk && <span className="sr-only">{omhoog ? 'gestegen' : 'gedaald'}</span>}
+        {gelijk ? 'gelijk' : tekst}
       </span>
       <span className="text-ink-400">t.o.v. {vergelijk}</span>
     </span>

@@ -7,9 +7,12 @@
 -- wordt alleen de naam opgeslagen.
 
 -- Orders: wie vroeg de order aan (contactpersoon of werknemer van de klant).
+-- De werknemer-kolommen krijgen bewust GEEN foreign key: orders heeft al
+-- medewerker_id -> medewerkers, en een tweede FK maakt de embed medewerkers(naam)
+-- dubbelzinnig (PGRST201), waardoor orderlijsten leeg bleven.
 alter table public.orders
   add column if not exists aangevraagd_door_contact_id uuid references public.contactpersonen(id) on delete set null,
-  add column if not exists aangevraagd_door_medewerker_id uuid references public.medewerkers(id) on delete set null;
+  add column if not exists aangevraagd_door_medewerker_id uuid;
 
 create index if not exists orders_aangevraagd_door_contact_idx
   on public.orders (aangevraagd_door_contact_id) where aangevraagd_door_contact_id is not null;
@@ -19,7 +22,7 @@ create index if not exists orders_aangevraagd_door_medewerker_idx
 -- Orders: wie keurde goed of af (bij goedkeuring via het dashboard).
 alter table public.orders
   add column if not exists goedgekeurd_door_contact_id uuid references public.contactpersonen(id) on delete set null,
-  add column if not exists goedgekeurd_door_medewerker_id uuid references public.medewerkers(id) on delete set null;
+  add column if not exists goedgekeurd_door_medewerker_id uuid;
 
 create index if not exists orders_goedgekeurd_door_contact_idx
   on public.orders (goedgekeurd_door_contact_id) where goedgekeurd_door_contact_id is not null;

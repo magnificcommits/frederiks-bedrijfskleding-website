@@ -154,7 +154,7 @@ export async function listOrders(status?: string): Promise<OrderMetKlant[]> {
   const sb = kmsAdmin(); if (!sb) return [];
   let q = sb
     .from('orders')
-    .select('*, organisaties(naam), medewerkers(naam)')
+    .select('*, organisaties(naam), medewerkers!orders_medewerker_id_fkey(naam)')
     .order('ordernummer', { ascending: false });
   if (status && status.trim()) q = q.eq('status', status.trim());
   const { data } = await q;
@@ -178,7 +178,7 @@ export async function listOrdersPaged(opts: { pagina: number; perPagina: number;
   const oplopend = opts.dir === 'asc' ? true : false;
   let q = sb
     .from('orders')
-    .select('*, organisaties(naam), medewerkers(naam)', { count: 'exact' })
+    .select('*, organisaties(naam), medewerkers!orders_medewerker_id_fkey(naam)', { count: 'exact' })
     .order(kolom, { ascending: oplopend });
   // Filter "Aangevraagd door": de order-ids van die persoon, ook van oude orders
   // waar alleen de naam of het e-mailadres als tekst staat.
@@ -251,7 +251,7 @@ export async function getOrder(id: string): Promise<OrderDetail | null> {
   const sb = kmsAdmin(); if (!sb) return null;
   const { data } = await sb
     .from('orders')
-    .select('*, organisaties(naam), medewerkers(naam)')
+    .select('*, organisaties(naam), medewerkers!orders_medewerker_id_fkey(naam)')
     .eq('id', id)
     .maybeSingle();
   if (!data) return null;

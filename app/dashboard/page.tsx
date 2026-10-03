@@ -298,7 +298,7 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
         <div className="min-w-0">
           <h1 className="dash-h1">{groet(nl.uur)}{voornaam ? ` ${voornaam}` : ''}</h1>
           <p className="dash-sub">
-            <span className="capitalize">{datumTekst}</span>
+            <span>{datumTekst.charAt(0).toUpperCase() + datumTekst.slice(1)}</span>
             <span className="text-ink-300"> · </span>
             {dagZin}
           </p>

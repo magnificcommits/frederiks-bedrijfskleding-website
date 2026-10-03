@@ -232,7 +232,7 @@ export async function getOrderVoorWerkbon(orderId: string): Promise<Werkbon | nu
   const sb = kmsAdmin(); if (!sb) return null;
   const { data: order } = await sb
     .from('orders')
-    .select('id, ordernummer, organisatie:organisaties(naam, plaats), medewerker:medewerkers(naam), afdeling:afdelingen(naam)')
+    .select('id, ordernummer, organisatie:organisaties(naam, plaats), medewerker:medewerkers!orders_medewerker_id_fkey(naam), afdeling:afdelingen(naam)')
     .eq('id', orderId)
     .maybeSingle();
   if (!order) return null;

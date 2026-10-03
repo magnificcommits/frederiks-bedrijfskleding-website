@@ -12,6 +12,7 @@ import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetSta
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import Tabs, { type TabDef } from '@/components/dashboard/Tabs';
 import Drawer from '@/components/dashboard/Drawer';
+import InloglinkKnop from './InloglinkKnop';
 import AssortimentBeheer from './AssortimentBeheer';
 import WerknemersTab from './WerknemersTab';
 import AfdelingenTab from './AfdelingenTab';
@@ -565,7 +566,7 @@ export default async function KlantPage({
           <div className="panel overflow-x-auto">
             <table className="tbl">
               <thead>
-                <tr><th>E-mail</th><th>Naam</th><th>Rol</th></tr>
+                <tr><th>E-mail</th><th>Naam</th><th>Rol</th><th>Inloggen als</th></tr>
               </thead>
               <tbody>
                 {gebruikers.map((g) => (
@@ -573,6 +574,9 @@ export default async function KlantPage({
                     <td className="font-medium text-ink-900">{g.email}</td>
                     <td className="text-warm">{g.naam || '-'}</td>
                     <td className="text-warm">{g.rol}</td>
+                    <td>
+                      <InloglinkKnop gebruikerId={g.id} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

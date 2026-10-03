@@ -25,7 +25,16 @@ export default function PortaalLogin() {
       options: { emailRedirectTo: `${window.location.origin}/portaal/auth/callback` },
     });
     setBezig(false);
-    if (error) setError(error.message); else setSent(true);
+    if (!error) { setSent(true); return; }
+    // Supabase-meldingen vertalen naar iets waar de klant wat mee kan.
+    const m = (error.message || '').toLowerCase();
+    if (m.includes('rate limit') || error.status === 429) {
+      setError('Er zijn net te veel inloglinks verstuurd. Probeer het over een paar minuten opnieuw, of bel Frederiks Bedrijfskleding.');
+    } else if (m.includes('signups not allowed') || m.includes('not found')) {
+      setError('Dit e-mailadres heeft nog geen toegang. Vraag Frederiks Bedrijfskleding om je aan te melden.');
+    } else {
+      setError('Versturen lukte niet. Controleer je e-mailadres en probeer het opnieuw.');
+    }
   }
 
   return (

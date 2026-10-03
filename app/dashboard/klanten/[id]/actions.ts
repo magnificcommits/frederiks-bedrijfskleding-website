@@ -2,7 +2,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { addGebruiker, maakItem, zetItemActief, zetBestellingStatus } from '@/lib/portaalAdmin';
-import { dashAuthed, kmsAdmin } from '@/lib/kms/adminClient';
+import { dashAuthed, kmsAdmin, magEigenaar } from '@/lib/kms/adminClient';
 import {
   maakContactpersoon,
   werkContactpersoon,
@@ -665,4 +665,51 @@ export async function verwijderAssortimentActie(invoer: {
   });
   revalidatePath('/dashboard/klanten/' + orgId);
   return { ok: true, melding: 'Artikel uit het assortiment gehaald.' };
+}
+
+/**
+ * Maakt een eenmalige inloglink voor een portaalgebruiker, zonder mail.
+ *
+ * Voor testen ("kijk mee als deze medewerker") en voor support als een klant zijn
+ * mail niet krijgt. Alleen voor de eigenaar, en elke link komt in het logboek.
+ * De link werkt één keer en verloopt na een uur (Supabase OTP-verloop). Open hem in
+ * een incognitovenster: hij vervangt de sessie in de browser waarin je hem opent.
+ */
+export async function maakInloglinkActie(
+  gebruikerId: string,
+): Promise<{ ok: true; link: string; email: string } | { ok: false; fout: string }> {
+  if (!(await authed())) return { ok: false, fout: 'Niet ingelogd.' };
+  if (!(await magEigenaar())) return { ok: false, fout: 'Alleen de eigenaar kan inloglinks maken.' };
+  const sb = kmsAdmin();
+  if (!sb) return { ok: false, fout: 'Database niet bereikbaar.' };
+  const id = String(gebruikerId ?? '').trim();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, fout: 'Onbekende gebruiker.' };
+
+  const { data: g } = await sb.from('portaal_gebruikers').select('id, email, organisatie_id').eq('id', id).maybeSingle();
+  const email = (g?.email ?? '').trim().toLowerCase();
+  if (!g || !email) return { ok: false, fout: 'Deze gebruiker heeft geen e-mailadres.' };
+
+  // Heeft deze gebruiker nog nooit ingelogd, dan bestaat hij nog niet in Supabase Auth:
+  // dan een uitnodigingslink, die maakt het account meteen aan.
+  let type: 'magiclink' | 'invite' = 'magiclink';
+  let res = await sb.auth.admin.generateLink({ type: 'magiclink', email });
+  if (res.error || !res.data?.properties?.hashed_token) {
+    type = 'invite';
+    res = await sb.auth.admin.generateLink({ type: 'invite', email });
+  }
+  const hash = res.data?.properties?.hashed_token;
+  if (res.error || !hash) return { ok: false, fout: `Link maken lukte niet${res.error?.message ? `: ${res.error.message}` : ''}.` };
+
+  const { headers } = await import('next/headers');
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host') ?? '';
+  const proto = h.get('x-forwarded-proto') ?? 'https';
+  const link = `${proto}://${host}/portaal/auth/bevestig?token_hash=${encodeURIComponent(hash)}&type=${type}`;
+
+  await logAudit('portaal_inloglink_gemaakt', {
+    entiteit: 'portaal_gebruiker',
+    entiteitId: id,
+    details: { email, organisatie_id: g.organisatie_id },
+  });
+  return { ok: true, link, email };
 }

@@ -3,58 +3,108 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type Hit = { type: string; label: string; sub: string; href: string };
+type Hit = { type: string; label: string; sub: string; href: string; woorden?: string };
 
 /**
- * Zoeken én navigeren met Cmd/Ctrl+K.
+ * Universeel zoeken met Cmd/Ctrl+K (of de zoekbalk boven het menu).
  *
- * Twee bronnen door elkaar: schermen (lokaal, direct) en records uit de
- * database (via /api/dashboard/search, vanaf 2 tekens). Schermen staan bovenaan
- * omdat je die het vaakst zoekt en ze geen wachttijd hebben.
+ * Drie bronnen:
+ *  1. Schermen: elk menu-onderdeel, met zoekwoorden ("mail" vindt Nieuwsbrief).
+ *  2. Acties: iets nieuws aanmaken (klant, offerte, order, taak, nieuwsbrief…).
+ *  3. Records uit de database via /api/dashboard/search (vanaf 2 tekens):
+ *     klanten, contactpersonen, werknemers, orders, offertes, facturen,
+ *     producten, leads, prospects, taken, nieuwsbrieven en drukproeven.
  *
- * Bij een leeg zoekveld toont het palet meteen de schermen — zo is Cmd+K ook
- * het snelste pad ergens heen, niet alleen een zoekvenster.
+ * Zoeken negeert hoofdletters en accenten en elk woord mag het begin van een
+ * woord zijn: "nieuw kl" vindt "Nieuwe klant".
  */
 const SCHERMEN: Hit[] = [
-  { type: 'Scherm', label: 'Overzicht', sub: 'Signalen en wat er loopt', href: '/dashboard' },
-  { type: 'Scherm', label: 'Orders', sub: '', href: '/dashboard/orders' },
-  { type: 'Scherm', label: 'Offertes', sub: '', href: '/dashboard/offertes' },
-  { type: 'Scherm', label: 'Klanten', sub: '', href: '/dashboard/klanten' },
-  { type: 'Scherm', label: 'Passessies', sub: '', href: '/dashboard/passessie' },
-  { type: 'Scherm', label: 'Producten', sub: '', href: '/dashboard/producten' },
-  { type: 'Scherm', label: 'Voorraad', sub: '', href: '/dashboard/voorraad' },
-  { type: 'Scherm', label: 'Facturen', sub: '', href: '/dashboard/facturen' },
-  { type: 'Scherm', label: 'Inkoop', sub: '', href: '/dashboard/inkoop' },
-  { type: 'Scherm', label: 'Leads', sub: '', href: '/dashboard/leads' },
-  { type: 'Scherm', label: 'Prospects', sub: '', href: '/dashboard/prospects' },
-  { type: 'Scherm', label: 'Campagnes', sub: '', href: '/dashboard/campagnes' },
-  { type: 'Scherm', label: 'Taken', sub: '', href: '/dashboard/taken' },
-  { type: 'Scherm', label: 'Retouren', sub: '', href: '/dashboard/retouren' },
-  { type: 'Scherm', label: 'Klachten en vragen', sub: '', href: '/dashboard/klachten' },
-  { type: 'Scherm', label: 'Drukproeven', sub: '', href: '/dashboard/drukproeven' },
-  { type: 'Scherm', label: 'Logo’s en werkbonnen', sub: '', href: '/dashboard/logos' },
-  { type: 'Scherm', label: 'Leveranciers', sub: '', href: '/dashboard/leveranciers' },
-  { type: 'Scherm', label: 'Pakketten', sub: '', href: '/dashboard/pakketten' },
-  { type: 'Scherm', label: 'Functies', sub: '', href: '/dashboard/functies' },
-  { type: 'Scherm', label: 'Analyse', sub: '', href: '/dashboard/analyse' },
-  { type: 'Scherm', label: 'Rapportages', sub: '', href: '/dashboard/rapportages' },
-  { type: 'Scherm', label: 'Meldingen', sub: '', href: '/dashboard/meldingen' },
-  { type: 'Scherm', label: 'Import', sub: '', href: '/dashboard/import' },
-  { type: 'Scherm', label: 'Instellingen', sub: '', href: '/dashboard/instellingen' },
-  { type: 'Scherm', label: 'Beheerders', sub: '', href: '/dashboard/admins' },
+  { type: 'Scherm', label: 'Overzicht', sub: 'Signalen en wat er loopt', href: '/dashboard', woorden: 'dashboard home start' },
+  { type: 'Scherm', label: 'Orders', sub: 'Bestellingen', href: '/dashboard/orders', woorden: 'bestelling bestellingen' },
+  { type: 'Scherm', label: 'Offertes', sub: '', href: '/dashboard/offertes', woorden: 'prijsopgave aanbieding' },
+  { type: 'Scherm', label: 'Klanten', sub: 'Bedrijven, werknemers, assortiment', href: '/dashboard/klanten', woorden: 'bedrijven organisaties crm relaties' },
+  { type: 'Scherm', label: 'Passessies', sub: 'Passen op locatie', href: '/dashboard/passessie', woorden: 'pasdag passen maten' },
+  { type: 'Scherm', label: 'Producten', sub: 'Catalogus', href: '/dashboard/producten', woorden: 'artikelen catalogus kleding' },
+  { type: 'Scherm', label: 'Leads', sub: 'Aanvragen via de website', href: '/dashboard/leads', woorden: 'aanvragen formulier' },
+  { type: 'Scherm', label: 'Taken en afspraken', sub: 'Lijst, agenda, archief', href: '/dashboard/taken', woorden: 'todo agenda afspraak herinnering planning' },
+  { type: 'Scherm', label: 'Archief van taken', sub: 'Taken en afspraken', href: '/dashboard/taken?weergave=archief', woorden: 'gearchiveerd' },
+  { type: 'Scherm', label: 'Prullenbak van taken', sub: 'Verwijderde taken terugzetten', href: '/dashboard/taken?weergave=prullenbak', woorden: 'verwijderd terugzetten' },
+  { type: 'Scherm', label: 'Agenda', sub: 'Taken en afspraken per week', href: '/dashboard/taken?weergave=agenda', woorden: 'kalender week' },
+  { type: 'Scherm', label: 'Instellingen voor taken', sub: 'Statussen, personen, meldingen', href: '/dashboard/taken/instellingen', woorden: 'status statussen personen dagoverzicht weekoverzicht' },
+  { type: 'Scherm', label: 'Nieuwsbrief', sub: 'Nieuwsbrieven en templates', href: '/dashboard/nieuwsbrief', woorden: 'mail mailing email e-mail mailblue template' },
+  { type: 'Scherm', label: 'Beheerders', sub: 'Wie mag in het KMS', href: '/dashboard/admins', woorden: 'gebruikers admins accounts toegang' },
+  { type: 'Scherm', label: 'Prospects', sub: 'Potentiele klanten', href: '/dashboard/prospects', woorden: 'acquisitie potentieel' },
+  { type: 'Scherm', label: 'Brieven met QR', sub: 'Prospectbrieven printen', href: '/dashboard/prospects/brieven', woorden: 'brief qr kennismaking print' },
+  { type: 'Scherm', label: 'Campagnes', sub: '', href: '/dashboard/campagnes', woorden: 'marketing mail' },
+  { type: 'Scherm', label: 'Medewerker-verzoeken', sub: 'Nieuwe werknemers uit het portaal', href: '/dashboard/medewerker-verzoeken', woorden: 'verzoek aanvraag werknemer' },
+  { type: 'Scherm', label: 'Facturen', sub: '', href: '/dashboard/facturen', woorden: 'factuur rekening betaling' },
+  { type: 'Scherm', label: 'Sparen', sub: 'Spaarprogramma', href: '/dashboard/sparen', woorden: 'punten' },
+  { type: 'Scherm', label: 'Voorraad', sub: '', href: '/dashboard/voorraad', woorden: 'magazijn stock' },
+  { type: 'Scherm', label: 'Leveranciers', sub: '', href: '/dashboard/leveranciers', woorden: 'groothandel merken' },
+  { type: 'Scherm', label: 'Inkoop', sub: 'Bestellen bij leveranciers', href: '/dashboard/inkoop', woorden: 'inkooporder bestellen' },
+  { type: 'Scherm', label: 'Logo’s en werkbonnen', sub: 'Bedrukken en borduren', href: '/dashboard/logos', woorden: 'logo werkbon bedrukken borduren productie' },
+  { type: 'Scherm', label: 'Drukproeven', sub: '', href: '/dashboard/drukproeven', woorden: 'drukproef proef mockup' },
+  { type: 'Scherm', label: 'Retouren', sub: '', href: '/dashboard/retouren', woorden: 'retour ruilen terugsturen' },
+  { type: 'Scherm', label: 'Klachten en vragen', sub: '', href: '/dashboard/klachten', woorden: 'klacht vraag service' },
+  { type: 'Scherm', label: 'Pakketten', sub: 'Startpakketten en pakketten', href: '/dashboard/pakketten', woorden: 'startpakket bundel' },
+  { type: 'Scherm', label: 'Analyse', sub: '', href: '/dashboard/analyse', woorden: 'cijfers omzet grafiek' },
+  { type: 'Scherm', label: 'AI-assistent', sub: '', href: '/dashboard/ai-assistent', woorden: 'ai claude vraag' },
+  { type: 'Scherm', label: 'Rapportages', sub: '', href: '/dashboard/rapportages', woorden: 'rapport overzicht cijfers' },
+  { type: 'Scherm', label: 'Meldingen', sub: '', href: '/dashboard/meldingen', woorden: 'notificaties' },
+  { type: 'Scherm', label: 'Import', sub: 'Excel of CSV inlezen', href: '/dashboard/import', woorden: 'excel csv inlezen' },
+  { type: 'Scherm', label: 'Export CSV', sub: '', href: '/dashboard/export', woorden: 'excel downloaden' },
+  { type: 'Scherm', label: 'Logboek', sub: 'Wie deed wat', href: '/dashboard/audit', woorden: 'audit log historie' },
+  { type: 'Scherm', label: 'Instellingen', sub: '', href: '/dashboard/instellingen', woorden: 'configuratie bedrijfsgegevens' },
+  { type: 'Scherm', label: 'Beveiliging (2FA)', sub: '', href: '/dashboard/beveiliging', woorden: '2fa tweestaps wachtwoord authenticator' },
+  { type: 'Scherm', label: 'Functies', sub: 'Nu afdelingen bij de klant', href: '/dashboard/functies', woorden: 'afdelingen' },
+];
+
+const ACTIES: Hit[] = [
+  { type: 'Actie', label: 'Nieuwe klant', sub: 'Met afdelingen en werknemers', href: '/dashboard/klanten/nieuw', woorden: 'klant toevoegen aanmaken bedrijf' },
+  { type: 'Actie', label: 'Nieuwe offerte', sub: '', href: '/dashboard/offertes/nieuw', woorden: 'offerte maken aanmaken' },
+  { type: 'Actie', label: 'Nieuwe order', sub: '', href: '/dashboard/orders/nieuw', woorden: 'order bestelling maken aanmaken' },
+  { type: 'Actie', label: 'Nieuwe taak', sub: '', href: '/dashboard/taken?nieuw=taak', woorden: 'taak todo maken aanmaken' },
+  { type: 'Actie', label: 'Nieuwe afspraak', sub: '', href: '/dashboard/taken?nieuw=afspraak', woorden: 'afspraak agenda maken aanmaken' },
+  { type: 'Actie', label: 'Nieuwe drukproef', sub: '', href: '/dashboard/drukproeven/nieuw', woorden: 'drukproef maken aanmaken' },
+  { type: 'Actie', label: 'Nieuwe nieuwsbrief', sub: '', href: '/dashboard/nieuwsbrief', woorden: 'nieuwsbrief mail maken aanmaken' },
 ];
 
 /** Werklijsten die je vanuit het niets wilt kunnen openen. */
 const SNELFILTERS: Hit[] = [
-  { type: 'Werklijst', label: 'Orders die op goedkeuring wachten', sub: '', href: '/dashboard/orders?status=offerte_goedgekeurd' },
-  { type: 'Werklijst', label: 'Producten zonder foto', sub: '', href: '/dashboard/producten?zonderfoto=1' },
-  { type: 'Werklijst', label: 'Klanten die mogelijk dubbel staan', sub: '', href: '/dashboard/klanten?dubbel=1' },
-  { type: 'Werklijst', label: 'Retouren die beoordeeld moeten worden', sub: '', href: '/dashboard/retouren?status=aangemeld' },
+  { type: 'Werklijst', label: 'Orders die op goedkeuring wachten', sub: '', href: '/dashboard/orders?status=offerte_goedgekeurd', woorden: 'goedkeuren' },
+  { type: 'Werklijst', label: 'Verlopen taken', sub: '', href: '/dashboard/taken?wanneer=verlopen', woorden: 'te laat achterstand' },
+  { type: 'Werklijst', label: 'Producten zonder foto', sub: '', href: '/dashboard/producten?zonderfoto=1', woorden: 'afbeelding' },
+  { type: 'Werklijst', label: 'Klanten die mogelijk dubbel staan', sub: '', href: '/dashboard/klanten?dubbel=1', woorden: 'dubbel duplicaat' },
+  { type: 'Werklijst', label: 'Retouren die beoordeeld moeten worden', sub: '', href: '/dashboard/retouren?status=aangemeld', woorden: 'retour' },
 ];
 
-function past(h: Hit, term: string) {
-  const t = term.toLowerCase();
-  return h.label.toLowerCase().includes(t) || h.sub.toLowerCase().includes(t);
+const LOKAAL = [...ACTIES, ...SCHERMEN, ...SNELFILTERS];
+
+/** Kleine letters, zonder accenten, alleen letters/cijfers als woorden. */
+const norm = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[’']/g, '');
+
+/** Score > 0 als elk zoekwoord in label, sub of zoekwoorden voorkomt; hoger = beter. */
+function score(h: Hit, term: string): number {
+  const label = norm(h.label);
+  const rest = norm(`${h.sub} ${h.woorden ?? ''}`);
+  const woorden = norm(term).split(/\s+/).filter(Boolean);
+  if (woorden.length === 0) return 0;
+  let totaal = 0;
+  for (const w of woorden) {
+    const labelWoorden = label.split(/[^a-z0-9]+/);
+    const restWoorden = rest.split(/[^a-z0-9]+/);
+    if (labelWoorden.some((x) => x.startsWith(w))) totaal += 3;
+    else if (label.includes(w)) totaal += 2;
+    else if (restWoorden.some((x) => x.startsWith(w))) totaal += 1;
+    else return 0;
+  }
+  if (label.startsWith(norm(term))) totaal += 2;
+  return totaal;
 }
 
 export default function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -80,6 +130,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     const term = q.trim();
     if (term.length < 2) {
       setRecords([]);
+      setBezig(false);
       return;
     }
     setBezig(true);
@@ -89,10 +140,9 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
         const res = await fetch(`/api/dashboard/search?q=${encodeURIComponent(term)}`, { signal: ctrl.signal });
         const data = (await res.json()) as { results: Hit[] };
         setRecords(data.results ?? []);
+        setBezig(false);
       } catch {
         /* afgebroken of mislukt: stil laten */
-      } finally {
-        setBezig(false);
       }
     }, 180);
     return () => {
@@ -103,8 +153,12 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
 
   const lijst = useMemo(() => {
     const term = q.trim();
-    if (!term) return [...SCHERMEN.slice(0, 6), ...SNELFILTERS];
-    const lokaal = [...SCHERMEN, ...SNELFILTERS].filter((h) => past(h, term));
+    if (!term) return [...ACTIES.slice(0, 3), ...SCHERMEN.slice(0, 8), ...SNELFILTERS.slice(0, 2)];
+    const lokaal = LOKAAL.map((h) => ({ h, s: score(h, term) }))
+      .filter((x) => x.s > 0)
+      .sort((a, b) => b.s - a.s)
+      .slice(0, 8)
+      .map((x) => x.h);
     return [...lokaal, ...records];
   }, [q, records]);
 
@@ -131,45 +185,64 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
 
   if (!open) return null;
 
+  // Groepskopjes tonen waar het type verandert.
+  const kop = (h: Hit) => (h.type === 'Scherm' ? 'Schermen' : h.type === 'Actie' ? 'Acties' : h.type === 'Werklijst' ? 'Werklijsten' : h.type);
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh]" onKeyDown={onKey}>
       <button type="button" aria-label="Sluiten" onClick={onClose} className="absolute inset-0 cursor-default bg-black/50" />
       <div className="relative w-full max-w-xl overflow-hidden rounded-lg border border-line bg-white shadow-soft">
-        <input
-          ref={inputRef}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Ga naar een scherm, of zoek klant, product, order, offerte of factuur…"
-          aria-label="Zoeken en navigeren"
-          className="w-full border-b border-line px-4 py-3 text-sm focus:outline-none"
-        />
-        <div className="max-h-80 overflow-y-auto">
+        <div className="flex items-center border-b border-line">
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Zoek een scherm, klant, werknemer, order, offerte, factuur, product…"
+            aria-label="Zoeken en navigeren"
+            className="w-full px-4 py-3 text-sm focus:outline-none"
+          />
+          {bezig && (
+            <span
+              className="mr-4 inline-block h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-ink-300 border-t-transparent"
+              aria-label="Zoeken"
+            />
+          )}
+        </div>
+        <div className="max-h-[26rem] overflow-y-auto">
           {lijst.length === 0 ? (
-            <p className="px-5 py-6 text-center text-[13px] text-warm">{bezig ? 'Zoeken…' : 'Niets gevonden.'}</p>
+            <p className="px-5 py-6 text-center text-[13px] text-warm">
+              {bezig ? 'Zoeken…' : q.trim().length < 2 ? 'Typ nog een teken om ook in klanten en orders te zoeken.' : `Niets gevonden voor “${q.trim()}”.`}
+            </p>
           ) : (
             <ul className="py-1.5">
-              {lijst.map((h, i) => (
-                <li key={`${h.type}-${h.href}`}>
-                  <button
-                    type="button"
-                    onMouseEnter={() => setActief(i)}
-                    onClick={() => ga(h)}
-                    className={`flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-[13px] ${i === actief ? 'bg-mist' : ''}`}
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate font-semibold text-ink-900">{h.label}</span>
-                      {h.sub && <span className="block truncate text-[11px] text-warm">{h.sub}</span>}
-                    </span>
-                    <span className="chip-tel shrink-0 uppercase tracking-wide">{h.type}</span>
-                  </button>
-                </li>
-              ))}
+              {lijst.map((h, i) => {
+                const nieuweKop = i === 0 || kop(lijst[i - 1]) !== kop(h);
+                return (
+                  <li key={`${h.type}-${h.href}-${i}`}>
+                    {nieuweKop && (
+                      <p className="px-4 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-300">{kop(h)}</p>
+                    )}
+                    <button
+                      type="button"
+                      onMouseEnter={() => setActief(i)}
+                      onClick={() => ga(h)}
+                      className={`flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-[13px] ${i === actief ? 'bg-mist' : ''}`}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold text-ink-900">{h.label}</span>
+                        {h.sub && <span className="block truncate text-[11px] text-warm">{h.sub}</span>}
+                      </span>
+                      <span className="chip-tel shrink-0 uppercase tracking-wide">{h.type}</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
         <div className="flex items-center justify-between border-t border-line px-4 py-1.5 text-[11px] text-warm">
           <span>↑↓ kiezen · Enter openen · Esc sluiten</span>
-          <span>{q.trim().length < 2 ? 'Typ 2 tekens om ook records te zoeken' : bezig ? 'Zoeken…' : `${lijst.length} resultaten`}</span>
+          <span>{q.trim().length < 2 ? 'Vanaf 2 tekens ook klanten, orders en meer' : bezig ? 'Zoeken…' : `${lijst.length} resultaten`}</span>
         </div>
       </div>
     </div>

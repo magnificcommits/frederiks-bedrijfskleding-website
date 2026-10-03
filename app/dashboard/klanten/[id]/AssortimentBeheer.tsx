@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AssortimentRij, Periode, VerstrekkingType } from '@/lib/kms/assortiment';
 import type { ArtikelKeuze } from '@/lib/kms/producten';
 import ArtikelKiezer from './ArtikelKiezer';
-import { verwijderAssortimentActie, werkAssortimentActie } from './actions';
+import { haalArtikelenActie, verwijderAssortimentActie, werkAssortimentActie } from './actions';
 import { PERIODE_OPTIES, VERSTREKKING_OPTIES, periodeLabel, verstrekkingLabel } from './verstrekkingOpties';
 
 /**
@@ -15,9 +15,10 @@ import { PERIODE_OPTIES, VERSTREKKING_OPTIES, periodeLabel, verstrekkingLabel } 
  * zonder te scrollen. De kleur ligt vast na het toevoegen (foto in die kleur);
  * verstrekking en afdeling zijn hier nog aan te passen.
  *
- * Zoeken gebeurt in de browser op de al geladen regels. De lijst is van één
- * klant en dus klein; een ronde langs de server per toetsaanslag zou hier alleen
- * maar vertraging toevoegen.
+ * Eén zoekbalk voor twee dingen: hij filtert wat de klant al heeft, en daaronder
+ * staat meteen wat er in de catalogus past maar nog niet in dit assortiment zit,
+ * met een knop Toevoegen. Zo hoef je niet te weten of iets er al in staat.
+ * Zoeken gebeurt in de browser; de catalogus wordt één keer opgehaald zodra je typt.
  */
 export default function AssortimentBeheer({
   orgId,
@@ -38,6 +39,8 @@ export default function AssortimentBeheer({
   const [groep, setGroep] = useState(startGroep);
   const gekozenAfdeling = afdelingen.find((a) => a.id === groep) ?? null;
   const [kiezerOpen, setKiezerOpen] = useState(false);
+  // Waarmee het toevoegvenster opent: een zoekterm en/of meteen één artikel.
+  const [kiezerStart, setKiezerStart] = useState<{ zoek: string; artikelId: string | null }>({ zoek: '', artikelId: null });
   const [melding, setMelding] = useState<{
     ok: boolean;
     tekst: string;
@@ -69,6 +72,48 @@ export default function AssortimentBeheer({
     });
   }, [regels, zoek, merk, groep]);
 
+  // Catalogus ophalen zodra er gezocht wordt, voor de suggesties onder de lijst.
+  const zoekterm = zoek.trim().toLowerCase();
+  useEffect(() => {
+    if (catalogus !== null || zoekterm.length < 2) return;
+    let levend = true;
+    haalArtikelenActie()
+      .then((lijst) => {
+        if (levend) setCatalogus(lijst);
+      })
+      .catch(() => {});
+    return () => {
+      levend = false;
+    };
+  }, [catalogus, zoekterm]);
+
+  // Wat telt als "staat er al": bij een gekozen afdeling alleen wat voor die afdeling
+  // of voor de hele klant klaarstaat; een artikel van een andere afdeling mag erbij.
+  const inAssortiment = useMemo(
+    () =>
+      new Set(
+        regels
+          .filter((r) => !gekozenAfdeling || r.afdeling_id === gekozenAfdeling.id || (!r.afdeling_id && !r.medewerker_id))
+          .map((r) => r.product_id),
+      ),
+    [regels, gekozenAfdeling],
+  );
+  const uitCatalogus = useMemo(() => {
+    if (!catalogus || zoekterm.length < 2) return [];
+    const delen = zoekterm.split(/\s+/).filter(Boolean);
+    return catalogus.filter((a) => {
+      if (inAssortiment.has(a.id)) return false;
+      if (merk && a.merk !== merk) return false;
+      const tekst = [a.naam, a.merk ?? '', a.sku ?? '', a.art_nr_leverancier ?? '', a.categorie ?? ''].join(' ').toLowerCase();
+      return delen.every((d) => tekst.includes(d));
+    });
+  }, [catalogus, zoekterm, merk, inAssortiment]);
+
+  function openKiezer(artikelId: string | null = null, metZoek = '') {
+    setKiezerStart({ zoek: metZoek, artikelId });
+    setKiezerOpen(true);
+  }
+
   const sluitKiezer = useCallback(() => setKiezerOpen(false), []);
   const naToevoegen = useCallback(() => {
     // De serveractie heeft de klantpagina al ongeldig verklaard; refresh haalt de
@@ -84,13 +129,14 @@ export default function AssortimentBeheer({
         <div className="flex flex-wrap items-end gap-3">
           <div className="w-72">
             <label className="veld-label" htmlFor="assortiment-zoek">
-              Zoeken in dit assortiment
+              Zoek een artikel
             </label>
             <input
               id="assortiment-zoek"
+              type="search"
               value={zoek}
               onChange={(e) => setZoek(e.target.value)}
-              placeholder="Naam, merk, kleur of sku"
+              placeholder="Bijv. softshell, Snickers of WK300"
               autoComplete="off"
               className="veld"
             />
@@ -135,10 +181,14 @@ export default function AssortimentBeheer({
             </div>
           )}
         </div>
-        <button type="button" onClick={() => setKiezerOpen(true)} className="knop-donker">
-          {gekozenAfdeling ? `Artikel toevoegen voor ${gekozenAfdeling.naam}` : 'Artikel zoeken en toevoegen'}
+        <button type="button" onClick={() => openKiezer(null, zoek.trim())} className="knop-donker">
+          {gekozenAfdeling ? `Artikel toevoegen voor ${gekozenAfdeling.naam}` : 'Artikel toevoegen'}
         </button>
       </div>
+      <p className="mt-1.5 text-[12px] text-warm">
+        De zoekbalk zoekt in wat deze klant al heeft én in de hele catalogus. Staat het er nog niet in, dan zie je het
+        eronder met een knop Toevoegen.
+      </p>
 
       {gekozenAfdeling && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-[13px] text-amber-900">
@@ -178,8 +228,9 @@ export default function AssortimentBeheer({
         </p>
       ) : gevonden.length === 0 ? (
         <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-[13px] text-warm">
-          Geen artikel in dit assortiment dat hierop past. Maak het zoekveld leeg of zet het merk terug op
-          alle merken om de hele lijst weer te zien.
+          {zoekterm
+            ? `“${zoek.trim()}” staat nog niet in het assortiment van deze klant${gekozenAfdeling ? ` (afdeling ${gekozenAfdeling.naam})` : ''}.`
+            : 'Geen artikel in dit assortiment dat hierop past. Zet het merk terug op alle merken om de hele lijst weer te zien.'}
         </p>
       ) : (
         <>
@@ -217,6 +268,52 @@ export default function AssortimentBeheer({
         </>
       )}
 
+      {zoekterm.length >= 2 && (
+        <div className="mt-4 rounded-xl border border-line bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
+            <p className="text-[13px] font-semibold text-ink-900">
+              Uit de catalogus toevoegen
+              {catalogus && <span className="ml-1 font-normal text-warm">({uitCatalogus.length} gevonden, nog niet bij deze klant)</span>}
+            </p>
+            {uitCatalogus.length > 6 && (
+              <button type="button" onClick={() => openKiezer(null, zoek.trim())} className="knop-stil">
+                Alle {uitCatalogus.length} bekijken
+              </button>
+            )}
+          </div>
+          {catalogus === null ? (
+            <p className="flex items-center gap-2 px-4 py-3 text-[13px] text-warm">
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-ink-300 border-t-transparent" aria-hidden="true" />
+              Catalogus doorzoeken…
+            </p>
+          ) : uitCatalogus.length === 0 ? (
+            <p className="px-4 py-3 text-[13px] text-warm">Niets in de catalogus dat hierop past en nog niet bij deze klant staat.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {uitCatalogus.slice(0, 6).map((a) => (
+                <li key={a.id} className="flex items-center gap-3 px-4 py-2">
+                  <div className="h-11 w-11 shrink-0 overflow-hidden rounded border border-line bg-mist">
+                    {a.afbeelding && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={a.afbeelding} alt="" className="h-full w-full object-contain" loading="lazy" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-semibold text-ink-900">{a.naam}</p>
+                    <p className="truncate text-[12px] text-warm">
+                      {[a.merk, a.sku, a.kleuren.length ? `${a.kleuren.length} kleuren` : ''].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => openKiezer(a.id, zoek.trim())} className="knop-donker shrink-0">
+                    Toevoegen
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       {kiezerOpen && (
         <ArtikelKiezer
           orgId={orgId}
@@ -227,6 +324,8 @@ export default function AssortimentBeheer({
           onSluiten={sluitKiezer}
           onToegevoegd={naToevoegen}
           startAfdelingen={gekozenAfdeling ? [gekozenAfdeling.id] : []}
+          startZoek={kiezerStart.zoek}
+          startArtikelId={kiezerStart.artikelId}
         />
       )}
     </div>

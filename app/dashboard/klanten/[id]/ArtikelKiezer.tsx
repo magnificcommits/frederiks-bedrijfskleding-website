@@ -30,6 +30,8 @@ export default function ArtikelKiezer({
   onSluiten,
   onToegevoegd,
   startAfdelingen = [],
+  startZoek = '',
+  startArtikelId = null,
 }: {
   orgId: string;
   catalogus: ArtikelKeuze[] | null;
@@ -40,10 +42,14 @@ export default function ArtikelKiezer({
   onToegevoegd: () => void;
   /** Vooraf aangevinkte afdelingen (geopend vanuit 'Artikelen voor deze afdeling'). */
   startAfdelingen?: string[];
+  /** Zoektekst die al in het venster staat (overgenomen van de zoekbalk van het assortiment). */
+  startZoek?: string;
+  /** Meteen dit artikel openen, zodat je alleen nog kleur en verstrekking kiest. */
+  startArtikelId?: string | null;
 }) {
   const [laden, setLaden] = useState(catalogus === null);
   const [mislukt, setMislukt] = useState(false);
-  const [zoek, setZoek] = useState('');
+  const [zoek, setZoek] = useState(startZoek);
   const [merk, setMerk] = useState('');
   const [categorie, setCategorie] = useState('');
   const [gekozen, setGekozen] = useState<ArtikelKeuze | null>(null);
@@ -144,6 +150,17 @@ export default function ArtikelKiezer({
 
   const zichtbaar = gevonden.slice(0, MAX_RESULTATEN);
   const staatErAl = (id: string) => alGekozenIds.includes(id);
+
+  // Geopend met een gekozen artikel (vanaf de zoekbalk van het assortiment): open het meteen.
+  const [startGedaan, setStartGedaan] = useState(false);
+  useEffect(() => {
+    if (startGedaan || !startArtikelId || !catalogus) return;
+    setStartGedaan(true);
+    const artikel = catalogus.find((a) => a.id === startArtikelId);
+    if (artikel) kiesArtikel(artikel);
+    // kiesArtikel is een gewone functie in dit component; alleen opnieuw draaien als de catalogus binnenkomt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogus, startArtikelId, startGedaan]);
 
   function kiesArtikel(artikel: ArtikelKeuze) {
     setGekozen(artikel);

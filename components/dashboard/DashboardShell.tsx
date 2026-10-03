@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/dashboard/actions';
 import CommandPalette from './CommandPalette';
+import BezigBalk from './BezigBalk';
 import Toast from './Toast';
 
 type Item = { href: string; label: string };
@@ -251,6 +252,7 @@ export function DashboardShell({
       <aside className="hidden w-60 shrink-0 bg-ink-900 md:sticky md:top-0 md:block md:h-screen">{nav}</aside>
       <main className="min-w-0 flex-1">{children}</main>
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <BezigBalk />
       <Toast />
     </div>
   );

@@ -4,14 +4,16 @@ import { dashAuthed, eisEigenaar, kmsAdmin } from '@/lib/kms/adminClient';
 import VerzendKnop from '@/components/dashboard/VerzendKnop';
 import {
   getKlachtInstellingen,
+  getReparatieInstellingen,
   getRetourbeleid,
   listKlantKeuzesService,
   voorwaardenTekst,
   STANDAARD_KLACHTCATEGORIEEN,
+  STANDAARD_REPARATIETEKST,
   STANDAARD_RETOURREDENEN,
 } from '@/lib/kms/service';
 import KlantZoeker from '../../klachten/KlantZoeker';
-import { zetKlachtInstellingenActie, zetKlantTermijnActie, zetRetourbeleidActie, zetRetourredenenActie } from './actions';
+import { zetKlachtInstellingenActie, zetKlantTermijnActie, zetReparatieInstellingenActie, zetRetourbeleidActie, zetRetourredenenActie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Instellingen: service', robots: { index: false, follow: false } };
@@ -21,6 +23,7 @@ const MELDINGEN: Record<string, { tekst: string; fout?: boolean }> = {
   redenen: { tekst: 'Retourredenen opgeslagen.' },
   klant: { tekst: 'Termijn voor de klant opgeslagen.' },
   klachten: { tekst: 'Klachtinstellingen opgeslagen.' },
+  reparaties: { tekst: 'Reparatie-instellingen opgeslagen. Het portaal toont het meteen.' },
   'klant-nodig': { tekst: 'Kies eerst een klant.', fout: true },
   mislukt: { tekst: 'Opslaan is niet gelukt. Probeer het opnieuw.', fout: true },
 };
@@ -31,11 +34,12 @@ export default async function ServiceInstellingenPage({ searchParams }: { search
   const { melding } = await searchParams;
 
   const sb = kmsAdmin();
-  const [beleid, klacht, klanten, uitRes] = await Promise.all([
+  const [beleid, klacht, klanten, uitRes, reparatie] = await Promise.all([
     getRetourbeleid(),
     getKlachtInstellingen(),
     listKlantKeuzesService(),
     sb ? sb.from('organisaties').select('id, naam').eq('retouren_actief', false).order('naam') : Promise.resolve({ data: [] }),
+    getReparatieInstellingen(),
   ]);
   const retourenUit = ((uitRes as { data: { id: string; naam: string }[] | null }).data ?? []);
   const naamVan = new Map(klanten.map((k) => [k.id, k.naam]));
@@ -50,7 +54,7 @@ export default async function ServiceInstellingenPage({ searchParams }: { search
       <div className="dash-kop flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link href="/dashboard/instellingen" className="knop-tekst" aria-label="Terug naar instellingen">‹ Instellingen</Link>
-          <h1 className="dash-h1">Service: retouren en klachten</h1>
+          <h1 className="dash-h1">Service: retouren, reparaties en klachten</h1>
         </div>
         <div className="flex gap-2">
           <Link href="/dashboard/retouren" className="knop-stil">Naar Retouren</Link>
@@ -187,6 +191,50 @@ export default async function ServiceInstellingenPage({ searchParams }: { search
           </div>
         </section>
       </div>
+
+      {/* ---------------- Reparaties ---------------- */}
+      <section id="reparaties" className="panel mt-6 scroll-mt-24 p-5">
+        <h2 className="font-display text-lg font-bold text-ink-900">Reparaties</h2>
+        <p className="mt-1 text-[13px] text-warm">
+          Klanten kunnen in het portaal naast terugsturen en ruilen ook een reparatie aanmelden: wat er kapot is, een toelichting en foto&apos;s.
+          Er wordt niets terugbetaald; de reparatie loopt van aangemeld tot terug bij de klant.
+        </p>
+        <form action={zetReparatieInstellingenActie} className="mt-4 grid gap-5 md:grid-cols-2">
+          <div className="space-y-4">
+            <label className="flex items-start gap-2 text-[13px] text-ink-800">
+              <input type="checkbox" name="aan" defaultChecked={reparatie.aan} className="mt-0.5" />
+              <span>
+                <span className="font-semibold text-ink-900">Reparaties aanbieden</span>
+                <span className="block text-warm">Uit: klanten zien de keuze Repareren niet in het portaal. Zelf aanmelden in het dashboard kan altijd.</span>
+              </span>
+            </label>
+            <div>
+              <label htmlFor="sv-repkosten" className="veld-label">Standaard reparatiekosten</label>
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] text-warm">€</span>
+                <input
+                  id="sv-repkosten"
+                  name="kosten"
+                  inputMode="decimal"
+                  defaultValue={reparatie.kosten != null ? String(reparatie.kosten).replace('.', ',') : ''}
+                  placeholder="leeg = per keer bepalen"
+                  className="veld w-40"
+                />
+                <span className="text-[13px] text-warm">excl. btw, per aanmelding</span>
+              </div>
+              <p className="veld-hint">Komt vooraf ingevuld op elke reparatie; per reparatie pas je het aan of zet je er een factuur van klaar.</p>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="sv-reptekst" className="veld-label">Tekst voor klanten</label>
+            <textarea id="sv-reptekst" name="tekst" rows={4} defaultValue={reparatie.tekst} className="veld" />
+            <p className="veld-hint">Staat boven het reparatieformulier in het portaal. Leeg laten geeft de standaardtekst: &ldquo;{STANDAARD_REPARATIETEKST}&rdquo;</p>
+          </div>
+          <div className="md:col-span-2">
+            <VerzendKnop className="knop-donker" bezigTekst="Opslaan…">Reparaties opslaan</VerzendKnop>
+          </div>
+        </form>
+      </section>
 
       {/* ---------------- Klachten ---------------- */}
       <section id="klachten" className="panel mt-6 scroll-mt-24 p-5">

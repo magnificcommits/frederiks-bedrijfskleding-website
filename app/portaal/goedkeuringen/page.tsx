@@ -7,31 +7,31 @@ import { getMijnToegang } from '@/lib/portaal/team';
 import { getWachtendeOrders, getBehandeldeOrders } from '@/lib/portaal/goedkeuringen';
 import PortaalNav from '../PortaalNav';
 import { keurGoed, wijsAf } from './actions';
+import { getVertaler } from '@/lib/i18n/portaal/server';
 
-export const metadata: Metadata = { title: 'Goedkeuringen', robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getVertaler();
+  return { title: t('nav.goedkeuringen'), robots: { index: false, follow: false } };
+}
 export const dynamic = 'force-dynamic';
 
-const euro = (n: number) =>
-  new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
-const datum = (s: string) =>
-  new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(s));
-
-const meldingen: Record<string, string> = {
-  goedgekeurd: 'De bestelling is goedgekeurd en gaat door naar inkoop.',
-  afgewezen: 'De bestelling is afgewezen.',
-};
+const meldingen = {
+  goedgekeurd: 'goedkeuringen.okGoedgekeurd',
+  afgewezen: 'goedkeuringen.okAfgewezen',
+} as const;
 
 export default async function Goedkeuringen({
   searchParams,
 }: {
   searchParams: Promise<{ ok?: string }>;
 }) {
+  const { t, euro, datum } = await getVertaler();
   if (!isPortalConfigured) {
     return (
       <main className="container-x py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Klantportaal nog niet actief</h1>
-          <p className="mt-3 text-sm text-warm">Neem contact op met Frederiks Bedrijfskleding.</p>
+          <h1 className="font-display text-2xl font-extrabold text-ink-900">{t('algemeen.nietActiefTitel')}</h1>
+          <p className="mt-3 text-sm text-warm">{t('algemeen.nietActiefTekst')}</p>
         </div>
       </main>
     );
@@ -44,8 +44,8 @@ export default async function Goedkeuringen({
     return (
       <main className="container-x py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Je account is nog niet gekoppeld</h1>
-          <p className="mt-3 text-sm text-warm">Je bent ingelogd als {user.email}, maar dit adres hangt nog niet aan een bedrijf.</p>
+          <h1 className="font-display text-2xl font-extrabold text-ink-900">{t('algemeen.nietGekoppeldTitel')}</h1>
+          <p className="mt-3 text-sm text-warm">{t('algemeen.nietGekoppeldTekst', { email: user.email ?? '' })}</p>
         </div>
       </main>
     );
@@ -57,15 +57,15 @@ export default async function Goedkeuringen({
   if (!magKeuren) {
     return (
       <main className="container-x py-12">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Goedkeuringen</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('algemeen.klantportaal')}</p>
+        <h1 className="font-display text-3xl font-extrabold text-ink-900">{t('nav.goedkeuringen')}</h1>
         <PortaalNav rol={toegang.rol} actief="/portaal/goedkeuringen" />
         <div className="mt-8 max-w-xl rounded-2xl border border-line bg-white p-6 shadow-soft">
           <p className="text-sm text-warm">
-            Alleen een beheerder of leidinggevende kan bestellingen goedkeuren.
+            {t('goedkeuringen.alleenBeheer')}
           </p>
           <Link href="/portaal" className="mt-4 inline-block text-sm font-semibold text-warm hover:text-ink-800">
-            Terug naar het overzicht
+            {t('algemeen.terugNaarOverzicht')}
           </Link>
         </div>
       </main>
@@ -73,7 +73,7 @@ export default async function Goedkeuringen({
   }
 
   const sp = await searchParams;
-  const melding = sp?.ok ? meldingen[sp.ok] : null;
+  const melding = sp?.ok && Object.prototype.hasOwnProperty.call(meldingen, sp.ok) ? t(meldingen[sp.ok as keyof typeof meldingen]) : null;
   const orders = await getWachtendeOrders();
   const behandeld = await getBehandeldeOrders();
 
@@ -81,14 +81,14 @@ export default async function Goedkeuringen({
     <main className="container-x py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
-          <h1 className="font-display text-3xl font-extrabold text-ink-900">Goedkeuringen</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('algemeen.klantportaal')}</p>
+          <h1 className="font-display text-3xl font-extrabold text-ink-900">{t('nav.goedkeuringen')}</h1>
         </div>
       </div>
       <PortaalNav rol={toegang.rol} actief="/portaal/goedkeuringen" />
 
       <p className="mt-6 max-w-2xl text-sm text-warm">
-        Bestellingen die wachten op goedkeuring. Keur ze goed om ze door te zetten naar inkoop, of wijs ze af.
+        {t('goedkeuringen.intro')}
       </p>
 
       {melding && (
@@ -98,7 +98,7 @@ export default async function Goedkeuringen({
       )}
 
       {orders.length === 0 ? (
-        <p className="mt-8 text-sm text-warm">Er staan op dit moment geen bestellingen open voor goedkeuring.</p>
+        <p className="mt-8 text-sm text-warm">{t('goedkeuringen.geenOpen')}</p>
       ) : (
         <div className="mt-8 space-y-5">
           {orders.map((o) => {
@@ -108,12 +108,12 @@ export default async function Goedkeuringen({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-bold text-ink-900">
-                      {o.ordernummer ? `Order ${o.ordernummer}` : 'Bestelling'}
+                      {o.ordernummer ? t('algemeen.order', { nr: o.ordernummer }) : t('algemeen.bestelling')}
                     </p>
                     <p className="mt-0.5 text-sm text-warm">
-                      {wanneer ? datum(wanneer) : 'Onbekende datum'}
-                      {o.medewerker_naam ? ` · voor ${o.medewerker_naam}` : ''}
-                      {o.aangevraagd_door ? ` · aangevraagd door ${o.aangevraagd_door}` : ''}
+                      {wanneer ? datum(wanneer) : t('algemeen.onbekendeDatum')}
+                      {o.medewerker_naam ? ` · ${t('goedkeuringen.voor', { naam: o.medewerker_naam })}` : ''}
+                      {o.aangevraagd_door ? ` · ${t('goedkeuringen.aangevraagdDoor', { naam: o.aangevraagd_door })}` : ''}
                     </p>
                   </div>
                   <span className="font-display text-lg font-extrabold text-ink-900">
@@ -126,10 +126,10 @@ export default async function Goedkeuringen({
                     <table className="w-full min-w-[28rem] text-sm">
                       <thead>
                         <tr className="text-left text-xs font-semibold uppercase tracking-wide text-warm">
-                          <th className="pb-2 pr-4">Artikel</th>
-                          <th className="pb-2 pr-4">Maat / kleur</th>
-                          <th className="pb-2 pr-4 text-right">Aantal</th>
-                          <th className="pb-2 text-right">Stukprijs</th>
+                          <th className="pb-2 pr-4">{t('goedkeuringen.artikel')}</th>
+                          <th className="pb-2 pr-4">{t('goedkeuringen.maatKleur')}</th>
+                          <th className="pb-2 pr-4 text-right">{t('algemeen.aantal')}</th>
+                          <th className="pb-2 text-right">{t('goedkeuringen.stukprijs')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-line">
@@ -153,12 +153,12 @@ export default async function Goedkeuringen({
                 <div className="mt-5 flex flex-wrap gap-3 border-t border-line pt-4">
                   <form action={keurGoed}>
                     <input type="hidden" name="order_id" value={o.id} />
-                    <button className="btn-primary">Goedkeuren</button>
+                    <button className="btn-primary">{t('goedkeuringen.goedkeuren')}</button>
                   </form>
                   <form action={wijsAf}>
                     <input type="hidden" name="order_id" value={o.id} />
                     <button className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink-700 hover:bg-mist">
-                      Afwijzen
+                      {t('goedkeuringen.afwijzen')}
                     </button>
                   </form>
                 </div>
@@ -169,13 +169,13 @@ export default async function Goedkeuringen({
       )}
 
       <div className="mt-14 border-t border-line pt-10">
-        <h2 className="font-display text-2xl font-extrabold text-ink-900">Behandeld</h2>
+        <h2 className="font-display text-2xl font-extrabold text-ink-900">{t('goedkeuringen.behandeld')}</h2>
         <p className="mt-2 max-w-2xl text-sm text-warm">
-          Eerder goedgekeurde en afgewezen bestellingen.
+          {t('goedkeuringen.behandeldUitleg')}
         </p>
 
         {behandeld.length === 0 ? (
-          <p className="mt-6 text-sm text-warm">Nog niets behandeld.</p>
+          <p className="mt-6 text-sm text-warm">{t('goedkeuringen.nietsBehandeld')}</p>
         ) : (
           <div className="mt-6 space-y-3">
             {behandeld.map((o) => {
@@ -188,11 +188,11 @@ export default async function Goedkeuringen({
                 >
                   <div className="min-w-0">
                     <p className="font-bold text-ink-900">
-                      {o.ordernummer ? `Order ${o.ordernummer}` : 'Bestelling'}
+                      {o.ordernummer ? t('algemeen.order', { nr: o.ordernummer }) : t('algemeen.bestelling')}
                     </p>
                     <p className="mt-0.5 text-sm text-warm">
-                      {wanneer ? datum(wanneer) : 'Onbekende datum'}
-                      {o.medewerker_naam ? ` · voor ${o.medewerker_naam}` : ''}
+                      {wanneer ? datum(wanneer) : t('algemeen.onbekendeDatum')}
+                      {o.medewerker_naam ? ` · ${t('goedkeuringen.voor', { naam: o.medewerker_naam })}` : ''}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -206,8 +206,8 @@ export default async function Goedkeuringen({
                           : 'inline-flex items-center rounded-full border border-green-300 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700'
                       }
                     >
-                      {afgewezen ? 'Afgewezen' : 'Goedgekeurd'}
-                      {o.goedgekeurd_door ? ` · door ${o.goedgekeurd_door}` : ''}
+                      {afgewezen ? t('status.goedkeuring.afgewezen') : t('status.goedkeuring.goedgekeurd')}
+                      {o.goedgekeurd_door ? ` · ${t('goedkeuringen.door', { naam: o.goedgekeurd_door })}` : ''}
                     </span>
                   </div>
                 </div>

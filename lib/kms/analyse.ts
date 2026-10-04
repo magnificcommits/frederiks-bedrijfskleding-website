@@ -657,7 +657,7 @@ export type OperatieData = {
   historie: boolean;
   tijdPerStatus: { status: string; label: string; gemDagen: number; n: number }[];
   geleverd: { aantal: number; opTijd: number; teLaat: number; doorloop: Duur | null } | null;
-  retouren: { aantal: Paar; perReden: Telling[]; perStatus: Telling[]; pct: number | null; tabel: boolean };
+  retouren: { aantal: Paar; perReden: Telling[]; perStatus: Telling[]; perSoort: Telling[]; pct: number | null; tabel: boolean };
   klachten: { aantal: Paar; perSoort: Telling[]; perStatus: Telling[]; open: number; tabel: boolean };
 };
 
@@ -675,7 +675,7 @@ export async function analyseOperatie(p: Periode, norm = 14): Promise<OperatieDa
   const sb = kmsAdmin();
   const vroegste = p.vgl && p.vgl.van < p.van ? p.vgl.van : p.van;
   const vanafTs = `${plusDagen(vroegste, -1)}T00:00:00Z`;
-  type RetourRij = { id: string; reden: string | null; status: string; created_at: string };
+  type RetourRij = { id: string; reden: string | null; status: string; created_at: string; soort?: string | null };
   type KlachtRij = { id: string; soort: string | null; status: string; created_at: string };
 
   const [orders, klanten, historie, retourenR, klachtenR, openKlachtenR] = await Promise.all([
@@ -683,7 +683,7 @@ export async function analyseOperatie(p: Periode, norm = 14): Promise<OperatieDa
     laadKlanten(),
     laadStatusHistorie(`${plusDagen(p.van, -400)}T00:00:00Z`),
     sb
-      ? pagineer<RetourRij>((a, b) => sb.from('retouren').select('id, reden, status, created_at').gte('created_at', vanafTs).order('created_at').order('id').range(a, b))
+      ? pagineer<RetourRij>((a, b) => sb.from('retouren').select('id, reden, status, created_at, soort').gte('created_at', vanafTs).order('created_at').order('id').range(a, b))
       : Promise.resolve({ rijen: [] as RetourRij[], fout: null }),
     sb
       ? pagineer<KlachtRij>((a, b) => sb.from('klachten').select('id, soort, status, created_at').gte('created_at', vanafTs).order('created_at').order('id').range(a, b))
@@ -781,6 +781,7 @@ export async function analyseOperatie(p: Periode, norm = 14): Promise<OperatieDa
       aantal: paar(retNu.length, p.vgl ? retouren.filter((r) => binnen(r.datum, p.vgl)).length : null),
       perReden: tel(retNu, (r) => r.reden?.trim() || 'geen reden opgegeven', () => '/dashboard/retouren'),
       perStatus: tel(retNu, (r) => r.status, (s) => `/dashboard/retouren?status=${s}`),
+      perSoort: tel(retNu, (r) => r.soort || 'retour', (s) => `/dashboard/retouren?soort=${s}`),
       pct: ordersNu > 0 ? retNu.length / ordersNu : null,
       tabel: !retourenR.fout,
     },

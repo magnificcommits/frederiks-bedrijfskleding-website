@@ -2,13 +2,25 @@
 import { useMemo, useState } from 'react';
 import { vraagRetour } from './actions';
 import type { RetourneerbareOrder } from '@/lib/portaal/service';
+import { useVertaler } from '@/lib/i18n/portaal/client';
 
 const veld =
   'mt-2 w-full rounded-lg border border-line px-3 py-2 text-sm text-ink-900 focus:border-amber-500 focus:outline-none';
 
 type RegelKeuze = { geselecteerd: boolean; aantal: number };
 
-export default function RetourFormulier({ orders, redenen = [] }: { orders: RetourneerbareOrder[]; redenen?: string[] }) {
+export default function RetourFormulier({
+  orders,
+  redenen = [],
+  soort = 'retour',
+}: {
+  orders: RetourneerbareOrder[];
+  redenen?: string[];
+  /** Terugsturen of ruilen; bepaalt alleen de teksten en wat er wordt opgeslagen. */
+  soort?: 'retour' | 'ruilen';
+}) {
+  const ruilen = soort === 'ruilen';
+  const { t, datum } = useVertaler();
   const [orderId, setOrderId] = useState('');
   const [keuzes, setKeuzes] = useState<Record<string, RegelKeuze>>({});
 
@@ -57,7 +69,7 @@ export default function RetourFormulier({ orders, redenen = [] }: { orders: Reto
   if (orders.length === 0) {
     return (
       <p className="mt-4 rounded-lg bg-mist px-4 py-3 text-sm text-warm">
-        Je hebt op dit moment geen bestellingen die nog binnen de retourtermijn vallen.
+        {t('retouren.geenOrders')}
       </p>
     );
   }
@@ -65,9 +77,10 @@ export default function RetourFormulier({ orders, redenen = [] }: { orders: Reto
   return (
     <form action={vraagRetour} className="mt-4">
       <input type="hidden" name="regels" value={regelsJson} />
+      <input type="hidden" name="soort" value={soort} />
 
       <label htmlFor="order_id" className="block text-sm font-semibold text-ink-900">
-        Bestelling
+        {t('algemeen.bestelling')}
       </label>
       <select
         id="order_id"
@@ -77,20 +90,18 @@ export default function RetourFormulier({ orders, redenen = [] }: { orders: Reto
         onChange={(e) => kiesOrder(e.target.value)}
         required
       >
-        <option value="">Kies een bestelling</option>
+        <option value="">{t('retouren.kiesBestelling')}</option>
         {orders.map((o) => (
           <option key={o.id} value={o.id}>
-            {o.ordernummer ? `Order ${o.ordernummer}` : 'Bestelling'} {'·'}{' '}
-            {new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }).format(
-              new Date(o.besteldatum),
-            )}
+            {o.ordernummer ? t('algemeen.order', { nr: o.ordernummer }) : t('algemeen.bestelling')} {'·'}{' '}
+            {datum(o.besteldatum)}
           </option>
         ))}
       </select>
 
       {order && (
         <fieldset className="mt-4">
-          <legend className="text-sm font-semibold text-ink-900">Welke artikelen stuur je terug?</legend>
+          <legend className="text-sm font-semibold text-ink-900">{ruilen ? t('retouren.welkeRuilen') : t('retouren.welkeArtikelen')}</legend>
           <div className="mt-2 space-y-2">
             {order.regels.map((r) => {
               const keuze = keuzes[r.orderregel_id];
@@ -115,11 +126,11 @@ export default function RetourFormulier({ orders, redenen = [] }: { orders: Reto
                           {[r.maat, r.kleur].filter(Boolean).join(' / ')}
                         </span>
                       )}
-                      <span className="text-warm"> {'·'} besteld: {r.besteld_aantal}</span>
+                      <span className="text-warm"> {'·'} {t('retouren.besteld', { n: r.besteld_aantal })}</span>
                     </span>
                   </label>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-warm">Aantal</span>
+                    <span className="text-xs text-warm">{t('algemeen.aantal')}</span>
                     {(() => {
                       const huidig = keuze?.aantal ?? r.besteld_aantal;
                       const knopCls =
@@ -128,7 +139,7 @@ export default function RetourFormulier({ orders, redenen = [] }: { orders: Reto
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            aria-label="Aantal verlagen"
+                            aria-label={t('retouren.verlagen')}
                             disabled={!aan || huidig <= 1}
                             onClick={() => zetAantal(r.orderregel_id, huidig - 1, r.besteld_aantal)}
                             className={knopCls}
@@ -143,7 +154,7 @@ export default function RetourFormulier({ orders, redenen = [] }: { orders: Reto
                           </span>
                           <button
                             type="button"
-                            aria-label="Aantal verhogen"
+                            aria-label={t('retouren.verhogen')}
                             disabled={!aan || huidig >= r.besteld_aantal}
                             onClick={() => zetAantal(r.orderregel_id, huidig + 1, r.besteld_aantal)}
                             className={knopCls}
@@ -164,11 +175,11 @@ export default function RetourFormulier({ orders, redenen = [] }: { orders: Reto
       {redenen.length > 0 && (
         <>
           <label htmlFor="reden_keuze" className="mt-4 block text-sm font-semibold text-ink-900">
-            Reden
+            {t('retouren.reden')}
           </label>
           <select id="reden_keuze" name="reden_keuze" className={veld} defaultValue="" required>
             <option value="" disabled>
-              Kies een reden
+              {t('retouren.kiesReden')}
             </option>
             {redenen.map((r) => (
               <option key={r} value={r}>
@@ -180,7 +191,7 @@ export default function RetourFormulier({ orders, redenen = [] }: { orders: Reto
       )}
 
       <label htmlFor="reden" className="mt-4 block text-sm font-semibold text-ink-900">
-        {redenen.length > 0 ? 'Toelichting' : 'Reden'}
+        {redenen.length > 0 ? t('retouren.toelichting') : t('retouren.reden')}
       </label>
       <textarea
         id="reden"
@@ -188,9 +199,11 @@ export default function RetourFormulier({ orders, redenen = [] }: { orders: Reto
         rows={4}
         required={redenen.length === 0}
         placeholder={
-          redenen.length > 0
-            ? 'Optioneel. Bijvoorbeeld: valt een maat kleiner dan de vorige keer.'
-            : 'Bijvoorbeeld een verkeerde maat of een beschadigd kledingstuk.'
+          ruilen
+            ? t('retouren.placeholderRuilen')
+            : redenen.length > 0
+              ? t('retouren.placeholderMetKeuze')
+              : t('retouren.placeholderZonderKeuze')
         }
         className={veld}
       />
@@ -200,7 +213,7 @@ export default function RetourFormulier({ orders, redenen = [] }: { orders: Reto
         disabled={!order || geselecteerd.length === 0}
         className="btn-primary mt-4 w-full justify-center disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Retour aanmelden
+        {ruilen ? t('retouren.aanmeldenRuilen') : t('retouren.aanmelden')}
       </button>
     </form>
   );

@@ -15,15 +15,32 @@
   p{margin:0 0 8px;line-height:1.5;color:#52504e;font-size:15px}
   button{margin-top:20px;min-height:44px;padding:10px 22px;border:0;border-radius:8px;background:#ec6726;color:#1c1c1c;font-weight:600;font-size:15px;cursor:pointer}
   button:focus-visible{outline:3px solid #1c1c1c;outline-offset:2px}
+  ul{list-style:none;margin:16px 0 0;padding:16px 0 0;border-top:1px solid #e4e1de}
+  li{margin:0 0 6px;color:#52504e;font-size:14px;line-height:1.45}
 </style>
 </head>
 <body>
 <main>
   <img src="/pwa/portaal-192.png" alt="" width="72" height="72">
   <h1>Je bent offline</h1>
-  <p>Het kledingportaal heeft internet nodig om je kledinglijn en bestellingen te laden.</p>
-  <p>Zodra je weer verbinding hebt, kun je verder waar je was.</p>
-  <button type="button" onclick="location.reload()">Opnieuw proberen</button>
+  <!-- Vier korte regels, één per portaaltaal; de knop volgt de gekozen taal (cookie fb_taal). -->
+  <ul>
+    <li lang="nl">Het kledingportaal heeft internet nodig. Zodra je weer verbinding hebt, kun je verder.</li>
+    <li lang="en">You're offline. The portal needs an internet connection to load.</li>
+    <li lang="de">Du bist offline. Das Portal braucht eine Internetverbindung.</li>
+    <li lang="pl">Jesteś offline. Portal potrzebuje połączenia z internetem.</li>
+  </ul>
+  <button type="button" id="opnieuw" onclick="location.reload()">Opnieuw proberen</button>
+  <script>
+    (function () {
+      var m = /(?:^|; )fb_taal=(nl|en|de|pl)/.exec(document.cookie);
+      var taal = m ? m[1] : 'nl';
+      var tekst = { nl: ['Je bent offline', 'Opnieuw proberen'], en: ["You're offline", 'Try again'], de: ['Du bist offline', 'Erneut versuchen'], pl: ['Jesteś offline', 'Spróbuj ponownie'] }[taal];
+      document.documentElement.lang = taal;
+      document.querySelector('h1').textContent = tekst[0];
+      document.getElementById('opnieuw').textContent = tekst[1];
+    })();
+  </script>
 </main>
 </body>
 </html>

@@ -3,8 +3,9 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { isPortalConfigured } from '@/lib/env';
 import { getPortaalUser, getMijnOrganisatie, getKledinglijn, getMatenMap, getVerbruik } from '@/lib/portaal/queries';
-import { getMijnToegang, listTeam, type PortaalRol } from '@/lib/portaal/team';
-import { formatEuro } from '@/lib/format';
+import { getMijnToegang, listTeam } from '@/lib/portaal/team';
+import { getVertaler } from '@/lib/i18n/portaal/server';
+import type { Sleutel } from '@/lib/i18n/portaal/nl';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import PortaalNav from '../PortaalNav';
 import MedewerkersLijst, { type MedewerkerRij } from './MedewerkersLijst';
@@ -19,7 +20,10 @@ import {
   trekToegangInAction,
 } from './actions';
 
-export const metadata: Metadata = { title: 'Medewerkers', robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getVertaler();
+  return { title: t('nav.medewerkers'), robots: { index: false, follow: false } };
+}
 export const dynamic = 'force-dynamic';
 
 const veld =
@@ -27,24 +31,18 @@ const veld =
 const selectMini =
   'mt-1 rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 
-const rolLabel: Record<PortaalRol, string> = {
-  beheerder: 'Beheerder',
-  leidinggevende: 'Leidinggevende',
-  medewerker: 'Medewerker',
-};
-
-const meldingen: Record<string, { soort: 'ok' | 'fout'; tekst: string }> = {
-  toegevoegd: { soort: 'ok', tekst: 'De medewerker is toegevoegd.' },
-  verwijderd: { soort: 'ok', tekst: 'De medewerker is verwijderd.' },
-  verzoek: { soort: 'ok', tekst: 'Je verzoek is ingediend. Jessi neemt het in behandeling.' },
-  budget: { soort: 'ok', tekst: 'Het budget is opgeslagen.' },
-  maten: { soort: 'ok', tekst: 'De maten zijn opgeslagen.' },
-  toegang: { soort: 'ok', tekst: 'De toegang is aangemaakt.' },
-  rol: { soort: 'ok', tekst: 'De rol is gewijzigd.' },
-  ingetrokken: { soort: 'ok', tekst: 'De toegang is ingetrokken.' },
-  naam: { soort: 'fout', tekst: 'Vul minimaal een naam in.' },
-  email: { soort: 'fout', tekst: 'Voor toegang is een e-mailadres nodig.' },
-  opslaan: { soort: 'fout', tekst: 'Er ging iets mis bij het opslaan. Probeer het opnieuw.' },
+const meldingen: Record<string, { soort: 'ok' | 'fout'; tekst: Sleutel }> = {
+  toegevoegd: { soort: 'ok', tekst: 'medewerkers.okToegevoegd' },
+  verwijderd: { soort: 'ok', tekst: 'medewerkers.okVerwijderd' },
+  verzoek: { soort: 'ok', tekst: 'medewerkers.okVerzoek' },
+  budget: { soort: 'ok', tekst: 'medewerkers.okBudget' },
+  maten: { soort: 'ok', tekst: 'medewerkers.okMaten' },
+  toegang: { soort: 'ok', tekst: 'medewerkers.okToegang' },
+  rol: { soort: 'ok', tekst: 'medewerkers.okRol' },
+  ingetrokken: { soort: 'ok', tekst: 'medewerkers.okIngetrokken' },
+  naam: { soort: 'fout', tekst: 'medewerkers.foutNaam' },
+  email: { soort: 'fout', tekst: 'medewerkers.foutEmail' },
+  opslaan: { soort: 'fout', tekst: 'algemeen.foutOpslaan' },
 };
 
 export default async function Medewerkers({
@@ -52,12 +50,14 @@ export default async function Medewerkers({
 }: {
   searchParams: Promise<{ ok?: string; fout?: string }>;
 }) {
+  const { t, euro } = await getVertaler();
+  const formatEuro = (n: number) => euro(n, 0);
   if (!isPortalConfigured) {
     return (
       <main className="container-x py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Klantportaal nog niet actief</h1>
-          <p className="mt-3 text-sm text-warm">Neem contact op met Frederiks Bedrijfskleding.</p>
+          <h1 className="font-display text-2xl font-extrabold text-ink-900">{t('algemeen.nietActiefTitel')}</h1>
+          <p className="mt-3 text-sm text-warm">{t('algemeen.nietActiefTekst')}</p>
         </div>
       </main>
     );
@@ -70,8 +70,8 @@ export default async function Medewerkers({
     return (
       <main className="container-x py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Je account is nog niet gekoppeld</h1>
-          <p className="mt-3 text-sm text-warm">Je bent ingelogd als {user.email}, maar dit adres hangt nog niet aan een bedrijf.</p>
+          <h1 className="font-display text-2xl font-extrabold text-ink-900">{t('algemeen.nietGekoppeldTitel')}</h1>
+          <p className="mt-3 text-sm text-warm">{t('algemeen.nietGekoppeldTekst', { email: user.email ?? '' })}</p>
         </div>
       </main>
     );
@@ -83,13 +83,13 @@ export default async function Medewerkers({
   if (!magBeheren) {
     return (
       <main className="container-x py-12">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Medewerkers</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('algemeen.klantportaal')}</p>
+        <h1 className="font-display text-3xl font-extrabold text-ink-900">{t('nav.medewerkers')}</h1>
         <PortaalNav rol={toegang.rol} actief="/portaal/medewerkers" />
         <div className="mt-8 max-w-xl rounded-2xl border border-line bg-white p-6 shadow-soft">
-          <p className="text-sm text-warm">Alleen een beheerder of leidinggevende kan medewerkers beheren.</p>
+          <p className="text-sm text-warm">{t('medewerkers.alleenBeheer')}</p>
           <Link href="/portaal" className="mt-4 inline-block text-sm font-semibold text-warm hover:text-ink-800">
-            Terug naar het overzicht
+            {t('algemeen.terugNaarOverzicht')}
           </Link>
         </div>
       </main>
@@ -112,10 +112,10 @@ export default async function Medewerkers({
   const rijen: MedewerkerRij[] = team.map((m) => {
     const v = verbruik[m.medewerkerId] ?? 0;
     const restant = m.budget != null ? Number(m.budget) - v : null;
-    const budgetRestantLabel = restant != null ? `Restant ${formatEuro(restant, 0)}` : '';
+    const budgetRestantLabel = restant != null ? t('medewerkers.restantLabel', { bedrag: formatEuro(restant) }) : '';
     const loginLabel = m.toegang
-      ? `Kan inloggen, ${rolLabel[m.toegang.rol] ?? m.toegang.rol}`
-      : 'Geen login';
+      ? t('medewerkers.kanInloggen', { rol: t(`rol.${m.toegang.rol}`) })
+      : t('medewerkers.geenLogin');
 
     const detail = (
       <>
@@ -125,7 +125,7 @@ export default async function Medewerkers({
               href={`/portaal/team/${m.medewerkerId}`}
               className="inline-block rounded-md border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist"
             >
-              Instellingen
+              {t('medewerkers.instellingen')}
             </Link>
           )}
           <form action={verwijderMedewerkerAction}>
@@ -133,10 +133,10 @@ export default async function Medewerkers({
             <input type="hidden" name="naam" value={m.naam} />
             <input type="hidden" name="email" value={m.email ?? ''} />
             <ConfirmSubmit
-              message={`Verwijdering van ${m.naam} aanvragen? Jessi keurt dit verzoek eerst goed; daarna gaan de maten en het budget verloren.`}
+              message={t('medewerkers.bevestigVerwijderen', { naam: m.naam })}
               className="py-1 text-xs font-semibold text-warm hover:text-amber-800"
             >
-              Verwijdering aanvragen
+              {t('medewerkers.verwijderingAanvragen')}
             </ConfirmSubmit>
           </form>
         </div>
@@ -146,26 +146,26 @@ export default async function Medewerkers({
           <form action={bewaarBudget} className="flex items-end gap-2">
             <input type="hidden" name="medewerker_id" value={m.medewerkerId} />
             <div>
-              <label className="block text-xs font-semibold text-warm">Jaarbudget</label>
+              <label className="block text-xs font-semibold text-warm">{t('medewerkers.jaarbudget')}</label>
               <input
                 name="budget"
                 defaultValue={m.budget ?? ''}
                 inputMode="decimal"
-                placeholder="bijv. 250"
+                placeholder={t('medewerkers.budgetPlaceholder')}
                 className="mt-1 w-28 rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
               />
             </div>
             <button className="rounded-md border border-line bg-white px-2.5 py-2 text-xs font-semibold text-ink-700 hover:bg-mist">
-              Opslaan
+              {t('algemeen.opslaan')}
             </button>
           </form>
           <div className="py-1 text-sm">
             <p className="text-warm">
-              Verbruikt: <span className="font-semibold text-ink-900">{formatEuro(v, 0)}</span>
+              {t('medewerkers.verbruikt')} <span className="font-semibold text-ink-900">{formatEuro(v)}</span>
             </p>
             {restant != null && (
               <p className={`font-semibold ${restant < 0 ? 'text-amber-700' : 'text-ink-700'}`}>
-                Restant: {formatEuro(restant, 0)}
+                {t('medewerkers.restant')} {formatEuro(restant)}
               </p>
             )}
           </div>
@@ -175,7 +175,7 @@ export default async function Medewerkers({
         {items.length > 0 && (
           <form action={bewaarMaten} className="mt-4 border-t border-line pt-4">
             <input type="hidden" name="medewerker_id" value={m.medewerkerId} />
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-warm">Maten</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-warm">{t('medewerkers.maten')}</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {items.map((it) => (
                 <div key={it.id}>
@@ -183,14 +183,14 @@ export default async function Medewerkers({
                   <input
                     name={`maat_${it.id}`}
                     defaultValue={matenPer[m.medewerkerId]?.[it.id] ?? ''}
-                    placeholder="maat"
+                    placeholder={t('medewerkers.maatPlaceholder')}
                     className={veld}
                   />
                 </div>
               ))}
             </div>
             <button className="mt-3 rounded-md bg-ink-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-ink-800">
-              Maten opslaan
+              {t('medewerkers.matenOpslaan')}
             </button>
           </form>
         )}
@@ -198,30 +198,30 @@ export default async function Medewerkers({
         {/* Toegang, alleen voor de beheerder */}
         {magToegang && (
           <div className="mt-4 border-t border-line pt-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-warm">Toegang tot het portaal</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-warm">{t('medewerkers.toegangPortaal')}</p>
             {m.toegang ? (
               <div className="flex flex-wrap items-end gap-3">
                 <form action={wijzigRolAction} className="flex items-end gap-2">
                   <input type="hidden" name="email" value={m.toegang.email} />
                   <div>
-                    <label className="block text-xs font-semibold text-warm">Rol</label>
+                    <label className="block text-xs font-semibold text-warm">{t('medewerkers.rol')}</label>
                     <select name="rol" defaultValue={m.toegang.rol} className={selectMini}>
-                      <option value="medewerker">Medewerker</option>
-                      <option value="leidinggevende">Leidinggevende</option>
-                      <option value="beheerder">Beheerder</option>
+                      <option value="medewerker">{t('rol.medewerker')}</option>
+                      <option value="leidinggevende">{t('rol.leidinggevende')}</option>
+                      <option value="beheerder">{t('rol.beheerder')}</option>
                     </select>
                   </div>
                   <button className="rounded-md border border-line bg-white px-2.5 py-2 text-xs font-semibold text-ink-700 hover:bg-mist">
-                    Rol opslaan
+                    {t('medewerkers.rolOpslaan')}
                   </button>
                 </form>
                 <form action={trekToegangInAction}>
                   <input type="hidden" name="email" value={m.toegang.email} />
                   <ConfirmSubmit
-                    message={`Toegang van ${m.naam} intrekken? De persoon en maten blijven bestaan, maar inloggen kan niet meer.`}
+                    message={t('medewerkers.bevestigIntrekken', { naam: m.naam })}
                     className="py-2 text-xs font-semibold text-warm hover:text-amber-800"
                   >
-                    Toegang intrekken
+                    {t('medewerkers.toegangIntrekken')}
                   </ConfirmSubmit>
                 </form>
               </div>
@@ -231,21 +231,20 @@ export default async function Medewerkers({
                 <input type="hidden" name="naam" value={m.naam} />
                 <input type="hidden" name="email" value={m.email} />
                 <div>
-                  <label className="block text-xs font-semibold text-warm">Geef toegang als</label>
+                  <label className="block text-xs font-semibold text-warm">{t('medewerkers.geefToegangAls')}</label>
                   <select name="rol" defaultValue="medewerker" className={selectMini}>
-                    <option value="medewerker">Medewerker</option>
-                    <option value="leidinggevende">Leidinggevende</option>
-                    <option value="beheerder">Beheerder</option>
+                    <option value="medewerker">{t('rol.medewerker')}</option>
+                    <option value="leidinggevende">{t('rol.leidinggevende')}</option>
+                    <option value="beheerder">{t('rol.beheerder')}</option>
                   </select>
                 </div>
                 <button className="rounded-md bg-ink-900 px-3 py-2 text-xs font-semibold text-white hover:bg-ink-800">
-                  Toegang geven
+                  {t('medewerkers.toegangGeven')}
                 </button>
               </form>
             ) : (
               <p className="text-xs text-warm">
-                Geen e-mailadres bekend. Vul bij deze medewerker een e-mailadres in (via Instellingen) om
-                toegang te kunnen geven.
+                {t('medewerkers.geenEmail')}
               </p>
             )}
           </div>
@@ -268,18 +267,17 @@ export default async function Medewerkers({
     <main className="container-x py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
-          <h1 className="font-display text-3xl font-extrabold text-ink-900">Medewerkers</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('algemeen.klantportaal')}</p>
+          <h1 className="font-display text-3xl font-extrabold text-ink-900">{t('nav.medewerkers')}</h1>
         </div>
       </div>
       <PortaalNav rol={toegang.rol} actief="/portaal/medewerkers" />
 
       <p className="mt-6 max-w-2xl text-sm text-warm">
-        Eén overzicht van alle personen in je bedrijf: hun maten, een eventueel kledingbudget en of ze kunnen
-        inloggen in het portaal. Bij een herbestelling kies je een medewerker en zijn de maten al ingevuld.
+        {t('medewerkers.intro')}
         {magToegang
-          ? ' Als beheerder geef je hier ook logins en rollen uit.'
-          : ' Logins en rollen kan alleen een beheerder instellen.'}
+          ? ` ${t('medewerkers.introBeheerder')}`
+          : ` ${t('medewerkers.introLeidinggevende')}`}
       </p>
 
       {melding && (
@@ -290,7 +288,7 @@ export default async function Medewerkers({
               : 'border-amber-300 bg-amber-50 text-ink-800'
           }`}
         >
-          {melding.tekst}
+          {t(melding.tekst)}
         </div>
       )}
 
@@ -301,41 +299,40 @@ export default async function Medewerkers({
 
         <div>
           <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
-            <h2 className="font-display text-lg font-extrabold text-ink-900">Medewerker aanvragen</h2>
+            <h2 className="font-display text-lg font-extrabold text-ink-900">{t('medewerkers.aanvragenTitel')}</h2>
             <p className="mt-1 text-xs text-warm">
-              Je voegt zelf niemand meer direct toe. Je dient een verzoek in en Jessi keurt het goed; daarna
-              staat de medewerker in het overzicht. Vul de gegevens vast in, dan kan zij het meteen verwerken.
+              {t('medewerkers.aanvragenUitleg')}
             </p>
             <form action={nieuweMedewerker} className="mt-4">
-              <label className="block text-sm font-semibold text-ink-900">Naam</label>
-              <input name="naam" required placeholder="Naam" className={veld} />
-              <label className="mt-3 block text-sm font-semibold text-ink-900">Functie (optioneel)</label>
-              <input name="functie" placeholder="bijv. monteur" className={veld} />
-              <label className="mt-3 block text-sm font-semibold text-ink-900">E-mail (optioneel)</label>
-              <input name="email" type="email" placeholder="naam@bedrijf.nl" className={veld} />
-              <label className="mt-3 block text-sm font-semibold text-ink-900">Jaarbudget (optioneel)</label>
-              <input name="budget" inputMode="decimal" placeholder="bijv. 250" className={veld} />
-              <button className="btn-primary mt-4 w-full justify-center">Verzoek indienen</button>
+              <label className="block text-sm font-semibold text-ink-900">{t('medewerkers.naam')}</label>
+              <input name="naam" required placeholder={t('medewerkers.naam')} className={veld} />
+              <label className="mt-3 block text-sm font-semibold text-ink-900">{t('medewerkers.functieOptioneel')}</label>
+              <input name="functie" placeholder={t('medewerkers.functiePlaceholder')} className={veld} />
+              <label className="mt-3 block text-sm font-semibold text-ink-900">{t('medewerkers.emailOptioneel')}</label>
+              <input name="email" type="email" placeholder={t('login.emailPlaceholder')} className={veld} />
+              <label className="mt-3 block text-sm font-semibold text-ink-900">{t('medewerkers.jaarbudgetOptioneel')}</label>
+              <input name="budget" inputMode="decimal" placeholder={t('medewerkers.budgetPlaceholder')} className={veld} />
+              <button className="btn-primary mt-4 w-full justify-center">{t('medewerkers.verzoekIndienen')}</button>
             </form>
           </div>
 
           <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-soft">
-            <h2 className="font-display text-lg font-extrabold text-ink-900">Wijzigingsverzoeken</h2>
+            <h2 className="font-display text-lg font-extrabold text-ink-900">{t('medewerkers.wijzigingsverzoeken')}</h2>
             <p className="mt-1 text-xs text-warm">
-              Verzoeken die je hebt ingediend en hun status. Jessi handelt ze af in haar dashboard.
+              {t('medewerkers.verzoekenUitleg')}
             </p>
             {verzoeken.length === 0 ? (
-              <p className="mt-4 text-sm text-warm">Je hebt nog geen verzoeken ingediend.</p>
+              <p className="mt-4 text-sm text-warm">{t('medewerkers.geenVerzoeken')}</p>
             ) : (
               <ul className="mt-4 space-y-3">
                 {verzoeken.map((v) => {
-                  const typeLabel = v.type === 'toevoegen' ? 'Toevoegen' : 'Verwijderen';
+                  const typeLabel = v.type === 'toevoegen' ? t('medewerkers.typeToevoegen') : t('medewerkers.typeVerwijderen');
                   const statusLabel =
                     v.status === 'goedgekeurd'
-                      ? 'Goedgekeurd'
+                      ? t('status.verzoek.goedgekeurd')
                       : v.status === 'afgewezen'
-                        ? 'Afgewezen'
-                        : 'Wacht op goedkeuring';
+                        ? t('status.verzoek.afgewezen')
+                        : t('status.verzoek.wacht');
                   const badge =
                     v.status === 'goedgekeurd'
                       ? 'border-green-300 bg-green-50 text-green-800'
@@ -348,7 +345,7 @@ export default async function Medewerkers({
                       className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line p-3"
                     >
                       <div>
-                        <p className="text-sm font-semibold text-ink-900">{v.naam ?? 'Onbekend'}</p>
+                        <p className="text-sm font-semibold text-ink-900">{v.naam ?? t('algemeen.onbekend')}</p>
                         <p className="text-xs text-warm">{typeLabel}</p>
                       </div>
                       <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${badge}`}>

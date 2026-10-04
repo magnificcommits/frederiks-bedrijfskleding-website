@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
+import { useVertaler } from '@/lib/i18n/portaal/client';
 
 export type MedewerkerRij = {
   id: string;
@@ -21,6 +22,7 @@ const veld =
  * De detail-node bevat de bestaande server-action-formulieren ongewijzigd.
  */
 export default function MedewerkersLijst({ rijen }: { rijen: MedewerkerRij[] }) {
+  const { t, tn } = useVertaler();
   const [zoek, setZoek] = useState('');
   const [open, setOpen] = useState<Set<string>>(new Set());
 
@@ -43,11 +45,11 @@ export default function MedewerkersLijst({ rijen }: { rijen: MedewerkerRij[] }) 
   const totaal = rijen.length;
   const teller =
     term && zichtbaar.length !== totaal
-      ? `${zichtbaar.length} van ${totaal} medewerkers`
-      : `${totaal} ${totaal === 1 ? 'medewerker' : 'medewerkers'}`;
+      ? t('medewerkers.tellerGefilterd', { n: zichtbaar.length, totaal })
+      : tn('medewerkers.teller', totaal);
 
   if (totaal === 0) {
-    return <p className="text-sm text-warm">Nog geen medewerkers toegevoegd. Voeg er rechts een toe.</p>;
+    return <p className="text-sm text-warm">{t('medewerkers.geenMedewerkers')}</p>;
   }
 
   return (
@@ -57,8 +59,8 @@ export default function MedewerkersLijst({ rijen }: { rijen: MedewerkerRij[] }) 
           type="search"
           value={zoek}
           onChange={(e) => setZoek(e.target.value)}
-          placeholder="Zoek op naam of functie&hellip;"
-          aria-label="Zoek medewerkers"
+          placeholder={t('medewerkers.zoekPlaceholder')}
+          aria-label={t('medewerkers.zoekLabel')}
           className={`${veld} max-w-xs`}
         />
         <p className="text-xs font-semibold uppercase tracking-wide text-warm">{teller}</p>
@@ -66,7 +68,7 @@ export default function MedewerkersLijst({ rijen }: { rijen: MedewerkerRij[] }) 
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-white shadow-soft">
         {zichtbaar.length === 0 ? (
-          <p className="p-6 text-sm text-warm">Geen medewerkers gevonden voor &lsquo;{zoek}&rsquo;.</p>
+          <p className="p-6 text-sm text-warm">{t('medewerkers.geenGevonden', { zoek })}</p>
         ) : (
           <ul className="divide-y divide-line">
             {zichtbaar.map((r) => {
@@ -83,7 +85,7 @@ export default function MedewerkersLijst({ rijen }: { rijen: MedewerkerRij[] }) 
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold text-ink-900">{r.naam}</span>
-                      <span className="block truncate text-xs text-warm">{r.functie || 'Geen functie'}</span>
+                      <span className="block truncate text-xs text-warm">{r.functie || t('medewerkers.geenFunctie')}</span>
                     </span>
                     <span className="hidden shrink-0 items-center gap-2 sm:flex">
                       {r.heeftLogin ? (

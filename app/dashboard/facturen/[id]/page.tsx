@@ -10,6 +10,7 @@ import ConfirmSubmit from '@/components/ConfirmSubmit';
 import FactuurDocument from '@/components/dashboard/FactuurDocument';
 import { DOCUMENT_ID, DocumentAfdrukStijl } from '@/components/dashboard/DocumentOnderdelen';
 import { bedrijf } from '@/content/bedrijf';
+import BoekhoudPaneel from './BoekhoudPaneel';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Factuur', robots: { index: false, follow: false } };
@@ -51,11 +52,11 @@ const statusBadge: Record<string, string> = {
   betaald: 'bg-green-100 text-green-800',
 };
 
-export default async function FactuurDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ mailfout?: string; ok?: string; fout?: string }> }) {
+export default async function FactuurDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ mailfout?: string; ok?: string; fout?: string; bkok?: string; bkfout?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   await eisEigenaar();
   const { id } = await params;
-  const { mailfout, ok, fout } = await searchParams;
+  const { mailfout, ok, fout, bkok, bkfout } = await searchParams;
   const sb = kmsAdmin();
 
   if (!sb) {
@@ -124,6 +125,12 @@ export default async function FactuurDetailPage({ params, searchParams }: { para
       )}
       {fout && FOUT_TEKST[fout] && (
         <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] font-semibold text-red-800 print:hidden">{FOUT_TEKST[fout]}</p>
+      )}
+      {bkok && (
+        <p className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-[13px] font-semibold text-green-800 print:hidden">{bkok}</p>
+      )}
+      {bkfout && (
+        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] font-semibold text-red-800 print:hidden" role="alert">{bkfout}</p>
       )}
 
       {/* Werkblad links, totalen en gegevens in een meelopend spoor rechts. */}
@@ -411,6 +418,8 @@ export default async function FactuurDetailPage({ params, searchParams }: { para
             Bij Verzonden wordt de vervaldatum factuurdatum plus {bedrijf.betaaltermijnDagen} dagen (als die nog leeg is). Bij Betaald wordt de betaaldatum vandaag. Terug naar Concept of Verzonden haalt de betaaldatum weg.
           </p>
         </div>
+
+        <BoekhoudPaneel factuur={factuur} totaalKms={incl} />
       </aside>
       </div>
 

@@ -7,12 +7,14 @@ import { getServerSupabase } from '@/lib/portaal/supabaseServer';
 import DrukproefPreview from '@/app/dashboard/drukproeven/DrukproefPreview';
 import PortaalNav from '../PortaalNav';
 import { beslisDrukproefPortaalActie } from './actions';
+import { getVertaler } from '@/lib/i18n/portaal/server';
+import type { Vertaler } from '@/lib/i18n/portaal/kern';
 
-export const metadata: Metadata = { title: 'Drukproeven', robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getVertaler();
+  return { title: t('nav.drukproeven'), robots: { index: false, follow: false } };
+}
 export const dynamic = 'force-dynamic';
-
-const datum = (s: string | null) =>
-  s ? new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(s)) : '';
 
 type Drukproef = {
   id: string;
@@ -32,15 +34,8 @@ type Drukproef = {
   created_at: string;
 };
 
-const statusLabel: Record<string, string> = {
-  concept: 'Concept',
-  verstuurd: 'Verstuurd',
-  goedgekeurd: 'Goedgekeurd',
-  afgekeurd: 'Afgekeurd',
-};
-
-function StatusBadge({ status }: { status: string }) {
-  const label = statusLabel[status] ?? status;
+function StatusBadge({ status, v }: { status: string; v: Vertaler }) {
+  const label = v.status('drukproef', status);
   const toon =
     status === 'goedgekeurd'
       ? 'border-green-300 bg-green-50 text-green-800'
@@ -53,12 +48,14 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default async function Drukproeven({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
+  const v = await getVertaler();
+  const { t, datum } = v;
   if (!isPortalConfigured) {
     return (
       <main className="container-x py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Klantportaal nog niet actief</h1>
-          <p className="mt-3 text-sm text-warm">Het portaal staat nog niet aan. Neem contact op met Frederiks Bedrijfskleding.</p>
+          <h1 className="font-display text-2xl font-extrabold text-ink-900">{t('algemeen.nietActiefTitel')}</h1>
+          <p className="mt-3 text-sm text-warm">{t('algemeen.nietActiefTekst')}</p>
         </div>
       </main>
     );
@@ -72,8 +69,8 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
     return (
       <main className="container-x py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Je account is nog niet gekoppeld</h1>
-          <p className="mt-3 text-sm text-warm">Je bent ingelogd als {user.email}, maar dit adres hangt nog niet aan een bedrijf. Neem contact op met Frederiks Bedrijfskleding.</p>
+          <h1 className="font-display text-2xl font-extrabold text-ink-900">{t('algemeen.nietGekoppeldTitel')}</h1>
+          <p className="mt-3 text-sm text-warm">{t('algemeen.nietGekoppeldTekst', { email: user.email ?? '' })}</p>
         </div>
       </main>
     );
@@ -84,13 +81,13 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
     return (
       <main className="container-x py-12">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
-          <h1 className="font-display text-3xl font-extrabold text-ink-900">Drukproeven</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('algemeen.klantportaal')}</p>
+          <h1 className="font-display text-3xl font-extrabold text-ink-900">{t('nav.drukproeven')}</h1>
         </div>
         <PortaalNav rol={toegang.rol} actief="/portaal/drukproeven" />
         <div className="mt-8 rounded-xl border border-line bg-white p-6 shadow-soft">
-          <h2 className="font-display text-lg font-extrabold text-ink-900">Geen toegang</h2>
-          <p className="mt-3 text-sm text-warm">Drukproeven goedkeuren kan alleen door een beheerder of leidinggevende. Vraag iemand met die rol om de drukproef te beoordelen.</p>
+          <h2 className="font-display text-lg font-extrabold text-ink-900">{t('algemeen.geenToegang')}</h2>
+          <p className="mt-3 text-sm text-warm">{t('drukproeven.geenToegangTekst')}</p>
         </div>
       </main>
     );
@@ -107,22 +104,22 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
     <main className="container-x py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
-          <h1 className="font-display text-3xl font-extrabold text-ink-900">Drukproeven</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('algemeen.klantportaal')}</p>
+          <h1 className="font-display text-3xl font-extrabold text-ink-900">{t('nav.drukproeven')}</h1>
         </div>
       </div>
       <PortaalNav rol={toegang.rol} actief="/portaal/drukproeven" />
 
-      <p className="mt-6 max-w-2xl text-sm text-warm">Hier zie je hoe een logo op de kleding komt: de plek, de maat en de techniek. Keur een drukproef goed of af, en geef bij afkeuren kort aan wat er anders moet.</p>
+      <p className="mt-6 max-w-2xl text-sm text-warm">{t('drukproeven.intro')}</p>
 
       {sp?.ok && (
         <div className="mt-6 rounded-xl border border-green-300 bg-green-50 p-4 text-sm text-green-800">
-          Je beoordeling is opgeslagen. We zien je keuze meteen terug.
+          {t('drukproeven.opgeslagen')}
         </div>
       )}
 
       {proeven.length === 0 ? (
-        <p className="mt-8 text-sm text-warm">Er staan nog geen drukproeven klaar. Zodra Frederiks Bedrijfskleding er een opstuurt, vind je hem hier.</p>
+        <p className="mt-8 text-sm text-warm">{t('drukproeven.geenProeven')}</p>
       ) : (
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           {proeven.map((p) => {
@@ -134,7 +131,7 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
                     <p className="text-sm font-semibold text-ink-900">{p.naam}</p>
                     <p className="mt-1 text-xs text-warm">{datum(p.created_at)}</p>
                   </div>
-                  <StatusBadge status={p.status} />
+                  <StatusBadge status={p.status} v={v} />
                 </div>
 
                 {p.omschrijving && <p className="mt-3 text-sm text-warm">{p.omschrijving}</p>}
@@ -156,16 +153,16 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
                   <div className="mt-5">
                     {p.status === 'goedgekeurd' ? (
                       <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                        <p className="font-semibold">Goedgekeurd{p.behandeld_op ? ` op ${datum(p.behandeld_op)}` : ''}.</p>
+                        <p className="font-semibold">{p.behandeld_op ? t('drukproeven.goedgekeurdOp', { datum: datum(p.behandeld_op) }) : t('drukproeven.goedgekeurd')}</p>
                       </div>
                     ) : (
                       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                        <p className="font-semibold">Afgekeurd{p.behandeld_op ? ` op ${datum(p.behandeld_op)}` : ''}.</p>
+                        <p className="font-semibold">{p.behandeld_op ? t('drukproeven.afgekeurdOp', { datum: datum(p.behandeld_op) }) : t('drukproeven.afgekeurd')}</p>
                       </div>
                     )}
                     {p.opmerking && (
                       <div className="mt-3 rounded-lg border border-line bg-mist px-4 py-3 text-sm text-warm">
-                        <p className="text-xs font-semibold text-ink-900">Opmerking</p>
+                        <p className="text-xs font-semibold text-ink-900">{t('algemeen.opmerking')}</p>
                         <p className="mt-1">{p.opmerking}</p>
                       </div>
                     )}
@@ -174,13 +171,13 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
                   <form action={beslisDrukproefPortaalActie} className="mt-5">
                     <input type="hidden" name="id" value={p.id} />
                     <label htmlFor={`opmerking-${p.id}`} className="block text-sm font-semibold text-ink-900">
-                      Opmerking (optioneel)
+                      {t('algemeen.opmerkingOptioneel')}
                     </label>
                     <textarea
                       id={`opmerking-${p.id}`}
                       name="opmerking"
                       rows={3}
-                      placeholder="Wil je iets aangepast zien? Laat het hier weten."
+                      placeholder={t('drukproeven.opmerkingPlaceholder')}
                       className="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink-900 shadow-soft focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row">
@@ -190,7 +187,7 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
                         value="akkoord"
                         className="flex-1 rounded-lg bg-green-600 px-4 py-3 text-sm font-bold text-white shadow-soft transition hover:bg-green-700"
                       >
-                        Goedkeuren
+                        {t('drukproeven.goedkeuren')}
                       </button>
                       <button
                         type="submit"
@@ -198,7 +195,7 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
                         value="afkeuren"
                         className="flex-1 rounded-lg bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-soft transition hover:bg-red-700"
                       >
-                        Afkeuren
+                        {t('drukproeven.afkeuren')}
                       </button>
                     </div>
                   </form>

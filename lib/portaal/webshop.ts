@@ -1,4 +1,7 @@
 import { getServerSupabase } from './supabaseServer';
+import { getVertaler } from '@/lib/i18n/portaal/server';
+import { maakVertaler, type Vertaler } from '@/lib/i18n/portaal/kern';
+import { nl } from '@/lib/i18n/portaal/nl';
 
 export type WebshopVariant = {
   id: string;
@@ -555,12 +558,10 @@ export function verdeelVerstrekking(
 /** Resultaat van een handhavingscheck. ok=false betekent geblokkeerd, met een nette reden. */
 type HandhaafResultaat = { ok: true } | { ok: false; reden: string };
 
-const euroFmt = (n: number) =>
-  new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
-
 /**
  * Controleert min/max bestelbedrag, budget en productbudget voor een wagentotaal.
- * Geeft een duidelijke Nederlandstalige reden terug als iets de bestelling blokkeert.
+ * Geeft een duidelijke reden terug in de taal van de gebruiker (vertaler `v`, standaard
+ * Nederlands) als iets de bestelling blokkeert.
  * Ontbrekende instellingen worden overgeslagen, zodat het huidige gedrag behouden blijft.
  */
 export function handhaafBestelling(
@@ -568,19 +569,20 @@ export function handhaafBestelling(
   totaal: number,
   aantalStuks: number,
   opts: BestelOpties & { slaMinMaxOver?: boolean; budgetTotaal?: number } = {},
+  v: Vertaler = maakVertaler('nl', nl),
 ): HandhaafResultaat {
   // Min/max bestelbedrag van de organisatie. Kan overgeslagen worden als de aanroeper dit los doet.
   if (!opts.slaMinMaxOver) {
     if (org.min_bestelbedrag != null && totaal < Number(org.min_bestelbedrag)) {
       return {
         ok: false,
-        reden: `Het minimale bestelbedrag is ${euroFmt(Number(org.min_bestelbedrag))}. Voeg meer toe aan je winkelwagen.`,
+        reden: v.t('webshop.minBedrag', { bedrag: v.euro(Number(org.min_bestelbedrag)) }),
       };
     }
     if (org.max_bestelbedrag != null && totaal > Number(org.max_bestelbedrag)) {
       return {
         ok: false,
-        reden: `Het maximale bestelbedrag is ${euroFmt(Number(org.max_bestelbedrag))}. Haal iets uit je winkelwagen.`,
+        reden: v.t('webshop.maxBedrag', { bedrag: v.euro(Number(org.max_bestelbedrag)) }),
       };
     }
   }
@@ -595,11 +597,11 @@ export function handhaafBestelling(
       if (budgetBedrag > resterend) {
         const label =
           mw.budget_type === 'punten'
-            ? `${Math.round(resterend)} punten`
-            : euroFmt(resterend);
+            ? v.tn('algemeen.punten', Math.round(resterend))
+            : v.euro(resterend);
         return {
           ok: false,
-          reden: `Het totaal is hoger dan je resterende budget (${label}). Pas de winkelwagen aan.`,
+          reden: v.t('webshop.budgetBlokkeert', { budget: label }),
         };
       }
     }
@@ -607,7 +609,7 @@ export function handhaafBestelling(
     if (mw.productbudget != null && aantalStuks > Number(mw.productbudget)) {
       return {
         ok: false,
-        reden: `Je mag maximaal ${mw.productbudget} stuks per bestelling kiezen. Nu staan er ${aantalStuks} in je winkelwagen.`,
+        reden: v.t('webshop.productbudgetBlokkeert', { max: Number(mw.productbudget), n: aantalStuks }),
       };
     }
   }
@@ -629,8 +631,9 @@ export async function maakWebshopBestelling(
   opts: BestelOpties = {},
 ): Promise<{ ok: boolean; error?: string }> {
   const sb = await getServerSupabase();
-  if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
-  if (regels.length === 0) return { ok: false, error: 'Geen regels' };
+  const v = await getVertaler();
+  if (!sb) return { ok: false, error: v.t('algemeen.nietGeconfigureerd') };
+  if (regels.length === 0) return { ok: false, error: v.t('webshop.wasLeeg') };
 
   const bedrag = regels.reduce((sum, r) => sum + r.aantal * r.stukprijs, 0);
   const aantalStuks = regels.reduce((sum, r) => sum + r.aantal, 0);
@@ -644,7 +647,7 @@ export async function maakWebshopBestelling(
   const check = handhaafBestelling(org, bedrag, aantalStuks, {
     ...opts,
     budgetTotaal: verdeling.budgetTotaal,
-  });
+  }, v);
   if (!check.ok) return { ok: false, error: check.reden };
 
   const goedkeuringStatus = org.goedkeuren_bestellingen ? 'wacht' : 'niet_nodig';
@@ -667,7 +670,7 @@ export async function maakWebshopBestelling(
     })
     .select('id')
     .single();
-  if (error || !data) return { ok: false, error: error?.message ?? 'Aanmaken mislukt' };
+  if (error || !data) return { ok: false, error: error?.message ?? v.t('webshop.plaatsenMislukt') };
 
   const orderId = (data as { id: string }).id;
   const rows = regels.map((r) => ({
@@ -703,13 +706,14 @@ export async function bestelPakket(
   },
 ): Promise<{ ok: boolean; error?: string }> {
   const sb = await getServerSupabase();
-  if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
+  const v = await getVertaler();
+  if (!sb) return { ok: false, error: v.t('algemeen.nietGeconfigureerd') };
 
   // Haal het pakket en zijn producten op (RLS borgt de eigen org).
   const pakketten = await getPakketten();
   const pakket = pakketten.find((p) => p.id === pakketId);
-  if (!pakket) return { ok: false, error: 'Pakket niet gevonden' };
-  if (pakket.producten.length === 0) return { ok: false, error: 'Dit pakket bevat nog geen producten' };
+  if (!pakket) return { ok: false, error: v.t('webshop.pakketNietGevonden') };
+  if (pakket.producten.length === 0) return { ok: false, error: v.t('webshop.pakketLeeg') };
 
   // Bouw de orderregels. Het ordertotaal is de pakketprijs (één vaste prijs voor het hele pakket),
   // dus de losse regels krijgen stukprijs 0; order.bedrag draagt de pakketprijs.
@@ -731,7 +735,7 @@ export async function bestelPakket(
   const handhaafOpts: BestelOpties = pakket.buiten_budget
     ? { referentienr: opts.referentienr }
     : { medewerker: opts.medewerker, verbruikt: opts.verbruikt, referentienr: opts.referentienr };
-  const check = handhaafBestelling(org, pakketprijs, aantalStuks, handhaafOpts);
+  const check = handhaafBestelling(org, pakketprijs, aantalStuks, handhaafOpts, v);
   if (!check.ok) return { ok: false, error: check.reden };
 
   const goedkeuringStatus = org.goedkeuren_bestellingen ? 'wacht' : 'niet_nodig';
@@ -755,7 +759,7 @@ export async function bestelPakket(
     })
     .select('id')
     .single();
-  if (error || !data) return { ok: false, error: error?.message ?? 'Aanmaken mislukt' };
+  if (error || !data) return { ok: false, error: error?.message ?? v.t('webshop.plaatsenMislukt') };
 
   const orderId = (data as { id: string }).id;
   const rows = regels.map((r) => ({

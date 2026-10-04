@@ -16,8 +16,13 @@ import {
   verkochtPerProduct,
   BESLISSING_LABEL,
   BRON_LABEL,
+  ONDERDEEL_LABEL,
+  REPARATIE_STATUSSEN,
+  REPARATIE_STATUS_LABEL,
   RETOUR_BESLISSINGEN,
+  RETOUR_SOORTEN,
   RETOUR_STATUSSEN,
+  SOORT_LABEL,
   type Retourbeleid,
   type RetourMetLabels,
 } from '@/lib/kms/service';
@@ -26,7 +31,7 @@ import { Kengetal, Legenda, MaandTrend, Staven, VerdelingBalk, type Deel } from 
 import { perMaand } from '../klachten/analyse';
 import { doorloopDagen, productSleutel, retourAnalyse } from './analyse';
 import NieuwRetourFormulier from './NieuwRetourFormulier';
-import { retourBeslissing, retourCreditfactuur, retourTaak, retourVervangendeOrder, wijzigRetourStatus } from './actions';
+import { reparatieFactuur, reparatieKosten, reparatieStap, retourBeslissing, retourCreditfactuur, retourTaak, retourVervangendeOrder, wijzigRetourStatus } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Retouren', robots: { index: false, follow: false } };
@@ -36,6 +41,7 @@ type Zoek = {
   status?: string;
   reden?: string;
   beslissing?: string;
+  soort?: string;
   klant?: string;
   product?: string;
   periode?: string;
@@ -60,8 +66,14 @@ const MELDINGEN: Record<string, { tekst: string; fout?: boolean }> = {
   'taak-mislukt': { tekst: 'De taak kon niet worden aangemaakt.', fout: true },
   kies: { tekst: 'Kies eerst een beslissing.', fout: true },
   'klant-nodig': { tekst: 'Kies een klant om de retour aan te koppelen.', fout: true },
+  'reparatie-stap': { tekst: 'Reparatiestap bijgewerkt. De klant ziet de voortgang in het portaal.' },
+  kosten: { tekst: 'Reparatiekosten opgeslagen.' },
+  'kosten-ongeldig': { tekst: 'Vul een geldig bedrag in, bijvoorbeeld 12,50.', fout: true },
+  'reparatie-factuur': { tekst: 'Factuur voor de reparatie als concept klaargezet.' },
+  'reparatie-factuur-mislukt': { tekst: 'De factuur kon niet worden gemaakt. Zijn er kosten ingevuld en is er een klant gekoppeld?', fout: true },
   mislukt: { tekst: 'Opslaan is niet gelukt. Probeer het opnieuw.', fout: true },
 };
+const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n);
 
 const statusBadge: Record<string, string> = {
   aangemeld: 'badge-actie',
@@ -137,7 +149,11 @@ export default async function RetourenPage({ searchParams }: { searchParams: Pro
     .map(doorloopDagen)
     .filter((d): d is number => d != null);
   const gemDoorloop = doorloop.length ? doorloop.reduce((a, b) => a + b, 0) / doorloop.length : null;
-  const jaarAnalyse = retourAnalyse(alle.filter((r) => new Date(r.created_at) >= jaar), verkochtJaar);
+  // Reparaties tellen niet mee in het retourpercentage: daar gaat geen kleding terug in de voorraad.
+  const zonderReparaties = alle.filter((r) => r.soort !== 'reparatie');
+  const jaarAnalyse = retourAnalyse(zonderReparaties.filter((r) => new Date(r.created_at) >= jaar), verkochtJaar);
+  const reparatiesOpen = alle.filter((r) => r.soort === 'reparatie' && r.status !== 'verwerkt' && r.status !== 'afgewezen');
+  const reparatiesBijOns = reparatiesOpen.filter((r) => r.reparatie_status === 'ontvangen' || r.reparatie_status === 'in_reparatie');
   const hoogste = jaarAnalyse.producten.filter((p) => p.pct != null && p.verkocht >= 5).sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0];
 
   // ---------- filters ----------
@@ -148,6 +164,7 @@ export default async function RetourenPage({ searchParams }: { searchParams: Pro
     inPeriode(r) &&
     (!sp.reden || r.redenLabel === sp.reden || r.regels.some((rg) => rg.reden === sp.reden)) &&
     (!sp.beslissing || (sp.beslissing === '-' ? !r.beslissing : r.beslissing === sp.beslissing)) &&
+    (!sp.soort || r.soort === sp.soort) &&
     (!sp.klant || r.organisatie_id === sp.klant) &&
     (!sp.product || r.regels.some((rg) => productSleutel(rg) === sp.product)) &&
     (!q ||
@@ -163,7 +180,7 @@ export default async function RetourenPage({ searchParams }: { searchParams: Pro
   const gekozen = sp.id ? alle.find((r) => r.id === sp.id) ?? null : null;
   const huidigeQs = new URLSearchParams(Object.entries(sp).filter(([k, v]) => v && k !== 'melding' && k !== 'nieuw') as [string, string][]).toString();
   const terug = `/dashboard/retouren${huidigeQs ? `?${huidigeQs}` : ''}`;
-  const bewaar = { tab: sp.tab, reden: sp.reden, beslissing: sp.beslissing, klant: sp.klant, product: sp.product, periode: sp.periode, q: sp.q };
+  const bewaar = { tab: sp.tab, reden: sp.reden, beslissing: sp.beslissing, soort: sp.soort, klant: sp.klant, product: sp.product, periode: sp.periode, q: sp.q };
   const metParam = (wijzig: Record<string, string | null>) => {
     const p = new URLSearchParams(huidigeQs);
     for (const [k, v] of Object.entries(wijzig)) (v ? p.set(k, v) : p.delete(k));
@@ -200,10 +217,11 @@ export default async function RetourenPage({ searchParams }: { searchParams: Pro
           {melding.tekst}
           {sp.melding === 'order' && sp.nieuw && <> <Link href={`/dashboard/orders/${sp.nieuw}`} className="underline">Naar de order</Link></>}
           {sp.melding === 'credit' && sp.nieuw && <> <Link href={`/dashboard/facturen/${sp.nieuw}`} className="underline">Naar de creditfactuur</Link></>}
+          {sp.melding === 'reparatie-factuur' && sp.nieuw && <> <Link href={`/dashboard/facturen/${sp.nieuw}`} className="underline">Naar de factuur</Link></>}
         </p>
       )}
 
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <KpiTegel label="Open" waarde={String(open.length)} href="/dashboard/retouren" sub={<span className="text-warm">aangemeld of goedgekeurd, nog niet verwerkt</span>} />
         <KpiTegel
           label="Te beoordelen"
@@ -217,6 +235,12 @@ export default async function RetourenPage({ searchParams }: { searchParams: Pro
           waarde={pctTekst(jaarAnalyse.pct)}
           href="/dashboard/retouren?tab=analyse&periode=365"
           sub={<span className="text-warm">{hoogste ? `hoogst: ${hoogste.naam} ${pctTekst(hoogste.pct)}` : 'geretourneerde stuks t.o.v. verkocht, 12 mnd'}</span>}
+        />
+        <KpiTegel
+          label="Reparaties open"
+          waarde={String(reparatiesOpen.length)}
+          href="/dashboard/retouren?soort=reparatie"
+          sub={<span className="text-warm">{reparatiesBijOns.length ? `${reparatiesBijOns.length} bij ons in huis` : 'nog niet terug bij de klant'}</span>}
         />
       </div>
 
@@ -238,12 +262,13 @@ export default async function RetourenPage({ searchParams }: { searchParams: Pro
       </nav>
 
       {tab === 'analyse' ? (
-        <AnalyseRetouren retouren={alle.filter(inPeriode)} periodeDagen={periodeDagen} periode={sp.periode ?? ''} />
+        <AnalyseRetouren retouren={zonderReparaties.filter(inPeriode)} periodeDagen={periodeDagen} periode={sp.periode ?? ''} />
       ) : (
         <>
           <StatusChips basePath="/dashboard/retouren" huidig={status} statussen={RETOUR_STATUSSEN} aantallen={perStatus} bewaar={bewaar} />
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <LiveZoekveld placeholder="Zoek op klant, retournummer, order of artikel" vergeet={['melding', 'ok', 'fout', 'id', 'nieuw']} />
+            <UrlKeuze param="soort" waarde={sp.soort ?? ''} label="Soort" leegLabel="Elke soort" opties={RETOUR_SOORTEN.map((x) => ({ value: x, label: SOORT_LABEL[x] }))} />
             <UrlKeuze param="reden" waarde={sp.reden ?? ''} label="Reden" leegLabel="Elke reden" opties={[...beleid.redenen, 'Niet opgegeven'].map((r) => ({ value: r, label: r }))} />
             <UrlKeuze param="beslissing" waarde={sp.beslissing ?? ''} label="Beslissing" leegLabel="Elke beslissing" opties={[...RETOUR_BESLISSINGEN.map((b) => ({ value: b, label: BESLISSING_LABEL[b] })), { value: '-', label: 'Nog geen beslissing' }]} />
             <UrlKeuze param="periode" waarde={sp.periode ?? ''} label="Periode" leegLabel="Altijd" opties={[{ value: '30', label: 'Laatste 30 dagen' }, { value: '90', label: 'Laatste 90 dagen' }, { value: '365', label: 'Laatste jaar' }]} />
@@ -276,7 +301,10 @@ export default async function RetourenPage({ searchParams }: { searchParams: Pro
                       {lijst.map((r) => (
                         <tr key={r.id} className={gekozen?.id === r.id ? 'bg-amber-50/60' : ''}>
                           <td className="stil whitespace-nowrap">{fmt(r.created_at)}</td>
-                          <td className="whitespace-nowrap"><Link href={metParam({ id: r.id })} className="rij-link">{retourNaam(r)}</Link></td>
+                          <td className="whitespace-nowrap">
+                            <Link href={metParam({ id: r.id })} className="rij-link">{retourNaam(r)}</Link>
+                            {r.soort !== 'retour' && <span className={`ml-2 ${r.soort === 'reparatie' ? 'badge-actie' : 'badge-rust'}`}>{SOORT_LABEL[r.soort]}</span>}
+                          </td>
                           <td className="max-w-[12rem] truncate">{r.organisatie_naam ?? 'Onbekende klant'}</td>
                           <td className="max-w-[16rem] truncate">
                             {r.regels.length ? (
@@ -289,7 +317,11 @@ export default async function RetourenPage({ searchParams }: { searchParams: Pro
                             )}
                           </td>
                           <td className="max-w-[12rem] truncate stil">{r.redenLabel}</td>
-                          <td className="whitespace-nowrap">{r.beslissing ? BESLISSING_LABEL[r.beslissing] : <span className="text-ink-400">-</span>}</td>
+                          <td className="whitespace-nowrap">
+                            {r.soort === 'reparatie'
+                              ? REPARATIE_STATUS_LABEL[r.reparatie_status ?? 'aangemeld']
+                              : r.beslissing ? BESLISSING_LABEL[r.beslissing] : <span className="text-ink-400">-</span>}
+                          </td>
                           <td><span className={statusBadge[r.status] ?? 'badge-rust'}>{r.status}</span></td>
                         </tr>
                       ))}
@@ -323,7 +355,7 @@ async function RetourDetail({ r, beleid, terug, sluitUrl }: { r: RetourMetLabels
       <div className="flex items-start justify-between gap-3 border-b border-line p-4">
         <div className="min-w-0">
           <p className="text-[12px] text-warm">
-            {retourNaam(r)} · {BRON_LABEL[r.bron ?? ''] ?? 'Portaal'} · aangemeld {fmt(r.created_at)}
+            {SOORT_LABEL[r.soort]} {retourNaam(r)} · {BRON_LABEL[r.bron ?? ''] ?? 'Portaal'} · aangemeld {fmt(r.created_at)}
           </p>
           <h2 className="mt-0.5 truncate font-display text-lg font-bold text-ink-900">
             {r.organisatie_id ? <Link href={`/dashboard/klanten/${r.organisatie_id}`} className="hover:underline">{r.organisatie_naam ?? 'Klant'}</Link> : 'Onbekende klant'}
@@ -336,7 +368,7 @@ async function RetourDetail({ r, beleid, terug, sluitUrl }: { r: RetourMetLabels
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <Link href={sluitUrl} className="knop-tekst text-[12px]">Sluiten</Link>
-          <span className={statusBadge[r.status] ?? 'badge-rust'}>{r.status}</span>
+          <span className={statusBadge[r.status] ?? 'badge-rust'}>{r.soort === 'reparatie' ? REPARATIE_STATUS_LABEL[r.reparatie_status ?? 'aangemeld'] : r.status}</span>
         </div>
       </div>
 
@@ -377,6 +409,10 @@ async function RetourDetail({ r, beleid, terug, sluitUrl }: { r: RetourMetLabels
         )}
       </div>
 
+      {r.soort === 'reparatie' ? (
+        <ReparatieDetail r={r} verborgen={verborgen} actief={actief} standaard={standaardPersoon(actief, admin?.email ?? null) ?? ''} />
+      ) : (
+      <>
       {/* Beslissing */}
       <form action={retourBeslissing} className="space-y-3 border-b border-line p-4">
         {verborgen}
@@ -477,7 +513,136 @@ async function RetourDetail({ r, beleid, terug, sluitUrl }: { r: RetourMetLabels
         </div>
         {r.afgehandeld_op && <p className="text-[12px] text-warm">Afgehandeld op {fmt(r.afgehandeld_op)} ({dagenTekst(doorloopDagen(r))} na aanmelding).</p>}
       </div>
+      </>
+      )}
     </aside>
+  );
+}
+
+/** Reparatie: geen beslissing of terugbetaling, wel stappen, kosten en een taak. */
+function ReparatieDetail({
+  r,
+  verborgen,
+  actief,
+  standaard,
+}: {
+  r: RetourMetLabels;
+  verborgen: React.ReactNode;
+  actief: { id: string; naam: string }[];
+  standaard: string;
+}) {
+  const huidig = r.reparatie_status ?? 'aangemeld';
+  const index = REPARATIE_STATUSSEN.indexOf(huidig);
+  const volgende = index >= 0 && index < 3 ? REPARATIE_STATUSSEN[index + 1] : null;
+  const klaarOfVerder = huidig === 'klaar' || huidig === 'teruggestuurd' || huidig === 'opgehaald';
+  return (
+    <div className="space-y-4 p-4">
+      <div>
+        <h3 className="veld-label">Wat is er kapot</h3>
+        <p className="text-[13px] font-semibold text-ink-900">{r.reparatie_onderdeel ? ONDERDEEL_LABEL[r.reparatie_onderdeel] : 'Niet opgegeven'}</p>
+      </div>
+
+      <div>
+        <h3 className="veld-label">Voortgang</h3>
+        <ol className="mt-1 flex flex-wrap gap-1.5" aria-label="Stappen">
+          {REPARATIE_STATUSSEN.map((s, i) => (
+            <li key={s} aria-current={s === huidig ? 'step' : undefined}>
+              <form action={reparatieStap}>
+                {verborgen}
+                <input type="hidden" name="stap" value={s} />
+                <button
+                  type="submit"
+                  className={`chip ${s === huidig ? 'chip-aan' : i < index ? 'bg-green-50 text-green-800' : ''}`}
+                  title={`Zet op ${REPARATIE_STATUS_LABEL[s].toLowerCase()}`}
+                >
+                  {REPARATIE_STATUS_LABEL[s]}
+                </button>
+              </form>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {volgende && (
+            <form action={reparatieStap}>
+              {verborgen}
+              <input type="hidden" name="stap" value={volgende} />
+              <VerzendKnop className="knop-donker" bezigTekst="Bezig…">Naar: {REPARATIE_STATUS_LABEL[volgende]}</VerzendKnop>
+            </form>
+          )}
+          {huidig === 'klaar' && (
+            <>
+              <form action={reparatieStap}>
+                {verborgen}
+                <input type="hidden" name="stap" value="teruggestuurd" />
+                <VerzendKnop className="knop-donker" bezigTekst="Bezig…">Teruggestuurd</VerzendKnop>
+              </form>
+              <form action={reparatieStap}>
+                {verborgen}
+                <input type="hidden" name="stap" value="opgehaald" />
+                <VerzendKnop className="knop-stil" bezigTekst="Bezig…">Opgehaald door klant</VerzendKnop>
+              </form>
+            </>
+          )}
+        </div>
+        {r.afgehandeld_op && <p className="mt-2 text-[12px] text-warm">Terug bij de klant op {fmt(r.afgehandeld_op)} ({dagenTekst(doorloopDagen(r))} na aanmelding).</p>}
+      </div>
+
+      <div className="border-t border-line pt-3">
+        <h3 className="veld-label">Kosten</h3>
+        <form action={reparatieKosten} className="flex flex-wrap items-end gap-2">
+          {verborgen}
+          <div>
+            <label htmlFor="rp-kosten" className="sr-only">Reparatiekosten excl. btw</label>
+            <div className="flex items-center gap-1">
+              <span className="text-[13px] text-warm">€</span>
+              <input
+                id="rp-kosten"
+                name="kosten"
+                inputMode="decimal"
+                defaultValue={r.reparatie_kosten != null ? String(r.reparatie_kosten).replace('.', ',') : ''}
+                placeholder="0,00"
+                className="veld w-28"
+              />
+              <span className="text-[12px] text-warm">excl. btw</span>
+            </div>
+          </div>
+          <VerzendKnop className="knop-stil" bezigTekst="Opslaan…">Opslaan</VerzendKnop>
+        </form>
+        <p className="veld-hint">Leeg laten als het gratis is (garantie of onze fout).</p>
+        <div className="mt-2">
+          {r.reparatie_factuur_id ? (
+            <Link href={`/dashboard/facturen/${r.reparatie_factuur_id}`} className="knop-stil">Factuur bekijken</Link>
+          ) : (
+            r.reparatie_kosten != null && r.reparatie_kosten > 0 && (
+              <form action={reparatieFactuur}>
+                {verborgen}
+                <VerzendKnop className={klaarOfVerder ? 'knop-primair' : 'knop-stil'} bezigTekst="Klaarzetten…">
+                  Factuur klaarzetten ({euro(r.reparatie_kosten)})
+                </VerzendKnop>
+              </form>
+            )
+          )}
+        </div>
+      </div>
+
+      <div className="border-t border-line pt-3">
+        {r.taak_id ? (
+          <p className="text-[13px] text-warm">Er hangt een taak aan deze reparatie. <Link href="/dashboard/taken" className="font-semibold text-amber-700 hover:underline">Naar Taken</Link></p>
+        ) : (
+          <form action={retourTaak} className="flex flex-wrap items-end gap-2">
+            {verborgen}
+            <div>
+              <label className="veld-label" htmlFor="rp-persoon">Taak voor</label>
+              <select id="rp-persoon" name="persoon_id" defaultValue={standaard} className="veld w-auto">
+                <option value="">Niemand</option>
+                {actief.map((p) => <option key={p.id} value={p.id}>{p.naam}</option>)}
+              </select>
+            </div>
+            <VerzendKnop className="knop-stil" bezigTekst="Aanmaken…">Taak aanmaken</VerzendKnop>
+          </form>
+        )}
+      </div>
+    </div>
   );
 }
 

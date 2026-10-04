@@ -19,6 +19,7 @@ import {
   type Verstrekking,
 } from '@/lib/portaal/webshop';
 import { getServerSupabase } from '@/lib/portaal/supabaseServer';
+import { getVertaler } from '@/lib/i18n/portaal/server';
 
 /** Bepaalt de medewerker: eigen match, anders de gekozen medewerker uit het formulier. */
 async function bepaalMedewerker(
@@ -112,7 +113,7 @@ export async function plaatsBestelling(formData: FormData) {
   });
   if (!res.ok) {
     // res.error bevat een nette reden (budget, productbudget, min/max bedrag); toon die aan de gebruiker.
-    redirect(`/portaal/webshop?reden=${encodeURIComponent(res.error ?? 'Plaatsen mislukt')}`);
+    redirect(`/portaal/webshop?reden=${encodeURIComponent(res.error ?? (await getVertaler()).t('webshop.plaatsenMislukt'))}`);
   }
 
   redirect('/portaal/webshop?ok=1');
@@ -149,7 +150,7 @@ export async function bestelPakketActie(formData: FormData) {
     referentienr,
   });
   if (!res.ok) {
-    redirect(`/portaal/webshop?reden=${encodeURIComponent(res.error ?? 'Pakket bestellen mislukt')}`);
+    redirect(`/portaal/webshop?reden=${encodeURIComponent(res.error ?? (await getVertaler()).t('webshop.pakketMislukt'))}`);
   }
 
   redirect('/portaal/webshop?pakketok=1');

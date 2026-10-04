@@ -13,6 +13,7 @@ import {
   type Verstrekking,
 } from '@/lib/portaal/webshop';
 import { getServerSupabase } from '@/lib/portaal/supabaseServer';
+import { getVertaler } from '@/lib/i18n/portaal/server';
 
 /**
  * Plaatst een eerdere bestelling in één klik opnieuw. Haalt de orderregels van de
@@ -27,7 +28,7 @@ export async function herbestelActie(formData: FormData) {
   if (!auth.user) redirect('/portaal/login');
 
   const orderId = String(formData.get('order_id') ?? '').trim();
-  if (!orderId) redirect(`/portaal/bestellingen?fout=${encodeURIComponent('Onbekende bestelling')}`);
+  if (!orderId) redirect('/portaal/bestellingen?fout=onbekend');
 
   const org = await getMijnWebshopOrganisatie();
   if (!org) redirect('/portaal');
@@ -38,7 +39,7 @@ export async function herbestelActie(formData: FormData) {
     .select('id, ordernummer, medewerker_id')
     .eq('id', orderId)
     .maybeSingle();
-  if (!order) redirect(`/portaal/bestellingen?fout=${encodeURIComponent('Bestelling niet gevonden')}`);
+  if (!order) redirect('/portaal/bestellingen?fout=nietgevonden');
   const oorspronkelijke = order as { id: string; ordernummer: number | null; medewerker_id: string | null };
 
   // Orderregels ophalen en mappen naar het BestelRegelInput-formaat, exact zoals plaatsBestelling.
@@ -66,7 +67,7 @@ export async function herbestelActie(formData: FormData) {
     }))
     .filter((r) => r.aantal > 0);
   if (regels.length === 0) {
-    redirect(`/portaal/bestellingen?fout=${encodeURIComponent('Deze bestelling heeft geen regels om opnieuw te plaatsen')}`);
+    redirect('/portaal/bestellingen?fout=geenregels');
   }
 
   // Bepaal de medewerker: eigen match indien beschikbaar, anders die van de oorspronkelijke order.
@@ -116,7 +117,7 @@ export async function herbestelActie(formData: FormData) {
     reedsVerstrekt,
   });
   if (!res.ok) {
-    redirect(`/portaal/bestellingen?fout=${encodeURIComponent(res.error ?? 'Opnieuw bestellen mislukt')}`);
+    redirect(`/portaal/bestellingen?fout=${encodeURIComponent(res.error ?? (await getVertaler()).t('bestellingen.foutHerbestellen'))}`);
   }
 
   redirect('/portaal/bestellingen?herbesteld=1');

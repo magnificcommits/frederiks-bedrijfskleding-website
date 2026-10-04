@@ -3,14 +3,19 @@ import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { logAudit } from '@/lib/kms/audit';
 import {
+  isOnderdeel,
+  isReparatieStatus,
   isUuid,
   maakCreditfactuur,
+  maakReparatieFactuur,
   maakRetour,
   maakRetourTaak,
   maakVervangendeOrder,
   mailRetourBeslissing,
   zetRetourBeslissing,
   zetRetourStatus,
+  zetReparatieKosten,
+  zetReparatieStatus,
   RETOUR_BESLISSINGEN,
   RETOUR_STATUSSEN,
   type RetourBeslissing,
@@ -37,14 +42,21 @@ export async function nieuwRetour(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const organisatie_id = tekstOfNull(formData.get('organisatie_id'));
   if (!isUuid(organisatie_id)) redirect('/dashboard/retouren?melding=klant-nodig');
-  const keuze = tekstOfNull(formData.get('reden_keuze'));
+  const soortRuw = String(formData.get('soort') ?? 'retour');
+  const soort = soortRuw === 'reparatie' || soortRuw === 'ruilen' ? soortRuw : 'retour';
+  const onderdeelRuw = String(formData.get('onderdeel') ?? '');
+  const onderdeel = isOnderdeel(onderdeelRuw) ? onderdeelRuw : null;
+  const keuze = soort === 'reparatie' ? null : tekstOfNull(formData.get('reden_keuze'));
   const toelichting = tekstOfNull(formData.get('reden'));
   const ok = await maakRetour({
     organisatie_id,
     order_id: tekstOfNull(formData.get('order_id')),
     reden: [keuze ? `${keuze}.` : null, toelichting].filter(Boolean).join(' ') || null,
+    soort,
+    reparatie_onderdeel: onderdeel,
+    kledingstuk: tekstOfNull(formData.get('kledingstuk')),
   });
-  if (ok) await logAudit('retour_aangemaakt', { entiteit: 'retour', details: { organisatie_id } });
+  if (ok) await logAudit('retour_aangemaakt', { entiteit: 'retour', details: { organisatie_id, soort } });
   redirect(`/dashboard/retouren?melding=${ok ? 'aangemaakt' : 'mislukt'}`);
 }
 
@@ -110,4 +122,36 @@ export async function retourTaak(formData: FormData) {
   if ('fout' in res) redirect(terugUrl(formData, { melding: 'taak-mislukt' }));
   await logAudit('retour_taak', { entiteit: 'retour', entiteitId: id, details: { taak_id: res.taakId } });
   redirect(terugUrl(formData, { melding: 'taak' }));
+}
+
+export async function reparatieStap(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('retourId') ?? '').trim();
+  const stap = String(formData.get('stap') ?? '').trim();
+  if (!isUuid(id) || !isReparatieStatus(stap)) redirect(terugUrl(formData, { melding: 'mislukt' }));
+  const ok = await zetReparatieStatus(id, stap);
+  if (ok) await logAudit('reparatie_status', { entiteit: 'retour', entiteitId: id, details: { reparatie_status: stap } });
+  redirect(terugUrl(formData, { melding: ok ? 'reparatie-stap' : 'mislukt' }));
+}
+
+export async function reparatieKosten(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('retourId') ?? '').trim();
+  if (!isUuid(id)) redirect(terugUrl(formData, {}));
+  const ruw = String(formData.get('kosten') ?? '').trim().replace(',', '.');
+  const kosten = ruw === '' ? null : Number(ruw);
+  if (kosten != null && (!Number.isFinite(kosten) || kosten < 0)) redirect(terugUrl(formData, { melding: 'kosten-ongeldig' }));
+  const ok = await zetReparatieKosten(id, kosten);
+  if (ok) await logAudit('reparatie_kosten', { entiteit: 'retour', entiteitId: id, details: { reparatie_kosten: kosten } });
+  redirect(terugUrl(formData, { melding: ok ? 'kosten' : 'mislukt' }));
+}
+
+export async function reparatieFactuur(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('retourId') ?? '').trim();
+  if (!isUuid(id)) redirect(terugUrl(formData, {}));
+  const res = await maakReparatieFactuur(id);
+  if ('fout' in res) redirect(terugUrl(formData, { melding: 'reparatie-factuur-mislukt' }));
+  await logAudit('reparatie_factuur', { entiteit: 'retour', entiteitId: id, details: { factuur_id: res.factuurId } });
+  redirect(terugUrl(formData, { melding: 'reparatie-factuur', nieuw: res.factuurId }));
 }

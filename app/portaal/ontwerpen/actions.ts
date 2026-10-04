@@ -5,6 +5,7 @@ import { getMijnToegang } from '@/lib/portaal/team';
 import { getHuisstijl } from '@/lib/portaal/huisstijl';
 import { sendEmail, escapeHtml } from '@/lib/email';
 import { env } from '@/lib/env';
+import { getVertaler } from '@/lib/i18n/portaal/server';
 
 type Regel = { item_naam: string; kleur: string | null; aantal: number };
 
@@ -18,19 +19,20 @@ export async function maakOntwerpAanvraag(
   payload: { regels: Regel[]; notitie: string },
 ): Promise<{ ok: boolean; error?: string }> {
   const sb = await getServerSupabase();
-  if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
+  const { t } = await getVertaler();
+  if (!sb) return { ok: false, error: t('algemeen.nietGeconfigureerd') };
 
   const user = await getPortaalUser();
-  if (!user) return { ok: false, error: 'Je bent niet ingelogd.' };
+  if (!user) return { ok: false, error: t('ontwerpen.nietIngelogd') };
   const org = await getMijnOrganisatie();
-  if (!org) return { ok: false, error: 'Je account is nog niet aan een bedrijf gekoppeld.' };
+  if (!org) return { ok: false, error: t('ontwerpen.nietGekoppeld') };
   const toegang = await getMijnToegang();
 
   const regels = (payload.regels ?? [])
     .filter((r) => r.item_naam && Number(r.aantal) > 0)
     .slice(0, 50)
     .map((r) => ({ item_naam: String(r.item_naam).slice(0, 300), kleur: r.kleur ? String(r.kleur).slice(0, 80) : null, aantal: Math.max(1, Math.round(Number(r.aantal))) }));
-  if (regels.length === 0) return { ok: false, error: 'Voeg eerst minstens één kledingstuk toe.' };
+  if (regels.length === 0) return { ok: false, error: t('ontwerpen.geenRegels') };
 
   const door = user.email ?? toegang.email ?? 'onbekend';
   const notitie = `Ontwerpaanvraag via de pakketsamensteller. ${payload.notitie ?? ''}`.trim().slice(0, 4000);
@@ -49,7 +51,7 @@ export async function maakOntwerpAanvraag(
     })
     .select('id')
     .single();
-  if (error || !data) return { ok: false, error: error?.message ?? 'Aanmaken mislukt' };
+  if (error || !data) return { ok: false, error: error?.message ?? t('ontwerpen.aanmakenMislukt') };
   const orderId = (data as { id: string }).id;
 
   const rows = regels.map((r) => ({ order_id: orderId, item_naam: r.item_naam, kleur: r.kleur, aantal: r.aantal }));

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { portaalLogout } from './actions';
 import type { PortaalRol } from '@/lib/portaal/team';
+import { useVertaler } from '@/lib/i18n/portaal/client';
 
 /**
  * Compacte, rol-bewuste portaalnavigatie. In plaats van tien losse tabbladen die
@@ -19,6 +20,7 @@ type Entry =
 
 export default function PortaalNav({ rol, actief }: { rol: PortaalRol | null; actief?: string }) {
   const pathname = usePathname();
+  const { t } = useVertaler();
   const huidig = actief ?? pathname ?? '';
   const mag = (rollen: PortaalRol[]) => rol != null && rollen.includes(rol);
   const [open, setOpen] = useState<string | null>(null);
@@ -40,33 +42,33 @@ export default function PortaalNav({ rol, actief }: { rol: PortaalRol | null; ac
   }, []);
 
   const entries: Entry[] = [
-    { kind: 'link', href: '/portaal', label: 'Overzicht', toon: true },
-    { kind: 'link', href: '/portaal/webshop', label: 'Kleding bestellen', toon: true },
+    { kind: 'link', href: '/portaal', label: t('nav.overzicht'), toon: true },
+    { kind: 'link', href: '/portaal/webshop', label: t('nav.kledingBestellen'), toon: true },
     {
       kind: 'group',
       id: 'bestellingen',
-      label: 'Bestellingen',
+      label: t('nav.bestellingen'),
       toon: true,
       items: [
-        { href: '/portaal/bestellingen', label: 'Mijn bestellingen' },
-        { href: '/portaal/retouren', label: 'Retouren' },
+        { href: '/portaal/bestellingen', label: t('nav.mijnBestellingen') },
+        { href: '/portaal/retouren', label: t('nav.retouren') },
       ],
     },
     {
       kind: 'group',
       id: 'beheer',
-      label: 'Beheer',
+      label: t('nav.beheer'),
       toon: mag(['beheerder', 'leidinggevende']),
       items: [
-        { href: '/portaal/medewerkers', label: 'Medewerkers' },
-        { href: '/portaal/goedkeuringen', label: 'Goedkeuringen' },
-        { href: '/portaal/drukproeven', label: 'Drukproeven' },
-        { href: '/portaal/ontwerpen', label: 'Pakket ontwerpen' },
-        { href: '/portaal/facturen', label: 'Facturen' },
+        { href: '/portaal/medewerkers', label: t('nav.medewerkers') },
+        { href: '/portaal/goedkeuringen', label: t('nav.goedkeuringen') },
+        { href: '/portaal/drukproeven', label: t('nav.drukproeven') },
+        { href: '/portaal/ontwerpen', label: t('nav.pakketOntwerpen') },
+        { href: '/portaal/facturen', label: t('nav.facturen') },
       ],
     },
-    { kind: 'link', href: '/portaal/sparen', label: 'Sparen', toon: true },
-    { kind: 'link', href: '/portaal/klachten', label: 'Vragen en klachten', toon: true },
+    { kind: 'link', href: '/portaal/sparen', label: t('nav.sparen'), toon: true },
+    { kind: 'link', href: '/portaal/klachten', label: t('nav.vragenKlachten'), toon: true },
   ];
 
   const leafActief = (href: string) =>
@@ -125,7 +127,7 @@ export default function PortaalNav({ rol, actief }: { rol: PortaalRol | null; ac
           ),
         )}
       <form action={portaalLogout} className="ml-auto shrink-0">
-        <button className="font-semibold text-warm hover:text-ink-800">Uitloggen</button>
+        <button className="font-semibold text-warm hover:text-ink-800">{t('algemeen.uitloggen')}</button>
       </form>
     </nav>
   );

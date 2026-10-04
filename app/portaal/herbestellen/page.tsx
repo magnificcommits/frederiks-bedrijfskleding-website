@@ -5,17 +5,22 @@ import { getPortaalUser, getMijnOrganisatie, getKledinglijn, getMedewerkers, get
 import { getMijnToegang } from '@/lib/portaal/team';
 import PortaalNav from '../PortaalNav';
 import { vraagHerbestelling } from './actions';
+import { getVertaler } from '@/lib/i18n/portaal/server';
 
-export const metadata: Metadata = { title: 'Herbestellen', robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getVertaler();
+  return { title: t('nav.herbestellen'), robots: { index: false, follow: false } };
+}
 export const dynamic = 'force-dynamic';
 
 export default async function Herbestellen({ searchParams }: { searchParams: Promise<{ leeg?: string; fout?: string; voor?: string }> }) {
+  const { t } = await getVertaler();
   if (!isPortalConfigured) {
     return (
       <main className="container-x py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Klantportaal nog niet actief</h1>
-          <p className="mt-3 text-sm text-warm">Het portaal staat nog niet aan. Neem contact op met Frederiks Bedrijfskleding.</p>
+          <h1 className="font-display text-2xl font-extrabold text-ink-900">{t('algemeen.nietActiefTitel')}</h1>
+          <p className="mt-3 text-sm text-warm">{t('algemeen.nietActiefTekst')}</p>
         </div>
       </main>
     );
@@ -29,8 +34,8 @@ export default async function Herbestellen({ searchParams }: { searchParams: Pro
     return (
       <main className="container-x py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Je account is nog niet gekoppeld</h1>
-          <p className="mt-3 text-sm text-warm">Je bent ingelogd als {user.email}, maar dit adres hangt nog niet aan een bedrijf. Neem contact op met Frederiks Bedrijfskleding.</p>
+          <h1 className="font-display text-2xl font-extrabold text-ink-900">{t('algemeen.nietGekoppeldTitel')}</h1>
+          <p className="mt-3 text-sm text-warm">{t('algemeen.nietGekoppeldTekst', { email: user.email ?? '' })}</p>
         </div>
       </main>
     );
@@ -45,41 +50,41 @@ export default async function Herbestellen({ searchParams }: { searchParams: Pro
     <main className="container-x py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
-          <h1 className="font-display text-3xl font-extrabold text-ink-900">Herbestellen</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('algemeen.klantportaal')}</p>
+          <h1 className="font-display text-3xl font-extrabold text-ink-900">{t('nav.herbestellen')}</h1>
         </div>
       </div>
       <PortaalNav rol={toegang.rol} actief="/portaal/herbestellen" />
 
-      <p className="mt-6 max-w-2xl text-sm text-warm">Vul per kledingstuk de maat en het aantal in. Laat het aantal op 0 staan voor stukken die je niet nodig hebt. We zetten je aanvraag klaar en nemen contact op om hem af te ronden.</p>
+      <p className="mt-6 max-w-2xl text-sm text-warm">{t('herbestellen.intro')}</p>
 
       {medewerkers.length > 0 && (
         <form method="get" className="mt-6 flex flex-wrap items-end gap-3">
           <div>
-            <label htmlFor="voor" className="block text-xs font-semibold text-warm">Maten invullen voor medewerker</label>
+            <label htmlFor="voor" className="block text-xs font-semibold text-warm">{t('herbestellen.matenVoor')}</label>
             <select id="voor" name="voor" defaultValue={sp?.voor ?? ''} className="mt-1 rounded-lg border border-line px-3 py-2 text-sm">
-              <option value="">Kies een medewerker</option>
+              <option value="">{t('herbestellen.kiesMedewerker')}</option>
               {medewerkers.map((m) => <option key={m.id} value={m.id}>{m.naam}</option>)}
             </select>
           </div>
-          <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">Maten ophalen</button>
-          {gekozen && <span className="py-2 text-sm text-warm">Maten van {gekozen.naam} ingevuld.</span>}
+          <button type="submit" className="rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800">{t('herbestellen.matenOphalen')}</button>
+          {gekozen && <span className="py-2 text-sm text-warm">{t('herbestellen.matenIngevuld', { naam: gekozen.naam })}</span>}
         </form>
       )}
 
       {sp?.leeg && (
         <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink-800">
-          Je had nog geen aantallen ingevuld. Zet bij minstens een kledingstuk een aantal hoger dan 0.
+          {t('herbestellen.leeg')}
         </div>
       )}
       {sp?.fout && (
         <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink-800">
-          Er ging iets mis bij het versturen. Probeer het zo nog eens of bel ons even.
+          {t('algemeen.foutVersturen')}
         </div>
       )}
 
       {items.length === 0 ? (
-        <p className="mt-8 text-sm text-warm">Er is nog geen kledinglijn ingesteld. Frederiks stelt deze eerst voor je samen.</p>
+        <p className="mt-8 text-sm text-warm">{t('herbestellen.geenKledinglijn')}</p>
       ) : (
         <form action={vraagHerbestelling} className="mt-8 max-w-3xl">
           <div className="overflow-hidden rounded-xl border border-line bg-white shadow-soft">
@@ -87,15 +92,15 @@ export default async function Herbestellen({ searchParams }: { searchParams: Pro
               <div key={i.id} className={`flex flex-wrap items-end gap-4 p-5 ${idx > 0 ? 'border-t border-line' : ''}`}>
                 <div className="min-w-[12rem] flex-1">
                   <p className="font-bold text-ink-900">{i.naam}</p>
-                  <p className="mt-1 text-sm text-warm">{[i.merk, i.kleur].filter(Boolean).join(' · ') || 'Geen details'}</p>
+                  <p className="mt-1 text-sm text-warm">{[i.merk, i.kleur].filter(Boolean).join(' · ') || t('algemeen.geenDetails')}</p>
                 </div>
                 <div>
-                  <label htmlFor={`maat_${i.id}`} className="block text-xs font-semibold text-warm">Maat</label>
-                  <input id={`maat_${i.id}`} name={`maat_${i.id}`} type="text" placeholder="bijv. L" defaultValue={maten[i.id] ?? ''}
+                  <label htmlFor={`maat_${i.id}`} className="block text-xs font-semibold text-warm">{t('algemeen.maat')}</label>
+                  <input id={`maat_${i.id}`} name={`maat_${i.id}`} type="text" placeholder={t('herbestellen.maatPlaceholder')} defaultValue={maten[i.id] ?? ''}
                     className="mt-1 w-24 rounded-lg border border-line px-3 py-2 text-sm text-ink-900 focus:border-amber-500 focus:outline-none" />
                 </div>
                 <div>
-                  <label htmlFor={`aantal_${i.id}`} className="block text-xs font-semibold text-warm">Aantal</label>
+                  <label htmlFor={`aantal_${i.id}`} className="block text-xs font-semibold text-warm">{t('algemeen.aantal')}</label>
                   <input id={`aantal_${i.id}`} name={`aantal_${i.id}`} type="number" min={0} step={1} defaultValue={0}
                     className="mt-1 w-24 rounded-lg border border-line px-3 py-2 text-sm text-ink-900 focus:border-amber-500 focus:outline-none" />
                 </div>
@@ -104,12 +109,12 @@ export default async function Herbestellen({ searchParams }: { searchParams: Pro
           </div>
 
           <div className="mt-6">
-            <label htmlFor="notitie" className="block text-sm font-semibold text-ink-900">Opmerking (optioneel)</label>
-            <textarea id="notitie" name="notitie" rows={3} placeholder="Bijvoorbeeld een gewenste leverdatum of een vraag over een maat."
+            <label htmlFor="notitie" className="block text-sm font-semibold text-ink-900">{t('algemeen.opmerkingOptioneel')}</label>
+            <textarea id="notitie" name="notitie" rows={3} placeholder={t('herbestellen.notitiePlaceholder')}
               className="mt-2 w-full rounded-lg border border-line px-3 py-2 text-sm text-ink-900 focus:border-amber-500 focus:outline-none" />
           </div>
 
-          <button type="submit" className="btn-primary mt-6">Aanvraag versturen</button>
+          <button type="submit" className="btn-primary mt-6">{t('herbestellen.versturen')}</button>
         </form>
       )}
     </main>

@@ -19,6 +19,8 @@ next-env.d.ts
 
 .vercel
 .env*
+# Het voorbeeldbestand (zonder echte waarden) hoort wel in git.
+!.env.example
 _review-bundle.txt
 
 # Bronbestanden met klant- en inkoopgegevens. Nooit in git, en zeker niet onder
@@ -27,3 +29,6 @@ _review-bundle.txt
 
 # Werkbestanden van deze sessie; map mag weg.
 _to_delete/
+
+# Voorbeeld van de omgevingsvariabelen, zonder geheimen. Mag wel in git.
+!.env.example

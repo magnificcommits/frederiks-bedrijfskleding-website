@@ -15,6 +15,7 @@ import {
 } from '@/lib/kms/facturen';
 import { zoekArtikelen, kleurenVanArtikel, type ZoekArtikel, type ZoekKleur } from '@/lib/kms/productZoeker';
 import { logAudit } from '@/lib/kms/audit';
+import { naDefinitiefMaken } from '@/lib/kms/boekhouding';
 
 /**
  * Bedrag of aantal uit een invoerveld. Nederlandse notatie: staat er een komma,
@@ -157,6 +158,8 @@ export async function wijzigStatus(formData: FormData) {
     const ok = await zetFactuurStatus(factuurId, status);
     if (!ok) redirect('/dashboard/facturen/' + factuurId + '?fout=status');
     await logAudit('factuur_status_gewijzigd', { entiteit: 'facturen', entiteitId: factuurId, details: { voor: { status: oud.status }, na: { status } } });
+    // Uit concept gehaald: automatisch naar Moneybird als dat in Instellingen > Boekhouding aan staat.
+    if (status !== 'concept') await naDefinitiefMaken(factuurId, oud.status);
   }
   ververs(factuurId);
   redirect('/dashboard/facturen/' + factuurId + '?ok=status');
@@ -208,5 +211,6 @@ export async function mailFactuurKlantActie(formData: FormData) {
   ververs(factuurId);
   if (!r.ok) redirect('/dashboard/facturen/' + factuurId + '?mailfout=' + encodeURIComponent(r.error ?? 'Versturen mislukt.'));
   await logAudit('factuur_gemaild_klant', { entiteit: 'facturen', entiteitId: factuurId, details: { naar: email, statusVoor: oud.status } });
+  await naDefinitiefMaken(factuurId, oud.status);
   redirect('/dashboard/facturen/' + factuurId + '?ok=gemaild');
 }

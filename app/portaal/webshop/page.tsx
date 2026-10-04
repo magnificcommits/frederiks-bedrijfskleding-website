@@ -22,12 +22,13 @@ import { getServerSupabase } from '@/lib/portaal/supabaseServer';
 import WebshopClient from './WebshopClient';
 import { bestelPakketActie } from './actions';
 import Link from 'next/link';
+import { getVertaler } from '@/lib/i18n/portaal/server';
 
-export const metadata: Metadata = { title: 'Kleding bestellen', robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getVertaler();
+  return { title: t('nav.kledingBestellen'), robots: { index: false, follow: false } };
+}
 export const dynamic = 'force-dynamic';
-
-const euro = (n: number) =>
-  new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
 
 export default async function Webshop({
   searchParams,
@@ -43,12 +44,13 @@ export default async function Webshop({
     voor?: string;
   }>;
 }) {
+  const { t, euro } = await getVertaler();
   if (!isPortalConfigured) {
     return (
       <main className="container-x py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Klantportaal nog niet actief</h1>
-          <p className="mt-3 text-sm text-warm">Het portaal staat nog niet aan. Neem contact op met Frederiks Bedrijfskleding.</p>
+          <h1 className="font-display text-2xl font-extrabold text-ink-900">{t('algemeen.nietActiefTitel')}</h1>
+          <p className="mt-3 text-sm text-warm">{t('algemeen.nietActiefTekst')}</p>
         </div>
       </main>
     );
@@ -62,8 +64,8 @@ export default async function Webshop({
     return (
       <main className="container-x py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Je account is nog niet gekoppeld</h1>
-          <p className="mt-3 text-sm text-warm">Je bent ingelogd als {user.email}, maar dit adres hangt nog niet aan een bedrijf. Neem contact op met Frederiks Bedrijfskleding.</p>
+          <h1 className="font-display text-2xl font-extrabold text-ink-900">{t('algemeen.nietGekoppeldTitel')}</h1>
+          <p className="mt-3 text-sm text-warm">{t('algemeen.nietGekoppeldTekst', { email: user.email ?? '' })}</p>
         </div>
       </main>
     );
@@ -85,7 +87,7 @@ export default async function Webshop({
   const gekozen = kiesMedewerker ? medewerkers.find((m) => m.id === (sp?.voor ?? '').trim()) ?? null : null;
   const assortiment = await getAssortiment(eigenMedewerker ?? gekozen ?? null);
   const mwNaam = (m: { naam: string | null; voornaam?: string | null; achternaam?: string | null; email?: string | null }) =>
-    m.naam ?? ([m.voornaam, m.achternaam].filter(Boolean).join(' ') || m.email || 'Medewerker');
+    m.naam ?? ([m.voornaam, m.achternaam].filter(Boolean).join(' ') || m.email || t('webshop.medewerker'));
 
   // Voorkeursmaten alleen bij een eigen medewerker (per product de voorkeursvariant + plus/minus).
   const voorkeursmaten = eigenMedewerker ? await getVoorkeursmaten(eigenMedewerker.id) : {};
@@ -162,27 +164,27 @@ export default async function Webshop({
   const regulierePakketten = pakketten.filter((p) => p.soort === 'regulier');
 
   const variantLabel = (maat: string | null, kleur: string | null) =>
-    [maat, kleur].filter(Boolean).join(' · ') || 'Standaard';
+    [maat, kleur].filter(Boolean).join(' · ') || t('algemeen.standaard');
 
   return (
     <main className="container-x py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
-          <h1 className="font-display text-3xl font-extrabold text-ink-900">Kleding bestellen</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('algemeen.klantportaal')}</p>
+          <h1 className="font-display text-3xl font-extrabold text-ink-900">{t('nav.kledingBestellen')}</h1>
         </div>
       </div>
       <PortaalNav rol={toegang.rol} actief="/portaal/webshop" />
 
       <p className="mt-6 max-w-2xl text-sm text-warm">
-        Kies je producten, stel je winkelwagen samen en plaats je bestelling. We zetten hem klaar in het systeem en handelen de levering met je af.
+        {t('webshop.intro')}
       </p>
 
       {kiesMedewerker && (
         <form method="get" className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-line bg-white p-4 text-sm text-warm shadow-soft">
           <div className="min-w-[16rem] flex-1">
             <label htmlFor="voor" className="block text-xs font-semibold text-warm">
-              Bestellen voor
+              {t('webshop.bestellenVoor')}
             </label>
             <select
               id="voor"
@@ -190,7 +192,7 @@ export default async function Webshop({
               defaultValue={gekozen?.id ?? ''}
               className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
             >
-              <option value="">Geen specifieke medewerker (alle artikelen)</option>
+              <option value="">{t('webshop.geenMedewerkerAlles')}</option>
               {medewerkers.map((m) => (
                 <option key={m.id} value={m.id}>
                   {mwNaam(m)}
@@ -199,34 +201,34 @@ export default async function Webshop({
             </select>
           </div>
           <button type="submit" className="btn-primary">
-            Toon assortiment
+            {t('webshop.toonAssortiment')}
           </button>
           <p className="w-full text-xs">
             {gekozen
-              ? `Je ziet nu alleen wat ${mwNaam(gekozen)} mag bestellen.`
-              : 'Kies een medewerker om alleen zijn of haar artikelen en kleuren te zien.'}
+              ? t('webshop.jeZietNu', { naam: mwNaam(gekozen) })
+              : t('webshop.kiesMedewerkerUitleg')}
           </p>
         </form>
       )}
 
       {sp?.ok && (
         <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink-800">
-          Je bestelling is geplaatst. {org.goedkeuren_bestellingen ? 'Hij wacht nu op goedkeuring.' : 'We pakken hem op.'}
+          {t('webshop.geplaatst')} {org.goedkeuren_bestellingen ? t('webshop.geplaatstWacht') : t('webshop.geplaatstOppakken')}
         </div>
       )}
       {sp?.pakketok && (
         <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink-800">
-          Je pakket is besteld. {org.goedkeuren_bestellingen ? 'Het wacht nu op goedkeuring.' : 'We pakken het op.'}
+          {t('webshop.pakketBesteld')} {org.goedkeuren_bestellingen ? t('webshop.pakketWacht') : t('webshop.pakketOppakken')}
         </div>
       )}
       {sp?.leeg && (
         <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink-800">
-          Je winkelwagen was leeg. Voeg eerst een product toe.
+          {t('webshop.wasLeeg')}
         </div>
       )}
       {sp?.budget && (
         <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink-800">
-          Het totaal was hoger dan het resterende budget. Pas de winkelwagen aan en probeer het opnieuw.
+          {t('webshop.budgetOverschreden')}
         </div>
       )}
       {sp?.reden && (
@@ -236,15 +238,15 @@ export default async function Webshop({
       )}
       {sp?.fout && (
         <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink-800">
-          Er ging iets mis bij het plaatsen. Probeer het zo nog eens of bel ons even.
+          {t('webshop.foutPlaatsen')}
         </div>
       )}
 
       {startpakketten.length > 0 && (
         <section className="mt-10">
-          <h2 className="font-display text-xl font-extrabold text-ink-900">Startpakket</h2>
+          <h2 className="font-display text-xl font-extrabold text-ink-900">{t('webshop.startpakket')}</h2>
           <p className="mt-2 max-w-2xl text-sm text-warm">
-            Begin met je startpakket. Dit basispakket bestel je eerst, daarna kun je losse artikelen bijbestellen.
+            {t('webshop.startpakketUitleg')}
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {startpakketten.map((p) => (
@@ -256,7 +258,7 @@ export default async function Webshop({
                   )}
                 </div>
                 {p.buiten_budget && (
-                  <p className="mt-1 text-xs font-semibold text-amber-700">Telt niet mee in je budget</p>
+                  <p className="mt-1 text-xs font-semibold text-amber-700">{t('webshop.teltNietMee')}</p>
                 )}
                 {p.producten.length > 0 && (
                   <ul className="mt-3 space-y-1 text-sm text-warm">
@@ -273,7 +275,7 @@ export default async function Webshop({
                   {kiesMedewerker && (
                     <div className="mb-3">
                       <label htmlFor={`pmw-${p.id}`} className="block text-xs font-semibold text-warm">
-                        Bestellen voor medewerker
+                        {t('webshop.bestellenVoorMedewerker')}
                       </label>
                       <select
                         id={`pmw-${p.id}`}
@@ -281,7 +283,7 @@ export default async function Webshop({
                         defaultValue={gekozen?.id ?? ''}
                         className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
                       >
-                        <option value="">Geen specifieke medewerker</option>
+                        <option value="">{t('webshop.geenMedewerker')}</option>
                         {medewerkers.map((m) => (
                           <option key={m.id} value={m.id}>
                             {m.naam ?? ([m.voornaam, m.achternaam].filter(Boolean).join(' ') || m.email)}
@@ -291,7 +293,7 @@ export default async function Webshop({
                     </div>
                   )}
                   <button type="submit" className="btn-primary w-full">
-                    Startpakket bestellen
+                    {t('webshop.startpakketBestellen')}
                   </button>
                 </form>
               </div>
@@ -302,9 +304,9 @@ export default async function Webshop({
 
       {regulierePakketten.length > 0 && (
         <section className="mt-10">
-          <h2 className="font-display text-xl font-extrabold text-ink-900">Pakketten</h2>
+          <h2 className="font-display text-xl font-extrabold text-ink-900">{t('webshop.pakketten')}</h2>
           <p className="mt-2 max-w-2xl text-sm text-warm">
-            Bestel een compleet pakket in één keer voor een vaste prijs.
+            {t('webshop.pakkettenUitleg')}
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {regulierePakketten.map((p) => (
@@ -316,7 +318,7 @@ export default async function Webshop({
                   )}
                 </div>
                 {p.buiten_budget && (
-                  <p className="mt-1 text-xs font-semibold text-amber-700">Telt niet mee in je budget</p>
+                  <p className="mt-1 text-xs font-semibold text-amber-700">{t('webshop.teltNietMee')}</p>
                 )}
                 {p.producten.length > 0 && (
                   <ul className="mt-3 space-y-1 text-sm text-warm">
@@ -333,7 +335,7 @@ export default async function Webshop({
                   {kiesMedewerker && (
                     <div className="mb-3">
                       <label htmlFor={`pmwr-${p.id}`} className="block text-xs font-semibold text-warm">
-                        Bestellen voor medewerker
+                        {t('webshop.bestellenVoorMedewerker')}
                       </label>
                       <select
                         id={`pmwr-${p.id}`}
@@ -341,7 +343,7 @@ export default async function Webshop({
                         defaultValue={gekozen?.id ?? ''}
                         className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
                       >
-                        <option value="">Geen specifieke medewerker</option>
+                        <option value="">{t('webshop.geenMedewerker')}</option>
                         {medewerkers.map((m) => (
                           <option key={m.id} value={m.id}>
                             {m.naam ?? ([m.voornaam, m.achternaam].filter(Boolean).join(' ') || m.email)}
@@ -351,7 +353,7 @@ export default async function Webshop({
                     </div>
                   )}
                   <button type="submit" className="btn-primary w-full">
-                    Pakket bestellen
+                    {t('webshop.pakketBestellen')}
                   </button>
                 </form>
               </div>
@@ -385,12 +387,12 @@ export default async function Webshop({
       />
 
       <section className="mt-12">
-        <h2 className="font-display text-xl font-extrabold text-ink-900">Je bestellingen</h2>
+        <h2 className="font-display text-xl font-extrabold text-ink-900">{t('webshop.jeBestellingen')}</h2>
         <p className="mt-2 max-w-2xl text-sm text-warm">
-          Bekijk de status en details van al je bestellingen op één plek.
+          {t('webshop.jeBestellingenUitleg')}
         </p>
         <Link href="/portaal/bestellingen" className="btn-primary mt-4 inline-flex">
-          Bekijk mijn bestellingen
+          {t('webshop.bekijkBestellingen')}
         </Link>
       </section>
     </main>

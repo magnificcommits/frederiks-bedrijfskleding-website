@@ -4,9 +4,7 @@ import { useRouter } from 'next/navigation';
 import { plaatsBestelling, toggleFavorietActie } from './actions';
 import type { WebshopProduct, WebshopMedewerker } from '@/lib/portaal/webshop';
 import { useLocalStorageState } from '@/lib/portaal/useLocalStorageState';
-
-const euro = (n: number) =>
-  new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
+import { useVertaler } from '@/lib/i18n/portaal/client';
 
 const lijstprijs = (verkoopprijs: number | null, meerprijs: number | null) =>
   (Number(verkoopprijs) || 0) + (Number(meerprijs) || 0);
@@ -59,10 +57,6 @@ type Props = {
 const inputClass =
   'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 
-/** Toont een budgetbedrag als euro of als punten, afhankelijk van het budget_type. */
-const budgetLabel = (n: number, type: 'euro' | 'punten') =>
-  type === 'punten' ? `${Math.round(n)} punten` : euro(n);
-
 /**
  * Geeft de toegestane varianten voor een product op basis van de voorkeursmaat.
  * Als plus/minus is toegestaan: de voorkeursmaat plus één maat groter en kleiner.
@@ -104,6 +98,10 @@ export default function WebshopClient({
   herhaalRegels,
 }: Props) {
   const router = useRouter();
+  const { t, tn, euro } = useVertaler();
+  /** Toont een budgetbedrag als euro of als punten, afhankelijk van het budget_type. */
+  const budgetLabel = (n: number, type: 'euro' | 'punten') =>
+    type === 'punten' ? tn('algemeen.punten', Math.round(n)) : euro(n);
   const [mand, setMand] = useLocalStorageState<MandItem[]>('fb-webshop-mand', []);
   const [zoek, setZoek] = useState('');
   const favorietenSet = new Set(favorieten);
@@ -264,30 +262,30 @@ export default function WebshopClient({
       <div className="lg:col-span-2">
         {herhaalRegels && herhaalRegels.length > 0 && (
           <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink-800">
-            We hebben de regels van je eerdere bestelling in de winkelwagen gezet. Controleer ze en pas zo nodig aan voor je bestelt.
+            {t('webshop.herhaalMelding')}
           </div>
         )}
-        <h2 className="font-display text-xl font-extrabold text-ink-900">Producten</h2>
+        <h2 className="font-display text-xl font-extrabold text-ink-900">{t('webshop.producten')}</h2>
         {producten.length === 0 ? (
-          <p className="mt-3 text-sm text-warm">Er staan nog geen producten in jullie assortiment.</p>
+          <p className="mt-3 text-sm text-warm">{t('webshop.geenProducten')}</p>
         ) : (
           <>
             <div className="mt-4">
               <label htmlFor="webshop-zoek" className="sr-only">
-                Zoek in producten
+                {t('webshop.zoekLabel')}
               </label>
               <input
                 id="webshop-zoek"
                 type="search"
                 value={zoek}
                 onChange={(e) => setZoek(e.target.value)}
-                placeholder="Zoek op naam, merk of categorie"
+                placeholder={t('webshop.zoekPlaceholder')}
                 className="w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
               />
             </div>
             {zichtbareProducten.length === 0 ? (
               <p className="mt-4 text-sm text-warm">
-                Geen producten gevonden voor &ldquo;{zoek.trim()}&rdquo;.
+                {t('webshop.geenGevonden', { zoek: zoek.trim() })}
               </p>
             ) : (
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -311,8 +309,8 @@ export default function WebshopClient({
                       <input type="hidden" name="product_id" value={p.id} />
                       <button
                         type="submit"
-                        aria-label="Favoriet"
-                        title="Favoriet"
+                        aria-label={t('webshop.favoriet')}
+                        title={t('webshop.favoriet')}
                         className={`text-lg leading-none ${favorietenSet.has(p.id) ? 'text-amber-500' : 'text-warm hover:text-amber-500'}`}
                       >
                         {favorietenSet.has(p.id) ? '♥' : '♡'}
@@ -320,31 +318,31 @@ export default function WebshopClient({
                     </form>
                   </div>
                   <p className="mt-1 text-sm text-warm">
-                    {[p.merk, p.categorie].filter(Boolean).join(' · ') || 'Geen details'}
+                    {[p.merk, p.categorie].filter(Boolean).join(' · ') || t('algemeen.geenDetails')}
                   </p>
                   {heeftKorting && (
                     <p className="mt-2 inline-block rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                      {korting}% klantkorting verwerkt
+                      {t('webshop.klantkorting', { pct: korting })}
                     </p>
                   )}
                   {(() => {
                     const info = verstrekkingen[p.id];
                     if (!info) return null;
                     if (info.type === 'altijd_gratis')
-                      return <p className="mt-2 text-xs font-semibold text-green-700">Altijd gratis, telt niet mee in je budget</p>;
+                      return <p className="mt-2 text-xs font-semibold text-green-700">{t('webshop.altijdGratis')}</p>;
                     if (info.type === 'periodiek_gratis')
                       return (
                         <p className="mt-2 text-xs font-semibold text-green-700">
                           {info.resterendGratis != null && info.resterendGratis > 0
-                            ? `Nog ${info.resterendGratis} gratis deze periode`
-                            : 'Gratis aantal voor deze periode is op'}
+                            ? t('webshop.nogGratis', { n: info.resterendGratis })
+                            : t('webshop.gratisOp')}
                         </p>
                       );
                     return null;
                   })()}
                   {p.omschrijving && <p className="mt-2 text-sm text-warm">{p.omschrijving}</p>}
                   {opties.length === 0 ? (
-                    <p className="mt-4 text-sm text-warm">Geen leverbare varianten.</p>
+                    <p className="mt-4 text-sm text-warm">{t('webshop.geenVarianten')}</p>
                   ) : (
                     (() => {
                       // Splits de toegestane varianten netjes in kleuren en maten.
@@ -382,14 +380,12 @@ export default function WebshopClient({
                       return (
                         <div className="mt-4">
                           <p className="text-xs font-semibold text-warm">
-                            Kies maat{meerdereKleuren ? ' en kleur' : ''}
+                            {meerdereKleuren ? t('webshop.kiesMaatKleur') : t('webshop.kiesMaat')}
                             {heeftVoorkeur && (
                               <span className="ml-1 font-normal text-amber-700">
-                                (voorkeur: {voorkeur?.voorkeursmaat}
                                 {voorkeur?.plus_minus_toegestaan
-                                  ? ', één maat groter of kleiner mag'
-                                  : ''}
-                                )
+                                  ? t('webshop.voorkeurPlusMin', { maat: voorkeur?.voorkeursmaat ?? '' })
+                                  : t('webshop.voorkeur', { maat: voorkeur?.voorkeursmaat ?? '' })}
                               </span>
                             )}
                           </p>
@@ -440,7 +436,7 @@ export default function WebshopClient({
                                     disabled={geenVoorraad}
                                     aria-pressed={actief}
                                     title={
-                                      geenVoorraad ? 'Niet op voorraad' : undefined
+                                      geenVoorraad ? t('webshop.nietOpVoorraad') : undefined
                                     }
                                     className={`min-h-[44px] min-w-[44px] rounded-lg border px-3 py-2 text-sm font-semibold ${
                                       actief
@@ -452,7 +448,7 @@ export default function WebshopClient({
                                         : ''
                                     }`}
                                   >
-                                    {v.maat || 'Maat'}
+                                    {v.maat || t('algemeen.maat')}
                                   </button>
                                 );
                               })}
@@ -483,7 +479,7 @@ export default function WebshopClient({
                                       }`}
                                     >
                                       {[v.maat, v.kleur].filter(Boolean).join(' · ') ||
-                                        'Standaard'}
+                                        t('algemeen.standaard')}
                                     </button>
                                   );
                                 })}
@@ -498,8 +494,8 @@ export default function WebshopClient({
                             {toonVoorraad && gekozen != null && (
                               <span className="text-xs text-warm">
                                 {uitVoorraad
-                                  ? 'Niet op voorraad'
-                                  : `${Number(gekozen.voorraad) || 0} op voorraad`}
+                                  ? t('webshop.nietOpVoorraad')
+                                  : t('webshop.opVoorraad', { n: Number(gekozen.voorraad) || 0 })}
                               </span>
                             )}
                           </div>
@@ -510,10 +506,10 @@ export default function WebshopClient({
                             disabled={uitVoorraad}
                             className="btn-primary mt-3 w-full disabled:opacity-50"
                           >
-                            In winkelwagen
+                            {t('webshop.inWinkelwagen')}
                           </button>
                           {uitVoorraad && (
-                            <p className="mt-2 text-xs font-semibold text-warm">Niet op voorraad</p>
+                            <p className="mt-2 text-xs font-semibold text-warm">{t('webshop.nietOpVoorraad')}</p>
                           )}
                         </div>
                       );
@@ -530,38 +526,36 @@ export default function WebshopClient({
 
       <div id="winkelwagen" className="scroll-mt-4">
         <div className="rounded-2xl border border-line bg-white p-6 shadow-soft">
-          <h2 className="font-display text-xl font-extrabold text-ink-900">Winkelwagen</h2>
+          <h2 className="font-display text-xl font-extrabold text-ink-900">{t('webshop.winkelwagen')}</h2>
 
           {budgetActief && resterendBudget != null && (
             <p className="mt-2 text-sm text-warm">
-              Resterend budget:{' '}
+              {t('webshop.resterendBudget')}{' '}
               <span className="font-semibold text-ink-900">{budgetLabel(resterendBudget, budgetType)}</span>
             </p>
           )}
           {productbudget != null && (
             <p className="mt-1 text-sm text-warm">
-              Maximaal aantal stuks per bestelling:{' '}
+              {t('webshop.maxStuks')}{' '}
               <span className="font-semibold text-ink-900">{productbudget}</span>
             </p>
           )}
 
           {buitenAssortiment.length > 0 && (
             <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-ink-800">
-              {buitenAssortiment.length === 1 ? 'Eén artikel' : `${buitenAssortiment.length} artikelen`} in je winkelwagen{' '}
-              {buitenAssortiment.length === 1 ? 'hoort' : 'horen'} niet bij dit assortiment en{' '}
-              {buitenAssortiment.length === 1 ? 'wordt' : 'worden'} niet besteld.{' '}
+              {tn('webshop.buitenAssortiment', buitenAssortiment.length)}{' '}
               <button
                 type="button"
                 className="font-semibold underline"
                 onClick={() => setMand((m) => m.filter((x) => variantIndex.has(x.variantId)))}
               >
-                Uit winkelwagen halen
+                {t('webshop.uitWinkelwagen')}
               </button>
             </div>
           )}
 
           {leeg ? (
-            <p className="mt-4 text-sm text-warm">Je winkelwagen is nog leeg.</p>
+            <p className="mt-4 text-sm text-warm">{t('webshop.wagenLeeg')}</p>
           ) : (
             <ul className="mt-4 space-y-3">
               {mand.map((item) => {
@@ -573,7 +567,7 @@ export default function WebshopClient({
                   <li key={item.variantId} className="border-b border-line pb-3">
                     <p className="text-sm font-semibold text-ink-900">{match.product.naam}</p>
                     <p className="text-xs text-warm">
-                      {[match.variant.maat, match.variant.kleur].filter(Boolean).join(' · ') || 'Standaard'} ·{' '}
+                      {[match.variant.maat, match.variant.kleur].filter(Boolean).join(' · ') || t('algemeen.standaard')} ·{' '}
                       {heeftKorting && prijs !== lijst ? (
                         <>
                           <span className="text-warm line-through">{euro(lijst)}</span>{' '}
@@ -588,7 +582,7 @@ export default function WebshopClient({
                         <button
                           type="button"
                           onClick={() => wijzigAantal(item.variantId, item.aantal - 1)}
-                          aria-label="Eén minder"
+                          aria-label={t('webshop.eenMinder')}
                           className="flex min-h-[40px] w-11 items-center justify-center text-lg font-bold text-ink-900 hover:bg-mist"
                         >
                           &minus;
@@ -599,7 +593,7 @@ export default function WebshopClient({
                         <button
                           type="button"
                           onClick={() => wijzigAantal(item.variantId, item.aantal + 1)}
-                          aria-label="Eén meer"
+                          aria-label={t('webshop.eenMeer')}
                           className="flex min-h-[40px] w-11 items-center justify-center text-lg font-bold text-ink-900 hover:bg-mist"
                         >
                           +
@@ -610,7 +604,7 @@ export default function WebshopClient({
                         onClick={() => wijzigAantal(item.variantId, 0)}
                         className="min-h-[40px] text-xs font-semibold text-warm hover:text-ink-800"
                       >
-                        Verwijder
+                        {t('webshop.verwijder')}
                       </button>
                     </div>
                   </li>
@@ -620,37 +614,37 @@ export default function WebshopClient({
           )}
 
           {heeftKorting && (
-            <p className="mt-4 text-xs text-warm">Klantkorting van {korting}% is al in de prijzen verwerkt.</p>
+            <p className="mt-4 text-xs text-warm">{t('webshop.kortingVerwerkt', { pct: korting })}</p>
           )}
           <div className="mt-4 flex items-center justify-between">
-            <span className="text-sm text-warm">Totaal</span>
+            <span className="text-sm text-warm">{t('webshop.totaal')}</span>
             <span className="font-display font-extrabold text-ink-900">{euro(totaal)}</span>
           </div>
           {budgetActief && budgetTotaal !== totaal && (
             <div className="mt-1 flex items-center justify-between text-xs text-warm">
-              <span>Telt mee voor je budget</span>
+              <span>{t('webshop.teltMee')}</span>
               <span className="font-semibold text-ink-900">{budgetLabel(budgetTotaal, budgetType)}</span>
             </div>
           )}
 
           {overBudget && (
             <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-ink-800">
-              Het totaal is hoger dan het resterende budget. Pas de winkelwagen aan om te kunnen bestellen.
+              {t('webshop.overBudget')}
             </div>
           )}
           {overProductbudget && (
             <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-ink-800">
-              Je hebt {aantalStuks} stuks gekozen, maar maximaal {productbudget} per bestelling is toegestaan.
+              {t('webshop.overProductbudget', { n: aantalStuks, max: productbudget ?? 0 })}
             </div>
           )}
           {onderMin && (
             <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-ink-800">
-              Het minimale bestelbedrag is {euro(Number(minBestelbedrag))}. Voeg meer toe aan je winkelwagen.
+              {t('webshop.minBedrag', { bedrag: euro(Number(minBestelbedrag)) })}
             </div>
           )}
           {bovenMax && (
             <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-ink-800">
-              Het maximale bestelbedrag is {euro(Number(maxBestelbedrag))}. Haal iets uit je winkelwagen.
+              {t('webshop.maxBedrag', { bedrag: euro(Number(maxBestelbedrag)) })}
             </div>
           )}
 
@@ -660,7 +654,7 @@ export default function WebshopClient({
             {kiesMedewerker ? (
               <div className="mb-3">
                 <label htmlFor="medewerker_id" className="block text-xs font-semibold text-warm">
-                  Bestellen voor medewerker
+                  {t('webshop.bestellenVoorMedewerker')}
                 </label>
                 <select
                   id="medewerker_id"
@@ -673,7 +667,7 @@ export default function WebshopClient({
                   }}
                   className={inputClass}
                 >
-                  <option value="">Geen specifieke medewerker</option>
+                  <option value="">{t('webshop.geenMedewerker')}</option>
                   {medewerkers.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.naam ?? ([m.voornaam, m.achternaam].filter(Boolean).join(' ') || m.email)}
@@ -683,14 +677,14 @@ export default function WebshopClient({
               </div>
             ) : (
               eigenMedewerkerNaam && (
-                <p className="mb-3 text-xs text-warm">Bestelling op naam van {eigenMedewerkerNaam}.</p>
+                <p className="mb-3 text-xs text-warm">{t('webshop.opNaamVan', { naam: eigenMedewerkerNaam })}</p>
               )
             )}
 
             {gebruikReferentienr && (
               <div className="mb-3">
                 <label htmlFor="referentienr" className="block text-xs font-semibold text-warm">
-                  Referentienummer
+                  {t('webshop.referentienummer')}
                 </label>
                 <input id="referentienr" name="referentienr" type="text" className={inputClass} />
               </div>
@@ -699,14 +693,14 @@ export default function WebshopClient({
             {opmerkingBijBestelling && (
               <div className="mb-3">
                 <label htmlFor="notitie" className="block text-xs font-semibold text-warm">
-                  Opmerking (optioneel)
+                  {t('algemeen.opmerkingOptioneel')}
                 </label>
                 <textarea id="notitie" name="notitie" rows={2} className={inputClass} />
               </div>
             )}
 
             <button type="submit" disabled={geblokkeerd} className="btn-primary w-full disabled:opacity-50">
-              Bestelling plaatsen
+              {t('webshop.plaatsen')}
             </button>
           </form>
         </div>
@@ -717,7 +711,7 @@ export default function WebshopClient({
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs text-warm">
-                {aantalStuks} {aantalStuks === 1 ? 'stuk' : 'stuks'}
+                {tn('webshop.stuks', aantalStuks)}
               </p>
               <p className="font-display text-lg font-extrabold text-ink-900">{euro(totaal)}</p>
             </div>
@@ -729,7 +723,7 @@ export default function WebshopClient({
               }
               className="btn-primary min-h-[48px] flex-1 max-w-[60%] disabled:opacity-50"
             >
-              Bestellen
+              {t('webshop.bestellen')}
             </button>
           </div>
         </div>

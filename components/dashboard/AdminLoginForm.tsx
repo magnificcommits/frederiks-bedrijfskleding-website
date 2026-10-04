@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { createPortalBrowserClient } from '@/lib/portaal/supabaseBrowser';
 import { controleerLinkAanvraag } from '@/app/dashboard/actions';
 import { verifieerAdminCode } from '@/app/dashboard/auth/codeActions';
+import SsoKnoppen from '@/components/auth/SsoKnoppen';
 
 export default function AdminLoginForm() {
   const [email, setEmail] = useState('');
@@ -90,11 +91,14 @@ export default function AdminLoginForm() {
   }
 
   return (
+    <>
+    <SsoKnoppen gebied="dashboard" className="mb-5" />
     <form onSubmit={submit}>
       <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="naam@frederiks.nl" autoComplete="email"
         className="w-full rounded-md border border-line bg-white px-4 py-3 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
       {error && <p className="mt-3 text-sm font-medium text-amber-700">{error}</p>}
       <button type="submit" disabled={bezig} className="btn-primary mt-3 w-full">{bezig ? 'Versturen' : 'Inloggen met e-maillink'}</button>
     </form>
+    </>
   );
 }

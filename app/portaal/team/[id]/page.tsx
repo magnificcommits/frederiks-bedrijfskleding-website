@@ -12,19 +12,24 @@ import {
 } from '@/lib/portaal/team';
 import PortaalNav from '../../PortaalNav';
 import { zetBudgetInstellingenAction, zetVoorkeursmaatAction, verwijderVoorkeursmaatAction } from './actions';
+import { getVertaler } from '@/lib/i18n/portaal/server';
+import type { Sleutel } from '@/lib/i18n/portaal/nl';
 
-export const metadata: Metadata = { title: 'Instellingen medewerker', robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getVertaler();
+  return { title: t('nav.medewerkerInstellingen'), robots: { index: false, follow: false } };
+}
 export const dynamic = 'force-dynamic';
 
 const veld =
   'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 const label = 'block text-sm font-semibold text-ink-900';
 
-const meldingen: Record<string, { soort: 'ok' | 'fout'; tekst: string }> = {
-  budget: { soort: 'ok', tekst: 'De budgetinstellingen zijn opgeslagen.' },
-  maat: { soort: 'ok', tekst: 'De voorkeursmaat is opgeslagen.' },
-  maat_weg: { soort: 'ok', tekst: 'De voorkeursmaat is verwijderd.' },
-  opslaan: { soort: 'fout', tekst: 'Er ging iets mis bij het opslaan. Probeer het opnieuw.' },
+const meldingen: Record<string, { soort: 'ok' | 'fout'; tekst: Sleutel }> = {
+  budget: { soort: 'ok', tekst: 'medewerker.okBudget' },
+  maat: { soort: 'ok', tekst: 'medewerker.okMaat' },
+  maat_weg: { soort: 'ok', tekst: 'medewerker.okMaatWeg' },
+  opslaan: { soort: 'fout', tekst: 'algemeen.foutOpslaan' },
 };
 
 export default async function MedewerkerInstellingen({
@@ -34,12 +39,13 @@ export default async function MedewerkerInstellingen({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ ok?: string; fout?: string }>;
 }) {
+  const { t } = await getVertaler();
   if (!isPortalConfigured) {
     return (
       <main className="container-x py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl font-extrabold text-ink-900">Klantportaal nog niet actief</h1>
-          <p className="mt-3 text-sm text-warm">Neem contact op met Frederiks Bedrijfskleding.</p>
+          <h1 className="font-display text-2xl font-extrabold text-ink-900">{t('algemeen.nietActiefTitel')}</h1>
+          <p className="mt-3 text-sm text-warm">{t('algemeen.nietActiefTekst')}</p>
         </div>
       </main>
     );
@@ -58,13 +64,13 @@ export default async function MedewerkerInstellingen({
   if (!medewerker) {
     return (
       <main className="container-x py-12">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
-        <h1 className="font-display text-3xl font-extrabold text-ink-900">Medewerker niet gevonden</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('algemeen.klantportaal')}</p>
+        <h1 className="font-display text-3xl font-extrabold text-ink-900">{t('medewerker.nietGevonden')}</h1>
         <PortaalNav rol={toegang.rol} actief="/portaal/team" />
         <div className="mt-8 max-w-xl rounded-2xl border border-line bg-white p-6 shadow-soft">
-          <p className="text-sm text-warm">Deze medewerker bestaat niet of valt buiten je bedrijf.</p>
+          <p className="text-sm text-warm">{t('medewerker.nietGevondenTekst')}</p>
           <Link href="/portaal/medewerkers" className="mt-4 inline-block text-sm font-semibold text-warm hover:text-ink-800">
-            Terug naar medewerkers
+            {t('medewerker.terug')}
           </Link>
         </div>
       </main>
@@ -81,20 +87,20 @@ export default async function MedewerkerInstellingen({
   const sp = await searchParams;
   const melding = sp?.ok ? meldingen[sp.ok] : sp?.fout ? meldingen[sp.fout] : null;
   const isPunten = medewerker.budgetType === 'punten';
-  const eenheid = isPunten ? 'punten' : 'euro';
+  const eenheid = isPunten ? t('medewerker.eenheidPunten') : t('medewerker.eenheidEuro');
 
   return (
     <main className="container-x py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Klantportaal</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('algemeen.klantportaal')}</p>
           <h1 className="font-display text-3xl font-extrabold text-ink-900">{medewerker.naam}</h1>
           <p className="mt-1 text-sm text-warm">
-            {[medewerker.functie, medewerker.email].filter(Boolean).join(' · ') || 'Geen contactgegevens'}
+            {[medewerker.functie, medewerker.email].filter(Boolean).join(' · ') || t('medewerker.geenContact')}
           </p>
         </div>
         <Link href="/portaal/medewerkers" className="text-sm font-semibold text-warm hover:text-ink-800">
-          Terug naar medewerkers
+          {t('medewerker.terug')}
         </Link>
       </div>
       <PortaalNav rol={toegang.rol} actief="/portaal/team" />
@@ -107,66 +113,65 @@ export default async function MedewerkerInstellingen({
               : 'border-amber-300 bg-amber-50 text-ink-800'
           }`}
         >
-          {melding.tekst}
+          {t(melding.tekst)}
         </div>
       )}
 
       <div className="mt-8 grid gap-8 lg:grid-cols-2">
         {/* Budgetinstellingen */}
         <section className="rounded-2xl border border-line bg-white p-6 shadow-soft">
-          <h2 className="font-display text-lg font-extrabold text-ink-900">Budgetinstellingen</h2>
+          <h2 className="font-display text-lg font-extrabold text-ink-900">{t('medewerker.budgetInstellingen')}</h2>
           <p className="mt-1 text-sm text-warm">
-            Bepaal hoe het budget van deze medewerker werkt: in euro of in punten, met een startbudget en eventueel
-            een periodieke aanvulling.
+            {t('medewerker.budgetUitleg')}
           </p>
           <form action={zetBudgetInstellingenAction} className="mt-5 space-y-4">
             <input type="hidden" name="medewerker_id" value={medewerker.id} />
 
             <div>
-              <label className={label}>Budgetsoort</label>
+              <label className={label}>{t('medewerker.budgetsoort')}</label>
               <select name="budget_type" defaultValue={medewerker.budgetType} className={veld}>
-                <option value="euro">Euro</option>
-                <option value="punten">Punten</option>
+                <option value="euro">{t('medewerker.euro')}</option>
+                <option value="punten">{t('medewerker.punten')}</option>
               </select>
               <p className="mt-1 text-xs text-warm">
-                Bij punten reken je in stuks of credits in plaats van een bedrag.
+                {t('medewerker.puntenUitleg')}
               </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className={label}>Startbudget ({eenheid})</label>
+                <label className={label}>{t('medewerker.startbudget', { eenheid })}</label>
                 <input
                   name="startbudget"
                   defaultValue={medewerker.startbudget ?? ''}
                   inputMode="decimal"
-                  placeholder="bijv. 250"
+                  placeholder={t('medewerkers.budgetPlaceholder')}
                   className={veld}
                 />
               </div>
               <div>
-                <label className={label}>Huidig budget ({eenheid})</label>
+                <label className={label}>{t('medewerker.huidigBudget', { eenheid })}</label>
                 <input
                   name="budget"
                   defaultValue={medewerker.budget ?? ''}
                   inputMode="decimal"
-                  placeholder="bijv. 250"
+                  placeholder={t('medewerkers.budgetPlaceholder')}
                   className={veld}
                 />
-                <p className="mt-1 text-xs text-warm">Het saldo dat nu beschikbaar is.</p>
+                <p className="mt-1 text-xs text-warm">{t('medewerker.saldoUitleg')}</p>
               </div>
             </div>
 
             <div>
-              <label className={label}>Productbudget (aantal stuks, optioneel)</label>
+              <label className={label}>{t('medewerker.productbudget')}</label>
               <input
                 name="productbudget"
                 defaultValue={medewerker.productbudget ?? ''}
                 inputMode="numeric"
-                placeholder="bijv. 5"
+                placeholder={t('medewerker.productbudgetPlaceholder')}
                 className={veld}
               />
-              <p className="mt-1 text-xs text-warm">Maximaal aantal artikelen dat de medewerker mag bestellen.</p>
+              <p className="mt-1 text-xs text-warm">{t('medewerker.productbudgetUitleg')}</p>
             </div>
 
             <label className="flex items-start gap-2 text-sm text-ink-800">
@@ -176,30 +181,30 @@ export default async function MedewerkerInstellingen({
                 defaultChecked={medewerker.buitenBudgetToegestaan}
                 className="mt-0.5 h-4 w-4 rounded border-line text-amber-700 focus:ring-amber-200"
               />
-              <span>Bestellen boven het budget toestaan (met goedkeuring)</span>
+              <span>{t('medewerker.buitenBudget')}</span>
             </label>
 
             <div className="border-t border-line pt-4">
-              <p className="text-sm font-semibold text-ink-900">Periodiek budget</p>
-              <p className="mt-0.5 text-xs text-warm">Vul het budget automatisch aan per periode.</p>
+              <p className="text-sm font-semibold text-ink-900">{t('medewerker.periodiek')}</p>
+              <p className="mt-0.5 text-xs text-warm">{t('medewerker.periodiekUitleg')}</p>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={label}>Aanvulling ({eenheid})</label>
+                  <label className={label}>{t('medewerker.aanvulling', { eenheid })}</label>
                   <input
                     name="periodiek_budget"
                     defaultValue={medewerker.periodiekBudget ?? ''}
                     inputMode="decimal"
-                    placeholder="bijv. 100"
+                    placeholder={t('medewerker.aanvullingPlaceholder')}
                     className={veld}
                   />
                 </div>
                 <div>
-                  <label className={label}>Periode</label>
+                  <label className={label}>{t('medewerker.periode')}</label>
                   <select name="budget_periode" defaultValue={medewerker.budgetPeriode} className={veld}>
-                    <option value="geen">Geen aanvulling</option>
-                    <option value="maand">Per maand</option>
-                    <option value="kwartaal">Per kwartaal</option>
-                    <option value="jaar">Per jaar</option>
+                    <option value="geen">{t('medewerker.geenAanvulling')}</option>
+                    <option value="maand">{t('medewerker.perMaand')}</option>
+                    <option value="kwartaal">{t('medewerker.perKwartaal')}</option>
+                    <option value="jaar">{t('medewerker.perJaar')}</option>
                   </select>
                 </div>
               </div>
@@ -210,14 +215,14 @@ export default async function MedewerkerInstellingen({
                   defaultChecked={medewerker.behoudRestbudget}
                   className="mt-0.5 h-4 w-4 rounded border-line text-amber-700 focus:ring-amber-200"
                 />
-                <span>Restbudget meenemen naar de volgende periode</span>
+                <span>{t('medewerker.restbudgetMee')}</span>
               </label>
             </div>
 
             <div className="border-t border-line pt-4">
-              <label className={label}>Vestiging</label>
+              <label className={label}>{t('medewerker.vestiging')}</label>
               <select name="vestiging_id" defaultValue={medewerker.vestigingId ?? ''} className={veld}>
-                <option value="">Geen vestiging</option>
+                <option value="">{t('medewerker.geenVestiging')}</option>
                 {vestigingen.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.naam}
@@ -225,24 +230,24 @@ export default async function MedewerkerInstellingen({
                 ))}
               </select>
               {vestigingen.length === 0 && (
-                <p className="mt-1 text-xs text-warm">Nog geen vestigingen vastgelegd voor dit bedrijf.</p>
+                <p className="mt-1 text-xs text-warm">{t('medewerker.geenVestigingen')}</p>
               )}
             </div>
 
-            <button className="btn-primary w-full justify-center">Budgetinstellingen opslaan</button>
+            <button className="btn-primary w-full justify-center">{t('medewerker.budgetOpslaan')}</button>
           </form>
         </section>
 
         {/* Voorkeursmaten */}
         <section className="rounded-2xl border border-line bg-white p-6 shadow-soft">
-          <h2 className="font-display text-lg font-extrabold text-ink-900">Voorkeursmaten</h2>
+          <h2 className="font-display text-lg font-extrabold text-ink-900">{t('medewerker.voorkeursmaten')}</h2>
           <p className="mt-1 text-sm text-warm">
-            Leg per product de vaste maat van deze medewerker vast. Bij het bestellen wordt die maat dan al voorgesteld.
+            {t('medewerker.voorkeursmatenUitleg')}
           </p>
 
           {producten.length === 0 ? (
             <p className="mt-5 text-sm text-warm">
-              Nog geen producten met maten beschikbaar. Voeg eerst producten en varianten toe.
+              {t('medewerker.geenProducten')}
             </p>
           ) : (
             <div className="mt-5 space-y-4">
@@ -259,13 +264,13 @@ export default async function MedewerkerInstellingen({
                     <p className="font-semibold text-ink-900">{p.naam}</p>
                     <div className="mt-3 flex flex-wrap items-end gap-3">
                       <div className="min-w-[8rem]">
-                        <label className="block text-xs font-semibold text-warm">Maat</label>
+                        <label className="block text-xs font-semibold text-warm">{t('algemeen.maat')}</label>
                         <select
                           name="voorkeursmaat"
                           defaultValue={huidig?.voorkeursmaat ?? ''}
                           className="mt-1 rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
                         >
-                          <option value="">Geen voorkeur</option>
+                          <option value="">{t('medewerker.geenVoorkeur')}</option>
                           {p.maten.map((maat) => (
                             <option key={maat} value={maat}>
                               {maat}
@@ -280,14 +285,14 @@ export default async function MedewerkerInstellingen({
                           defaultChecked={huidig?.plusMinusToegestaan ?? false}
                           className="h-4 w-4 rounded border-line text-amber-700 focus:ring-amber-200"
                         />
-                        <span>1 maat groter of kleiner toegestaan</span>
+                        <span>{t('medewerker.plusMin')}</span>
                       </label>
                       <button className="rounded-md border border-line px-2.5 py-2 text-xs font-semibold text-ink-700 hover:bg-mist">
-                        Opslaan
+                        {t('algemeen.opslaan')}
                       </button>
                     </div>
                     {p.maten.length === 0 && (
-                      <p className="mt-2 text-xs text-warm">Voor dit product zijn nog geen maten vastgelegd.</p>
+                      <p className="mt-2 text-xs text-warm">{t('medewerker.geenMaten')}</p>
                     )}
                     {huidig && (
                       <div className="mt-2">
@@ -297,7 +302,7 @@ export default async function MedewerkerInstellingen({
                           value={huidig.id}
                           className="text-xs font-semibold text-warm hover:text-amber-800"
                         >
-                          Voorkeur verwijderen
+                          {t('medewerker.voorkeurVerwijderen')}
                         </button>
                       </div>
                     )}

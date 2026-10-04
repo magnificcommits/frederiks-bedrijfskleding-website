@@ -4,9 +4,11 @@ import { dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
 import { logWijziging } from '@/lib/kms/audit';
 import {
   getKlachtInstellingen,
+  getReparatieInstellingen,
   getRetourbeleid,
   isUuid,
   zetKlachtInstellingen,
+  zetReparatieInstellingen,
   zetRetourbeleidVelden,
   zetRetourredenen,
   zetTermijnVoorKlant,
@@ -82,6 +84,21 @@ export async function zetKlantTermijnActie(formData: FormData) {
     na: { retourtermijn_dagen: dagen && dagen > 0 ? dagen : null },
   });
   redirect(`${TERUG}?melding=${ok ? 'klant' : 'mislukt'}#per-klant`);
+}
+
+export async function zetReparatieInstellingenActie(formData: FormData) {
+  await bewaak();
+  const vorig = await getReparatieInstellingen();
+  const ruw = String(formData.get('kosten') ?? '').trim().replace(',', '.');
+  const kosten = ruw === '' ? null : Number(ruw);
+  const nieuw = {
+    aan: formData.get('aan') === 'on',
+    kosten: kosten != null && Number.isFinite(kosten) && kosten >= 0 ? kosten : null,
+    tekst: String(formData.get('tekst') ?? '').trim(),
+  };
+  const ok = await zetReparatieInstellingen(nieuw);
+  await logWijziging('reparatie_instellingen_gewijzigd', { entiteit: 'instellingen', voor: vorig, na: nieuw });
+  redirect(`${TERUG}?melding=${ok ? 'reparaties' : 'mislukt'}#reparaties`);
 }
 
 export async function zetKlachtInstellingenActie(formData: FormData) {

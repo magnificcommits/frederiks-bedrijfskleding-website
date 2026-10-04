@@ -37,6 +37,57 @@ export const BESLISSING_LABEL: Record<RetourBeslissing, string> = {
   creditnota: 'Creditnota',
 };
 
+/** Soort aanmelding: terugsturen, ruilen of laten repareren. */
+export const RETOUR_SOORTEN = ['retour', 'ruilen', 'reparatie'] as const;
+export type RetourSoort = (typeof RETOUR_SOORTEN)[number];
+export const SOORT_LABEL: Record<RetourSoort, string> = {
+  retour: 'Retour',
+  ruilen: 'Ruilen',
+  reparatie: 'Reparatie',
+};
+export function isRetourSoort(v: unknown): v is RetourSoort {
+  return typeof v === 'string' && (RETOUR_SOORTEN as readonly string[]).includes(v);
+}
+
+/** Wat er kapot is aan het kledingstuk. */
+export const REPARATIE_ONDERDELEN = ['naad', 'rits', 'knoop', 'logo', 'reflectie', 'anders'] as const;
+export type ReparatieOnderdeel = (typeof REPARATIE_ONDERDELEN)[number];
+export const ONDERDEEL_LABEL: Record<ReparatieOnderdeel, string> = {
+  naad: 'Naad of scheur',
+  rits: 'Rits',
+  knoop: 'Knoop of drukker',
+  logo: 'Logo of bedrukking',
+  reflectie: 'Reflectie',
+  anders: 'Iets anders',
+};
+export function isOnderdeel(v: unknown): v is ReparatieOnderdeel {
+  return typeof v === 'string' && (REPARATIE_ONDERDELEN as readonly string[]).includes(v);
+}
+
+/** Stappen van een reparatie. De laatste twee zijn allebei een eindstap. */
+export const REPARATIE_STATUSSEN = ['aangemeld', 'ontvangen', 'in_reparatie', 'klaar', 'teruggestuurd', 'opgehaald'] as const;
+export type ReparatieStatus = (typeof REPARATIE_STATUSSEN)[number];
+export const REPARATIE_STATUS_LABEL: Record<ReparatieStatus, string> = {
+  aangemeld: 'Aangemeld',
+  ontvangen: 'Ontvangen',
+  in_reparatie: 'In reparatie',
+  klaar: 'Klaar',
+  teruggestuurd: 'Teruggestuurd',
+  opgehaald: 'Opgehaald',
+};
+export function isReparatieStatus(v: unknown): v is ReparatieStatus {
+  return typeof v === 'string' && (REPARATIE_STATUSSEN as readonly string[]).includes(v);
+}
+/**
+ * De algemene retourstatus die bij een reparatiestap hoort, zodat tellers als
+ * "open" en "te beoordelen" ook reparaties meenemen.
+ */
+export function retourStatusVoorReparatie(stap: ReparatieStatus): RetourStatus {
+  if (stap === 'aangemeld') return 'aangemeld';
+  if (stap === 'teruggestuurd' || stap === 'opgehaald') return 'verwerkt';
+  return 'goedgekeurd';
+}
+
 export const KLACHT_STATUSSEN = ['open', 'in_behandeling', 'afgehandeld'] as const;
 export type KlachtStatus = (typeof KLACHT_STATUSSEN)[number];
 
@@ -312,6 +363,44 @@ export async function zetTermijnVoorKlant(orgId: string, dagen: number | null): 
   return zetInstelling(SLEUTEL_TERMIJN_PER_KLANT, JSON.stringify(nieuw));
 }
 
+/* ---------- reparaties ---------- */
+
+const SLEUTEL_REPARATIES = 'reparatie_instellingen';
+
+export type ReparatieInstellingen = {
+  /** Kunnen klanten in het portaal een reparatie aanmelden? */
+  aan: boolean;
+  /** Standaard reparatiekosten excl. btw; null = gratis of per keer bepalen. */
+  kosten: number | null;
+  /** Korte uitleg die de klant boven het formulier ziet. */
+  tekst: string;
+};
+
+export const STANDAARD_REPARATIETEKST =
+  'Is er iets kapot aan je werkkleding, zoals een naad, rits of drukker? Meld het hier met een foto. We laten je weten wanneer we het ophalen of hoe je het opstuurt, en sturen het gerepareerd terug.';
+
+export async function getReparatieInstellingen(): Promise<ReparatieInstellingen> {
+  const m = await leesInstellingen([SLEUTEL_REPARATIES]);
+  const r = leesJson<Partial<Record<string, unknown>>>(m.get(SLEUTEL_REPARATIES), {});
+  const kosten = Number(r?.kosten);
+  return {
+    aan: r?.aan === true,
+    kosten: r?.kosten != null && r.kosten !== '' && Number.isFinite(kosten) && kosten >= 0 ? Math.round(kosten * 100) / 100 : null,
+    tekst: typeof r?.tekst === 'string' && r.tekst.trim() ? r.tekst.trim() : STANDAARD_REPARATIETEKST,
+  };
+}
+
+export async function zetReparatieInstellingen(i: ReparatieInstellingen): Promise<boolean> {
+  return zetInstelling(
+    SLEUTEL_REPARATIES,
+    JSON.stringify({
+      aan: i.aan,
+      kosten: i.kosten != null && Number.isFinite(i.kosten) && i.kosten >= 0 ? Math.round(i.kosten * 100) / 100 : null,
+      tekst: i.tekst.trim().slice(0, 1000),
+    }),
+  );
+}
+
 export type KlachtInstellingen = { categorieen: string[]; sla: SlaUren };
 
 export async function getKlachtInstellingen(): Promise<KlachtInstellingen> {
@@ -375,6 +464,12 @@ export type RetourMetLabels = Retour & {
   taak_id: string | null;
   fotos: string[];
   regels: RetourRegelVol[];
+  /** Retour, ruilen of reparatie. Oude omruil-retouren tellen als ruilen. */
+  soort: RetourSoort;
+  reparatie_onderdeel: ReparatieOnderdeel | null;
+  reparatie_status: ReparatieStatus | null;
+  reparatie_kosten: number | null;
+  reparatie_factuur_id: string | null;
   /** Hoofdreden, herleid uit de vaste redenlijst. */
   redenLabel: string;
   aantalStuks: number;
@@ -493,6 +588,11 @@ export async function listRetouren(): Promise<RetourMetLabels[]> {
       taak_id: (r.taak_id as string) ?? null,
       fotos: leesFotos(r.fotos),
       regels,
+      soort: isRetourSoort(r.soort) ? (r.soort === 'retour' && r.beslissing === 'omruilen' ? 'ruilen' : r.soort) : r.beslissing === 'omruilen' ? 'ruilen' : 'retour',
+      reparatie_onderdeel: isOnderdeel(r.reparatie_onderdeel) ? r.reparatie_onderdeel : null,
+      reparatie_status: isReparatieStatus(r.reparatie_status) ? r.reparatie_status : r.soort === 'reparatie' ? 'aangemeld' : null,
+      reparatie_kosten: r.reparatie_kosten != null && Number.isFinite(Number(r.reparatie_kosten)) ? Number(r.reparatie_kosten) : null,
+      reparatie_factuur_id: (r.reparatie_factuur_id as string) ?? null,
       redenLabel: regelReden ?? herleidReden(r.reden as string | null, beleid.redenen),
       aantalStuks: regels.reduce((n, x) => n + x.aantal, 0),
     };
@@ -531,8 +631,13 @@ export async function maakRetour(velden: {
   reden?: string | null;
   retouradres?: string | null;
   instructie?: string | null;
+  soort?: RetourSoort;
+  reparatie_onderdeel?: ReparatieOnderdeel | null;
+  /** Wat er gerepareerd moet worden, als er geen orderregel bij hoort. */
+  kledingstuk?: string | null;
 }): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
+  const soort = velden.soort ?? 'retour';
   const rij: Record<string, unknown> = {
     organisatie_id: velden.organisatie_id ?? null,
     order_id: velden.order_id ?? null,
@@ -541,9 +646,71 @@ export async function maakRetour(velden: {
     retouradres: velden.retouradres ?? null,
     instructie: velden.instructie ?? null,
     bron: 'dashboard',
+    soort,
   };
-  const { error } = await metIdTerugval(rij, ['bron'], (x) => sb.from('retouren').insert(x));
+  if (soort === 'reparatie') {
+    const onderdeel = velden.reparatie_onderdeel ?? 'anders';
+    rij.reparatie_onderdeel = onderdeel;
+    rij.reparatie_status = 'aangemeld';
+    const kosten = (await getReparatieInstellingen()).kosten;
+    if (kosten != null) rij.reparatie_kosten = kosten;
+    if (velden.kledingstuk) {
+      rij.regels = [{ orderregel_id: '', item_naam: velden.kledingstuk.slice(0, 200), maat: null, kleur: null, aantal: 1, reden: ONDERDEEL_LABEL[onderdeel] }];
+    }
+  }
+  const { error } = await metIdTerugval(
+    rij,
+    ['bron', 'soort', 'reparatie_onderdeel', 'reparatie_status', 'reparatie_kosten'],
+    (x) => sb.from('retouren').insert(x),
+  );
   return !error;
+}
+
+/**
+ * Volgende stap van een reparatie. De algemene status loopt mee (aangemeld,
+ * goedgekeurd zolang hij bij ons is, verwerkt zodra hij terug is bij de klant).
+ */
+export async function zetReparatieStatus(id: string, stap: ReparatieStatus): Promise<boolean> {
+  const sb = kmsAdmin(); if (!sb || !isUuid(id)) return false;
+  const status = retourStatusVoorReparatie(stap);
+  const rij: Record<string, unknown> = { reparatie_status: stap, status };
+  rij.afgehandeld_op = status === 'verwerkt' ? new Date().toISOString() : null;
+  const { error } = await sb.from('retouren').update(rij).eq('id', id);
+  return !error;
+}
+
+/** Reparatiekosten (excl. btw) vastleggen of wissen. */
+export async function zetReparatieKosten(id: string, kosten: number | null): Promise<boolean> {
+  const sb = kmsAdmin(); if (!sb || !isUuid(id)) return false;
+  const schoon = kosten != null && Number.isFinite(kosten) && kosten >= 0 ? Math.round(kosten * 100) / 100 : null;
+  const { error } = await sb.from('retouren').update({ reparatie_kosten: schoon }).eq('id', id);
+  return !error;
+}
+
+/** Conceptfactuur voor de reparatiekosten: één regel, 21% btw. Blijft concept tot je hem verstuurt. */
+export async function maakReparatieFactuur(retourId: string): Promise<{ factuurId: string } | { fout: string }> {
+  const r = await getRetour(retourId);
+  if (!r) return { fout: 'Reparatie niet gevonden.' };
+  if (r.soort !== 'reparatie') return { fout: 'Dit is geen reparatie.' };
+  if (!r.organisatie_id) return { fout: 'Koppel eerst een klant aan deze reparatie.' };
+  if (r.reparatie_factuur_id) return { factuurId: r.reparatie_factuur_id };
+  if (!r.reparatie_kosten || r.reparatie_kosten <= 0) return { fout: 'Vul eerst de reparatiekosten in.' };
+  const { maakLegeFactuur, voegFactuurregelToe } = await import('@/lib/kms/facturen');
+  const factuurId = await maakLegeFactuur(r.organisatie_id);
+  if (!factuurId) return { fout: 'De factuur kon niet worden aangemaakt.' };
+  const wat = r.regels.map((x) => `${x.aantal}x ${x.item_naam}`).join(', ');
+  const onderdeel = r.reparatie_onderdeel ? ONDERDEEL_LABEL[r.reparatie_onderdeel].toLowerCase() : null;
+  await voegFactuurregelToe(factuurId, {
+    omschrijving: `Reparatie ${retourNaam(r)}${onderdeel ? ` (${onderdeel})` : ''}${wat ? `: ${wat}` : ''}`.slice(0, 300),
+    aantal: 1,
+    stukprijs: r.reparatie_kosten,
+    btw_pct: 21,
+    product_id: null,
+    maat: null,
+    kleur: null,
+  });
+  await koppelAanRetour(retourId, 'reparatie_factuur_id', factuurId);
+  return { factuurId };
 }
 
 export async function zetRetourStatus(id: string, status: string): Promise<boolean> {
@@ -597,7 +764,7 @@ export async function zetRetourBeslissing(
   return { ok: !tweede.error, zonderMigratie: true };
 }
 
-async function koppelAanRetour(id: string, kolom: 'vervolg_order_id' | 'creditfactuur_id' | 'taak_id', waarde: string) {
+async function koppelAanRetour(id: string, kolom: 'vervolg_order_id' | 'creditfactuur_id' | 'taak_id' | 'reparatie_factuur_id', waarde: string) {
   const sb = kmsAdmin(); if (!sb) return;
   await sb.from('retouren').update({ [kolom]: waarde }).eq('id', id); // faalt stil zonder migratie
 }
@@ -684,9 +851,9 @@ export async function maakRetourTaak(retourId: string, persoonId: string | null)
   const { maakTaak } = await import('@/lib/kms/taken');
   const over2 = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
   const wat =
-    r.beslissing === 'omruilen' ? 'omruilen' : r.beslissing === 'creditnota' ? 'crediteren' : r.methode === 'ophalen' ? 'ophalen' : 'afhandelen';
+    r.soort === 'reparatie' ? 'repareren' : r.beslissing === 'omruilen' ? 'omruilen' : r.beslissing === 'creditnota' ? 'crediteren' : r.methode === 'ophalen' ? 'ophalen' : 'afhandelen';
   const res = await maakTaak({
-    titel: `Retour ${retourNaam(r)} ${wat}${r.organisatie_naam ? `: ${r.organisatie_naam}` : ''}`,
+    titel: `${r.soort === 'reparatie' ? 'Reparatie' : 'Retour'} ${retourNaam(r)} ${wat}${r.organisatie_naam ? `: ${r.organisatie_naam}` : ''}`,
     organisatie_id: r.organisatie_id,
     omschrijving: [
       r.regels.map((x) => `${x.aantal}x ${x.item_naam}${x.maat ? ` (${x.maat})` : ''}`).join(', '),

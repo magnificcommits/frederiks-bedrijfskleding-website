@@ -11,8 +11,10 @@ const inputCls = 'veld';
 
 /** Elk onderdeel met eigen instellingen heeft een eigen pagina; hier staan ze bij elkaar. */
 const INSTELLING_KAARTEN = [
+  { titel: 'Boekhouding', tekst: 'Koppeling met Moneybird: facturen doorzetten, betalingen terughalen, standaard grootboek. Plus export naar andere pakketten.', href: '/dashboard/instellingen/boekhouding', knop: 'Naar boekhouding' },
   { titel: 'Maten en kleuren', tekst: 'De vaste lijst met kleuren (met kleurcode en aliassen) en maatreeksen, plus de tool om afwijkende waarden op te schonen.', href: '/dashboard/instellingen/varianten', knop: 'Naar maten en kleuren' },
-  { titel: 'Service: retouren en klachten', tekst: 'Retourtermijn (ook per klant), voorwaarden, retouradres, retourredenen, klachtcategorieën en streefreactietijden.', href: '/dashboard/instellingen/service', knop: 'Naar service' },
+  { titel: 'Service: retouren en klachten', tekst: 'Retourtermijn (ook per klant), voorwaarden, retouradres, retourredenen, reparaties, klachtcategorieën en streefreactietijden.', href: '/dashboard/instellingen/service', knop: 'Naar service' },
+  { titel: 'API en HR-koppeling', tekst: 'Klanten laten hun HR-systeem nieuwe en vertrokken medewerkers doorgeven. Uitleg, voorbeelden en foutcodes; sleutels maak je per klant onder Koppelingen.', href: '/dashboard/instellingen/api', knop: 'Naar de uitleg' },
   { titel: 'Taken en afspraken', tekst: 'Statussen, personen en de dag- en weekoverzichten per mail.', href: '/dashboard/taken/instellingen', knop: 'Naar taken' },
   { titel: 'Campagnes', tekst: 'Daglimiet voor mails, testadres, reviewlink en alles pauzeren.', href: '/dashboard/campagnes/instellingen', knop: 'Naar campagnes' },
   { titel: 'Sparen', tekst: 'Puntwaarde, vervaltermijn en de standaardinstellingen van het spaarprogramma.', href: '/dashboard/sparen/instellingen', knop: 'Naar sparen' },

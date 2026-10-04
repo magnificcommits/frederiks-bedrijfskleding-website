@@ -21,6 +21,7 @@ import AfdelingenTab from './AfdelingenTab';
 import InrichtingChecklist from './InrichtingChecklist';
 import LogosTab from './LogosTab';
 import DrukproevenTab from './DrukproevenTab';
+import KoppelingenTab from './KoppelingenTab';
 import { telDrukproevenVoorKlant } from '@/lib/kms/drukproeven';
 import { inrichtingPunten, eersteOpenStap, wizardUrl, type InrichtingTelling } from '../_delen/inrichting';
 
@@ -51,7 +52,7 @@ const SOORT_LABEL: Record<string, string> = {
 
 const inputCls = 'veld py-2 text-[15px]';
 
-const TAB_IDS = ['gegevens', 'assortiment', 'werknemers', 'afdelingen', 'contact', 'verkoop', 'logos', 'drukproeven'];
+const TAB_IDS = ['gegevens', 'assortiment', 'werknemers', 'afdelingen', 'contact', 'verkoop', 'logos', 'drukproeven', 'koppelingen'];
 
 export default async function KlantPage({
   params,
@@ -747,6 +748,7 @@ export default async function KlantPage({
     { id: 'verkoop', label: 'Verkoop', content: verkoopTab, badge: verkoop.orders.length || null },
     { id: 'logos', label: "Logo's", content: logosTab, badge: logos.length || null },
     { id: 'drukproeven', label: 'Drukproeven', content: drukproevenTab, badge: drukproefTelling.totaal || null },
+    { id: 'koppelingen', label: 'Koppelingen', content: <KoppelingenTab orgId={id} melding={startTab === 'koppelingen' ? meldingParam ?? null : null} /> },
   ];
 
   return (

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { PwaGebied } from '@/lib/pwa/apps';
 import { abonneer, installPrompt, isIos, isStandalone, vraagInstallatie } from '@/lib/pwa/installatie';
+import { useVertaler } from '@/lib/i18n/portaal/client';
 
 /**
  * Installeerhulp voor het KMS en het kledingportaal.
@@ -18,6 +19,7 @@ import { abonneer, installPrompt, isIos, isStandalone, vraagInstallatie } from '
  *  - blok:    een licht blok op de overzichtspagina van het portaal;
  *  - pagina:  alleen de knop (of "je gebruikt de app al"), voor de uitlegpagina's.
  * Wegklikken (zijbalk en blok) wordt per app in deze browser onthouden.
+ * Teksten via de portaalvertalingen; buiten het portaal (KMS) is dat Nederlands.
  */
 type Variant = 'zijbalk' | 'blok' | 'pagina';
 type Stand = 'laden' | 'app' | 'prompt' | 'ios' | 'anders';
@@ -59,13 +61,14 @@ function DeelIcoon({ className = '' }: { className?: string }) {
 /** De drie stappen voor iPhone en iPad. */
 export function IosStappen({ donker = false }: { donker?: boolean }) {
   const nadruk = donker ? 'font-semibold text-white' : 'font-semibold text-ink-900';
+  const { t, rijk } = useVertaler();
   return (
     <ol className="list-decimal space-y-1 pl-4">
       <li>
-        Tik op het Deel-icoon <DeelIcoon /> (vierkantje met pijl omhoog). Zie je het niet, tik dan eerst op <span className={nadruk}>•••</span>.
+        {rijk('installeer.ios1', { icoon: <DeelIcoon />, puntjes: <span className={nadruk}>•••</span> })}
       </li>
-      <li>Kies <span className={nadruk}>Zet op beginscherm</span>.</li>
-      <li>Tik op <span className={nadruk}>Voeg toe</span>.</li>
+      <li>{rijk('installeer.ios2', { knop: <span className={nadruk}>{t('installeer.ios2Knop')}</span> })}</li>
+      <li>{rijk('installeer.ios3', { knop: <span className={nadruk}>{t('installeer.ios3Knop')}</span> })}</li>
     </ol>
   );
 }
@@ -80,6 +83,7 @@ export default function InstalleerApp({
   /** Link naar de uitlegpagina, voor als de browser zelf niet kan installeren. */
   uitlegHref?: string;
 }) {
+  const { t } = useVertaler();
   const [stand, setStand] = useState<Stand>('laden');
   const [weg, setWeg] = useState(true);
   const [uitleg, setUitleg] = useState(false);
@@ -108,13 +112,13 @@ export default function InstalleerApp({
   // --- Uitlegpagina: alleen de knop of de bevestiging ---------------------
   if (variant === 'pagina') {
     if (stand === 'app') {
-      return <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">Je gebruikt de app al. Er hoeft niets meer te gebeuren.</p>;
+      return <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">{t('installeer.appAl')}</p>;
     }
     if (stand === 'prompt') {
       return (
         <div className="rounded-lg border border-line bg-white p-4">
-          <p className="text-sm text-ink-800">Deze browser kan de app direct installeren.</p>
-          <button type="button" onClick={installeer} disabled={bezig} className="btn-primary mt-3">Installeer als app</button>
+          <p className="text-sm text-ink-800">{t('installeer.direct')}</p>
+          <button type="button" onClick={installeer} disabled={bezig} className="btn-primary mt-3">{t('installeer.knop')}</button>
         </div>
       );
     }
@@ -131,14 +135,14 @@ export default function InstalleerApp({
         <div className="flex items-center justify-between gap-2">
           {stand === 'prompt' ? (
             <button type="button" onClick={installeer} disabled={bezig} className="font-semibold text-ink-100 hover:text-white">
-              Installeer als app
+              {t('installeer.knop')}
             </button>
           ) : (
             <button type="button" onClick={() => setUitleg((v) => !v)} aria-expanded={uitleg} className="font-semibold text-ink-100 hover:text-white">
-              Zet op beginscherm
+              {t('installeer.beginscherm')}
             </button>
           )}
-          <button type="button" onClick={wegklikken} aria-label="Niet meer tonen" title="Niet meer tonen" className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-ink-400 hover:bg-ink-800 hover:text-white">
+          <button type="button" onClick={wegklikken} aria-label={t('installeer.nietMeerTonen')} title={t('installeer.nietMeerTonen')} className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-ink-400 hover:bg-ink-800 hover:text-white">
             <span aria-hidden="true">×</span>
           </button>
         </div>
@@ -156,9 +160,9 @@ export default function InstalleerApp({
     <section className="mt-6 rounded-2xl border border-line bg-white p-5 shadow-soft">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-display text-base font-extrabold text-ink-900">Zet het portaal op je telefoon</p>
+          <p className="font-display text-base font-extrabold text-ink-900">{t('installeer.titel')}</p>
           {stand === 'prompt' && (
-            <p className="mt-1 text-sm text-warm">Dan open je het met één tik vanaf je beginscherm, zonder eerst de website op te zoeken.</p>
+            <p className="mt-1 text-sm text-warm">{t('installeer.promptTekst')}</p>
           )}
           {stand === 'ios' && (
             <div className="mt-2 text-sm text-warm">
@@ -166,18 +170,18 @@ export default function InstalleerApp({
             </div>
           )}
           {stand === 'anders' && (
-            <p className="mt-1 text-sm text-warm">Open het portaal op je telefoon en zet het op je beginscherm. Dan bestel je met één tik.</p>
+            <p className="mt-1 text-sm text-warm">{t('installeer.andersTekst')}</p>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
             {stand === 'prompt' && (
-              <button type="button" onClick={installeer} disabled={bezig} className="btn-primary">Installeer als app</button>
+              <button type="button" onClick={installeer} disabled={bezig} className="btn-primary">{t('installeer.knop')}</button>
             )}
             {uitlegHref && (
-              <Link href={uitlegHref} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Zo werkt het per apparaat</Link>
+              <Link href={uitlegHref} className="text-sm font-semibold text-amber-700 hover:text-amber-800">{t('installeer.perApparaat')}</Link>
             )}
           </div>
         </div>
-        <button type="button" onClick={wegklikken} aria-label="Niet meer tonen" title="Niet meer tonen" className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-lg text-warm hover:bg-mist hover:text-ink-900">
+        <button type="button" onClick={wegklikken} aria-label={t('installeer.nietMeerTonen')} title={t('installeer.nietMeerTonen')} className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-lg text-warm hover:bg-mist hover:text-ink-900">
           <span aria-hidden="true">×</span>
         </button>
       </div>

@@ -6,7 +6,12 @@ import {
   berichtenVoorKlant,
   getKlachtInstellingen,
   getRetourbeleid,
+  getReparatieInstellingen,
   slaDeadline,
+  ONDERDEEL_LABEL,
+  type ReparatieOnderdeel,
+  type ReparatieStatus,
+  type RetourSoort,
   termijnVoorKlant,
   voegKlachtBerichtToe,
   voorwaardenTekst,
@@ -67,12 +72,15 @@ export async function getRetourInfo(organisatieId?: string | null): Promise<{
   termijn: number;
   voorwaarden: string[];
   redenen: string[];
+  /** Reparaties: aan/uit, standaardkosten en de uitleg voor de klant (Instellingen > Service). */
+  reparatie: { aan: boolean; kosten: number | null; tekst: string };
 }> {
-  const beleid = await getRetourbeleid();
+  const [beleid, reparatie] = await Promise.all([getRetourbeleid(), getReparatieInstellingen()]);
   return {
     termijn: termijnVoorKlant(beleid, organisatieId),
     voorwaarden: voorwaardenTekst(beleid.voorwaarden),
     redenen: beleid.redenen,
+    reparatie,
   };
 }
 
@@ -100,7 +108,14 @@ export type Retour = {
   created_at: string;
   ordernummer: string | null;
   regels: RetourRegel[];
+  soort: RetourSoort;
+  reparatie_onderdeel: ReparatieOnderdeel | null;
+  reparatie_status: ReparatieStatus | null;
+  reparatie_kosten: number | null;
 };
+
+const SOORTEN: readonly string[] = ['retour', 'ruilen', 'reparatie'];
+const REPARATIESTAPPEN: readonly string[] = ['aangemeld', 'ontvangen', 'in_reparatie', 'klaar', 'teruggestuurd', 'opgehaald'];
 
 /** Maakt van de ruwe JSON-kolom `regels` een net getypeerde array. */
 function leesRetourRegels(raw: unknown): RetourRegel[] {
@@ -149,9 +164,10 @@ export async function getMijnOrders(): Promise<OrderKeuze[]> {
 export async function getMijnRetouren(): Promise<Retour[]> {
   const sb = await getServerSupabase();
   if (!sb) return [];
+  // select('*'): de reparatiekolommen verschijnen vanzelf zodra de migratie gedraaid is.
   const { data } = await sb
     .from('retouren')
-    .select('id, order_id, reden, status, retouradres, instructie, created_at, regels, orders(ordernummer)')
+    .select('*, orders(ordernummer)')
     .order('created_at', { ascending: false });
   const rijen =
     (data as unknown as {
@@ -164,8 +180,21 @@ export async function getMijnRetouren(): Promise<Retour[]> {
       created_at: string;
       regels: unknown;
       orders: { ordernummer: string | null } | null;
+      soort?: string | null;
+      beslissing?: string | null;
+      reparatie_onderdeel?: string | null;
+      reparatie_status?: string | null;
+      reparatie_kosten?: number | string | null;
     }[]) ?? [];
   return rijen.map((r) => ({
+    soort: (SOORTEN.includes(r.soort ?? '') ? (r.soort === 'retour' && r.beslissing === 'omruilen' ? 'ruilen' : r.soort) : 'retour') as RetourSoort,
+    reparatie_onderdeel: r.reparatie_onderdeel && r.reparatie_onderdeel in ONDERDEEL_LABEL ? (r.reparatie_onderdeel as ReparatieOnderdeel) : null,
+    reparatie_status: REPARATIESTAPPEN.includes(r.reparatie_status ?? '')
+      ? (r.reparatie_status as ReparatieStatus)
+      : r.soort === 'reparatie'
+        ? 'aangemeld'
+        : null,
+    reparatie_kosten: r.reparatie_kosten != null && Number.isFinite(Number(r.reparatie_kosten)) ? Number(r.reparatie_kosten) : null,
     id: r.id,
     order_id: r.order_id,
     reden: r.reden,
@@ -229,6 +258,8 @@ export async function meldRetour(input: {
   /** Gekozen reden uit de vaste lijst; komt ook op elke regel, voor de analyse per artikel en maat. */
   redenKeuze?: string | null;
   regels: RetourRegel[];
+  /** Terugsturen of ruilen; reparaties gaan via meldReparatie. */
+  soort?: 'retour' | 'ruilen';
 }): Promise<{ ok: boolean; error?: string }> {
   const sb = await getServerSupabase();
   if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
@@ -262,7 +293,7 @@ export async function meldRetour(input: {
   }
   if (schoneRegels.length === 0) return { ok: false, error: 'Kies minstens één geldig artikel om te retourneren' };
 
-  const { error } = await sb.from('retouren').insert({
+  const rij: Record<string, unknown> = {
     organisatie_id: toegang.organisatieId,
     medewerker_id: toegang.medewerkerId,
     order_id: input.orderId,
@@ -271,7 +302,90 @@ export async function meldRetour(input: {
       : input.reden,
     status: 'aangemeld',
     regels: schoneRegels,
-  });
+    soort: input.soort === 'ruilen' ? 'ruilen' : 'retour',
+  };
+  const { error } = await metIdTerugval(rij, ['soort'], (x) => sb.from('retouren').insert(x));
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/**
+ * Meldt een reparatie aan binnen de eigen organisatie. Een bestelling is optioneel
+ * (kleding van jaren terug kan ook kapot gaan); zonder bestelling noemt de klant
+ * het kledingstuk zelf. Foto's zijn al geüpload; hier komen alleen de URL's binnen.
+ * Geen terugbetaling: de reparatie doorloopt eigen stappen in het KMS.
+ */
+export async function meldReparatie(input: {
+  orderId: string | null;
+  orderregelId: string | null;
+  kledingstuk: string;
+  aantal: number;
+  onderdeel: ReparatieOnderdeel;
+  toelichting: string;
+  fotos: string[];
+}): Promise<{ ok: boolean; error?: string }> {
+  const sb = await getServerSupabase();
+  if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
+  const toegang = await getMijnToegang();
+  if (!toegang.organisatieId) return { ok: false, error: 'Geen organisatie gekoppeld' };
+  const inst = await getReparatieInstellingen();
+  if (!inst.aan) return { ok: false, error: 'Reparaties staan uit' };
+
+  // Bestelling en artikel alleen overnemen als ze echt van de eigen organisatie zijn (RLS).
+  let orderId: string | null = null;
+  let regel: RetourRegel | null = null;
+  if (input.orderId) {
+    const { data: order } = await sb
+      .from('orders')
+      .select('id, orderregels(id, item_naam, maat, kleur, aantal)')
+      .eq('id', input.orderId)
+      .maybeSingle();
+    const o = order as { id: string; orderregels: { id: string; item_naam: string | null; maat: string | null; kleur: string | null; aantal: number | null }[] | null } | null;
+    if (o) {
+      orderId = o.id;
+      const bron = (o.orderregels ?? []).find((r) => r.id === input.orderregelId);
+      if (bron) {
+        const max = bron.aantal != null && bron.aantal > 0 ? bron.aantal : 1;
+        regel = {
+          orderregel_id: bron.id,
+          item_naam: bron.item_naam ?? 'Artikel',
+          maat: bron.maat,
+          kleur: bron.kleur,
+          aantal: Math.min(Math.max(1, Math.floor(input.aantal || 1)), max),
+          reden: ONDERDEEL_LABEL[input.onderdeel],
+        };
+      }
+    }
+  }
+  if (!regel) {
+    const naam = input.kledingstuk.trim().slice(0, 200);
+    if (!naam) return { ok: false, error: 'Noem het kledingstuk' };
+    regel = {
+      orderregel_id: '',
+      item_naam: naam,
+      maat: null,
+      kleur: null,
+      aantal: Math.min(Math.max(1, Math.floor(input.aantal || 1)), 50),
+      reden: ONDERDEEL_LABEL[input.onderdeel],
+    };
+  }
+
+  const rij: Record<string, unknown> = {
+    organisatie_id: toegang.organisatieId,
+    medewerker_id: toegang.medewerkerId,
+    order_id: orderId,
+    reden: [`Reparatie: ${ONDERDEEL_LABEL[input.onderdeel]}.`, input.toelichting.trim()].filter(Boolean).join(' ').slice(0, 2000),
+    status: 'aangemeld',
+    regels: [regel],
+    soort: 'reparatie',
+    reparatie_onderdeel: input.onderdeel,
+    reparatie_status: 'aangemeld',
+    reparatie_kosten: inst.kosten,
+    fotos: input.fotos.slice(0, 3),
+  };
+  const { error } = await metIdTerugval(rij, ['soort', 'reparatie_onderdeel', 'reparatie_status', 'reparatie_kosten', 'fotos'], (x) =>
+    sb.from('retouren').insert(x),
+  );
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }

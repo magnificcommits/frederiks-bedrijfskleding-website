@@ -17,7 +17,8 @@
  * Nieuwe versie uitrollen met andere cache-regels: verhoog VERSIE. Oude caches van
  * dit gebied worden bij het activeren opgeruimd.
  */
-const VERSIE = 'v1';
+// v2: meertalige offlinepagina van het portaal (NL, EN, DE, PL).
+const VERSIE = 'v2';
 const SCOPE_PAD = new URL(self.registration.scope).pathname.replace(/\/$/, '');
 const GEBIED = SCOPE_PAD.startsWith('/dashboard') ? 'kms' : 'portaal';
 const VOORVOEGSEL = `fb-${GEBIED}-`;

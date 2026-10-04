@@ -173,6 +173,7 @@ export default async function Operatie({ periode, norm }: { periode: Periode; no
             <LegeStaat titel="Geen retouren in deze periode" tekst="Retouren komen binnen via het retourportaal of zet je zelf klaar. Hier zie je dan de redenen, zodat je ziet of het om maat, kwaliteit of iets anders gaat." />
           ) : (
             <div className="space-y-4">
+              {d.retouren.perSoort.length > 1 && <Tellingen titel="Soort (retour, ruilen, reparatie)" lijst={d.retouren.perSoort} />}
               <Tellingen titel="Reden" lijst={d.retouren.perReden} />
               <Tellingen titel="Status" lijst={d.retouren.perStatus} />
             </div>

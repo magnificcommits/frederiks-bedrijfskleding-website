@@ -2,6 +2,7 @@
   "regions": ["fra1"],
   "crons": [
     { "path": "/api/cron/campagnes", "schedule": "0 9 * * 1-5" },
-    { "path": "/api/cron/nieuwsbrief", "schedule": "0 6 * * *" }
+    { "path": "/api/cron/nieuwsbrief", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/moneybird", "schedule": "30 5 * * *" }
   ]
 }

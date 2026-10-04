@@ -54,6 +54,12 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
           {verlopen && (
             <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">Je bent na 8 uur automatisch uitgelogd. Log opnieuw in.</p>
           )}
+          {sp?.fout === 'geen-toegang' && (
+            <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">Dit account heeft nog geen toegang tot het KMS. Vraag de eigenaar om je als beheerder toe te voegen.</p>
+          )}
+          {(sp?.fout === 'sso' || sp?.fout === 'sso-geannuleerd') && (
+            <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">{sp.fout === 'sso' ? 'Inloggen met Microsoft of Google is niet gelukt.' : 'Inloggen is afgebroken.'} Probeer het opnieuw of log in met je e-mailadres.</p>
+          )}
           {sp?.fout === 'link' && (
             <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">De inloglink werkte niet of is verlopen. Vraag hieronder een nieuwe aan.</p>
           )}

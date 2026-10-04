@@ -33,6 +33,13 @@ export type Factuur = {
   toegepaste_prijsafspraken: string | null;
   gemaild_op: string | null;
   created_at: string;
+  /** Koppeling met de boekhouding (migratie 20261005_boekhouding_koppeling.sql); zie lib/kms/boekhouding.ts. */
+  moneybird_factuur_id?: string | null;
+  moneybird_status?: string | null;
+  moneybird_gesynct_op?: string | null;
+  moneybird_totaal?: number | null;
+  boekhouding_fout?: string | null;
+  boekhouding_status?: string | null;
 };
 
 export type Factuurregel = {
@@ -250,6 +257,8 @@ export type FactuurLijstFilters = {
   bedragMax?: number | null;
   /** Wel of niet naar de boekhouder gemaild. */
   gemaild?: 'ja' | 'nee' | null;
+  /** Boekhoudstatus: in Moneybird, nog niet doorgezet (alleen definitieve facturen) of fout. */
+  boekhouding?: 'doorgezet' | 'niet' | 'fout' | null;
 };
 
 /** Eén pagina facturen (standaard nieuwste eerst) met optioneel statusfilter, plus het totaal aantal rijen voor paginering. */
@@ -274,6 +283,9 @@ export async function listFacturenPaged(opts: { pagina: number; perPagina: numbe
   if (f.bedragMax != null) q = q.lte('bedrag_incl', f.bedragMax);
   if (f.gemaild === 'ja') q = q.not('gemaild_op', 'is', null);
   if (f.gemaild === 'nee') q = q.is('gemaild_op', null);
+  if (f.boekhouding === 'doorgezet') q = q.not('moneybird_factuur_id', 'is', null);
+  if (f.boekhouding === 'fout') q = q.eq('boekhouding_status', 'fout');
+  if (f.boekhouding === 'niet') q = q.is('moneybird_factuur_id', null).neq('status', 'concept');
   // Zoeken op klant (naam, plaats, klantnummer, contactpersoon; elk woord moet
   // passen) of op factuurnummer. De klant zit in een join, en PostgREST kan daar
   // niet zonder meer op filteren; daarom eerst de klant-ids.

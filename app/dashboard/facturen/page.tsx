@@ -13,6 +13,9 @@ import { bedragParam, bewaarParams, isUuid, lijstUrl, param, periodeParam, sleut
 import SortableTh from '@/components/dashboard/SortableTh';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { factuurVanOrder, legeFactuur, zetBoekhouderEmailActie, mailFacturenActie, factureerAlleActie, markeerBetaaldActie } from './actions';
+import { bulkDoorzettenActie } from './boekhoudActions';
+import BoekhoudBadge from '@/components/dashboard/BoekhoudBadge';
+import { isMoneybirdGeconfigureerd } from '@/lib/kms/moneybird';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Facturen', robots: { index: false, follow: false } };
@@ -24,6 +27,17 @@ function fmt(d: string | null) {
   if (!d) return '-';
   try { return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' }); }
   catch { return d; }
+}
+
+/** Begin en eind (inclusief) van het vorige kwartaal, als standaard voor de export. */
+function vorigKwartaal(): { van: string; tot: string } {
+  const nu = new Date();
+  const k = Math.floor(nu.getUTCMonth() / 3);
+  const jaar = k === 0 ? nu.getUTCFullYear() - 1 : nu.getUTCFullYear();
+  const startMaand = k === 0 ? 9 : (k - 1) * 3;
+  const van = new Date(Date.UTC(jaar, startMaand, 1));
+  const tot = new Date(Date.UTC(jaar, startMaand + 3, 0));
+  return { van: van.toISOString().slice(0, 10), tot: tot.toISOString().slice(0, 10) };
 }
 
 const statusBadge: Record<string, string> = {
@@ -56,6 +70,7 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
   const gemaild = param(sp, 'gemaild');
   const mailfout = param(sp, 'mailfout');
   const aantal = param(sp, 'aantal');
+  const bkok = param(sp, 'melding');
   const sort = param(sp, 'sort') || undefined;
   const zoekTerm = param(sp, 'zoek');
   const huidigePagina = Math.max(1, Number(param(sp, 'pagina')) || 1);
@@ -73,6 +88,7 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
     bedragMin: bedrag.min,
     bedragMax: bedrag.max,
     gemaild: gemaildFilter,
+    boekhouding: (['doorgezet', 'niet', 'fout'] as const).find((w) => w === param(sp, 'boekhouding')) ?? null,
   };
 
   const [{ rijen: facturen, totaal }, organisaties, factureerbaar, boekhouderEmail, perStatus, klantNaam, admin] = await Promise.all([
@@ -103,7 +119,19 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
         { waarde: 'nee', label: 'Nog niet gemaild' },
       ],
     },
+    {
+      soort: 'select',
+      param: 'boekhouding',
+      label: 'Boekhouding',
+      opties: [
+        { waarde: 'doorgezet', label: 'In Moneybird' },
+        { waarde: 'niet', label: 'Nog niet doorgezet' },
+        { waarde: 'fout', label: 'Fout bij doorzetten' },
+      ],
+    },
   ];
+  const moneybird = isMoneybirdGeconfigureerd();
+  const exportPeriode = vorigKwartaal();
   const filterActief = filterDefs.some((d) => sleutelsVan(d).some((k) => param(sp, k))) || Boolean(status || zoekTerm);
   const basis = '/dashboard/facturen';
   const vandaag = new Date().toISOString().slice(0, 10);
@@ -171,6 +199,9 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
       {mailfout && (
         <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-800">{mailfout}</p>
       )}
+      {bkok && (
+        <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">{bkok}</p>
+      )}
       {ok === 'boekhouder' && (
         <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">E-mailadres van de boekhouder opgeslagen.</p>
       )}
@@ -188,6 +219,31 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
           </div>
           <button type="submit" className="knop-donker">Opslaan</button>
         </form>
+      </div>
+
+      <div className="mt-4 panel p-4">
+        <h2 className="font-display text-lg font-bold text-ink-900">Exporteren voor de boekhouding</h2>
+        <p className="mt-1 text-xs text-warm">
+          Alle definitieve facturen (geen concepten) met een factuurdatum in de gekozen periode. De CSV opent direct in Excel; de ZIP bevat per factuur een UBL-bestand dat Exact Online, e-Boekhouden, Snelstart en de accountant kunnen inlezen.
+        </p>
+        <form action="/dashboard/facturen/export" method="get" className="mt-4 flex flex-wrap items-end gap-3">
+          <div>
+            <label htmlFor="export-van" className="veld-label">Van</label>
+            <input id="export-van" type="date" name="van" required defaultValue={exportPeriode.van} className={inputCls} />
+          </div>
+          <div>
+            <label htmlFor="export-tot" className="veld-label">Tot en met</label>
+            <input id="export-tot" type="date" name="tot" required defaultValue={exportPeriode.tot} className={inputCls} />
+          </div>
+          <button type="submit" name="formaat" value="csv" className="knop-donker">CSV downloaden</button>
+          <button type="submit" name="formaat" value="ubl" className="knop-stil">UBL-bestanden (ZIP)</button>
+        </form>
+        {!moneybird && (
+          <p className="mt-3 text-xs text-warm">
+            Werk je met Moneybird? Dan kun je facturen ook rechtstreeks doorzetten.{' '}
+            <Link href="/dashboard/instellingen/boekhouding" className="font-semibold text-amber-700 hover:text-amber-800">Koppeling aanzetten</Link>
+          </p>
+        )}
       </div>
 
       <FilterBalk filters={filterDefs} opslag="facturen" gebruiker={admin?.email} wisOok={['status', 'zoek']}>
@@ -208,6 +264,9 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
           <form action={mailFacturenActie}>
             <div className="mb-3 flex flex-wrap justify-end gap-2">
               <button type="submit" formAction={markeerBetaaldActie} className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink-700 hover:bg-mist">Markeer geselecteerde als betaald</button>
+              {moneybird && (
+                <button type="submit" formAction={bulkDoorzettenActie} className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink-700 hover:bg-mist">Doorzetten naar Moneybird</button>
+              )}
               <button type="submit" className="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700">Mail geselecteerde naar boekhouder</button>
             </div>
             <div className="panel">
@@ -222,6 +281,7 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
                     <SortableTh label="Bedrag incl." col="bedrag_incl" />
                     <SortableTh label="Status" col="status" />
                     <th className="hidden sm:table-cell">Boekhouder</th>
+                    <th className="hidden md:table-cell">Boekhouding</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -251,6 +311,9 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
                         ) : (
                           <span className="text-xs text-warm">-</span>
                         )}
+                      </td>
+                      <td className="hidden whitespace-nowrap md:table-cell">
+                        {f.status === 'concept' ? <span className="text-xs text-warm">-</span> : <BoekhoudBadge factuur={f} />}
                       </td>
                     </tr>
                   ))}

@@ -1,5 +1,5 @@
 import { site } from '@/content/site';
-import { plaatsen } from '@/content/plaatsen';
+import { plaatsen, KERNSTRAAL_KM } from '@/content/plaatsen';
 
 const dayMap: Record<string, string> = {
   Mo: 'Monday', Tu: 'Tuesday', We: 'Wednesday', Th: 'Thursday', Fr: 'Friday',
@@ -38,7 +38,61 @@ export function localBusinessJsonLd() {
     // Geen vaste aggregateRating meer: components/Reviews.tsx voegt hem toe zodra er
     // echte, gepubliceerde beoordelingen uit de database zijn.
     sameAs: [site.social.linkedin, site.social.facebook].filter(Boolean),
-    areaServed: ['Achterhoek', ...plaatsen.map((p) => p.name)],
+    areaServed: werkgebied(),
+    hasMap: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${site.name} ${site.address.street} ${site.address.city}`)}`,
+    logo: `${site.url}/Frederiks-bedrijfskleding-logo.jpg`,
+    image: `${site.url}/Frederiks-bedrijfskleding-hengelo-.jpg`,
+    slogan: site.tagline,
+    founder: { '@id': `${site.url}/#jessi` },
+    knowsAbout: KENNIS,
+    brand: site.brands.map((b) => ({ '@type': 'Brand', name: b })),
+    hasOfferCatalog: {
+      '@type': 'OfferCatalog',
+      name: 'Diensten',
+      itemListElement: [
+        'Werkkleding en bedrijfskleding op maat per functie',
+        'Veiligheidsschoenen S1 tot S7',
+        'Logo bedrukken en borduren in eigen huis',
+        'Passen op locatie',
+        'Gratis online kledingbeheer voor zakelijke klanten',
+      ].map((n) => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', name: n } })),
+    },
+  };
+}
+
+/** Onderwerpen waarop het bedrijf aantoonbaar deskundig is (entiteit voor LLM's). */
+const KENNIS = [
+  'Bedrijfskleding', 'Werkkleding', 'Veiligheidsschoenen', 'EN ISO 20345', 'EN ISO 20471',
+  'EN ISO 11611', 'EN ISO 11612', 'Persoonlijke beschermingsmiddelen', 'Textielbedrukking', 'Borduren',
+  'Kledingbeheer', 'Achterhoek',
+];
+
+/** Werkgebied: een cirkel van 24 km rond de showroom plus de plaatsen met eigen pagina. */
+export function werkgebied() {
+  return [
+    {
+      '@type': 'GeoCircle',
+      geoMidpoint: { '@type': 'GeoCoordinates', latitude: site.address.geo.lat, longitude: site.address.geo.lng },
+      geoRadius: KERNSTRAAL_KM * 1000,
+    },
+    { '@type': 'AdministrativeArea', name: 'Achterhoek' },
+    ...plaatsen.map((p) => ({ '@type': 'City', name: p.name, url: `${site.url}/regio/${p.slug}` })),
+  ];
+}
+
+/** Person-entiteit voor de eigenaar: auteur van de kennisbank, gezicht van het bedrijf. */
+export function personJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    '@id': `${site.url}/#jessi`,
+    name: site.owner,
+    jobTitle: 'Eigenaar en kledingadviseur',
+    worksFor: { '@id': `${site.url}/#bedrijf` },
+    url: `${site.url}/over-ons`,
+    sameAs: [site.social.linkedin].filter(Boolean),
+    knowsAbout: KENNIS,
+    workLocation: { '@type': 'Place', name: 'De Brouwersmolen, Hengelo (Gld)' },
   };
 }
 
@@ -56,7 +110,7 @@ export function faqJsonLd(faqs: { q: string; a: string }[]) {
 }
 
 /** Service schema voor een branchepagina. */
-export function serviceJsonLd(opts: { name: string; description: string; url: string }) {
+export function serviceJsonLd(opts: { name: string; description: string; url: string; plaats?: string }) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Service',
@@ -64,7 +118,7 @@ export function serviceJsonLd(opts: { name: string; description: string; url: st
     description: opts.description,
     url: opts.url,
     serviceType: 'Bedrijfskleding',
-    areaServed: 'Achterhoek',
+    areaServed: opts.plaats ? { '@type': 'City', name: opts.plaats } : werkgebied().slice(0, 2),
     provider: { '@id': `${site.url}/#bedrijf` },
   };
 }
@@ -94,7 +148,8 @@ export function articleJsonLd(a: { slug: string; title: string; metaDescription:
     description: a.metaDescription,
     datePublished: a.date,
     dateModified: a.date,
-    author: { '@type': 'Person', name: site.owner },
+    author: { '@type': 'Person', '@id': `${site.url}/#jessi`, name: site.owner, url: `${site.url}/over-ons` },
+    inLanguage: 'nl-NL',
     publisher: { '@type': 'Organization', name: site.name, '@id': `${site.url}/#bedrijf` },
     mainEntityOfPage: `${site.url}/kennisbank/${a.slug}`,
   };

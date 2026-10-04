@@ -13,7 +13,7 @@ import { ConsentBanner } from '@/components/ConsentBanner';
 import { HerkomstTracker } from '@/components/HerkomstTracker';
 import { JsonLd } from '@/components/JsonLd';
 import { OfferteSelectieProvider, OfferteBalk } from '@/components/OfferteSelectie';
-import { localBusinessJsonLd } from '@/lib/jsonld';
+import { localBusinessJsonLd, personJsonLd } from '@/lib/jsonld';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' });
 const archivo = Archivo({ subsets: ['latin'], variable: '--font-display', display: 'swap', weight: ['600', '700', '800'] });
@@ -48,6 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="nl" className={`${inter.variable} ${archivo.variable}`}>
       <body>
         <JsonLd data={localBusinessJsonLd()} />
+        <JsonLd data={personJsonLd()} />
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:shadow-soft">
           Naar hoofdinhoud
         </a>

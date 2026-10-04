@@ -180,7 +180,7 @@ export default function KledingbeheerPage() {
         acties={
           <div className="flex flex-wrap gap-3" data-plek="kledingbeheer-hero">
             <Link href="/afspraak" className="btn-primary" data-cta="afspraak">Laat het mij zien in 15 minuten</Link>
-            <Link href="/portaal" className="btn border-2 border-white/70 text-white hover:border-white hover:bg-white hover:text-ink-900">Ik ben al klant, inloggen</Link>
+            <Link href="/kledingbeheer/demo" className="btn border-2 border-white/70 text-white hover:border-white hover:bg-white hover:text-ink-900" data-cta="demo">Bekijk eerst het portaal</Link>
           </div>
         }
         beeld={

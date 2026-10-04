@@ -41,18 +41,20 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
   const p = plaatsenBySlug[plaats];
   if (!p) notFound();
   const url = `${site.url}/regio/${p.slug}`;
-  const andere = plaatsen.filter((x) => x.slug !== p.slug);
+  const andere = plaatsen.filter((x) => x.slug !== p.slug).sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
   const tips = artikelen.slice(0, 3);
   const populair = p.populair.map((s) => branchesBySlug[s]).filter(Boolean);
   const stats = [
-    { v: p.afstand.replace('Ongeveer ', '').replace('Onze thuisbasis', 'Thuisbasis'), l: 'vanaf onze showroom' },
+    p.km
+      ? { v: `${String(p.km).replace('.', ',')} km`, l: `hemelsbreed, ${p.afstand.replace('Ongeveer ', 'circa ').replace(' vanaf Hengelo', '')} rijden` }
+      : { v: 'Thuisbasis', l: 'showroom in de Brouwersmolen' },
     { v: 'Op locatie', l: 'wij komen langs om te passen' },
     { v: 'Eigen huis', l: 'bedrukken en borduren' },
   ];
 
   return (
     <>
-      <JsonLd data={serviceJsonLd({ name: `Bedrijfskleding in ${p.name}`, description: p.metaDescription, url })} />
+      <JsonLd data={serviceJsonLd({ name: `Bedrijfskleding in ${p.name}`, description: p.metaDescription, url, plaats: p.name })} />
       <JsonLd data={faqJsonLd(p.faq)} />
       <JsonLd data={breadcrumbJsonLd([
         { name: 'Home', url: site.url },

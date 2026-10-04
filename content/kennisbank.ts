@@ -529,6 +529,57 @@ export const artikelen: Artikel[] = [
     ],
     relatedBranche: 'bouw-en-infra',
   },
+  {
+    slug: 'bedrijfskleding-leverancier-kiezen-achterhoek',
+    title: 'Een leverancier van bedrijfskleding kiezen in de Achterhoek',
+    category: 'Praktisch en zakelijk',
+    metaTitle: 'Bedrijfskleding leverancier kiezen in de Achterhoek: 7 checks',
+    metaDescription:
+      'Webshop, groothandel of lokale leverancier? Zeven punten om een leverancier van bedrijfskleding in de Achterhoek te beoordelen, van passen tot nalevering.',
+    date: '2026-10-04',
+    intro:
+      'Kies een leverancier die bij je komt passen, het logo zelf aanbrengt, je vaste lijn vastlegt en op werkdagen snel reageert. Voor bedrijven met meerdere functies en wisselend personeel weegt dat zwaarder dan een paar euro verschil per kledingstuk.',
+    sections: [
+      { h: 'Webshop, groothandel of lokale leverancier', p: [
+        'Een webshop is snel voor één losse bestelling, maar je kiest zelf maten, normen en logo-posities en draagt zelf het risico van een miskoop. Een groothandel levert grote aantallen, vaak zonder advies per functie. Een lokale leverancier combineert advies, passen en bedrukken, en kent je bedrijf bij de tweede bestelling al.',
+        'Voor de meeste MKB-bedrijven in de Achterhoek, met teams van vijf tot vijftig mensen en een mix van buitenwerk, werkplaats en klantcontact, levert die combinatie de minste fouten en het minste gedoe op.',
+      ]},
+      { h: 'Zeven punten om op te letten', p: [
+        '1. Komt de leverancier bij je passen, of moet je team naar een showroom? 2. Wordt het logo in eigen huis bedrukt of geborduurd, en krijg je vooraf een drukproef? 3. Kent de adviseur de normen die voor jouw werk gelden, zoals EN ISO 20345 voor schoenen en EN ISO 20471 voor hi-vis? 4. Wordt je vaste kledinglijn vastgelegd, zodat nabestellen zonder opnieuw kiezen kan? 5. Is er één vast aanspreekpunt? 6. Hoe snel komt er een reactie op een vraag? 7. Kun je online zien wie wat heeft gekregen en wat het kost?',
+      ]},
+      { h: 'Waarom afstand ertoe doet', p: [
+        'Een leverancier in de buurt komt makkelijker langs voor een nieuwe medewerker, een maat die niet past of een spoedje voor een klus. Frederiks Bedrijfskleding zit in de Brouwersmolen in Hengelo (Gld) en werkt vooral in een straal van 24 kilometer: van Zutphen en Lochem tot Doetinchem, Dieren en Groenlo.',
+      ]},
+      { h: 'Zo werkt het bij ons', p: [
+        'We beginnen met een kennismaking op je locatie, bekijken per functie wat nodig is en laten pasmodellen achter of passen ter plekke. Het logo brengen we aan in onze eigen bedrukkerij, na jouw akkoord op de drukproef. Je vaste lijn staat daarna in het gratis kledingportaal, met per medewerker maten en budget.',
+      ]},
+    ],
+  },
+  {
+    slug: 'wat-is-een-kledingbeheersysteem',
+    title: 'Wat is een kledingbeheersysteem en wanneer heb je het nodig?',
+    category: 'Praktisch en zakelijk',
+    metaTitle: 'Kledingbeheersysteem voor bedrijfskleding: wat is het?',
+    metaDescription:
+      'Een kledingbeheersysteem houdt bij wie welke bedrijfskleding heeft, in welke maat en tegen welk budget. Wanneer loont het en wat moet erin zitten?',
+    date: '2026-10-04',
+    intro:
+      'Een kledingbeheersysteem is een online overzicht van je bedrijfskleding: per medewerker de maten, wat er is uitgegeven, het budget en wanneer er vervangen moet worden. Vanaf een team van een handvol mensen met verschillende functies scheelt het al zoekwerk en dubbele bestellingen.',
+    sections: [
+      { h: 'Wat het oplost', p: [
+        'Zonder systeem zit de informatie verspreid over mailtjes, Excel-lijstjes en het geheugen van één persoon. Een nieuwe medewerker wacht op kleding omdat niemand de maten weet, een vertrekkende collega neemt kleding mee zonder dat het opvalt, en de kosten per jaar zijn pas achteraf duidelijk.',
+      ]},
+      { h: 'Wat erin moet zitten', p: [
+        'Minimaal: een vaste kledinglijn per functie, maten per medewerker, een budget per persoon of per jaar, en een overzicht van wat er is besteld en geleverd. Handig zijn daarnaast een goedkeuringsstap voor leidinggevenden en een melding als een kledingstuk aan vervanging toe is.',
+      ]},
+      { h: 'Wanneer het loont', p: [
+        'Het loont zodra je regelmatig mensen aanneemt, met meerdere functies werkt of kleding over meerdere vestigingen verdeelt. Ook bij uitzendkrachten en seizoenswerk voorkomt een vaste lijn dat iedereen net iets anders draagt.',
+      ]},
+      { h: 'Ons kledingportaal', p: [
+        'Zakelijke klanten van Frederiks Bedrijfskleding krijgen het kledingportaal er gratis bij. Je ziet je vaste lijn, de maten en het budget per medewerker, en bestelt na zonder opnieuw te hoeven kiezen. Op de pagina kledingbeheer kun je eerst een demo bekijken.',
+      ]},
+    ],
+  },
 ];
 
 export const artikelenBySlug = Object.fromEntries(artikelen.map((a) => [a.slug, a]));

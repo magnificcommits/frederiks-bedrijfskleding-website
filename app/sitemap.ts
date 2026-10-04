@@ -12,7 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const { categorieen, merken } = await catalogusOverzicht();
   const producten = await alleProductPaden();
-  const staticRoutes = ['', '/assortiment', '/merk', '/normen', '/voor', '/werkkleding', '/werkschoenen', '/bedrukken-borduren', '/referenties', '/over-ons', '/contact', '/offerte', '/kledingadvies', '/kennisbank', '/pakket-samenstellen', '/kledingbeheer', '/regio', '/klantenservice', '/klantenservice/retourneren', '/afspraak', '/nieuwsbrief'];
+  const staticRoutes = ['', '/assortiment', '/merk', '/normen', '/voor', '/werkkleding', '/werkschoenen', '/bedrukken-borduren', '/referenties', '/over-ons', '/contact', '/offerte', '/kledingadvies', '/kennisbank', '/pakket-samenstellen', '/kledingbeheer', '/kledingbeheer/demo', '/regio', '/klantenservice', '/klantenservice/retourneren', '/afspraak', '/nieuwsbrief'];
   return [
     ...staticRoutes.map((r) => ({ url: `${base}${r}`, lastModified: now, changeFrequency: 'monthly' as const, priority: r === '' ? 1 : 0.8 })),
     ...branches.map((b) => ({ url: `${base}/branches/${b.slug}`, lastModified: now, changeFrequency: 'monthly' as const, priority: 0.7 })),

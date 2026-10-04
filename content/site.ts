@@ -26,7 +26,7 @@ export const site = {
     region: 'Gelderland',
     country: 'NL',
     locationNote: 'Gevestigd in de Brouwersmolen, met eigen showroom en bedrukkerij.',
-    geo: { lat: 52.0007, lng: 6.3061 },
+    geo: { lat: 52.0428, lng: 6.3065 },
   },
   social: {
     facebook: '',

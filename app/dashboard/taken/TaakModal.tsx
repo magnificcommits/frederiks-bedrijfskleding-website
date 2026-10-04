@@ -164,6 +164,8 @@ export default function TaakModal({
 
   const taak = open.modus === 'bewerk' ? open.taak : null;
   const afspraak = c.soort === 'afspraak';
+  // Online geboekte afspraak (lib/afspraken/afspraken.ts zet deze eerste regel): de tijd hoort via Afspraken te lopen.
+  const onlineGeboekt = Boolean(taak?.omschrijving?.startsWith('Online geboekt via de website'));
   const gewijzigd = JSON.stringify(c) !== JSON.stringify(begin);
   const zet = (patch: Partial<Concept>) => {
     setC((v) => ({ ...v, ...patch }));
@@ -414,6 +416,12 @@ export default function TaakModal({
               className="veld min-h-[90px] resize-y py-2.5 text-[15px] leading-relaxed"
             />
             <p className="veld-hint">Enter = nieuwe regel. Ctrl+Enter = opslaan.</p>
+            {onlineGeboekt && (
+              <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-ink-800">
+                Deze afspraak is online geboekt. Verzet je hem hier, dan krijgt de klant geen nieuwe tijd.{' '}
+                <a href="/dashboard/afspraken" className="font-semibold underline underline-offset-2">Verzet de tijd via Afspraken</a>.
+              </p>
+            )}
           </div>
 
           {/* Wanneer */}

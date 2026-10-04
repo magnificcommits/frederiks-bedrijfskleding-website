@@ -1,4 +1,6 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { alleRijen } from '@/lib/alleRijen';
+import { sorteerMaten } from '@/lib/kms/variantenStandaard';
 
 /**
  * Passessies: op locatie bij de klant per medewerker artikel, kleur en maat vastleggen.
@@ -144,13 +146,17 @@ function toonNaam(r: NaamDelen): string {
 export async function listMedewerkers(organisatieId: string): Promise<PasMedewerker[]> {
   const sb = kmsAdmin();
   if (!sb || !organisatieId) return [];
-  const { data } = await sb
-    .from('medewerkers')
-    .select('id, naam, voornaam, tussenvoegsel, achternaam, functie, personeelsnummer, actief')
-    .eq('organisatie_id', organisatieId)
-    .limit(2000);
+  // In blokken van 1000: Supabase kapt elk verzoek stil af op 1000 rijen.
+  const data = await alleRijen<MedewerkerRij>('passessie.medewerkers', (van, tot) =>
+    sb
+      .from('medewerkers')
+      .select('id, naam, voornaam, tussenvoegsel, achternaam, functie, personeelsnummer, actief')
+      .eq('organisatie_id', organisatieId)
+      .order('id')
+      .range(van, tot),
+  );
 
-  return ((data as MedewerkerRij[]) ?? [])
+  return data
     .filter((r) => r.actief !== false)
     .map((r) => ({
       id: r.id,
@@ -170,12 +176,10 @@ export async function naamPerMedewerker(organisatieId: string): Promise<Map<stri
   const namen = new Map<string, string>();
   const sb = kmsAdmin();
   if (!sb || !organisatieId) return namen;
-  const { data } = await sb
-    .from('medewerkers')
-    .select('id, naam, voornaam, tussenvoegsel, achternaam')
-    .eq('organisatie_id', organisatieId)
-    .limit(5000);
-  for (const r of (data as (NaamDelen & { id: string })[]) ?? []) namen.set(r.id, toonNaam(r));
+  const data = await alleRijen<NaamDelen & { id: string }>('passessie.namen', (van, tot) =>
+    sb.from('medewerkers').select('id, naam, voornaam, tussenvoegsel, achternaam').eq('organisatie_id', organisatieId).order('id').range(van, tot),
+  );
+  for (const r of data) namen.set(r.id, toonNaam(r));
   return namen;
 }
 
@@ -202,46 +206,56 @@ export async function listAssortimentArtikelen(organisatieId: string): Promise<A
   const sb = kmsAdmin();
   if (!sb || !organisatieId) return [];
 
-  const { data: regels } = await sb
-    .from('assortiment')
-    .select('product_id, toegestaan')
-    .eq('organisatie_id', organisatieId)
-    .limit(5000);
+  const regels = await alleRijen<{ product_id: string | null; toegestaan: boolean | null }>('passessie.assortiment', (van, tot) =>
+    sb.from('assortiment').select('product_id, toegestaan').eq('organisatie_id', organisatieId).order('id').range(van, tot),
+  );
 
   // Eén product kan meerdere assortimentregels hebben (per afdeling of medewerker),
   // dus ontdubbelen voordat we de producten ophalen.
   const productIds = [
     ...new Set(
-      ((regels as { product_id: string | null; toegestaan: boolean | null }[]) ?? [])
+      (regels as { product_id: string | null; toegestaan: boolean | null }[])
         .filter((r) => Boolean(r.product_id) && r.toegestaan !== false)
         .map((r) => r.product_id as string),
     ),
   ];
   if (productIds.length === 0) return [];
 
-  const [{ data: producten }, { data: varianten }, { data: fotos }] = await Promise.all([
-    sb
-      .from('producten')
-      .select('id, naam, merk, categorie, afbeeldingen, maatwerk_lengte, actief')
-      .in('id', productIds)
-      .limit(5000),
-    sb.from('product_varianten').select('product_id, kleur, actief').in('product_id', productIds).limit(20000),
-    sb
-      .from('product_kleur_afbeeldingen')
-      .select('product_id, kleur, afbeelding_url')
-      .in('product_id', productIds)
-      .limit(20000),
-  ]);
+  // Per 100 artikelen (anders wordt de URL met uuid's te lang) en per 1000 rijen
+  // (Supabase kapt stil af op 1000): een klant met 30 artikelen heeft al snel
+  // meer dan 1000 varianten, en dan ontbraken kleuren in de passessie.
+  type VarRij = { product_id: string; kleur: string | null; actief: boolean | null };
+  type FotoRij = { product_id: string; kleur: string | null; afbeelding_url: string | null };
+  const blokken: string[][] = [];
+  for (let i = 0; i < productIds.length; i += 100) blokken.push(productIds.slice(i, i + 100));
+  const perBlok = await Promise.all(
+    blokken.map((ids) =>
+      Promise.all([
+        alleRijen<ProductRij>('passessie.producten', (van, tot) =>
+          sb.from('producten').select('id, naam, merk, categorie, afbeeldingen, maatwerk_lengte, actief').in('id', ids).order('id').range(van, tot),
+        ),
+        alleRijen<VarRij>('passessie.varianten', (van, tot) =>
+          sb.from('product_varianten').select('product_id, kleur, actief').in('product_id', ids).order('id').range(van, tot),
+        ),
+        alleRijen<FotoRij>('passessie.fotos', (van, tot) =>
+          sb.from('product_kleur_afbeeldingen').select('product_id, kleur, afbeelding_url').in('product_id', ids).order('id').range(van, tot),
+        ),
+      ]),
+    ),
+  );
+  const producten = perBlok.flatMap((b) => b[0]);
+  const varianten = perBlok.flatMap((b) => b[1]);
+  const fotos = perBlok.flatMap((b) => b[2]);
 
   const fotoVan = new Map<string, string | null>();
-  for (const f of (fotos as { product_id: string; kleur: string | null; afbeelding_url: string | null }[]) ?? []) {
+  for (const f of fotos) {
     if (!f.kleur) continue;
     const sleutel = `${f.product_id}|${f.kleur}`;
     if (!fotoVan.has(sleutel)) fotoVan.set(sleutel, f.afbeelding_url);
   }
 
   const kleurenVan = new Map<string, string[]>();
-  for (const v of (varianten as { product_id: string; kleur: string | null; actief: boolean | null }[]) ?? []) {
+  for (const v of varianten) {
     if (v.actief === false) continue;
     // Zelfde sleutel als getVariantKeuze gebruikt, anders klikt de kleur uit deze lijst
     // straks niet door naar de matenlijst.
@@ -251,7 +265,7 @@ export async function listAssortimentArtikelen(organisatieId: string): Promise<A
     else if (!lijst.includes(kleur)) lijst.push(kleur);
   }
 
-  return ((producten as ProductRij[]) ?? [])
+  return producten
     .filter((p) => p.actief !== false)
     .map((p) => ({
       id: p.id,
@@ -278,14 +292,17 @@ export async function listAssortimentArtikelen(organisatieId: string): Promise<A
 export async function listCatalogus(): Promise<CatalogusItem[]> {
   const sb = kmsAdmin();
   if (!sb) return [];
-  const { data } = await sb
-    .from('producten')
-    .select('id, naam, merk, categorie, afbeeldingen, maatwerk_lengte')
-    .eq('actief', true)
-    .order('merk')
-    .order('naam')
-    .limit(2000);
-  return ((data as Record<string, unknown>[]) ?? []).map((p) => ({
+  const data = await alleRijen<Record<string, unknown>>('passessie.catalogus', (van, tot) =>
+    sb
+      .from('producten')
+      .select('id, naam, merk, categorie, afbeeldingen, maatwerk_lengte')
+      .eq('actief', true)
+      .order('merk')
+      .order('naam')
+      .order('id')
+      .range(van, tot),
+  );
+  return data.map((p) => ({
     id: p.id as string,
     naam: (p.naam as string) ?? 'Naamloos',
     merk: (p.merk as string) ?? null,
@@ -308,8 +325,10 @@ export async function getVariantKeuze(productId: string): Promise<VariantKeuze> 
     .maybeSingle();
   if (!prod) return leeg;
 
-  const [{ data: varianten }, { data: fotos }] = await Promise.all([
-    sb.from('product_varianten').select('id, maat, kleur, verkoopprijs').eq('product_id', productId).limit(2000),
+  const [varianten, { data: fotos }] = await Promise.all([
+    alleRijen<{ id: string; maat: string | null; kleur: string | null; verkoopprijs: number | null }>('passessie.variantKeuze', (van, tot) =>
+      sb.from('product_varianten').select('id, maat, kleur, verkoopprijs').eq('product_id', productId).order('id').range(van, tot),
+    ),
     sb.from('product_kleur_afbeeldingen').select('kleur, afbeelding_url').eq('product_id', productId),
   ]);
 
@@ -318,17 +337,15 @@ export async function getVariantKeuze(productId: string): Promise<VariantKeuze> 
   );
 
   const matenPerKleur: VariantKeuze['matenPerKleur'] = {};
-  for (const v of (varianten as { id: string; maat: string | null; kleur: string | null; verkoopprijs: number | null }[]) ?? []) {
+  for (const v of varianten) {
     const kleur = v.kleur ?? 'Standaard';
     (matenPerKleur[kleur] ??= []).push({ variant_id: v.id, maat: v.maat ?? '-', prijs: v.verkoopprijs });
   }
-  for (const lijst of Object.values(matenPerKleur)) {
-    lijst.sort((a, b) => {
-      const na = Number(a.maat);
-      const nb = Number(b.maat);
-      if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
-      return a.maat.localeCompare(b.maat, 'nl', { numeric: true });
-    });
+  // Volgens de vaste matenlijst (XS, S, M, L, XL, 2XL; broekmaten oplopend). Alfabetisch
+  // gaf L, M, S, XL, XS, wat op locatie bij het passen verwarrend is.
+  for (const [kleur, lijst] of Object.entries(matenPerKleur)) {
+    const volgorde = sorteerMaten([...new Set(lijst.map((m) => m.maat))]);
+    matenPerKleur[kleur] = lijst.slice().sort((a, b) => volgorde.indexOf(a.maat) - volgorde.indexOf(b.maat));
   }
 
   let lengtes: number[] = [];

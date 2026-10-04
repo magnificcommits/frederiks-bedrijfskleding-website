@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { kleuren, kledingtypes, logoposities, broekposities, positiesVoor, teamgroottes, starterpakketten } from '@/content/configurator';
 import { branches } from '@/content/branches';
 import { Garment } from '@/components/Garments';
-import { getHerkomst } from '@/lib/herkomst';
+import { getHerkomst, leesHerkomstVoorLead } from '@/lib/herkomst';
 import { site } from '@/content/site';
 
 type Status = 'idle' | 'sending' | 'ok' | 'error';
@@ -264,6 +264,25 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     return [...kleding, ...extra];
   }
 
+  /** Zelfde pakket, maar gestructureerd voor het KMS: artikel-id, kleur, aantal en logo-opmerking. */
+  function buildLeadRegels() {
+    const kleding = items.map((i) => ({
+      product_id: i.artikelId ?? null,
+      omschrijving: i.artikelNaam ?? typeLabel(i.type),
+      kleur: kleuren[i.kleur].name,
+      aantal: Math.max(1, parseInt(i.aantal || '1', 10) || 1),
+      opmerking: `logo ${posLabel(i.positie).toLowerCase()}, ${techniek}`,
+    }));
+    const extra = extrasOpties.filter((e) => extras[e.id]?.on).map((e) => ({
+      product_id: null,
+      omschrijving: e.label,
+      kleur: null,
+      aantal: Math.max(1, parseInt(extras[e.id].aantal || '1', 10) || 1),
+      opmerking: null,
+    }));
+    return [...kleding, ...extra];
+  }
+
   async function submitPortaal() {
     if (!portaal) return;
     if (items.length === 0) { setError('Voeg eerst minstens één kledingstuk toe aan je pakket.'); return; }
@@ -283,7 +302,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     try {
       const res = await fetch('/api/ontwerp-mail', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: contact.name || '', email: mailEmail, bericht: buildBericht(), resumeUrl: buildResumeUrl(), ontwerp: ontwerp ?? '', bron: getHerkomst(), consent: true }),
+        body: JSON.stringify({ name: contact.name || '', email: mailEmail, bericht: buildBericht(), resumeUrl: buildResumeUrl(), ontwerp: ontwerp ?? '', bron: getHerkomst(), consent: true, logo: logo ?? '', logoNaam: logoNaam ?? '', herkomst: leesHerkomstVoorLead(), regels: buildLeadRegels() }),
       });
       if (!res.ok) { const j = await res.json().catch(() => null); throw new Error(j?.error ?? 'Er ging iets mis.'); }
       (window as unknown as { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'generate_lead', { event_label: 'pakket-configurator-ontwerp-mail' });
@@ -310,7 +329,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     try {
       const res = await fetch('/api/lead', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...contact, branche, aantal: team, bericht, bron: getHerkomst(), consent: true, logo: logo ?? '', logoNaam: logoNaam ?? '', ontwerp: ontwerp ?? '' }),
+        body: JSON.stringify({ ...contact, branche, aantal: team, bericht, bron: getHerkomst(), consent: true, logo: logo ?? '', logoNaam: logoNaam ?? '', ontwerp: ontwerp ?? '', bron_kanaal: 'configurator', herkomst: leesHerkomstVoorLead(), regels: buildLeadRegels() }),
       });
       if (!res.ok) { const j = await res.json().catch(() => null); throw new Error(j?.error ?? 'Er ging iets mis.'); }
       (window as unknown as { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'generate_lead', { event_label: 'pakket-configurator' });

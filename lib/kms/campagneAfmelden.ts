@@ -7,7 +7,9 @@ import { env } from '@/lib/env';
  * verzendmotor mee te laden. campagne-engine.ts exporteert dezelfde functies.
  */
 
-const AFMELD_GEHEIM = env.cronSecret || 'frederiks-afmeld-fallback';
+// Zonder CRON_SECRET viel dit terug op een vaste tekst uit de broncode: dan kon
+// iedereen geldige afmeldlinks maken. Eerst de service key als geheim gebruiken.
+const AFMELD_GEHEIM = env.cronSecret || env.supabaseServiceKey || 'frederiks-afmeld-fallback';
 
 /** Token om een afmeldlink te valideren, zodat niet zomaar iedereen adressen kan afmelden. */
 export function afmeldToken(email: string): string {

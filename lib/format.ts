@@ -23,7 +23,9 @@ export function formatDatum(d: string | Date | null | undefined): string {
   if (!d) return '';
   const dt = typeof d === 'string' ? new Date(d) : d;
   if (Number.isNaN(dt.getTime())) return '';
-  return dt.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  // Nederlandse tijdzone: Vercel draait in UTC, en dan werd een tijdstip tussen
+  // middernacht en 2 uur 's nachts als de dag ervoor getoond.
+  return dt.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Amsterdam' });
 }
 
 /** Status leesbaar maken: 'nog_bestellen' -> 'Nog bestellen'. */

@@ -1,4 +1,5 @@
 'use client';
+import { bevestig } from '@/components/dashboard/ui/Bevestig';
 
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
@@ -124,21 +125,37 @@ export default function VariantKiezer({
   const toonVrijeOptie = !!waarde && !inLijst.has(waarde);
 
   // Vraag bij versturen nog één keer als er een waarde buiten de lijst staat.
+  // Het eigen venster is asynchroon: we houden het versturen tegen, vragen, en
+  // versturen na "ja" opnieuw met dezelfde knop (name/value en formAction blijven gelijk).
+  const doorlaten = useRef<string | null>(null);
   useEffect(() => {
     const form = invoer.current?.form;
     if (!form) return;
     const bewaak = (e: SubmitEvent) => {
       const v = (invoer.current?.value ?? '').trim();
       if (!v || inLijst.has(v) || v === defaultValue.trim() || v === vrijBevestigd) return;
-      const ok = window.confirm(
-        `"${v}" staat niet in de vaste lijst met ${soort === 'kleur' ? 'kleuren' : 'maten'}. Toch zo opslaan?\n\n` +
-          'Nieuwe waarden voeg je toe bij Instellingen > Varianten.',
-      );
-      if (!ok) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        invoer.current?.focus();
+      if (doorlaten.current === v) {
+        doorlaten.current = null;
+        return;
       }
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const knop = e.submitter instanceof HTMLElement ? e.submitter : null;
+      void bevestig(
+        {
+          titel: `"${v}" staat niet in de vaste lijst met ${soort === 'kleur' ? 'kleuren' : 'maten'}. Toch zo opslaan?`,
+          tekst: 'Nieuwe waarden voeg je toe bij Instellingen > Varianten.',
+          bevestigLabel: 'Toch opslaan',
+        },
+        invoer.current,
+      ).then((ja) => {
+        if (!ja || !form.isConnected) {
+          invoer.current?.focus();
+          return;
+        }
+        doorlaten.current = v;
+        form.requestSubmit(knop && knop.isConnected ? knop : undefined);
+      });
     };
     form.addEventListener('submit', bewaak, { capture: true });
     return () => form.removeEventListener('submit', bewaak, { capture: true });
@@ -149,11 +166,12 @@ export default function VariantKiezer({
     setOpen(false);
   }
 
-  function kiesVrij() {
-    const ok = window.confirm(
-      `"${waarde}" staat niet in de vaste lijst. Toch gebruiken voor deze variant?\n\n` +
-        'De waarde wordt niet aan de lijst toegevoegd. Dat doe je bij Instellingen > Varianten.',
-    );
+  async function kiesVrij() {
+    const ok = await bevestig({
+      titel: `"${waarde}" staat niet in de vaste lijst. Toch gebruiken voor deze variant?`,
+      tekst: 'De waarde wordt niet aan de lijst toegevoegd. Dat doe je bij Instellingen > Varianten.',
+      bevestigLabel: 'Toch gebruiken',
+    });
     if (ok) {
       setVrijBevestigd(waarde);
       setOpen(false);

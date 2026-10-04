@@ -45,10 +45,15 @@ export function heeftSleutelVorm(sleutel: string): boolean {
   return SLEUTEL_PATROON.test(sleutel);
 }
 
-function schoneScopes(v: unknown): ApiScope[] {
+/**
+ * Alleen geldige scopes. Geen lijst (oude rij, of niets meegegeven bij aanmaken) betekent
+ * de standaard: alle scopes, net als de kolomstandaard in de database. Een lege lijst
+ * blijft leeg: een sleutel waarvan alle rechten zijn weggehaald mag niets, en kreeg
+ * voorheen juist alle rechten terug.
+ */
+export function schoneScopes(v: unknown): ApiScope[] {
   if (!Array.isArray(v)) return [...API_SCOPES];
-  const lijst = v.filter((s): s is ApiScope => (API_SCOPES as readonly string[]).includes(String(s)));
-  return lijst.length ? lijst : [...API_SCOPES];
+  return v.filter((s): s is ApiScope => (API_SCOPES as readonly string[]).includes(String(s)));
 }
 
 function naarSleutel(r: Record<string, unknown>): ApiSleutel {

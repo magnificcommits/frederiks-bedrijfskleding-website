@@ -5,6 +5,7 @@ import { analyseFunnel } from '@/lib/kms/analyse';
 import type { Duur } from '@/lib/kms/analyseData';
 import { periodeParams, urlMet, type Periode } from '@/lib/kms/analysePeriode';
 import Blok from '../_delen/Blok';
+import LeadHerkomst from './LeadHerkomst';
 import { aantal, dagen, euro, pct } from '../_delen/opmaak';
 
 function DuurTegel({ titel, duur, uitleg, leeg }: { titel: string; duur: Duur | null; uitleg: string; leeg: string }) {
@@ -168,6 +169,8 @@ export default async function Funnel({ periode }: { periode: Periode }) {
           </div>
         )}
       </Blok>
+
+      <LeadHerkomst periode={periode} />
     </div>
   );
 }

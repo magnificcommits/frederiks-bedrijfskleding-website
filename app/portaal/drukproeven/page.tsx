@@ -47,7 +47,7 @@ function StatusBadge({ status, v }: { status: string; v: Vertaler }) {
   return <span className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${toon}`}>{label}</span>;
 }
 
-export default async function Drukproeven({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
+export default async function Drukproeven({ searchParams }: { searchParams: Promise<{ ok?: string; fout?: string }> }) {
   const v = await getVertaler();
   const { t, datum } = v;
   if (!isPortalConfigured) {
@@ -96,7 +96,8 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   const sb = await getServerSupabase();
   const { data } = sb
-    ? await sb.from('drukproeven').select('*').order('created_at', { ascending: false })
+    ? // Concepten zijn nog in de maak bij Frederiks; de klant ziet een proef pas als hij verstuurd is.
+      await sb.from('drukproeven').select('*').neq('status', 'concept').order('created_at', { ascending: false })
     : { data: null };
   const proeven = (data as Drukproef[]) ?? [];
 
@@ -115,6 +116,11 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
       {sp?.ok && (
         <div className="mt-6 rounded-xl border border-green-300 bg-green-50 p-4 text-sm text-green-800">
           {t('drukproeven.opgeslagen')}
+        </div>
+      )}
+      {sp?.fout && (
+        <div role="alert" className="mt-6 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+          {t('algemeen.foutOpslaan')}
         </div>
       )}
 

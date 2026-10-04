@@ -88,23 +88,34 @@ export async function listDrukproevenVoorOrder(orderId: string): Promise<Drukpro
 }
 
 /**
- * Zet een goedgekeurde drukproef die aan een order hangt door naar productie:
- * de order krijgt status 'borduren' of 'bedrukken' op basis van de techniek, maar
- * alleen vanuit een vroege fase (we overschrijven geen verder gevorderde status).
+ * Een goedgekeurde drukproef die aan een order hangt:
+ * - staan er voor die order nog proeven open (concept of bij de klant), dan
+ *   gebeurt er nog niets: de rugbedrukking is nog niet akkoord, dus de machine
+ *   kan nog niet aan;
+ * - anders gaat de werkbon op 'goedgekeurd';
+ * - en ligt alle kleding er al (order op "alles binnen"), dan gaat de order
+ *   meteen naar bedrukken of borduren. Een order die nog op de leverancier
+ *   wacht, blijft staan: de werkbon zegt dan "kan op de machine zodra de
+ *   kleding binnen is", en de productie start via de werkbon.
  */
 export async function verwerkDrukproefGoedkeuring(drukproefId: string): Promise<void> {
   const sb = kmsAdmin(); if (!sb) return;
   const { data } = await sb.from('drukproeven').select('order_id, techniek, status').eq('id', drukproefId).maybeSingle();
   const dp = data as { order_id: string | null; techniek: string | null; status: string } | null;
   if (!dp || dp.status !== 'goedgekeurd' || !dp.order_id) return;
+
+  const { data: alle } = await sb.from('drukproeven').select('id, status').eq('order_id', dp.order_id);
+  const nogOpen = ((alle as { id: string; status: string }[]) ?? []).some(
+    (p) => p.id !== drukproefId && (p.status === 'concept' || p.status === 'verstuurd'),
+  );
+  if (nogOpen) return;
   await werkbonNaGoedkeuring(dp.order_id);
 
   const { data: orderData } = await sb.from('orders').select('status').eq('id', dp.order_id).maybeSingle();
   const huidige = (orderData as { status: string } | null)?.status;
-  const vroeg = ['concept', 'offerte_verstuurd', 'offerte_goedgekeurd', 'nog_bestellen', 'besteld', 'deellevering', 'compleet_geleverd'];
-  if (!huidige || !vroeg.includes(huidige)) return;
+  if (huidige !== 'compleet_geleverd') return;
   const nieuwe = dp.techniek === 'bedrukken' ? 'bedrukken' : 'borduren';
-  await sb.from('orders').update({ status: nieuwe }).eq('id', dp.order_id);
+  await sb.from('orders').update({ status: nieuwe }).eq('id', dp.order_id).eq('status', 'compleet_geleverd');
 }
 
 /**
@@ -228,11 +239,15 @@ export async function beslisDrukproefViaToken(token: string, akkoord: boolean, o
   const sb = kmsAdmin(); if (!sb || !token.trim()) return null;
   const huidig = await getDrukproefViaToken(token);
   if (!huidig || (huidig.status !== 'concept' && huidig.status !== 'verstuurd')) return null;
-  const { error } = await sb
+  // De statusvoorwaarde ook in de update zelf: twee keer klikken, of de link in twee
+  // tabbladen, beslist maar één keer (en mailt Jessi maar één keer).
+  const { data: bijgewerkt, error } = await sb
     .from('drukproeven')
     .update({ status: akkoord ? 'goedgekeurd' : 'afgekeurd', opmerking: opmerking?.trim() || null, behandeld_op: new Date().toISOString() })
-    .eq('id', huidig.id);
-  if (error) return null;
+    .eq('id', huidig.id)
+    .in('status', ['concept', 'verstuurd'])
+    .select('id');
+  if (error || ((bijgewerkt as unknown[]) ?? []).length === 0) return null;
   if (akkoord) await verwerkDrukproefGoedkeuring(huidig.id);
   return { ...huidig, status: akkoord ? 'goedgekeurd' : 'afgekeurd', opmerking: opmerking?.trim() || null };
 }

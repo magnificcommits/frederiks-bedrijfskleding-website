@@ -8,6 +8,7 @@ const GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA
 
 /** Open-pixel voor campagnemails. Faalt altijd stil: de mail moet gewoon laden. */
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
+  // auth: token (registreerOpen zoekt het verzendtoken op; onbekend token = niets).
   const { token } = await params;
   await registreerOpen(token).catch(() => undefined);
   return new Response(new Uint8Array(GIF), {

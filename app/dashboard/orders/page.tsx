@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed, getHuidigeAdmin } from '@/lib/kms/adminClient';
-import { listOrdersPaged, ORDER_STATUSSEN, GOEDKEURING_STATUSSEN, AFGEHANDELDE_ORDERSTATUSSEN, type OrderLijstFilters } from '@/lib/kms/orders';
+import { listOrdersPaged, ORDER_STATUSSEN, GOEDKEURING_STATUSSEN, AFGEHANDELDE_ORDERSTATUSSEN, ORDER_BRONNEN, type OrderBron, type OrderLijstFilters } from '@/lib/kms/orders';
 import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
+import EmptyState from '@/components/dashboard/EmptyState';
+import ActieKnopMobiel from '@/components/dashboard/ui/ActieKnopMobiel';
 import SortableTh from '@/components/dashboard/SortableTh';
 import Zoekbalk from '@/components/dashboard/Zoekbalk';
 import FilterBalk from '@/components/dashboard/FilterBalk';
@@ -116,7 +118,7 @@ export default async function OrdersPage({
   const periode = periodeParam(sp, 'datum');
   const bedrag = bedragParam(sp, 'bedrag');
   const goedkeuring = (GOEDKEURING_STATUSSEN as readonly string[]).includes(param(sp, 'goedkeuring')) ? param(sp, 'goedkeuring') : null;
-  const bron = param(sp, 'bron') === 'portaal' || param(sp, 'bron') === 'handmatig' ? (param(sp, 'bron') as 'portaal' | 'handmatig') : null;
+  const bron = (ORDER_BRONNEN as readonly string[]).includes(param(sp, 'bron')) ? (param(sp, 'bron') as OrderBron) : null;
   const drukproef = param(sp, 'drukproef') === 'ja' || param(sp, 'drukproef') === 'nee' ? (param(sp, 'drukproef') as 'ja' | 'nee') : null;
   const ouderDan = Math.max(0, Math.min(365, Number(param(sp, 'ouder')) || 0)) || null;
   const fase = param(sp, 'fase') === 'open' || param(sp, 'fase') === 'klaar' ? (param(sp, 'fase') as 'open' | 'klaar') : null;
@@ -181,6 +183,7 @@ export default async function OrdersPage({
       opties: [
         { waarde: 'portaal', label: 'Klantportaal' },
         { waarde: 'handmatig', label: 'Handmatig ingevoerd' },
+        { waarde: 'api', label: 'Koppeling (API)' },
       ],
     },
     {
@@ -225,7 +228,7 @@ export default async function OrdersPage({
         </div>
         {/* Een order aanmaken is de handeling van de dag en vraagt om ruimte:
             eigen pagina in plaats van een lade van 320 px. */}
-        <Link href="/dashboard/orders/nieuw" className="knop-primair">Nieuwe order</Link>
+        <Link href="/dashboard/orders/nieuw" className="knop-primair max-md:hidden">Nieuwe order</Link>
       </div>
 
       {ok && okBoodschap[ok] && (
@@ -266,16 +269,31 @@ export default async function OrdersPage({
       </div>
 
       {orders.length === 0 ? (
-        <p className="panel mt-4 px-4 py-8 text-center text-[13px] text-warm">
-          {zoekTerm
-            ? `Geen orders gevonden voor “${zoekTerm}”${huidigeStatus ? ` met status “${leesbaar(huidigeStatus)}”` : ''}. Pas de zoekterm aan of kies een ander filter.`
-            : filterActief
-              ? 'Geen orders die aan deze filters voldoen. Haal een filter weg via het kruisje.'
-              : 'Nog geen orders. Maak er rechtsboven een aan.'}
-        </p>
+        filterActief ? (
+          <EmptyState
+            className="mt-4"
+            soort="gefilterd"
+            titel="Geen orders gevonden"
+            tekst={zoekTerm
+              ? `Geen orders voor “${zoekTerm}”${huidigeStatus ? ` met status “${leesbaar(huidigeStatus)}”` : ''}. Pas de zoekterm aan of kies een ander filter.`
+              : 'Geen orders die aan deze filters voldoen. Haal een filter weg via het kruisje.'}
+            actieHref="/dashboard/orders"
+            actieLabel="Alle orders tonen"
+          />
+        ) : (
+          <EmptyState
+            className="mt-4"
+            titel="Nog geen orders"
+            tekst="Een order maak je hier zelf aan, of hij komt binnen via het klantportaal. Een geaccepteerde offerte zet je met één klik om in een order."
+            actieHref="/dashboard/orders/nieuw"
+            actieLabel="Maak je eerste order"
+            tweedeHref="/dashboard/offertes"
+            tweedeLabel="Naar offertes"
+          />
+        )
       ) : (
         <>
-          <form id="bulkorders" action={bulkOrderStatusActie} className="mt-4 flex flex-wrap items-center justify-end gap-2">
+          <form id="bulkorders" action={bulkOrderStatusActie} className="mt-4 flex flex-wrap items-center justify-end gap-2 max-md:hidden">
             <input type="hidden" name="terug" value={huidigeUrl} />
             <span className="text-[12px] text-warm">Status van geselecteerde:</span>
             {/* Bewust een lege beginwaarde: anders zet een misklik op Toepassen
@@ -288,7 +306,7 @@ export default async function OrdersPage({
           </form>
 
           <div className="panel mt-2">
-            <table className="tbl">
+            <table className="tbl tbl-kaart">
               <thead className="thead-sticky-filter">
                 <tr>
                   <th className="w-8"><span className="sr-only">Selecteren</span></th>
@@ -304,7 +322,7 @@ export default async function OrdersPage({
               <tbody>
                 {orders.map((o) => (
                   <tr key={o.id}>
-                    <td>
+                    <td className="kaart-verberg">
                       <input
                         type="checkbox"
                         name="order_ids"
@@ -314,15 +332,18 @@ export default async function OrdersPage({
                         aria-label={`Selecteer order #${o.ordernummer}`}
                       />
                     </td>
-                    <td>
-                      <Link href={`/dashboard/orders/${o.id}`} className="rij-link tabular-nums">#{o.ordernummer}</Link>
+                    <td className="kaart-kop">
+                      <Link href={`/dashboard/orders/${o.id}`} className="rij-link tabular-nums">
+                        #{o.ordernummer}
+                        <span className="font-normal text-ink-800 md:hidden"> · {o.organisatie_naam || 'Onbekende klant'}</span>
+                      </Link>
                     </td>
-                    <td>
+                    <td className="kaart-verberg">
                       {o.organisatie_naam || '—'}
                       {o.medewerker_naam && <span className="block text-[11px] text-warm">{o.medewerker_naam}</span>}
                     </td>
-                    <td className="stil">{o.referentienr || o.aangevraagd_door || '—'}</td>
-                    <td className="stil whitespace-nowrap">
+                    <td className="stil" data-label="Referentie">{o.referentienr || o.aangevraagd_door || '—'}</td>
+                    <td className="stil whitespace-nowrap" data-label="Datum">
                       {fmt(o.besteldatum)}
                       {(() => {
                         const dagen = dagenGeleden(o.besteldatum);
@@ -331,7 +352,7 @@ export default async function OrdersPage({
                         ) : null;
                       })()}
                     </td>
-                    <td>
+                    <td data-label="Status">
                       <form action={wijzigOrderStatusInline} className="flex items-center" data-statusform>
                         <input type="hidden" name="orderId" value={o.id} />
                         <input type="hidden" name="terug" value={huidigeUrl} />
@@ -344,8 +365,8 @@ export default async function OrdersPage({
                         />
                       </form>
                     </td>
-                    <td className="num">{o.bedrag != null ? euro(Number(o.bedrag)) : '—'}</td>
-                    <td>
+                    <td className="num" data-label="Bedrag">{o.bedrag != null ? euro(Number(o.bedrag)) : '—'}</td>
+                    <td data-label="Goedkeuring">
                       <span className={goedkeurBadge[o.goedkeuring_status] ?? 'badge-rust'}>
                         {leesbaar(o.goedkeuring_status)}
                       </span>
@@ -369,6 +390,8 @@ export default async function OrdersPage({
           ) : <span />}
         </nav>
       )}
+
+      <ActieKnopMobiel href="/dashboard/orders/nieuw" label="Nieuwe order" />
     </main>
   );
 }

@@ -103,7 +103,8 @@ export function maakVertaler(taal: Taal, woordenboek: Woordenboek): Vertaler {
   const getalFmt = new Intl.NumberFormat(locale);
   const euro2 = new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const euro0 = new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  const datumFmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+  // Nederlandse tijdzone, net als moment(): de server draait in UTC.
+  const datumFmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Amsterdam' });
   const momentFmt = new Intl.DateTimeFormat(locale, {
     day: 'numeric',
     month: 'short',

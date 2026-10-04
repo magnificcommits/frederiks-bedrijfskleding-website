@@ -3,10 +3,11 @@
 import { useState } from 'react';
 
 /**
- * Compact nieuwsbrief-inschrijfformulier voor de (donkere) footer.
- * Stuurt naar /api/nieuwsbrief. Honeypot-veld 'website' vangt simpele bots.
+ * Compact nieuwsbrief-inschrijfformulier: donker voor de footer, licht voor de
+ * pagina /nieuwsbrief. Stuurt naar /api/nieuwsbrief, dat een bevestigingsmail
+ * stuurt (double opt-in). Honeypot-veld 'website' vangt simpele bots.
  */
-export function NieuwsbriefForm() {
+export function NieuwsbriefForm({ licht = false, bron = 'footer' }: { licht?: boolean; bron?: string } = {}) {
   const [email, setEmail] = useState('');
   const [website, setWebsite] = useState(''); // honeypot
   const [status, setStatus] = useState<'idle' | 'bezig' | 'ok' | 'fout'>('idle');
@@ -21,12 +22,12 @@ export function NieuwsbriefForm() {
       const res = await fetch('/api/nieuwsbrief', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, bron: 'footer', website }),
+        body: JSON.stringify({ email, bron, website }),
       });
       const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
       if (res.ok && data?.ok) {
         setStatus('ok');
-        setMelding('Bedankt, je bent ingeschreven.');
+        setMelding('Bijna klaar. Check je inbox en klik op de link in de mail om je aanmelding te bevestigen.');
         setEmail('');
       } else {
         setStatus('fout');
@@ -40,14 +41,19 @@ export function NieuwsbriefForm() {
 
   if (status === 'ok') {
     return (
-      <p className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+      <p
+        className={`mt-4 rounded-md border px-3 py-2 text-sm ${
+          licht ? 'border-amber-300 bg-amber-50 text-ink-800' : 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+        }`}
+        role="status"
+      >
         {melding}
       </p>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-4" noValidate>
+    <form onSubmit={onSubmit} className="mt-4" noValidate data-formulier="nieuwsbrief">
       <label htmlFor="nieuwsbrief-email" className="sr-only">E-mailadres</label>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
@@ -59,7 +65,11 @@ export function NieuwsbriefForm() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="jouw@e-mailadres.nl"
           autoComplete="email"
-          className="w-full rounded-md border border-ink-700 bg-ink-800 px-3 py-2 text-sm text-white placeholder:text-ink-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+          className={
+            licht
+              ? 'w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink-800 placeholder:text-ink-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200'
+              : 'w-full rounded-md border border-ink-700 bg-ink-800 px-3 py-2 text-sm text-white placeholder:text-ink-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40'
+          }
         />
         <button
           type="submit"
@@ -81,7 +91,7 @@ export function NieuwsbriefForm() {
         aria-hidden="true"
       />
       {status === 'fout' && (
-        <p className="mt-2 text-sm text-amber-300">{melding}</p>
+        <p className={`mt-2 text-sm ${licht ? 'text-amber-800' : 'text-amber-300'}`} role="alert">{melding}</p>
       )}
     </form>
   );

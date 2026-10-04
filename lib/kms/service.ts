@@ -105,6 +105,7 @@ export const BRON_LABEL: Record<string, string> = {
   balie: 'Balie',
   dashboard: 'Dashboard',
   retourportaal: 'Retourformulier',
+  nps: 'Tevredenheidsmail',
 };
 
 export type OrganisatieKeuze = { id: string; naam: string };

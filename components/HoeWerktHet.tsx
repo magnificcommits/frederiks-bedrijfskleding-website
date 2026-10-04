@@ -22,7 +22,7 @@ const stappen = [
 
 export function HoeWerktHet() {
   return (
-    <section className="bg-mist py-16 sm:py-24">
+    <section className="bg-white py-16 sm:py-24">
       <div className="container-x">
         <p className="eyebrow">Zo werkt het</p>
         <h2 className="mt-4 max-w-2xl font-display text-3xl font-extrabold tracking-tight text-ink-900 sm:text-4xl">

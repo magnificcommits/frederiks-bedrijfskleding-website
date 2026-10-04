@@ -1,8 +1,12 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { logAudit, huidigeActor } from '@/lib/kms/audit';
 import { kolomOntbreekt } from '@/lib/kms/kolomTerugval';
+import { eisData } from '@/lib/dbFout';
 import { maakTaak, getTaak, vinkTaak } from '@/lib/kms/taken';
 import { maakOfferte } from '@/lib/kms/offertes';
+import { regelsNaarOfferte } from '@/lib/kms/leadInname';
+import { zetLeadLogosNaarKlant } from '@/lib/kms/leadLogos';
+import { WEB_KANALEN, kanaalUitHerkomst, type PadStap } from '@/lib/leadHerkomst';
 import {
   CONTACT_SOORTEN,
   GEWONNEN,
@@ -41,6 +45,9 @@ type PgFout = { code?: string; message?: string } | null | undefined;
 const NIEUWE_KOLOMMEN = [
   'score', 'kans', 'verloren_reden', 'eerste_contact', 'laatste_contact',
   'eigenaar_id', 'eigenaar', 'volgende_stap', 'volgende_taak_id', 'status_gewijzigd_op',
+  // 20261006_weblead_inname
+  'bron_kanaal', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'referrer',
+  'landingspagina', 'conversiepagina', 'paginas_bekeken', 'bezochte_paden', 'eerste_bezoek_op', 'bezoeken', 'gezien_op',
 ];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -100,6 +107,21 @@ function naarRij(r: Record<string, unknown>): LeadRij {
     volgende_stap: s('volgende_stap'),
     volgende_taak_id: s('volgende_taak_id'),
     status_gewijzigd_op: s('status_gewijzigd_op'),
+    bron_kanaal: s('bron_kanaal'),
+    utm_source: s('utm_source'),
+    utm_medium: s('utm_medium'),
+    utm_campaign: s('utm_campaign'),
+    utm_term: s('utm_term'),
+    utm_content: s('utm_content'),
+    gclid: s('gclid'),
+    referrer: s('referrer'),
+    landingspagina: s('landingspagina'),
+    conversiepagina: s('conversiepagina'),
+    paginas_bekeken: n('paginas_bekeken'),
+    bezochte_paden: Array.isArray(r.bezochte_paden) ? (r.bezochte_paden as PadStap[]) : null,
+    eerste_bezoek_op: s('eerste_bezoek_op'),
+    bezoeken: n('bezoeken'),
+    gezien_op: s('gezien_op'),
   };
 }
 
@@ -159,7 +181,34 @@ export type LeadKaart = LeadRij & {
   dubbelVan: string[];
 };
 
-export function verrijkLeads(rijen: LeadRij[], momenten: Moment[], nu: Date = new Date()): LeadKaart[] {
+/** Migratie nog niet gedraaid: de tabel of een kolom bestaat niet. Dan is leeg het juiste antwoord. */
+function zonderMigratie(f: PgFout): boolean {
+  return Boolean(f) && (tabelOntbreekt(f) || kolomOntbreekt(f));
+}
+
+/** Per lead: aantal productregels en of er een logo is (voor de leadscore). */
+export type LeadExtra = { regels: Map<string, number>; logos: Set<string> };
+
+async function listLeadExtra(sb: Sb): Promise<LeadExtra> {
+  const [r, l] = await Promise.all([
+    sb.from('lead_regels').select('lead_id').limit(10000),
+    sb.from('lead_logos').select('lead_id').limit(5000),
+  ]);
+  // Zonder migratie (tabel of kolom ontbreekt) blijft de score gewoon zonder deze punten.
+  // Elke andere fout gooit: een stille lege uitkomst geeft te lage scores zonder dat iemand het ziet.
+  const rData = zonderMigratie(r.error) ? [] : eisData('leads.extra.regels', r);
+  const lData = zonderMigratie(l.error) ? [] : eisData('leads.extra.logos', l);
+  const regels = new Map<string, number>();
+  for (const x of (rData as { lead_id: string }[] | null) ?? []) regels.set(x.lead_id, (regels.get(x.lead_id) ?? 0) + 1);
+  return { regels, logos: new Set(((lData as { lead_id: string }[] | null) ?? []).map((x) => x.lead_id)) };
+}
+
+/** Marketingkanaal: eerst de gestructureerde herkomst (utm, gclid, verwijzer), anders de oude bron-tekst. */
+export function leadKanaal(l: LeadRij): string {
+  return kanaalUitHerkomst(l) ?? bronKanaal(l.bron);
+}
+
+export function verrijkLeads(rijen: LeadRij[], momenten: Moment[], nu: Date = new Date(), extra?: LeadExtra): LeadKaart[] {
   const vandaag = vandaagNl(nu);
   const eerste = new Map<string, string>();
   const reageerde = new Set<string>();
@@ -172,7 +221,13 @@ export function verrijkLeads(rijen: LeadRij[], momenten: Moment[], nu: Date = ne
     const eersteContactOp = l.eerste_contact ?? eerste.get(l.id) ?? null;
     // Zonder vastgelegd contact maar wel verder dan 'nieuw': dan is er contact geweest, alleen weten we niet wanneer.
     const hadContact = !!eersteContactOp || l.status !== 'nieuw';
-    const scoreInfo = berekenScore(l, { eersteContact: eersteContactOp, klantReageerde: reageerde.has(l.id), nu });
+    const scoreInfo = berekenScore(l, {
+      eersteContact: eersteContactOp,
+      klantReageerde: reageerde.has(l.id),
+      aantalRegels: extra?.regels.get(l.id) ?? 0,
+      logoAangeleverd: extra?.logos.has(l.id) ?? false,
+      nu,
+    });
     const { waarde, geschat } = leadWaarde(l);
     return {
       ...l,
@@ -185,7 +240,7 @@ export function verrijkLeads(rijen: LeadRij[], momenten: Moment[], nu: Date = ne
       waarde,
       waardeGeschat: geschat,
       kansPct: leadKans(l),
-      kanaal: bronKanaal(l.bron),
+      kanaal: leadKanaal(l),
       dubbelVan: dubbelen.get(l.id) ?? [],
     };
   });
@@ -194,8 +249,8 @@ export function verrijkLeads(rijen: LeadRij[], momenten: Moment[], nu: Date = ne
 export async function listLeadKaarten(): Promise<LeadKaart[]> {
   const sb = kmsAdmin();
   if (!sb) return [];
-  const [rijen, momenten] = await Promise.all([listLeadRijen(), listContactMomenten(sb)]);
-  return verrijkLeads(rijen, momenten);
+  const [rijen, momenten, extra] = await Promise.all([listLeadRijen(), listContactMomenten(sb), listLeadExtra(sb)]);
+  return verrijkLeads(rijen, momenten, new Date(), extra);
 }
 
 /* ------------------------------------------------------------------ */
@@ -385,6 +440,9 @@ export async function maakLead(v: NieuweLeadInvoer): Promise<{ id: string } | { 
     aantal: v.aantal,
     bericht: v.bericht,
     bron: v.bron,
+    bron_kanaal: v.bron === 'Telefonisch' ? 'telefoon' : 'handmatig',
+    // Zelf ingevoerd: niet als "nieuwe webaanvraag" melden.
+    gezien_op: new Date().toISOString(),
     status: 'nieuw',
     opvolgdatum: v.opvolgdatum,
   };
@@ -395,8 +453,7 @@ export async function maakLead(v: NieuweLeadInvoer): Promise<{ id: string } | { 
   }
   let { data, error } = await sb.from('leads').insert(rij).select('id').single();
   if (error && kolomOntbreekt(error)) {
-    delete rij.eigenaar_id;
-    delete rij.eigenaar;
+    for (const k of NIEUWE_KOLOMMEN) delete rij[k];
     ({ data, error } = await sb.from('leads').insert(rij).select('id').single());
   }
   if (error || !data) return { fout: 'Opslaan is niet gelukt.' };
@@ -489,7 +546,10 @@ export async function voegLeadsSamen(hoofdId: string, dubbelId: string): Promise
   const [hoofd, dubbel] = await Promise.all([getLeadRij(hoofdId), getLeadRij(dubbelId)]);
   if (!hoofd || !dubbel) return { ok: false, fout: 'Een van beide leads bestaat niet meer.' };
 
-  const aanvullen: (keyof LeadRij)[] = ['company', 'phone', 'branche', 'aantal', 'offertewaarde', 'organisatie_id', 'opvolgdatum', 'eigenaar_id', 'eigenaar', 'kans'];
+  const aanvullen: (keyof LeadRij)[] = [
+    'company', 'phone', 'branche', 'aantal', 'offertewaarde', 'organisatie_id', 'opvolgdatum', 'eigenaar_id', 'eigenaar', 'kans',
+    'bron_kanaal', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'referrer', 'landingspagina', 'eerste_bezoek_op',
+  ];
   const patch: Record<string, unknown> = {};
   for (const k of aanvullen) {
     const h = hoofd[k];
@@ -514,6 +574,8 @@ export async function voegLeadsSamen(hoofdId: string, dubbelId: string): Promise
   await sb.from('lead_activiteiten').update({ lead_id: hoofd.id }).eq('lead_id', dubbel.id);
   await sb.from('taken').update({ lead_id: hoofd.id }).eq('lead_id', dubbel.id);
   await sb.from('offertes').update({ lead_id: hoofd.id }).eq('lead_id', dubbel.id);
+  await sb.from('lead_regels').update({ lead_id: hoofd.id }).eq('lead_id', dubbel.id);
+  await sb.from('lead_logos').update({ lead_id: hoofd.id }).eq('lead_id', dubbel.id);
 
   const datum = new Date(dubbel.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
   const samenvatting = [
@@ -618,7 +680,8 @@ export async function koppelLeadAanKlant(leadId: string, orgId: string): Promise
   if (!bestaat && lead.name.trim()) {
     await sb.from('contactpersonen').insert({ organisatie_id: orgId, naam: lead.name.trim(), email: email, telefoon: lead.phone, hoofdcontact: lijst.length === 0 });
   }
-  await schrijfSysteemRegel(sb, leadId, `Gekoppeld aan bestaande klant ${naam}.`);
+  const logos = await zetLeadLogosNaarKlant(leadId, orgId);
+  await schrijfSysteemRegel(sb, leadId, `Gekoppeld aan bestaande klant ${naam}.${logos ? ` ${logos} logo${logos === 1 ? '' : "'s"} naar de logobibliotheek van de klant.` : ''}`);
   await logAudit('lead.klant_gekoppeld', { entiteit: 'lead', entiteitId: leadId, details: { organisatie_id: orgId, contact_toegevoegd: !bestaat } });
   return { ok: true };
 }
@@ -657,7 +720,8 @@ export async function maakKlantVanLead(leadId: string): Promise<string | null> {
   if (!orgId) return null;
   await sb.from('contactpersonen').insert({ organisatie_id: orgId, naam: lead.name, email: heeftEmail(lead.email) ? lead.email : null, telefoon: lead.phone, hoofdcontact: true });
   await sb.from('leads').update({ organisatie_id: orgId }).eq('id', leadId);
-  await schrijfSysteemRegel(sb, leadId, `Omgezet naar nieuwe klant ${String(rij.naam)}.`);
+  const logos = await zetLeadLogosNaarKlant(leadId, orgId);
+  await schrijfSysteemRegel(sb, leadId, `Omgezet naar nieuwe klant ${String(rij.naam)}.${logos ? ` ${logos} logo${logos === 1 ? '' : "'s"} naar de logobibliotheek van de klant.` : ''}`);
   await logAudit('lead.geconverteerd', { entiteit: 'lead', entiteitId: leadId, details: { organisatie_id: orgId } });
   return orgId;
 }
@@ -679,6 +743,32 @@ export async function maakOfferteVoorLead(leadId: string): Promise<{ id: string 
     lijst.find((c) => (c.naam ?? '').trim().toLowerCase() === lead.name.trim().toLowerCase()) ??
     null;
 
+  // Staat er al een concept-offerte uit de webaanvraag klaar (nog zonder klant)? Die gebruiken we.
+  const { data: concepten } = await sb
+    .from('offertes')
+    .select('id, offertenummer, organisatie_id')
+    .eq('lead_id', lead.id)
+    .eq('status', 'concept')
+    .order('created_at', { ascending: false })
+    .limit(5);
+  const bestaand = ((concepten as { id: string; offertenummer: number | null; organisatie_id: string | null }[]) ?? []).find(
+    (o) => !o.organisatie_id || o.organisatie_id === lead.organisatie_id,
+  );
+  if (bestaand) {
+    if (!bestaand.organisatie_id) {
+      const patch: Record<string, unknown> = { organisatie_id: lead.organisatie_id, contactpersoon: contact?.naam ?? lead.name };
+      if (contact?.id) patch.contactpersoon_id = contact.id;
+      let { error } = await sb.from('offertes').update(patch).eq('id', bestaand.id);
+      if (error && kolomOntbreekt(error) && 'contactpersoon_id' in patch) {
+        delete patch.contactpersoon_id;
+        ({ error } = await sb.from('offertes').update(patch).eq('id', bestaand.id));
+      }
+      if (error) return { fout: 'De concept-offerte kon niet aan de klant worden gekoppeld.' };
+      await schrijfSysteemRegel(sb, lead.id, `Concept-offerte${bestaand.offertenummer ? ` ${bestaand.offertenummer}` : ''} aan de klant gekoppeld.`);
+    }
+    return { id: bestaand.id };
+  }
+
   const geldig = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
   const id = await maakOfferte({
     organisatie_id: lead.organisatie_id,
@@ -689,6 +779,9 @@ export async function maakOfferteVoorLead(leadId: string): Promise<{ id: string 
   });
   if (!id) return { fout: 'De offerte kon niet worden aangemaakt.' };
   await sb.from('offertes').update({ lead_id: lead.id }).eq('id', id);
+  // Gekozen artikelen uit de webaanvraag meteen als regels, met catalogusprijzen.
+  const regels = await listLeadRegels(lead.id);
+  if (regels.length) await regelsNaarOfferte(sb, id, regels);
   const { data: o } = await sb.from('offertes').select('offertenummer').eq('id', id).maybeSingle();
   const nummer = (o as { offertenummer: number } | null)?.offertenummer;
   await schrijfSysteemRegel(sb, lead.id, `Concept-offerte${nummer ? ` ${nummer}` : ''} aangemaakt.`);
@@ -824,4 +917,84 @@ export async function migratieStand(): Promise<{ kolommen: boolean; tijdlijn: bo
     sb.from('lead_activiteiten').select('id').limit(1),
   ]);
   return { kolommen: !k.error, tijdlijn: !t.error };
+}
+
+/* ------------------------------------------------------------------ */
+/* Webaanvraag: regels, logo's en "nog niet gezien"                    */
+/* ------------------------------------------------------------------ */
+
+export type LeadRegel = {
+  id: string;
+  product_id: string | null;
+  omschrijving: string;
+  kleur: string | null;
+  maat: string | null;
+  aantal: number | null;
+  opmerking: string | null;
+};
+
+/** Gekozen artikelen van een lead (offerteselectie of configurator). Leeg zonder migratie. */
+export async function listLeadRegels(leadId: string): Promise<LeadRegel[]> {
+  const sb = kmsAdmin();
+  if (!sb || !isUuid(leadId)) return [];
+  const { data, error } = await sb
+    .from('lead_regels')
+    .select('id, product_id, omschrijving, kleur, maat, aantal, opmerking')
+    .eq('lead_id', leadId)
+    .order('positie');
+  if (error) return [];
+  return (data as LeadRegel[]) ?? [];
+}
+
+/** De concept-offerte die bij de webaanvraag is klaargezet (de nieuwste), of null. */
+export async function conceptOfferteVanLead(leadId: string): Promise<{ id: string; offertenummer: number | null } | null> {
+  const sb = kmsAdmin();
+  if (!sb || !isUuid(leadId)) return null;
+  const { data } = await sb
+    .from('offertes')
+    .select('id, offertenummer')
+    .eq('lead_id', leadId)
+    .eq('status', 'concept')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  return ((data as { id: string; offertenummer: number | null }[]) ?? [])[0] ?? null;
+}
+
+/** Lead geopend: niet meer als nieuwe webaanvraag melden. */
+export async function markeerLeadGezien(leadId: string): Promise<void> {
+  const sb = kmsAdmin();
+  if (!sb || !isUuid(leadId)) return;
+  await sb.from('leads').update({ gezien_op: new Date().toISOString() }).eq('id', leadId).is('gezien_op', null);
+}
+
+export async function markeerAlleWebleadsGezien(): Promise<void> {
+  const sb = kmsAdmin();
+  if (!sb) return;
+  await sb.from('leads').update({ gezien_op: new Date().toISOString() }).is('gezien_op', null).not('bron_kanaal', 'is', null);
+}
+
+export type OngezieneWeblead = { id: string; naam: string; bedrijf: string | null; bron_kanaal: string | null; created_at: string };
+
+/** Webaanvragen die nog niemand heeft geopend, nieuwste eerst. Leeg zonder migratie. */
+export async function listOngezieneWebleads(limiet = 10): Promise<{ aantal: number; leads: OngezieneWeblead[] }> {
+  const sb = kmsAdmin();
+  if (!sb) return { aantal: 0, leads: [] };
+  const { data, count, error } = await sb
+    .from('leads')
+    .select('id, name, company, bron_kanaal, created_at', { count: 'exact' })
+    .is('gezien_op', null)
+    .in('bron_kanaal', [...WEB_KANALEN])
+    .order('created_at', { ascending: false })
+    .limit(limiet);
+  // Leeg zonder migratie; elke andere fout gooit (anders lijkt het alsof er geen nieuwe aanvragen zijn).
+  if (zonderMigratie(error)) return { aantal: 0, leads: [] };
+  eisData('leads.ongezien', { data, error });
+  const leads = ((data as { id: string; name: string; company: string | null; bron_kanaal: string | null; created_at: string }[]) ?? []).map((l) => ({
+    id: l.id,
+    naam: l.name,
+    bedrijf: l.company,
+    bron_kanaal: l.bron_kanaal,
+    created_at: l.created_at,
+  }));
+  return { aantal: count ?? leads.length, leads };
 }

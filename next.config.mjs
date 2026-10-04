@@ -20,7 +20,15 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://www.googletagmanager.com`,
   "connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://*.supabase.co" + (isDev ? ' ws: http://localhost:*' : ''),
+  // Nooit een http-bron laden op een https-pagina (alleen in productie: lokaal draait http).
+  ...(isDev ? [] : ['upgrade-insecure-requests']),
 ].join('; ');
+// Over 'unsafe-inline' in script-src: Next.js zet inline bootstrap-scripts in elke
+// pagina. Zonder 'unsafe-inline' is een nonce per verzoek nodig (via middleware), en
+// dan kan geen enkele pagina meer statisch of uit de cache komen: de hele website
+// (branche- en regiopagina's) wordt dan per bezoek gerenderd. Bewuste afweging, zie
+// docs/security-audit-2026-10.md. XSS-bescherming komt hier uit React-escaping, de
+// sanitizer voor nieuwsbrief-HTML en sandboxed iframes voor mailvoorbeelden.
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -49,7 +57,12 @@ const nextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), browsing-topics=()',
+          },
+          // Popups (bv. een SSO-venster) blijven werken; andere sites krijgen geen greep op dit venster.
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           { key: 'Content-Security-Policy', value: CSP },
         ],

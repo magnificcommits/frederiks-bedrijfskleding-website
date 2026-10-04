@@ -23,6 +23,7 @@ export function PageHero({
   kruimels,
   beeld,
   donker = false,
+  acties,
 }: {
   eyebrow?: string;
   title: string;
@@ -32,6 +33,11 @@ export function PageHero({
   /** Loopt vanaf lg door tot de rechter schermrand. Laat leeg voor een compacte kop. */
   beeld?: React.ReactNode;
   donker?: boolean;
+  /**
+   * Knoppen direct onder de intro, boven de vouw. Meestal <CtaKnoppen plek="..." />.
+   * Laat leeg op pagina's waar het formulier zelf al bovenaan staat.
+   */
+  acties?: React.ReactNode;
 }) {
   const vlak = donker ? 'bg-ink-900 text-white' : 'bg-mist';
   const kop = donker ? 'text-white' : 'text-ink-900';
@@ -55,6 +61,7 @@ export function PageHero({
         {title}
       </h1>
       {intro && <p className={`mt-4 text-lg leading-relaxed ${tekst}`}>{intro}</p>}
+      {acties && <div className="mt-7">{acties}</div>}
     </>
   );
 

@@ -11,6 +11,7 @@ import { zoekKlantenVoorFilter, zoekOfferteContactenVoorFilter } from '@/lib/kms
 import { bedragParam, bewaarParams, isUuid, lijstUrl, param, periodeParam, sleutelsVan, vandaagPlus, type FilterDef } from '@/lib/filterBalk';
 import { formatEuro, formatDatum } from '@/lib/format';
 import SortableTh from '@/components/dashboard/SortableTh';
+import ActieKnopMobiel from '@/components/dashboard/ui/ActieKnopMobiel';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { bulkOfferteStatusActie } from './actions';
 
@@ -123,10 +124,7 @@ export default async function OffertesPage({ searchParams }: { searchParams: Pro
           <h1 className="dash-h1">Offertes</h1>
           <span className="text-[13px] tabular-nums text-warm">{filterActief ? `${totaal} van ${alleOffertes}` : alleOffertes}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard" className="knop-tekst">Terug naar dashboard</Link>
-          <Link href="/dashboard/offertes/nieuw" className="knop-primair">Nieuwe offerte</Link>
-        </div>
+        <Link href="/dashboard/offertes/nieuw" className="knop-primair max-md:hidden">Nieuwe offerte</Link>
       </div>
 
       <FilterBalk filters={filterDefs} opslag="offertes" gebruiker={admin?.email} wisOok={['status', 'zoek']}>
@@ -142,12 +140,27 @@ export default async function OffertesPage({ searchParams }: { searchParams: Pro
       />
 
       {offertes.length === 0 ? (
-        <EmptyState
-          tekst={filterActief ? 'Geen offertes die aan deze filters voldoen. Haal een filter weg via het kruisje.' : 'Nog geen offertes. Maak er rechtsboven een aan.'}
-        />
+        filterActief ? (
+          <EmptyState
+            className="mt-4"
+            soort="gefilterd"
+            titel="Geen offertes gevonden"
+            tekst="Geen offerte past bij deze zoekterm of filters. Haal een filter weg via het kruisje."
+            actieHref="/dashboard/offertes"
+            actieLabel="Alle offertes tonen"
+          />
+        ) : (
+          <EmptyState
+            className="mt-4"
+            titel="Nog geen offertes"
+            tekst="Een offerte stel je samen uit je producten, met logo’s en aantallen per maat. Stuurt de klant akkoord, dan wordt het met één klik een order."
+            actieHref="/dashboard/offertes/nieuw"
+            actieLabel="Maak je eerste offerte"
+          />
+        )
       ) : (
         <>
-          <form id="bulkoffertes" action={bulkOfferteStatusActie} className="mb-3 flex flex-wrap items-center justify-end gap-2">
+          <form id="bulkoffertes" action={bulkOfferteStatusActie} className="mb-3 flex flex-wrap items-center justify-end gap-2 max-md:hidden">
             <input type="hidden" name="terug" value={huidigeUrl} />
             <span className="text-[12px] text-warm">Status van geselecteerde:</span>
             {/* Lege beginwaarde: een misklik op Toepassen zet dan niet alles terug op concept. */}
@@ -158,7 +171,7 @@ export default async function OffertesPage({ searchParams }: { searchParams: Pro
             <button type="submit" className="knop-stil">Toepassen</button>
           </form>
           <div className="panel">
-            <table className="tbl">
+            <table className="tbl tbl-kaart">
               <thead className="thead-sticky">
                 <tr>
                   <th><span className="sr-only">Selecteren</span></th>
@@ -176,30 +189,31 @@ export default async function OffertesPage({ searchParams }: { searchParams: Pro
                   const open = o.status === 'concept' || o.status === 'verstuurd';
                   return (
                     <tr key={o.id}>
-                      <td>
+                      <td className="kaart-verberg">
                         <input type="checkbox" name="offerte_ids" value={o.id} form="bulkoffertes" className="h-3.5 w-3.5 rounded border-line text-amber-600 focus:ring-amber-200" aria-label={`Selecteer offerte ${o.offertenummer != null ? `#${o.offertenummer}` : 'concept'}`} />
                       </td>
-                      <td>
+                      <td className="kaart-kop">
                         <Link href={`/dashboard/offertes/${o.id}`} className="rij-link tabular-nums">
                           {o.offertenummer != null ? `#${o.offertenummer}` : 'concept'}
+                          <span className="font-normal text-ink-800 md:hidden"> · {o.organisatie_naam || 'Geen klant'}</span>
                         </Link>
                       </td>
-                      <td>
+                      <td className="kaart-verberg">
                         {o.organisatie_naam || '-'}
                         {o.contactpersoon && <span className="block text-[11px] text-warm">{o.contactpersoon}</span>}
                       </td>
-                      <td className="stil hidden whitespace-nowrap sm:table-cell">{formatDatum(o.created_at) || '-'}</td>
-                      <td className="stil hidden whitespace-nowrap sm:table-cell">
+                      <td className="stil hidden whitespace-nowrap sm:table-cell kaart-verberg" data-label="Datum">{formatDatum(o.created_at) || '-'}</td>
+                      <td className="stil hidden whitespace-nowrap sm:table-cell" data-label="Geldig tot">
                         {formatDatum(o.geldig_tot) || '-'}
                         {open && dagen != null && dagen < 0 && <span className="block text-[11px] font-semibold text-red-700">verlopen</span>}
                         {open && dagen != null && dagen >= 0 && dagen <= 7 && (
                           <span className="block text-[11px] font-semibold text-amber-800">{dagen === 0 ? 'verloopt vandaag' : `nog ${dagen} ${dagen === 1 ? 'dag' : 'dagen'}`}</span>
                         )}
                       </td>
-                      <td>
+                      <td data-label="Status">
                         <span className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-semibold ${statusBadge[o.status] ?? 'bg-ink-100 text-ink-600'}`}>{o.status}</span>
                       </td>
-                      <td className="num">{formatEuro(o.totaal)}</td>
+                      <td className="num" data-label="Totaal">{formatEuro(o.totaal)}</td>
                     </tr>
                   );
                 })}
@@ -219,6 +233,8 @@ export default async function OffertesPage({ searchParams }: { searchParams: Pro
           ) : <span />}
         </nav>
       )}
+
+      <ActieKnopMobiel href="/dashboard/offertes/nieuw" label="Nieuwe offerte" />
     </main>
   );
 }

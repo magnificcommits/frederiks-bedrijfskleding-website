@@ -18,6 +18,7 @@ import {
   type LogoMetKlant,
   type WerkbonKaart as Kaart,
 } from '@/lib/kms/logos';
+import { listOpenLeadLogos } from '@/lib/kms/leadLogos';
 import LogoKaart from './LogoKaart';
 import NieuwLogoFormulier from './NieuwLogoFormulier';
 import WerkbonKaart, { DeadlineLabel, ProefRegel, dagenTot } from './WerkbonKaart';
@@ -342,6 +343,34 @@ async function BibliotheekTab({ zp, orgs }: { zp: Zoek; orgs: { id: string; naam
           ))}
         </ul>
       )}
+
+      {!org && !filterActief && <LeadLogosBlok />}
+    </section>
+  );
+}
+
+/** Logo's die via de website binnenkwamen bij een lead die nog geen klant is. */
+async function LeadLogosBlok() {
+  const lijst = await listOpenLeadLogos(40);
+  if (!lijst.length) return null;
+  return (
+    <section className="mt-8" aria-labelledby="lead-logos-kop">
+      <h2 id="lead-logos-kop" className="font-display text-base font-bold text-ink-900">Van webaanvragen, nog geen klant</h2>
+      <p className="mt-0.5 text-[12px] text-warm">Geüpload in de pakketconfigurator. Zet je de lead om naar een klant, dan komt het logo vanzelf hierboven bij die klant.</p>
+      <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        {lijst.map((l) => (
+          <li key={l.id} className="panel p-2 text-[12px]">
+            <a href={l.logo_url} target="_blank" rel="noopener noreferrer" className="block rounded bg-mist/60">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={l.logo_url} alt={`Logo ${l.lead_bedrijf || l.lead_naam}`} className="h-24 w-full object-contain p-2" loading="lazy" />
+            </a>
+            <Link href={`/dashboard/leads/${l.lead_id}`} className="mt-1.5 block truncate font-semibold text-ink-900 hover:text-amber-700">
+              {l.lead_bedrijf || l.lead_naam}
+            </Link>
+            <p className="truncate text-warm" title={l.logo_naam ?? undefined}>{l.logo_naam ?? 'logo'}</p>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

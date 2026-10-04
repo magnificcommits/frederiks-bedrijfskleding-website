@@ -1,4 +1,5 @@
 'use client';
+import { bevestig } from '@/components/dashboard/ui/Bevestig';
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -399,11 +400,14 @@ function RegelRij({
     });
   }
 
-  function verwijderen() {
+  async function verwijderen() {
     if (bezig) return;
-    const bevestigd = window.confirm(
-      `${regel.naam}${regel.kleur ? ` in ${regel.kleur}` : ''} uit het assortiment van deze klant halen? Het artikel zelf blijft gewoon bestaan.`,
-    );
+    const bevestigd = await bevestig({
+      titel: `${regel.naam}${regel.kleur ? ` in ${regel.kleur}` : ''} uit het assortiment van deze klant halen?`,
+      tekst: 'Het artikel zelf blijft gewoon bestaan.',
+      bevestigLabel: 'Uit assortiment halen',
+      gevaar: true,
+    });
     if (!bevestigd) return;
     start(async () => {
       const antwoord = await verwijderAssortimentActie({ orgId, regelId: regel.id });

@@ -1,5 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
+import { after } from 'next/server';
+import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
+import { haalKennismaking } from '@/lib/prospect/kennismaking';
+import { isBot, logPortaalBezoek } from '@/lib/prospect/prospect';
 import { laadDemo, vereisDemo, demoPaden } from '@/lib/prospect/demo/laad';
 import DemoProvider from '@/components/kennismaking/demo/DemoProvider';
 import DemoKop from '@/components/kennismaking/demo/DemoKop';
@@ -32,6 +37,16 @@ export default async function VoorbeeldportaalLayout({ children, params }: Param
   const { token } = await params;
   const demo = await vereisDemo(token);
   const paden = demoPaden(demo.token);
+
+  // Bezoek loggen voor de brief-funnel, na het renderen zodat de pagina er niet op wacht.
+  // Niet voor bots, prefetches of Jessi zelf (ingelogd in het dashboard).
+  const h = await headers();
+  const prefetch = h.get('purpose') === 'prefetch' || h.get('next-router-prefetch') !== null;
+  if (!prefetch && !isBot(h.get('user-agent')) && !(await dashAuthed())) {
+    const k = await haalKennismaking(token);
+    const sb = kmsAdmin();
+    if (k && sb) after(() => logPortaalBezoek(sb, k.prospectId, demo.token));
+  }
   const stijl = {
     '--demo-accent': demo.accent.accent,
     '--demo-op-accent': demo.accent.opAccent,

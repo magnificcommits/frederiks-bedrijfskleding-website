@@ -48,6 +48,9 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
     p.normeringen ? { label: 'Normen', waarde: p.normeringen } : null,
   ].filter((s): s is { label: string; waarde: string } => !!s);
 
+  // Kruimel-URL's moeten absoluut zijn; relatieve ('/assortiment') keurt de Rich Results Test af.
+  const basis = env.siteUrl.replace(/\/$/, '');
+
   // Product-schema zonder `offers`: er staat bewust geen publieke prijs op de
   // pagina, en een offers-blok zonder prijs is misleidend richting Google.
   const productJsonLd = {
@@ -59,7 +62,7 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
     brand: p.merk ? { '@type': 'Brand', name: p.merk } : undefined,
     material: p.materiaal ?? undefined,
     category: p.categorie ?? undefined,
-    url: `${env.siteUrl.replace(/\/$/, '')}/assortiment/${categorie}/${slug}`,
+    url: `${basis}/assortiment/${categorie}/${slug}`,
   };
 
   return (
@@ -67,10 +70,10 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
       <JsonLd data={productJsonLd} />
       <JsonLd
         data={breadcrumbJsonLd([
-          { name: 'Home', url: '/' },
-          { name: 'Assortiment', url: '/assortiment' },
-          { name: c.titel, url: `/assortiment/${c.slug}` },
-          { name: p.naam, url: `/assortiment/${categorie}/${slug}` },
+          { name: 'Home', url: basis },
+          { name: 'Assortiment', url: `${basis}/assortiment` },
+          { name: c.titel, url: `${basis}/assortiment/${c.slug}` },
+          { name: p.naam, url: `${basis}/assortiment/${categorie}/${slug}` },
         ])}
       />
 
@@ -144,8 +147,8 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
               </dl>
             )}
 
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link href={`/offerte?product=${encodeURIComponent(`${p.merk ? p.merk + ' ' : ''}${p.naam}`)}`} className="btn-primary">
+            <div className="mt-7 flex flex-wrap items-center gap-3" data-plek="product">
+              <Link href={`/offerte?product=${encodeURIComponent(`${p.merk ? p.merk + ' ' : ''}${p.naam}`)}`} className="btn-primary" data-cta="offerte">
                 Vraag offerte aan
               </Link>
               {/* Meerdere artikelen verzamelen en er in één keer een offerte voor
@@ -159,6 +162,11 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
             </div>
             <p className="mt-3 text-xs text-warm">
               Bedrukken en borduren doen we in eigen huis in Hengelo Gld. Levering door heel de Achterhoek.
+              Twijfel je over maat of model?{' '}
+              <Link href="/afspraak" className="font-semibold text-amber-700 underline underline-offset-2" data-cta="afspraak">
+                Plan een adviesgesprek
+              </Link>
+              , dan nemen we pasmodellen mee.
             </p>
           </div>
         </div>

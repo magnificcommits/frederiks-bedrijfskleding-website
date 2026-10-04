@@ -1,4 +1,5 @@
 'use client';
+import { useBevestigKlik } from '@/components/dashboard/ui/useBevestigKlik';
 
 import { bestelBijLeverancierActie } from './actions';
 
@@ -27,6 +28,10 @@ export default function BestelmailKnop({
   aantalRegels: number;
 }) {
   const regels = aantalRegels === 1 ? '1 regel' : `${aantalRegels} regels`;
+  const onClick = useBevestigKlik(
+    `Bestelmail voor ${merk} sturen naar ${email}? Alle ${regels} van ${merk} komen daarna op besteld te staan.`,
+    { bevestigLabel: 'Bestelmail sturen' },
+  );
 
   return (
     <button
@@ -34,12 +39,7 @@ export default function BestelmailKnop({
       name="leverancierId"
       value={leverancierId}
       formAction={bestelBijLeverancierActie}
-      onClick={(gebeurtenis) => {
-        const akkoord = window.confirm(
-          `Bestelmail voor ${merk} sturen naar ${email}? Alle ${regels} van ${merk} komen daarna op besteld te staan.`,
-        );
-        if (!akkoord) gebeurtenis.preventDefault();
-      }}
+      onClick={onClick}
       className="knop-stil"
     >
       Bestelmail sturen en alles afvinken

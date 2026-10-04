@@ -1,8 +1,11 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { zoekWoorden, klantIdsVoorZoekterm } from '@/lib/kms/zoeken';
-import { stuurStatusMail, stuurLeverancierBestelmail } from '@/lib/kms/notificaties';
+import { stuurStatusMail } from '@/lib/kms/notificaties';
 import { metIdTerugval, orderIdsVoorAanvrager } from '@/lib/kms/personen';
 import { orderIdsMetDrukproef } from '@/lib/kms/filterOpties';
+import { eisData } from '@/lib/dbFout';
+import { sorteerMaten } from '@/lib/kms/variantenStandaard';
+import { genereerInkoopregels, annuleerInkoopVoorOrder, boekOrderVoorraadAf, volgOrderNaInkoop } from '@/lib/kms/inkoop';
 
 /**
  * Data-access voor de module Orders.
@@ -25,8 +28,61 @@ export const ORDER_STATUSSEN = [
   'verzonden',
   'factureren',
   'afgerond',
+  // Afgewezen in het portaal of door Jessi geannuleerd. Telt nergens meer mee
+  // (geen voorraadreservering, geen spaarpunten, niet factureerbaar).
+  'geannuleerd',
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSSEN)[number];
+
+export function isOrderStatus(s: string): s is OrderStatus {
+  return (ORDER_STATUSSEN as readonly string[]).includes(s);
+}
+
+/** Leesbaar label voor een orderstatus (zelfde woorden als het portaal). */
+export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
+  concept: 'Concept',
+  offerte_verstuurd: 'Offerte verstuurd',
+  offerte_goedgekeurd: 'Offerte goedgekeurd',
+  nog_bestellen: 'Nog bestellen',
+  besteld: 'Besteld bij leverancier',
+  deellevering: 'Deels binnen',
+  compleet_geleverd: 'Alles binnen',
+  bedrukken: 'Bedrukken',
+  borduren: 'Borduren',
+  verpakken: 'Verpakken',
+  bezorgen: 'Bezorgen',
+  verzonden: 'Verzonden',
+  factureren: 'Factureren',
+  afgerond: 'Afgerond',
+  geannuleerd: 'Geannuleerd',
+};
+
+/**
+ * De logische volgende stap per status, voor de knop "Volgende stap" op de
+ * orderpagina. Bedrukken en borduren gaan via de werkbon; die stap staat hier
+ * toch, zodat een order zonder werkbon ook verder kan.
+ */
+export const VOLGENDE_ORDERSTATUS: Partial<Record<OrderStatus, OrderStatus>> = {
+  concept: 'nog_bestellen',
+  offerte_verstuurd: 'offerte_goedgekeurd',
+  offerte_goedgekeurd: 'nog_bestellen',
+  nog_bestellen: 'besteld',
+  besteld: 'compleet_geleverd',
+  deellevering: 'compleet_geleverd',
+  compleet_geleverd: 'verpakken',
+  bedrukken: 'verpakken',
+  borduren: 'verpakken',
+  verpakken: 'verzonden',
+  bezorgen: 'factureren',
+  verzonden: 'factureren',
+  factureren: 'afgerond',
+};
+
+/** Statussen waarin de goederen de deur uit zijn: dan wordt de voorraad afgeboekt. */
+export const UITGELEVERDE_ORDERSTATUSSEN: readonly string[] = ['bezorgen', 'verzonden', 'factureren', 'afgerond'];
+
+/** Statussen waarin aan de regels van een order niets meer mag veranderen. */
+export const GESLOTEN_ORDERSTATUSSEN: readonly string[] = ['afgerond', 'geannuleerd'];
 
 export const GOEDKEURING_STATUSSEN = ['niet_nodig', 'wacht', 'goedgekeurd', 'afgewezen'] as const;
 export type GoedkeuringStatus = (typeof GOEDKEURING_STATUSSEN)[number];
@@ -128,7 +184,13 @@ export type OrderVelden = {
   interne_notitie?: string | null;
   status?: string;
   goedkeuring_status?: string;
+  /** Herkomst; zonder waarde zet de database 'handmatig'. Zie ORDER_BRONNEN. */
+  bron?: OrderBron;
 };
+
+/** Waar een order vandaan komt (kolom orders.bron, migratie 20261006_orders_bron.sql). */
+export const ORDER_BRONNEN = ['handmatig', 'portaal', 'api'] as const;
+export type OrderBron = (typeof ORDER_BRONNEN)[number];
 
 export type OrderregelVelden = {
   product_id?: string | null;
@@ -172,8 +234,11 @@ const SORTEERKOLOMMEN = ['ordernummer', 'besteldatum', 'bedrag', 'status', 'goed
 /**
  * Statussen waarin een order klaar is (geleverd of verder). Een order die
  * hier níet in staat en ouder is dan x dagen, telt als "loopt achter".
+ * Geannuleerd staat erbij: die order loopt niet achter, hij loopt niet meer.
  */
-export const AFGEHANDELDE_ORDERSTATUSSEN = ['compleet_geleverd', 'verzonden', 'factureren', 'afgerond'] as const;
+export const AFGEHANDELDE_ORDERSTATUSSEN = ['compleet_geleverd', 'verzonden', 'factureren', 'afgerond', 'geannuleerd'] as const;
+/** Fase "klaar" in de lijst: geleverd of verder, zonder de geannuleerde orders. */
+const KLAAR_ORDERSTATUSSEN = AFGEHANDELDE_ORDERSTATUSSEN.filter((s) => s !== 'geannuleerd');
 
 /** Extra filters op de orderlijst (FilterBalk). Alles optioneel. */
 export type OrderLijstFilters = {
@@ -186,8 +251,8 @@ export type OrderLijstFilters = {
   bedragMin?: number | null;
   bedragMax?: number | null;
   goedkeuring?: string | null;
-  /** Portaalorders hebben het e-mailadres van de besteller als aanvrager; handmatige een naam of niets. */
-  bron?: 'portaal' | 'handmatig' | null;
+  /** Herkomst uit de kolom orders.bron (portaal, handmatig of api). */
+  bron?: OrderBron | null;
   drukproef?: 'ja' | 'nee' | null;
   /** Alleen open orders (niet geleverd of verder) met een besteldatum van meer dan x dagen geleden. */
   ouderDan?: number | null;
@@ -222,15 +287,16 @@ export async function listOrdersPaged(opts: { pagina: number; perPagina: number;
   if (f.bedragMin != null) q = q.gte('bedrag', f.bedragMin);
   if (f.bedragMax != null) q = q.lte('bedrag', f.bedragMax);
   if (f.goedkeuring) q = q.eq('goedkeuring_status', f.goedkeuring);
-  if (f.bron === 'portaal') q = q.ilike('aangevraagd_door', '%@%');
-  if (f.bron === 'handmatig') q = q.or('aangevraagd_door.is.null,aangevraagd_door.not.ilike.%@%');
+  // Echte kolom (gezet bij aanmaken) in plaats van de oude schatting "aanvrager bevat een @",
+  // die een passessie met het e-mailadres van een beheerder als portaalorder telde.
+  if (f.bron) q = q.eq('bron', f.bron);
   if (f.drukproef) {
     const ids = await orderIdsMetDrukproef();
     if (f.drukproef === 'ja') q = ids.length ? q.in('id', ids) : q.eq('id', '00000000-0000-0000-0000-000000000000');
     else if (ids.length) q = q.not('id', 'in', `(${ids.join(',')})`);
   }
   if (f.fase === 'open') q = q.not('status', 'in', `(${AFGEHANDELDE_ORDERSTATUSSEN.join(',')})`);
-  if (f.fase === 'klaar') q = q.in('status', [...AFGEHANDELDE_ORDERSTATUSSEN]);
+  if (f.fase === 'klaar') q = q.in('status', [...KLAAR_ORDERSTATUSSEN]);
   if (f.ouderDan && f.ouderDan > 0) {
     const grens = new Date(Date.now() - f.ouderDan * 86_400_000).toISOString();
     q = q.lt('besteldatum', grens).not('status', 'in', `(${AFGEHANDELDE_ORDERSTATUSSEN.join(',')})`);
@@ -250,7 +316,9 @@ export async function listOrdersPaged(opts: { pagina: number; perPagina: number;
     q = q.or(delen.join(','));
   }
 
-  const { data, count } = await q.range(from, to);
+  const res = await q.range(from, to);
+  const data = eisData('orders.lijst', res);
+  const count = res.count;
   const rows = (data as unknown as (Order & { organisaties: { naam: string } | null; medewerkers: { naam: string } | null })[]) ?? [];
   const rijen = rows.map((r) => {
     const { organisaties, medewerkers, ...rest } = r;
@@ -298,14 +366,18 @@ async function afbeeldingPerRegel(regels: Orderregel[]): Promise<Map<string, str
 
 export async function getOrder(id: string): Promise<OrderDetail | null> {
   const sb = kmsAdmin(); if (!sb) return null;
-  const { data } = await sb
-    .from('orders')
-    .select('*, organisaties(naam), medewerkers!orders_medewerker_id_fkey(naam)')
-    .eq('id', id)
-    .maybeSingle();
+  const data = eisData(
+    'orders.detail',
+    await sb
+      .from('orders')
+      .select('*, organisaties(naam), medewerkers!orders_medewerker_id_fkey(naam)')
+      .eq('id', id)
+      .maybeSingle(),
+  );
   if (!data) return null;
   const row = data as unknown as Order & { organisaties: { naam: string } | null; medewerkers: { naam: string } | null };
-  const { data: regelData } = await sb.from('orderregels').select('*').eq('order_id', id).order('created_at');
+  // Zonder regels zou een pakbon of factuur leeg worden; een fout moet dus zichtbaar zijn.
+  const regelData = eisData('orders.regels', await sb.from('orderregels').select('*').eq('order_id', id).order('created_at'));
   const regels = (regelData as Orderregel[]) ?? [];
   const fotos = await afbeeldingPerRegel(regels);
   const { organisaties, medewerkers, ...rest } = row;
@@ -494,18 +566,14 @@ export async function listVariantenVoorProduct(productId: string): Promise<Order
     afbeelding: fotoVan.get(kleurSleutel(v.kleur)) ?? null,
   }));
 
-  // Maten sorteren op getal waar dat kan (48 voor 50), anders alfabetisch met
-  // numeric-optie zodat M voor XL komt en 2XL na XL.
-  varianten.sort((a, b) => {
-    const kleurVerschil = (a.kleur ?? '').localeCompare(b.kleur ?? '', 'nl');
-    if (kleurVerschil !== 0) return kleurVerschil;
-    // Number('') en Number(null) zijn 0; daarom eerst op leeg controleren,
-    // anders schuift een variant zonder maat tussen de confectiematen.
-    const na = a.maat?.trim() ? Number(a.maat) : NaN;
-    const nb = b.maat?.trim() ? Number(b.maat) : NaN;
-    if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
-    return (a.maat ?? '').localeCompare(b.maat ?? '', 'nl', { numeric: true });
-  });
+  // Maten volgens de vaste matenlijst (XS, S, M, L, XL, 2XL; broekmaten oplopend).
+  // Alfabetisch (ook met numeric) gaf L, M, S, XL, XS. Varianten zonder maat achteraan.
+  const matenVolgorde = sorteerMaten([...new Set(varianten.map((v) => v.maat?.trim() ?? '').filter(Boolean))]);
+  const plek = (m: string | null) => {
+    const i = matenVolgorde.indexOf(m?.trim() ?? '');
+    return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  varianten.sort((a, b) => (a.kleur ?? '').localeCompare(b.kleur ?? '', 'nl') || plek(a.maat) - plek(b.maat));
   return varianten;
 }
 
@@ -513,7 +581,7 @@ export async function maakOrder(v: OrderVelden): Promise<string | null> {
   const sb = kmsAdmin(); if (!sb) return null;
   const { data, error } = await metIdTerugval(
     { status: 'concept', goedkeuring_status: 'niet_nodig', besteldatum: new Date().toISOString(), ...v },
-    AANVRAGER_ID_KOLOMMEN,
+    [...AANVRAGER_ID_KOLOMMEN, 'bron'],
     (rij) => sb.from('orders').insert(rij).select('id').single(),
   );
   if (error || !data) return null;
@@ -532,24 +600,128 @@ export async function verwijderOrderregel(id: string): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
   const { data } = await sb.from('orderregels').select('order_id').eq('id', id).maybeSingle();
   const orderId = (data as { order_id: string } | null)?.order_id ?? null;
+  // Eerst de inkoop die nog niet weg is intrekken; anders blijft er een
+  // inkoopregel zonder orderregel in de werkvoorraad staan.
+  if (orderId) await annuleerInkoopVoorOrder(orderId, id);
   const { error } = await sb.from('orderregels').delete().eq('id', id);
   if (error) return false;
   if (orderId) await herberekenOrderbedrag(orderId);
   return true;
 }
 
-export async function zetOrderStatus(id: string, status: string): Promise<boolean> {
-  const sb = kmsAdmin(); if (!sb) return false;
+/**
+ * Mag er nog aan de regels van deze order gewerkt worden? Niet als hij is
+ * afgerond of geannuleerd, en niet als er al een factuur de deur uit is: dan
+ * kloppen order en factuur niet meer met elkaar. Geeft de reden terug, of null.
+ */
+export async function orderRegelsGeslotenReden(orderId: string): Promise<string | null> {
+  const sb = kmsAdmin(); if (!sb || !orderId) return null;
+  const [{ data: o }, { data: f }] = await Promise.all([
+    sb.from('orders').select('status').eq('id', orderId).maybeSingle(),
+    sb.from('facturen').select('status').eq('order_id', orderId),
+  ]);
+  const status = (o as { status: string | null } | null)?.status ?? '';
+  if (status === 'geannuleerd') return 'geannuleerd';
+  if (status === 'afgerond') return 'afgerond';
+  if (((f as { status: string }[]) ?? []).some((x) => x.status !== 'concept')) return 'gefactureerd';
+  return null;
+}
+
+export type StatusUitkomst = {
+  ok: boolean;
+  /** Zelfde status als hij al had: niets gedaan, geen mail. */
+  ongewijzigd?: boolean;
+  /** Bij annuleren: inkoopregels die uit de werkvoorraad zijn gehaald. */
+  inkoopGeannuleerd?: number;
+  /** Bij annuleren: inkoopregels die al besteld zijn en zelf afgezegd moeten worden. */
+  inkoopAlBesteld?: number;
+  /** Bij uitleveren: aantal stuks dat van de voorraad is afgeboekt. */
+  voorraadAfgeboekt?: number;
+  /** Geweigerd met een reden die Jessi moet zien (bijv. annuleren na facturering). */
+  fout?: string;
+  /** Korte code van die reden, voor de melding in de URL. */
+  foutCode?: AnnuleerBlokkade;
+};
+
+export type AnnuleerBlokkade = 'gefactureerd' | 'uitgeleverd';
+
+export const ANNULEER_BLOKKADE_TEKST: Record<AnnuleerBlokkade, string> = {
+  gefactureerd: 'Deze order kan niet worden geannuleerd: er is al een factuur verstuurd. Maak eerst een creditfactuur.',
+  uitgeleverd: 'Deze order kan niet worden geannuleerd: hij is al uitgeleverd. Boek een retour in plaats van te annuleren.',
+};
+
+/**
+ * Mag een order nog geannuleerd worden? Niet als hij al de deur uit is, en niet
+ * als er een factuur bestaat die geen concept meer is. Puur, dus los te testen.
+ */
+export function annuleerBlokkade(orderStatus: string, factuurStatussen: readonly string[]): AnnuleerBlokkade | null {
+  if (factuurStatussen.some((s) => s !== 'concept')) return 'gefactureerd';
+  if (UITGELEVERDE_ORDERSTATUSSEN.includes(orderStatus)) return 'uitgeleverd';
+  return null;
+}
+
+/**
+ * Zet de orderstatus en doet wat er bij die stap hoort:
+ * - alleen bekende statussen; dezelfde status opnieuw kiezen doet niets (ook geen mail);
+ * - geannuleerd: openstaande inkoop intrekken;
+ * - de deur uit (bezorgen, verzonden, factureren, afgerond): voorraad afboeken (één keer);
+ * - daarna de statusmail naar de besteller (best effort).
+ */
+export async function zetOrderStatusMetGevolgen(id: string, status: string, actor?: string | null): Promise<StatusUitkomst> {
+  const sb = kmsAdmin(); if (!sb) return { ok: false };
+  if (!isOrderStatus(status)) return { ok: false };
+  const { data } = await sb.from('orders').select('status').eq('id', id).maybeSingle();
+  const huidig = (data as { status: string } | null)?.status;
+  if (huidig === undefined) return { ok: false };
+  if (huidig === status) return { ok: true, ongewijzigd: true };
+  if (status === 'geannuleerd') {
+    // Kan de facturen niet lezen: dan liever weigeren dan een gefactureerde order annuleren.
+    const { data: f, error: fFout } = await sb.from('facturen').select('status').eq('order_id', id);
+    if (fFout) return { ok: false };
+    const blokkade = annuleerBlokkade(huidig, ((f as { status: string }[]) ?? []).map((x) => x.status));
+    if (blokkade) return { ok: false, fout: ANNULEER_BLOKKADE_TEKST[blokkade], foutCode: blokkade };
+  }
   const { error } = await sb.from('orders').update({ status }).eq('id', id);
-  if (error) return false;
+  if (error) return { ok: false };
+
+  const uitkomst: StatusUitkomst = { ok: true };
+  if (status === 'geannuleerd') {
+    const inkoop = await annuleerInkoopVoorOrder(id);
+    uitkomst.inkoopGeannuleerd = inkoop.geannuleerd;
+    uitkomst.inkoopAlBesteld = inkoop.alBesteld;
+  } else if (huidig === 'geannuleerd') {
+    // Heropend: de inkoop is bij het annuleren ingetrokken, dus opnieuw klaarzetten
+    // (genereerInkoopregels voorkomt zelf dubbels). volgOrderNaInkoop zet de order
+    // daarna op de stap die bij de inkoop past (alleen vooruit, alleen in de inkoopfase).
+    // Niet voor een concept of offerte (nog geen inkoop) en niet voor een order die
+    // direct op een uitgeleverde status wordt gezet (dan valt er niets meer in te kopen).
+    if (UITGELEVERDE_ORDERSTATUSSEN.includes(status)) {
+      const af = await boekOrderVoorraadAf(id, actor ?? null).catch(() => ({ geboekt: 0, stuks: 0 }));
+      uitkomst.voorraadAfgeboekt = af.stuks;
+    } else if (!['concept', 'offerte_verstuurd', 'offerte_goedgekeurd'].includes(status)) {
+      await genereerInkoopregels(id).catch(() => 0);
+      await volgOrderNaInkoop(id).catch(() => null);
+    }
+  } else if (UITGELEVERDE_ORDERSTATUSSEN.includes(status)) {
+    const af = await boekOrderVoorraadAf(id, actor ?? null).catch(() => ({ geboekt: 0, stuks: 0 }));
+    uitkomst.voorraadAfgeboekt = af.stuks;
+  }
   // Statusupdate naar de besteller (best effort; faalt de mutatie nooit).
   await stuurStatusMail(id).catch(() => {});
-  return true;
+  return uitkomst;
+}
+
+export async function zetOrderStatus(id: string, status: string): Promise<boolean> {
+  return (await zetOrderStatusMetGevolgen(id, status)).ok;
 }
 
 /**
  * Goedkeuring vastleggen. `persoon` koppelt "door wie" aan een contactpersoon of
  * werknemer van de klant; zonder migratie blijft alleen de naam staan.
+ *
+ * De orderstatus loopt mee, net als bij een beslissing in het portaal:
+ * goedgekeurd zet een order die nog concept was op "nog bestellen" en maakt de
+ * inkoopregels aan; afgewezen annuleert de order (en de openstaande inkoop).
  */
 export async function zetGoedkeuring(
   id: string,
@@ -558,6 +730,10 @@ export async function zetGoedkeuring(
   persoon?: { contactId?: string | null; medewerkerId?: string | null },
 ): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
+  if (!(GOEDKEURING_STATUSSEN as readonly string[]).includes(status)) return false;
+  const { data: huidigData } = await sb.from('orders').select('status').eq('id', id).maybeSingle();
+  const huidigeStatus = (huidigData as { status: string } | null)?.status ?? null;
+  if (huidigeStatus === null) return false;
   const patch: Record<string, unknown> = { goedkeuring_status: status };
   if (status === 'goedgekeurd' || status === 'afgewezen') {
     patch.goedgekeurd_door = doorWie ?? null;
@@ -566,21 +742,48 @@ export async function zetGoedkeuring(
       patch.goedgekeurd_door_medewerker_id = persoon.medewerkerId ?? null;
     }
   }
+  if (status === 'goedgekeurd' && (huidigeStatus === 'concept' || huidigeStatus === 'geannuleerd')) patch.status = 'nog_bestellen';
+  if (status === 'afgewezen' && huidigeStatus !== 'geannuleerd') {
+    // Zelfde grens als bij annuleren: niet als de order al de deur uit is of gefactureerd.
+    const { data: f, error: fFout } = await sb.from('facturen').select('status').eq('order_id', id);
+    const blokkade = fFout ? 'gefactureerd' : annuleerBlokkade(huidigeStatus, ((f as { status: string }[]) ?? []).map((x) => x.status));
+    if (!blokkade) patch.status = 'geannuleerd';
+  }
+  // Terug naar "wacht": een order die net was goedgekeurd gaat terug naar concept.
+  if (status === 'wacht' && huidigeStatus === 'nog_bestellen') patch.status = 'concept';
   const { error } = await metIdTerugval(patch, GOEDKEURDER_ID_KOLOMMEN, (rij) =>
     sb.from('orders').update(rij).eq('id', id),
   );
   if (error) return false;
-  // Statusupdate naar de besteller; bij goedkeuring ook de bestelmail naar de leverancier(s).
+  if (patch.status === 'geannuleerd') await annuleerInkoopVoorOrder(id);
+  // Bij goedkeuring meteen inkoopregels voor wat niet op voorraad is (voorkomt zelf dubbels).
+  if (status === 'goedgekeurd') {
+    await genereerInkoopregels(id).catch(() => 0);
+    await volgOrderNaInkoop(id).catch(() => null);
+  }
+  // Statusupdate naar de besteller. Bewust geen bestelmail naar de leverancier
+  // meer: die mailde álle regels (ook wat op voorraad lag) en de inkoopregels
+  // bleven op "te bestellen" staan, zodat via Inkoop alles nog een keer besteld
+  // werd. Bestellen bij de leverancier gaat nu alleen via Inkoop.
   await stuurStatusMail(id).catch(() => {});
-  if (status === 'goedgekeurd') await stuurLeverancierBestelmail(id).catch(() => {});
   return true;
 }
 
 export async function herberekenOrderbedrag(id: string): Promise<number> {
   const sb = kmsAdmin(); if (!sb) return 0;
-  const { data } = await sb.from('orderregels').select('aantal, stukprijs').eq('order_id', id);
+  const [{ data }, { data: oData }] = await Promise.all([
+    sb.from('orderregels').select('aantal, stukprijs').eq('order_id', id),
+    sb.from('orders').select('bedrag').eq('id', id).maybeSingle(),
+  ]);
   const regels = (data as { aantal: number; stukprijs: number | null }[]) ?? [];
-  const bedrag = regels.reduce((t, r) => t + (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0), 0);
+  // Per regel op centen, net als de factuur: anders wijkt het ordertotaal een cent af.
+  const bedrag = Math.round(
+    regels.reduce((t, r) => t + Math.round((Number(r.aantal) || 0) * (Number(r.stukprijs) || 0) * 100), 0),
+  ) / 100;
+  // Pakketbestelling uit het portaal: de regels staan op nul en de pakketprijs
+  // staat alleen op de order. Die niet wegpoetsen als er een regel bijkomt of afgaat.
+  const huidig = Number((oData as { bedrag: number | null } | null)?.bedrag) || 0;
+  if (bedrag === 0 && regels.length > 0 && huidig > 0 && regels.every((r) => (Number(r.stukprijs) || 0) === 0)) return huidig;
   await sb.from('orders').update({ bedrag }).eq('id', id);
   return bedrag;
 }

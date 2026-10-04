@@ -106,6 +106,14 @@ export default async function OffertePage({
               <Link href="/contact" className="btn-outline mt-4 w-full">Alle contactgegevens</Link>
             </div>
 
+            <div className="card" data-plek="offerte-zijbalk">
+              <h2 className="font-display text-lg font-bold text-ink-900">Eerst even praten?</h2>
+              <p className="mt-2 text-sm text-warm">
+                Weet je nog niet precies wat je nodig hebt? Plan een kort adviesgesprek, op de zaak of in de showroom.
+              </p>
+              <Link href="/afspraak" className="btn-outline mt-4 w-full" data-cta="afspraak">Plan een adviesgesprek</Link>
+            </div>
+
             <div className="card">
               <h2 className="font-display text-lg font-bold text-ink-900">Wanneer we bereikbaar zijn</h2>
               <dl className="mt-3 space-y-1 text-sm">

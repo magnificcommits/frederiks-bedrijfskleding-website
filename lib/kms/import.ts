@@ -1,4 +1,7 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { laadVariantLijsten } from '@/lib/kms/varianten';
+import { kolomOntbreekt } from '@/lib/kms/kolomTerugval';
+import { meldOnbekend, normaliseerImportVariant } from '@/lib/kms/importNormaliseren';
 
 /**
  * Bulk-import voor het KMS. Plak CSV (puntkomma of komma) in een textarea,
@@ -341,6 +344,8 @@ export async function importeerProductenLijst(csv: string): Promise<LijstResulta
   type VariantInvoer = {
     maat: string | null;
     kleur: string | null;
+    maat_leverancier: string | null;
+    kleur_leverancier: string | null;
     ean: string | null;
     inkoopprijs: number | null;
     verkoopprijs: number | null;
@@ -359,6 +364,10 @@ export async function importeerProductenLijst(csv: string): Promise<LijstResulta
   };
 
   const groepen = new Map<string, Groep>();
+  // Kleuren en maten naar de vaste lijst; wat daar niet in staat melden we na afloop.
+  const lijst = await laadVariantLijsten();
+  const onbekendeKleuren = new Map<string, number>();
+  const onbekendeMaten = new Map<string, number>();
 
   for (let i = 0; i < rijen.length; i++) {
     const rij = rijen[i];
@@ -376,10 +385,18 @@ export async function importeerProductenLijst(csv: string): Promise<LijstResulta
     const groepSleutel = (artNr || naam).toLowerCase() + '|' + merk.toLowerCase();
 
     // "Basis Kleur" kan dubbel voorkomen; veld() pakt de eerste gevulde waarde.
-    const kleur = veld(rij, idx, 'basis kleur', 'kleur') || null;
+    const norm = normaliseerImportVariant(
+      veld(rij, idx, 'basis kleur', 'kleur') || null,
+      parseMaat(veld(rij, idx, 'variant waardes', 'variant', 'maat')) || null,
+      lijst,
+    );
+    if (norm.onbekendeKleur) onbekendeKleuren.set(norm.onbekendeKleur, (onbekendeKleuren.get(norm.onbekendeKleur) ?? 0) + 1);
+    if (norm.onbekendeMaat) onbekendeMaten.set(norm.onbekendeMaat, (onbekendeMaten.get(norm.onbekendeMaat) ?? 0) + 1);
     const variant: VariantInvoer = {
-      maat: parseMaat(veld(rij, idx, 'variant waardes', 'variant', 'maat')) || null,
-      kleur,
+      maat: norm.maat,
+      kleur: norm.kleur,
+      maat_leverancier: norm.maatLeverancier,
+      kleur_leverancier: norm.kleurLeverancier,
       ean: veld(rij, idx, 'barcode', 'ean') || null,
       inkoopprijs: parseGetal(veld(rij, idx, 'inkoopprijs ex btw', 'inkoopprijs')),
       verkoopprijs: parseGetal(veld(rij, idx, 'verkoopprijs ex btw', 'verkoopprijs')),
@@ -393,8 +410,9 @@ export async function importeerProductenLijst(csv: string): Promise<LijstResulta
     if (!groep) {
       // Interne referentie als sku, maar de maatsuffix eraf strippen indien aanwezig.
       let sku: string | null = interneRef || null;
-      if (sku && variant.maat) {
-        const suffix = new RegExp('[-_\\s]*' + variant.maat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i');
+      const ruweMaat = variant.maat_leverancier ?? variant.maat;
+      if (sku && ruweMaat) {
+        const suffix = new RegExp('[-_\\s]*' + ruweMaat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i');
         const gestript = sku.replace(suffix, '').trim();
         sku = gestript || null;
       }
@@ -416,16 +434,24 @@ export async function importeerProductenLijst(csv: string): Promise<LijstResulta
     groep.varianten.push(variant);
   }
 
-  // Sleutel om dubbele varianten binnen een product te herkennen.
-  const variantSleutel = (v: { maat: string | null; kleur: string | null; ean: string | null }) =>
-    `${(v.maat ?? '').toLowerCase()}|${(v.kleur ?? '').toLowerCase()}|${(v.ean ?? '').toLowerCase()}`;
+  // Sleutel om dubbele varianten binnen een product te herkennen. Op de genormaliseerde
+  // waarden, zodat "XXL" in de database en "2XL" in het bestand als dezelfde maat tellen.
+  const variantSleutel = (v: { maat: string | null; kleur: string | null; ean: string | null }) => {
+    const n = normaliseerImportVariant(v.kleur, v.maat, lijst);
+    return `${(n.maat ?? '').toLowerCase()}|${(n.kleur ?? '').toLowerCase()}|${(v.ean ?? '').toLowerCase()}`;
+  };
 
   const BATCH = 500;
   let variantBuffer: Record<string, unknown>[] = [];
 
   const flushVarianten = async () => {
     if (variantBuffer.length === 0) return;
-    const { error } = await sb.from('product_varianten').insert(variantBuffer);
+    let { error } = await sb.from('product_varianten').insert(variantBuffer);
+    // Kolommen kleur_leverancier/maat_leverancier bestaan nog niet (migratie varianten niet gedraaid).
+    if (error && kolomOntbreekt(error)) {
+      const zonder = variantBuffer.map(({ kleur_leverancier: _k, maat_leverancier: _m, ...rest }) => rest);
+      ({ error } = await sb.from('product_varianten').insert(zonder));
+    }
     if (error) {
       res.fouten.push(`Varianten-batch mislukt: ${error.message}`);
     } else {
@@ -497,6 +523,8 @@ export async function importeerProductenLijst(csv: string): Promise<LijstResulta
         product_id: productId,
         maat: v.maat,
         kleur: v.kleur,
+        maat_leverancier: v.maat_leverancier,
+        kleur_leverancier: v.kleur_leverancier,
         ean: v.ean,
         inkoopprijs: v.inkoopprijs,
         verkoopprijs: v.verkoopprijs,
@@ -507,5 +535,8 @@ export async function importeerProductenLijst(csv: string): Promise<LijstResulta
   }
 
   await flushVarianten();
+  // Onbekende waarden vooraan, zodat ze binnen de eerste 20 meldingen op het scherm staan.
+  const onbekend = [meldOnbekend('kleuren', onbekendeKleuren), meldOnbekend('maten', onbekendeMaten)].filter((m): m is string => !!m);
+  res.fouten.unshift(...onbekend);
   return res;
 }

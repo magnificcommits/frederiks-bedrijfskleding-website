@@ -1,7 +1,10 @@
 'use client';
 import { useState } from 'react';
+import { site } from '@/content/site';
+import { track } from '@/lib/analytics';
+import Link from 'next/link';
 import { branches } from '@/content/branches';
-import { getHerkomst } from '@/lib/herkomst';
+import { getHerkomst, leesHerkomstVoorLead } from '@/lib/herkomst';
 
 type Status = 'idle' | 'sending' | 'ok' | 'error';
 
@@ -45,13 +48,13 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
     try {
       const res = await fetch('/api/lead', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...contact, branche, aantal, bericht, bron: getHerkomst(), consent: true }),
+        body: JSON.stringify({ ...contact, branche, aantal, bericht, bron: getHerkomst(), consent: true, bron_kanaal: 'formulier', herkomst: leesHerkomstVoorLead() }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
         throw new Error(j?.error ?? 'Er ging iets mis. Probeer het later opnieuw.');
       }
-      (window as unknown as { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'generate_lead', { event_label: branche });
+      track('generate_lead', { formulier: 'kledingadvies', branche });
       setStatus('ok');
     } catch (e) {
       setStatus('error');
@@ -63,8 +66,12 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
     return (
       <div className="rounded-2xl border-2 border-amber-500 bg-white p-8 shadow-card">
         <p className="font-display text-2xl font-extrabold text-ink-900">Bedankt, {contact.name.split(' ')[0]}.</p>
-        <p className="mt-3 text-warm">We hebben je aanvraag binnen. We bellen je binnen 24 uur terug om je wensen door te nemen. Je krijgt ook een bevestiging in je mail.</p>
-        <p className="mt-4 text-sm text-warm">Liever meteen contact? Bel of WhatsApp ons.</p>
+        <p className="mt-3 text-warm">We hebben je aanvraag binnen. We bellen je {site.beloftKort} terug (op werkdagen) om je wensen door te nemen. Je krijgt ook een bevestiging in je mail.</p>
+        <p className="mt-4 text-sm text-warm">
+          Liever meteen een moment vastleggen?{' '}
+          <Link href="/afspraak" className="font-semibold text-amber-700 underline underline-offset-2" data-cta="afspraak">Plan een adviesgesprek</Link>
+          {' '}of bel <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-700 underline underline-offset-2">{site.phone}</a>.
+        </p>
       </div>
     );
   }
@@ -77,19 +84,19 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
           <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-amber-500' : 'bg-line'}`} />
         ))}
       </div>
-      <p className="mt-3 text-xs font-bold uppercase tracking-wide text-warm">Stap {step + 1} van {totalSteps}</p>
+      <p className="mt-3 text-xs font-bold uppercase tracking-wide text-warm" aria-live="polite">Stap {step + 1} van {totalSteps}</p>
 
       {step === 0 && (
         <div className="mt-4">
           <h3 className="text-xl font-extrabold text-ink-900">In welke branche werk je?</h3>
           <div className="mt-4 flex flex-wrap gap-2.5">
             {branches.map((b) => (
-              <button key={b.slug} type="button" onClick={() => setBranche(b.navLabel)}
+              <button key={b.slug} type="button" onClick={() => setBranche(b.navLabel)} aria-pressed={branche === b.navLabel}
                 className={`${chip} ${branche === b.navLabel ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>
                 {b.navLabel}
               </button>
             ))}
-            <button type="button" onClick={() => setBranche('Anders')}
+            <button type="button" onClick={() => setBranche('Anders')} aria-pressed={branche === 'Anders'}
               className={`${chip} ${branche === 'Anders' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>
               Anders
             </button>
@@ -103,7 +110,7 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
           <p className="mt-1 text-sm text-warm">Meerdere antwoorden mogen.</p>
           <div className="mt-4 flex flex-wrap gap-2.5">
             {wensenOpties.map((w) => (
-              <button key={w} type="button" onClick={() => toggleWens(w)}
+              <button key={w} type="button" onClick={() => toggleWens(w)} aria-pressed={wensen.includes(w)}
                 className={`${chip} ${wensen.includes(w) ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>
                 {w}
               </button>
@@ -117,7 +124,7 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
           <h3 className="text-xl font-extrabold text-ink-900">Voor hoeveel mensen?</h3>
           <div className="mt-4 flex flex-wrap gap-2.5">
             {aantalOpties.map((a) => (
-              <button key={a} type="button" onClick={() => setAantal(a)}
+              <button key={a} type="button" onClick={() => setAantal(a)} aria-pressed={aantal === a}
                 className={`${chip} ${aantal === a ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>
                 {a}
               </button>
@@ -135,14 +142,16 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
         <div className="mt-4">
           <h3 className="text-xl font-extrabold text-ink-900">Waar mogen we je advies naartoe sturen?</h3>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div><label className="text-sm font-medium text-ink-800">Naam *</label>
-              <input className={field} value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} autoComplete="name" /></div>
-            <div><label className="text-sm font-medium text-ink-800">Bedrijf</label>
-              <input className={field} value={contact.company} onChange={(e) => setContact({ ...contact, company: e.target.value })} autoComplete="organization" /></div>
-            <div><label className="text-sm font-medium text-ink-800">E-mail *</label>
-              <input type="email" className={field} value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} autoComplete="email" /></div>
-            <div><label className="text-sm font-medium text-ink-800">Telefoon</label>
-              <input type="tel" className={field} value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} autoComplete="tel" /></div>
+            {/* Labels waren niet aan hun veld gekoppeld (geen htmlFor/id): een
+                screenreader las vier keer "invoerveld" zonder naam. */}
+            <div><label htmlFor="wiz-naam" className="text-sm font-medium text-ink-800">Naam *</label>
+              <input id="wiz-naam" required aria-required="true" className={field} value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} autoComplete="name" /></div>
+            <div><label htmlFor="wiz-bedrijf" className="text-sm font-medium text-ink-800">Bedrijf</label>
+              <input id="wiz-bedrijf" className={field} value={contact.company} onChange={(e) => setContact({ ...contact, company: e.target.value })} autoComplete="organization" /></div>
+            <div><label htmlFor="wiz-email" className="text-sm font-medium text-ink-800">E-mail *</label>
+              <input id="wiz-email" type="email" required aria-required="true" className={field} value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} autoComplete="email" /></div>
+            <div><label htmlFor="wiz-telefoon" className="text-sm font-medium text-ink-800">Telefoon <span className="font-normal text-warm">(dan bellen we je)</span></label>
+              <input id="wiz-telefoon" type="tel" className={field} value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} autoComplete="tel" /></div>
           </div>
           <label className="mt-4 flex items-start gap-3 text-sm text-warm">
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)}
@@ -156,11 +165,20 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
 
       <div className="mt-6 flex items-center justify-between gap-3">
         <button type="button" onClick={() => setStep((s) => Math.max(0, s - 1))}
-          className={`text-sm font-semibold text-warm hover:text-ink-800 ${step === 0 ? 'invisible' : ''}`}>
+          className={`min-h-[44px] px-2 text-sm font-semibold text-warm hover:text-ink-800 ${step === 0 ? 'invisible' : ''}`}>
           Terug
         </button>
         {step < totalSteps - 1 ? (
-          <button type="button" onClick={() => setStep((s) => s + 1)} className="btn-primary">Volgende</button>
+          <button
+            type="button"
+            onClick={() => {
+              if (step === 0) track('formulier_gestart', { formulier: 'kledingadvies', branche });
+              setStep((s) => s + 1);
+            }}
+            className="btn-primary"
+          >
+            Volgende
+          </button>
         ) : (
           <button type="button" onClick={submit} disabled={status === 'sending'} className="btn-primary">
             {status === 'sending' ? 'Versturen' : 'Verstuur aanvraag'}

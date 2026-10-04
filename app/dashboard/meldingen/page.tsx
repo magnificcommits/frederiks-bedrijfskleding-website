@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { budgetPerMedewerker } from '@/lib/kms/rapportages';
+import { listOngezieneWebleads } from '@/lib/kms/leads';
+import NieuweWebleads from '../leads/NieuweWebleads';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Meldingen', robots: { index: false, follow: false } };
@@ -32,11 +34,12 @@ export default async function MeldingenPage() {
   const vandaag = new Date();
   vandaag.setHours(0, 0, 0, 0);
 
-  const [budget, inkoopR, facturenR, leadsR] = await Promise.all([
+  const [budget, inkoopR, facturenR, leadsR, ongezien] = await Promise.all([
     budgetPerMedewerker(),
     sb.from('inkoopregels').select('id, status, merk, item_naam, aantal'),
     sb.from('facturen').select('id, status, vervaldatum, bedrag_incl, organisaties(naam)'),
     sb.from('leads').select('id, name, company, status, opvolgdatum'),
+    listOngezieneWebleads(5),
   ]);
 
   // Budget bijna op
@@ -74,6 +77,7 @@ export default async function MeldingenPage() {
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 text-sm text-warm">Signalen die nu aandacht vragen. Live berekend uit de actuele cijfers.</p>
+      <NieuweWebleads begin={ongezien} />
 
       <section className="mt-8 panel p-4">
         <div className="flex items-center justify-between gap-3">

@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { huidigeActor } from '@/lib/kms/audit';
 import { factuurEmailVoor } from '@/lib/kms/factuurEmail';
-import { getFactuur, regelBedrag, zetFactuurStatus, type FactuurDetail } from '@/lib/kms/facturen';
+import { btwTarief, getFactuur, regelBedrag, zetFactuurStatus, type FactuurDetail } from '@/lib/kms/facturen';
 import {
   isMoneybirdGeconfigureerd,
   mbBtwTarieven,
@@ -338,7 +338,7 @@ export function moneybirdRegels(
 ): { ok: true; regels: Record<string, unknown>[] } | { ok: false; melding: string } {
   const ontbrekend = new Set<number>();
   const regels = f.regels.map((r, i) => {
-    const pct = Math.round((Number.isFinite(Number(r.btw_pct)) ? Number(r.btw_pct) : 21) * 100) / 100;
+    const pct = Math.round(btwTarief(r.btw_pct) * 100) / 100;
     const tarief = btw.get(pct);
     if (!tarief) ontbrekend.add(pct);
     const aantal = Number(r.aantal) || 0;
@@ -393,7 +393,10 @@ export async function zetFactuurDoor(factuurId: string, opties: { actor?: string
   }
   const actor = opties.actor ?? (await huidigeActor());
 
-  const f = await getFactuur(factuurId);
+  // getFactuur gooit bij een databasefout (liever dan een factuur zonder regels doorzetten);
+  // hier vangen we dat af zodat een batch of de nachtelijke run doorloopt met de volgende.
+  const f = await getFactuur(factuurId).catch(() => undefined);
+  if (f === undefined) return { ok: false, melding: 'De factuur kon niet uit de database worden gelezen. Probeer het opnieuw.' };
   if (!f) return { ok: false, melding: 'Factuur niet gevonden.' };
   if (f.moneybird_factuur_id) return { ok: false, melding: 'Deze factuur staat al in Moneybird.' };
   if (f.status === 'concept') return { ok: false, melding: 'Een conceptfactuur zet je niet door. Maak hem eerst definitief (Verzonden).' };

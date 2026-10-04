@@ -7,8 +7,14 @@ import { werkwijze } from '@/content/werkwijze';
 import { site } from '@/content/site';
 import { Faq } from '@/components/Faq';
 import { ContactSectie } from '@/components/ContactSectie';
+import { AfspraakSectie } from '@/components/AfspraakSectie';
 import { JsonLd } from '@/components/JsonLd';
 import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
+import { CtaKnoppen } from '@/components/CtaKnoppen';
+import { BrancheArtikelen } from '@/components/BrancheArtikelen';
+
+// De artikelenrij komt uit de catalogus; met ISR is dat één query per uur.
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return branches.map((b) => ({ slug: b.slug }));
@@ -36,9 +42,10 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
     <>
       <JsonLd data={serviceJsonLd({ name: b.name, description: b.metaDescription, url })} />
       {b.faq.length > 0 && <JsonLd data={faqJsonLd(b.faq)} />}
+      {/* Geen tussenstap "Branches": daar is geen eigen pagina voor, en een
+          #anker als kruimel-URL keurt Google af. */}
       <JsonLd data={breadcrumbJsonLd([
         { name: 'Home', url: site.url },
-        { name: 'Branches', url: `${site.url}/#branches` },
         { name: b.navLabel, url },
       ])} />
 
@@ -49,16 +56,21 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
             <nav className="text-xs text-warm" aria-label="Kruimelpad">
               <Link href="/" className="hover:text-amber-800">Home</Link>
               <span className="px-1.5">/</span>
-              <Link href="/werkkleding" className="hover:text-amber-800">Branches</Link>
+              <Link href="/#branches" className="hover:text-amber-800">Branches</Link>
               <span className="px-1.5">/</span>
               <span className="text-ink-700">{b.navLabel}</span>
             </nav>
             <h1 className="mt-4 text-3xl font-extrabold text-balance sm:text-4xl lg:text-5xl">{b.name}</h1>
             <p className="mt-4 max-w-[52ch] text-lg text-warm">{b.heroIntro}</p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link href={`/kledingadvies?branche=${encodeURIComponent(b.navLabel)}`} className="btn-primary">Gratis kledingadvies</Link>
-              <a href={`tel:${site.phoneIntl}`} className="btn-outline">Bel {site.phone}</a>
-            </div>
+            <CtaKnoppen
+              plek="branche-hero"
+              className="mt-7"
+              offerteHref={`/offerte?branche=${encodeURIComponent(b.navLabel)}`}
+              afspraakHref={`/afspraak?branche=${encodeURIComponent(b.navLabel)}`}
+            />
+            <p className="mt-2 text-sm text-warm" data-plek="branche-hero">
+              Liever bellen? <a href={`tel:${site.phoneIntl}`} className="font-semibold text-ink-900 underline decoration-amber-500 underline-offset-4">{site.phone}</a>
+            </p>
           </div>
           <div className={`relative aspect-[4/3] overflow-hidden rounded-2xl border border-line shadow-card ${b.fit === 'contain' ? 'bg-ink-900' : ''}`}>
             <Image src={b.image} alt={b.name} fill priority sizes="(max-width: 1024px) 90vw, 45vw"
@@ -119,11 +131,23 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
           <aside>
             <div className="sticky top-24 space-y-4">
               <div className="rounded-xl border-2 border-amber-500 bg-white p-6 shadow-card">
-                <h3 className="text-lg font-extrabold text-ink-900">Advies voor {b.navLabel.toLowerCase()}</h3>
-                <p className="mt-2 text-sm text-warm">Vertel ons in een minuut wat je zoekt. We bellen je binnen 24 uur terug en komen graag langs om te passen.</p>
-                <Link href={`/kledingadvies?branche=${encodeURIComponent(b.navLabel)}`} className="btn-primary mt-4 w-full">Start kledingadvies</Link>
-                <Link href={`/pakket-samenstellen?branche=${encodeURIComponent(b.navLabel)}`} className="btn-outline mt-2 w-full">Stel je pakket samen</Link>
-                <a href={`tel:${site.phoneIntl}`} className="btn-outline mt-2 w-full">Bel {site.phone}</a>
+                <h2 className="text-lg font-extrabold text-ink-900">Kleding voor {b.navLabel.toLowerCase()}</h2>
+                <p className="mt-2 text-sm text-warm">Vertel wat je zoekt. We reageren binnen 24 uur (werkdagen) en komen langs om te passen.</p>
+                <CtaKnoppen
+                  plek="branche-zijbalk"
+                  vol
+                  bewijs={false}
+                  className="mt-4"
+                  offerteHref={`/offerte?branche=${encodeURIComponent(b.navLabel)}`}
+                  afspraakHref={`/afspraak?branche=${encodeURIComponent(b.navLabel)}`}
+                />
+                <p className="mt-4 border-t border-line pt-4 text-sm text-warm" data-plek="branche-zijbalk">
+                  <Link href={`/pakket-samenstellen?branche=${encodeURIComponent(b.navLabel)}`} className="font-semibold text-amber-700 underline-offset-2 hover:underline" data-cta="pakket">
+                    Zelf je pakket samenstellen
+                  </Link>
+                  <br />
+                  of bel <a href={`tel:${site.phoneIntl}`} className="font-semibold text-ink-900">{site.phone}</a>
+                </p>
               </div>
               {b.voorbeeld && (
                 <figure className="rounded-xl bg-mist p-6">
@@ -135,6 +159,12 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
           </aside>
         </div>
       </section>
+
+      <BrancheArtikelen
+        brancheSlug={b.slug}
+        titel={`Uit ons assortiment voor ${b.navLabel.toLowerCase()}`}
+        intro="Een greep uit de catalogus. Bij het passen kijken we wat bij jouw werk past; dit is een startpunt, geen vaste lijst."
+      />
 
       {/* Werkwijze */}
       <section className="border-y border-line bg-mist">
@@ -164,6 +194,8 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
           ))}
         </p>
       </section>
+
+      <AfspraakSectie bron={`Branchepagina ${b.navLabel}`} defaultBranche={b.navLabel} />
 
       <ContactSectie defaultBranche={b.navLabel} />
     </>

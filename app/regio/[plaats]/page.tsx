@@ -7,11 +7,17 @@ import { artikelen } from '@/content/kennisbank';
 import { werkwijze } from '@/content/werkwijze';
 import { site } from '@/content/site';
 import { ContactSectie } from '@/components/ContactSectie';
+import { AfspraakSectie } from '@/components/AfspraakSectie';
 import { Reviews } from '@/components/Reviews';
 import { PageHero } from '@/components/PageHero';
 import { Faq } from '@/components/Faq';
 import { JsonLd } from '@/components/JsonLd';
 import { breadcrumbJsonLd, faqJsonLd, serviceJsonLd } from '@/lib/jsonld';
+import { CtaKnoppen } from '@/components/CtaKnoppen';
+import { BrancheArtikelen } from '@/components/BrancheArtikelen';
+
+// De artikelenrij komt uit de catalogus; met ISR is dat één query per uur.
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return plaatsen.map((p) => ({ plaats: p.slug }));
@@ -49,11 +55,17 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
       <JsonLd data={faqJsonLd(p.faq)} />
       <JsonLd data={breadcrumbJsonLd([
         { name: 'Home', url: site.url },
-        { name: 'Regio', url: `${site.url}/#regio` },
+        { name: 'Regio', url: `${site.url}/regio` },
         { name: p.name, url },
       ])} />
 
-      <PageHero eyebrow={`Bedrijfskleding ${p.name}`} title={`Bedrijfskleding in ${p.name}`} intro={p.intro} />
+      <PageHero
+        eyebrow={`Bedrijfskleding ${p.name}`}
+        title={`Bedrijfskleding in ${p.name}`}
+        intro={p.intro}
+        kruimels={[{ label: 'Home', href: '/' }, { label: 'Regio', href: '/regio' }]}
+        acties={<CtaKnoppen plek="regio-hero" />}
+      />
 
       {/* Statstrook */}
       <section className="border-b border-line bg-white">
@@ -82,7 +94,7 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
               ))}
             </div>
 
-            <h2 className="mt-10 text-2xl font-extrabold">Populair in {p.name}</h2>
+            <h2 className="mt-10 text-2xl font-extrabold">Branches die we in {p.name} kleden</h2>
             <div className="mt-5 grid gap-4 sm:grid-cols-3">
               {populair.map((b) => (
                 <Link key={b.slug} href={`/branches/${b.slug}`} className="group rounded-lg border border-line bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-amber-400">
@@ -107,15 +119,24 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
               <div className="rounded-xl border-2 border-amber-500 bg-white p-6 shadow-card">
                 <h2 className="text-lg font-extrabold text-ink-900">Bedrijfskleding nodig in {p.name}?</h2>
                 <p className="mt-1 text-sm text-warm">{p.afstand}.</p>
-                <p className="mt-2 text-sm text-warm">Vraag vrijblijvend advies aan. We nemen snel persoonlijk contact op.</p>
-                <Link href={`/kledingadvies`} className="btn-primary mt-4 w-full">Gratis kledingadvies</Link>
-                <Link href="/pakket-samenstellen" className="btn-outline mt-2 w-full">Stel je pakket samen</Link>
-                <a href={`tel:${site.phoneIntl}`} className="mt-2 block text-center text-sm font-bold text-ink-900 hover:text-amber-800">{site.phone}</a>
+                <p className="mt-2 text-sm text-warm">Vrijblijvend. We reageren binnen 24 uur (werkdagen) en komen in {p.name} langs om te passen.</p>
+                <CtaKnoppen plek="regio-zijbalk" vol bewijs={false} className="mt-4" />
+                <p className="mt-4 border-t border-line pt-4 text-center text-sm text-warm" data-plek="regio-zijbalk">
+                  of bel <a href={`tel:${site.phoneIntl}`} className="font-bold text-ink-900 hover:text-amber-800">{site.phone}</a>
+                </p>
               </div>
             </div>
           </aside>
         </div>
       </section>
+
+      {populair[0] && (
+        <BrancheArtikelen
+          brancheSlug={populair[0].slug}
+          titel={`Uit ons assortiment voor ${populair[0].navLabel.toLowerCase()}`}
+          intro={`Een greep uit de catalogus. Ander vak? Bij het passen in ${p.name} kijken we wat bij jouw werk past.`}
+        />
+      )}
 
       {/* Werkwijze */}
       <section className="border-y border-line bg-mist">
@@ -147,6 +168,13 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
           ))}
         </p>
       </section>
+
+      <AfspraakSectie
+        titel={`Passen in ${p.name}? Plan het zelf`}
+        intro={`Jessi komt met pasmaten naar je bedrijf in ${p.name}, of je komt langs in de showroom in Hengelo. Liever eerst even bellen kan ook.`}
+        bron={`Regiopagina ${p.name}`}
+        standaardSoort="pasdag"
+      />
 
       <ContactSectie title={`Bedrijfskleding nodig in ${p.name}?`} />
     </>

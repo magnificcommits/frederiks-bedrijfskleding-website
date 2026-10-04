@@ -2,7 +2,7 @@
 
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { rateLimit } from '@/lib/ratelimit';
+import { publiekeLimiet } from '@/lib/ratelimit';
 import { startRetour } from '@/lib/retourportaal';
 
 /**
@@ -11,12 +11,13 @@ import { startRetour } from '@/lib/retourportaal';
  * e-mailadressen te raden.
  */
 export async function vraagRetourlinkAan(formData: FormData) {
-  const ordernummer = String(formData.get('ordernummer') ?? '');
-  const email = String(formData.get('email') ?? '');
+  // auth: publiek (retourlink aanvragen); rate limit, honeypot, altijd hetzelfde antwoord.
+  const ordernummer = String(formData.get('ordernummer') ?? '').slice(0, 40);
+  const email = String(formData.get('email') ?? '').slice(0, 254);
   if (String(formData.get('website') ?? '')) redirect('/klantenservice/retourneren?verstuurd=1');
 
-  const ip = (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() || 'onbekend';
-  if (rateLimit(`retour:${ip}`, 5, 600_000)) {
+  const ip = (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() || null;
+  if (await publiekeLimiet('retour', ip, 5, 600_000)) {
     await startRetour(ordernummer, email);
   }
   redirect('/klantenservice/retourneren?verstuurd=1');

@@ -219,11 +219,27 @@ export function parseGetal(waarde: string | null | undefined, fallback: number):
   return Number.isFinite(n) ? n : fallback;
 }
 
-/** Datum plus n maanden, als Date. */
+/**
+ * Datum plus n maanden, als Date. Valt de dag niet in de doelmaand (31 januari + 1
+ * maand), dan de laatste dag van die maand: 28/29 februari, niet 2 of 3 maart.
+ * In UTC, zodat de uitkomst niet afhangt van de tijdzone van de server.
+ */
 export function plusMaanden(d: Date, n: number): Date {
   const r = new Date(d.getTime());
-  r.setMonth(r.getMonth() + n);
+  const dag = r.getUTCDate();
+  r.setUTCDate(1);
+  r.setUTCMonth(r.getUTCMonth() + n);
+  const laatste = new Date(Date.UTC(r.getUTCFullYear(), r.getUTCMonth() + 1, 0)).getUTCDate();
+  r.setUTCDate(Math.min(dag, laatste));
   return r;
+}
+
+/**
+ * Naar beneden afronden op hele punten, zonder dat zwevendekommafouten een punt kosten:
+ * 100 x 0,15 is in JavaScript 14,999999999999998 en Math.floor maakt daar 14 van.
+ */
+export function vloerPunten(n: number): number {
+  return Math.floor(Math.round(n * 1e6) / 1e6);
 }
 
 /** Hoogste niveau waarvan de drempel gehaald is. */

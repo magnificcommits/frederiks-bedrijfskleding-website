@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
+import { veiligGelijk } from '@/lib/kms/adminClient';
 import { verwerkCampagnes } from '@/lib/kms/campagne-engine';
 
 export const runtime = 'nodejs';
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
 
   const auth = req.headers.get('authorization');
   const param = new URL(req.url).searchParams.get('secret');
-  if (auth !== `Bearer ${secret}` && param !== secret) {
+  if (!veiligGelijk(auth ?? '', `Bearer ${secret}`) && !veiligGelijk(param ?? '', secret)) {
     return NextResponse.json({ error: 'Niet toegestaan' }, { status: 401 });
   }
 

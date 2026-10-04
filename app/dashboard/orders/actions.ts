@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { logAudit } from '@/lib/kms/audit';
-import { maakOrder, zetOrderStatus, type OrderVelden } from '@/lib/kms/orders';
+import { maakOrder, zetOrderStatusMetGevolgen, type OrderVelden } from '@/lib/kms/orders';
 import { bevestigPersoon, leesPersoonKeuze } from '@/lib/kms/personen';
 
 /** Leeg veld = niet ingevuld; die laten we uit de insert zodat de kolom leeg blijft. */
@@ -59,7 +59,7 @@ export async function nieuweOrder(formData: FormData) {
 
 /**
  * Inline statuswijziging vanaf de orderslijst. Hergebruikt dezelfde
- * `zetOrderStatus`-helper als de detailpagina (die ook de statusmail verstuurt),
+ * `zetOrderStatusMetGevolgen`-helper als de detailpagina (die ook de statusmail verstuurt),
  * maar blijft op de lijst staan via revalidatePath i.p.v. een redirect.
  * De huidige status- en paginafilter worden meegestuurd zodat de lijst na het
  * opslaan op dezelfde plek blijft.
@@ -68,13 +68,18 @@ export async function wijzigOrderStatusInline(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const orderId = String(formData.get('orderId') ?? '').trim();
   const status = String(formData.get('status') ?? '').trim();
+  const terug = veiligTerug(formData.get('terug'));
+  const voeg = terug.includes('?') ? '&' : '?';
   if (orderId && status) {
-    await zetOrderStatus(orderId, status);
+    const uitkomst = await zetOrderStatusMetGevolgen(orderId, status);
+    if (!uitkomst.ok) {
+      // Annuleren geweigerd (gefactureerd of al uitgeleverd) of opslaan mislukt: de Toast toont waarom.
+      redirect(`${terug}${voeg}fout=${uitkomst.foutCode ? `annuleren-${uitkomst.foutCode}` : 'opslaan'}`);
+    }
     await logAudit('order_status', { entiteit: 'order', entiteitId: orderId, details: { status } });
   }
   revalidatePath('/dashboard/orders');
-  const terug = veiligTerug(formData.get('terug'));
-  redirect(`${terug}${terug.includes('?') ? '&' : '?'}ok=status`);
+  redirect(`${terug}${voeg}ok=status`);
 }
 
 /** Bulk-statuswijziging voor alle aangevinkte orders in één keer. */
@@ -83,10 +88,16 @@ export async function bulkOrderStatusActie(formData: FormData) {
   const ids = formData.getAll('order_ids').map((v) => String(v).trim()).filter(Boolean);
   const status = String(formData.get('bulk_status') ?? '').trim();
   const terug = veiligTerug(formData.get('terug'));
+  let geweigerd = 0;
   if (ids.length && status) {
-    for (const id of ids) await zetOrderStatus(id, status);
-    await logAudit('order_status_bulk', { entiteit: 'order', details: { status, aantal: ids.length } });
+    for (const id of ids) {
+      const uitkomst = await zetOrderStatusMetGevolgen(id, status);
+      if (!uitkomst.ok) geweigerd += 1;
+    }
+    await logAudit('order_status_bulk', { entiteit: 'order', details: { status, aantal: ids.length - geweigerd, geweigerd } });
   }
   revalidatePath('/dashboard/orders');
-  redirect(`${terug}${terug.includes('?') ? '&' : '?'}ok=status`);
+  const voeg = terug.includes('?') ? '&' : '?';
+  if (geweigerd) redirect(`${terug}${voeg}fout=${status === 'geannuleerd' ? 'annuleren-deels' : 'status-deels'}`);
+  redirect(`${terug}${voeg}ok=status`);
 }

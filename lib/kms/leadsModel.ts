@@ -8,6 +8,8 @@
  * - De aanvraagtekst van het adviesformulier en de pakketconfigurator ontleden.
  */
 
+import { padSoort, type PadStap } from '@/lib/leadHerkomst';
+
 /* ------------------------------------------------------------------ */
 /* Statussen                                                           */
 /* ------------------------------------------------------------------ */
@@ -132,6 +134,22 @@ export type LeadRij = {
   volgende_stap?: string | null;
   volgende_taak_id?: string | null;
   status_gewijzigd_op?: string | null;
+  // Na migratie 20261006_weblead_inname; daarvoor undefined.
+  bron_kanaal?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_term?: string | null;
+  utm_content?: string | null;
+  gclid?: string | null;
+  referrer?: string | null;
+  landingspagina?: string | null;
+  conversiepagina?: string | null;
+  paginas_bekeken?: number | null;
+  bezochte_paden?: PadStap[] | null;
+  eerste_bezoek_op?: string | null;
+  bezoeken?: number | null;
+  gezien_op?: string | null;
 };
 
 /* ------------------------------------------------------------------ */
@@ -431,14 +449,51 @@ export type ScoreContext = {
   eersteContact: string | null;
   /** De klant heeft zelf gereageerd (teruggebeld, gemaild). */
   klantReageerde: boolean;
+  /** Aantal gestructureerde productregels (lead_regels). */
+  aantalRegels?: number;
+  /** Er is een logo geüpload (lead_logos). */
+  logoAangeleverd?: boolean;
   nu?: Date;
 };
 
 /**
- * Leadscore 0-100. Twee helften, zoals HubSpot "fit" en "engagement" scheidt:
- * - Past bij ons (80): teamgrootte 30, branche 20, volledigheid 15, concreetheid 15.
+ * Gedrag op de site (max 15): hoeveel pagina's, welke soort pagina's en of de
+ * bezoeker vaker terugkwam. Zonder gegevens (geen toestemming, telefonische
+ * lead) een neutrale 3, zodat die leads niet onterecht wegzakken.
+ */
+export function gedragPunten(l: Pick<LeadRij, 'paginas_bekeken' | 'bezochte_paden' | 'bezoeken' | 'landingspagina' | 'conversiepagina'>): { punten: number; uitleg: string; bekend: boolean } {
+  const paden = (l.bezochte_paden ?? []).map((p) => p.p);
+  for (const p of [l.landingspagina, l.conversiepagina]) if (p) paden.push(p);
+  const n = l.paginas_bekeken ?? null;
+  const bezoeken = l.bezoeken ?? null;
+  if (n == null && bezoeken == null && !(l.bezochte_paden ?? []).length) {
+    return { punten: 3, uitleg: 'geen surfgedrag bekend', bekend: false };
+  }
+  let punten = 0;
+  const waarom: string[] = [];
+  if (n != null) {
+    const p = n >= 8 ? 4 : n >= 4 ? 3 : n >= 2 ? 1 : 0;
+    punten += p;
+    waarom.push(`${n} pagina${n === 1 ? '' : "'s"} (+${p})`);
+  }
+  const soorten = new Set(paden.map(padSoort));
+  if (soorten.has('prijs')) { punten += 3; waarom.push('offerte- of prijspagina (+3)'); }
+  if (soorten.has('assortiment')) { punten += 3; waarom.push('assortiment bekeken (+3)'); }
+  if (soorten.has('configurator')) { punten += 3; waarom.push('configurator of kledingadvies (+3)'); }
+  if (bezoeken != null && bezoeken >= 2) {
+    const p = bezoeken >= 3 ? 4 : 3;
+    punten += p;
+    waarom.push(`${bezoeken}e bezoek (+${p})`);
+  }
+  return { punten: Math.min(15, punten), uitleg: waarom.length ? waarom.join(', ') : 'kort rondgekeken', bekend: true };
+}
+
+/**
+ * Leadscore 0-100, zoals HubSpot "fit" en "engagement" scheidt:
+ * - Past bij ons (65): teamgrootte 25, branche 15, volledigheid 10, concreetheid 15.
+ * - Gedrag op de site (15): pagina's, prijs-/assortiment-/configuratorpagina's, terugkerend bezoek.
  * - Timing (20): recentheid 10, reactie 10.
- * Bewust simpel en uitlegbaar: de detailpagina toont elk onderdeel.
+ * Bewust simpel en uitlegbaar: de detailpagina toont elk onderdeel met de punten.
  */
 export function berekenScore(l: LeadRij, ctx: ScoreContext): LeadScore {
   const nu = ctx.nu ?? new Date();
@@ -446,30 +501,38 @@ export function berekenScore(l: LeadRij, ctx: ScoreContext): LeadScore {
   const delen: ScoreDeel[] = [];
 
   const team = teamGrootte(l.aantal);
-  const teamPunten = team == null ? 5 : team >= 50 ? 30 : team >= 25 ? 26 : team >= 10 ? 20 : team >= 5 ? 13 : team >= 2 ? 7 : 4;
-  delen.push({ label: 'Teamgrootte', punten: teamPunten, max: 30, uitleg: team == null ? 'niet opgegeven' : `ongeveer ${team} mensen` });
+  const teamPunten = team == null ? 4 : team >= 50 ? 25 : team >= 25 ? 22 : team >= 10 ? 17 : team >= 5 ? 11 : team >= 2 ? 6 : 3;
+  delen.push({ label: 'Bedrijfsgrootte', punten: teamPunten, max: 25, uitleg: team == null ? 'niet opgegeven' : `ongeveer ${team} medewerkers` });
 
   const branche = String(l.branche ?? '');
-  const branchePunten = !branche ? 4 : KERN_BRANCHES.test(branche) ? 20 : GOEDE_BRANCHES.test(branche) ? 15 : 8;
-  delen.push({ label: 'Branche', punten: branchePunten, max: 20, uitleg: branche || 'niet opgegeven' });
+  const branchePunten = !branche ? 3 : KERN_BRANCHES.test(branche) ? 15 : GOEDE_BRANCHES.test(branche) ? 11 : 6;
+  delen.push({ label: 'Branche', punten: branchePunten, max: 15, uitleg: branche || 'niet opgegeven' });
 
   let vol = 0;
   const mist: string[] = [];
-  if (telLink(l.phone)) vol += 5; else mist.push('telefoon');
-  if (String(l.company ?? '').trim()) vol += 4; else mist.push('bedrijf');
-  if (heeftEmail(l.email)) vol += 2; else mist.push('e-mail');
-  if (branche) vol += 2;
-  if (team != null) vol += 2;
-  delen.push({ label: 'Volledigheid', punten: vol, max: 15, uitleg: mist.length ? `mist ${mist.join(', ')}` : 'alles ingevuld' });
+  if (telLink(l.phone)) vol += 4; else mist.push('telefoon');
+  if (String(l.company ?? '').trim()) vol += 3; else mist.push('bedrijf');
+  if (heeftEmail(l.email)) vol += 1; else mist.push('e-mail');
+  if (branche) vol += 1;
+  if (team != null) vol += 1;
+  delen.push({ label: 'Volledigheid', punten: vol, max: 10, uitleg: mist.length ? `mist ${mist.join(', ')}` : 'alles ingevuld' });
 
   let concreet = 0;
   const waarom: string[] = [];
-  if (aanvraag.passenOpLocatie) { concreet += 8; waarom.push('passen op locatie'); }
-  if (aanvraag.stukken.length) { concreet += 5; waarom.push(`${aanvraag.stukken.length} kledingstuk${aanvraag.stukken.length === 1 ? '' : 'ken'} gekozen`); }
-  if (aanvraag.logoAangeleverd) { concreet += 2; waarom.push('logo aangeleverd'); }
-  if (aanvraag.soort === 'vrij' && String(l.bericht ?? '').trim().length > 30) { concreet += 4; waarom.push('duidelijke vraag'); }
+  const stuks = Math.max(ctx.aantalRegels ?? 0, aanvraag.stukken.length);
+  if (aanvraag.passenOpLocatie) { concreet += 6; waarom.push('passen op locatie (+6)'); }
+  if (stuks) {
+    const p = stuks >= 3 ? 6 : 4;
+    concreet += p;
+    waarom.push(`${stuks} artikel${stuks === 1 ? '' : 'en'} gekozen (+${p})`);
+  }
+  if (ctx.logoAangeleverd || aanvraag.logoAangeleverd) { concreet += 2; waarom.push('logo aangeleverd (+2)'); }
+  if (aanvraag.soort === 'vrij' && !stuks && String(l.bericht ?? '').trim().length > 30) { concreet += 3; waarom.push('duidelijke vraag (+3)'); }
   concreet = Math.min(15, concreet);
   delen.push({ label: 'Concreetheid', punten: concreet, max: 15, uitleg: waarom.length ? waarom.join(', ') : 'nog vaag' });
+
+  const gedrag = gedragPunten(l);
+  delen.push({ label: 'Gedrag op de site', punten: gedrag.punten, max: 15, uitleg: gedrag.uitleg });
 
   const dagen = urenTussen(l.created_at, nu) / 24;
   const recent = dagen <= 2 ? 10 : dagen <= 7 ? 7 : dagen <= 14 ? 4 : dagen <= 30 ? 2 : 0;
@@ -510,3 +573,31 @@ export function opvolgStand(opvolgdatum: string | null | undefined, vandaag: str
 
 /** Na zoveel uur zonder contact wordt de wacht-timer rood (de website belooft terugbellen binnen 24 uur). */
 export const WACHT_GRENS_UREN = 24;
+
+/**
+ * Wanneer moet een nieuwe webaanvraag opgevolgd zijn? Binnen werktijden (ma-vr):
+ * - voor 10:00 binnen: vandaag 10:00;
+ * - tussen 10:00 en 16:00: vandaag, een uur later (op het halve uur naar boven);
+ * - na 16:00, in het weekend: de volgende werkdag 10:00.
+ * Feestdagen telt dit niet; dan schuift Jessi de taak zelf door.
+ */
+export function opvolgMoment(nu: Date = new Date()): { datum: string; tijd: string } {
+  const delen = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'short',
+  }).formatToParts(nu);
+  const deel = (t: string) => delen.find((d) => d.type === t)?.value ?? '';
+  const datum = `${deel('year')}-${deel('month')}-${deel('day')}`;
+  const minuten = Number(deel('hour')) * 60 + Number(deel('minute'));
+  const werkdag = !['Sat', 'Sun'].includes(deel('weekday'));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  if (werkdag && minuten < 10 * 60) return { datum, tijd: '10:00' };
+  if (werkdag && minuten < 16 * 60) {
+    const doel = Math.ceil((minuten + 60) / 30) * 30;
+    return { datum, tijd: `${pad(Math.floor(doel / 60))}:${pad(doel % 60)}` };
+  }
+  // Volgende werkdag.
+  const d = new Date(`${datum}T12:00:00Z`);
+  do d.setUTCDate(d.getUTCDate() + 1);
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+  return { datum: d.toISOString().slice(0, 10), tijd: '10:00' };
+}

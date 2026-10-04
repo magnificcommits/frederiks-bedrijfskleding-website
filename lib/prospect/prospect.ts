@@ -73,6 +73,29 @@ export async function logBezoek(sb: SupabaseClient, prospectId: string, soort: B
   }
 }
 
+/**
+ * Bezoek aan het voorbeeldportaal (/kennismaking/<token>/portaal) loggen als soort
+ * 'portaal', voor de brief-funnel (brief > scan > pagina > voorbeeldportaal > aanvraag).
+ * Rondklikken binnen het portaal telt één keer per half uur, anders telt elke
+ * tab als een nieuw bezoek. Faalt stil.
+ */
+export async function logPortaalBezoek(sb: SupabaseClient, prospectId: string, token: string): Promise<void> {
+  try {
+    const sinds = new Date(Date.now() - 30 * 60_000).toISOString();
+    const { data, error } = await sb
+      .from('prospect_bezoeken')
+      .select('id')
+      .eq('prospect_id', prospectId)
+      .eq('soort', 'portaal')
+      .gte('created_at', sinds)
+      .limit(1);
+    if (error || (data && data.length)) return;
+    await logBezoek(sb, prospectId, 'portaal', `/kennismaking/${token}/portaal`);
+  } catch {
+    // Loggen mag de bezoeker nooit hinderen.
+  }
+}
+
 /** Datum (YYYY-MM-DD) in Nederlandse tijd, met optioneel een aantal dagen erbij. */
 export function datumNL(plusDagen = 0, nu = new Date()): string {
   const d = new Date(nu.getTime() + plusDagen * 86_400_000);

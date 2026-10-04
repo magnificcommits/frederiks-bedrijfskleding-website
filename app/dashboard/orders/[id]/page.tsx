@@ -1,3 +1,4 @@
+import Kruimelpad from '@/components/dashboard/ui/Kruimelpad';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
@@ -6,7 +7,12 @@ import {
   afdelingEnVestigingNamen,
   inkoopwaardeVanOrder,
   ORDER_STATUSSEN,
+  ORDER_STATUS_LABEL,
+  VOLGENDE_ORDERSTATUS,
   GOEDKEURING_STATUSSEN,
+  isOrderStatus,
+  orderRegelsGeslotenReden,
+  ANNULEER_BLOKKADE_TEKST,
 } from '@/lib/kms/orders';
 import { listInkoopregelsVoorOrder } from '@/lib/kms/inkoop';
 import { facturenVoorOrder } from '@/lib/kms/facturen';
@@ -58,20 +64,29 @@ const okBoodschap: Record<string, string> = {
   inkoop: 'Inkoopregels bijgewerkt.',
   verzending: 'Verzendgegevens opgeslagen.',
   gegevens: 'Ordergegevens opgeslagen.',
+  'uit-offerte': 'Order gemaakt uit de offerte. Controleer de regels en zet de order daarna op Nog bestellen.',
+  status_afgeboekt: 'Status bijgewerkt.',
+  status_gelijk: 'De order stond al op deze status. Er is niets gewijzigd en er is geen mail verstuurd.',
+  geannuleerd: 'Order geannuleerd.',
+  annuleren_gefactureerd: ANNULEER_BLOKKADE_TEKST.gefactureerd,
+  annuleren_uitgeleverd: ANNULEER_BLOKKADE_TEKST.uitgeleverd,
+  gesloten_geannuleerd: 'Deze order is geannuleerd. Zet hem eerst terug op een andere status om regels te wijzigen.',
+  gesloten_afgerond: 'Deze order is afgerond. Regels wijzigen kan niet meer.',
+  gesloten_gefactureerd: 'Er is al een factuur verstuurd voor deze order. Pas de factuur aan (of maak een creditfactuur) in plaats van de order.',
 };
 // Rood in plaats van groen: dit zijn meldingen waar Jessi nog iets mee moet.
-const okIsWaarschuwing = (ok: string) => ok === 'geen_item' || ok === 'mislukt';
+const okIsWaarschuwing = (ok: string) => ok === 'geen_item' || ok === 'mislukt' || ok.startsWith('gesloten_') || ok.startsWith('annuleren_');
 
 export default async function OrderDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ ok?: string }>;
+  searchParams: Promise<{ ok?: string; ingetrokken?: string; besteld?: string; afgeboekt?: string }>;
 }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const { id } = await params;
-  const { ok } = await searchParams;
+  const { ok, ingetrokken, besteld, afgeboekt } = await searchParams;
   const sb = kmsAdmin();
 
   if (!sb) {
@@ -99,13 +114,27 @@ export default async function OrderDetailPage({
     );
   }
 
-  const [inkoopregels, facturen, drukproeven, plaatsing, inkooptotaal] = await Promise.all([
+  const [inkoopregels, facturen, drukproeven, plaatsing, inkooptotaal, geslotenReden] = await Promise.all([
     listInkoopregelsVoorOrder(id),
     facturenVoorOrder(id),
     listDrukproevenVoorOrder(id),
     afdelingEnVestigingNamen(order.afdeling_id, order.vestiging_id),
     inkoopwaardeVanOrder(order.regels),
+    orderRegelsGeslotenReden(id),
   ]);
+  const geannuleerd = order.status === 'geannuleerd';
+  const volgende = isOrderStatus(order.status) ? VOLGENDE_ORDERSTATUS[order.status] ?? null : null;
+  const statusLabel = (s: string) => (isOrderStatus(s) ? ORDER_STATUS_LABEL[s] : s.replace(/_/g, ' '));
+  // Extra uitleg bij de melding na annuleren of uitleveren.
+  const extraMelding =
+    ok === 'geannuleerd'
+      ? [
+          Number(ingetrokken) > 0 ? `${ingetrokken} inkoopregel(s) die nog niet besteld waren zijn ingetrokken.` : null,
+          Number(besteld) > 0 ? `Let op: ${besteld} inkoopregel(s) zijn al bij de leverancier besteld. Zeg die zelf af of neem ze op voorraad.` : null,
+        ].filter(Boolean).join(' ')
+      : ok === 'status_afgeboekt' && Number(afgeboekt) > 0
+        ? `${afgeboekt} stuks zijn van de voorraad afgeboekt.`
+        : '';
 
   // Begin van de persoonsvelden: het gekoppelde id als dat er is, anders alleen de
   // tekst. De kiezer probeert die tekst dan op naam of e-mail te koppelen.
@@ -123,26 +152,26 @@ export default async function OrderDetailPage({
   return (
     <main className="container-app py-6">
       <div className="dash-kop flex items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0">
+          <Kruimelpad />
           <h1 className="dash-h1">Order #{order.ordernummer}</h1>
           <p className="mt-1 text-sm text-warm">{order.organisatie_naam || 'Onbekende klant'}{order.medewerker_naam ? ` · ${order.medewerker_naam}` : ''} · {fmt(order.besteldatum)}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <nav aria-label="Documenten bij deze order" className="flex flex-wrap items-center gap-1.5">
           {facturen.length > 0 ? (
             facturen.map((f) => (
-              <Link key={f.id} href={`/dashboard/facturen/${f.id}`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">
+              <Link key={f.id} href={`/dashboard/facturen/${f.id}`} className="knop-stil">
                 Factuur {f.factuurnummer || 'concept'}
               </Link>
             ))
-          ) : (
-            <Link href={`/dashboard/facturen?order=${order.id}`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Maak factuur</Link>
+          ) : geannuleerd || order.status === 'concept' || order.regels.length === 0 || totaal === 0 ? null : (
+            <Link href={`/dashboard/facturen?order=${order.id}`} className="knop-stil">Maak factuur</Link>
           )}
-          <Link href={`/dashboard/orders/${order.id}/werkbon`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Werkbon</Link>
-          <Link href={`/dashboard/orders/${order.id}/pakbon`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Pakbon</Link>
-          <Link href={`/dashboard/orders/${order.id}/picklijst`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Picklijst</Link>
-          <Link href={`/dashboard/orders/${order.id}/sticker`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Sticker</Link>
-          <Link href="/dashboard/orders" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar orders</Link>
-        </div>
+          <Link href={`/dashboard/orders/${order.id}/werkbon`} className="knop-stil">Werkbon</Link>
+          <Link href={`/dashboard/orders/${order.id}/pakbon`} className="knop-stil">Pakbon</Link>
+          <Link href={`/dashboard/orders/${order.id}/picklijst`} className="knop-stil">Picklijst</Link>
+          <Link href={`/dashboard/orders/${order.id}/sticker`} className="knop-stil">Sticker</Link>
+        </nav>
       </div>
 
       {ok && okBoodschap[ok] && (
@@ -153,7 +182,12 @@ export default async function OrderDetailPage({
               : 'border-green-200 bg-green-50 text-green-800'
           }`}
         >
-          {okBoodschap[ok]}
+          {okBoodschap[ok]}{extraMelding ? ` ${extraMelding}` : ''}
+        </p>
+      )}
+      {geannuleerd && (
+        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] font-semibold text-red-700">
+          Deze order is geannuleerd{order.goedkeuring_status === 'afgewezen' && order.goedgekeurd_door ? ` (afgewezen door ${order.goedgekeurd_door})` : ''}. Hij telt niet mee voor voorraad, spaarpunten en facturen.
         </p>
       )}
 
@@ -307,11 +341,13 @@ export default async function OrderDetailPage({
                       <td className="text-warm">{r.stukprijs != null ? euro(Number(r.stukprijs)) : '-'}</td>
                       <td className="font-medium text-ink-900">{euro((Number(r.aantal) || 0) * (Number(r.stukprijs) || 0))}</td>
                       <td>
-                        <form action={verwijderRegel}>
-                          <input type="hidden" name="orderId" value={order.id} />
-                          <input type="hidden" name="regelId" value={r.id} />
-                          <ConfirmSubmit message="Deze orderregel verwijderen?" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijder</ConfirmSubmit>
-                        </form>
+                        {!geslotenReden && (
+                          <form action={verwijderRegel}>
+                            <input type="hidden" name="orderId" value={order.id} />
+                            <input type="hidden" name="regelId" value={r.id} />
+                            <ConfirmSubmit message="Deze orderregel verwijderen?" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijder</ConfirmSubmit>
+                          </form>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -327,11 +363,17 @@ export default async function OrderDetailPage({
           )}
 
 
-        <div className="panel mt-4 p-4">
-          <h3 className="font-display text-base font-bold text-ink-900">Regel toevoegen</h3>
-          <p className="veld-hint">Zoek het artikel en kies daarna de kleur en de maat. De prijs vult zichzelf.</p>
-          <RegelToevoegen orderId={order.id} />
-        </div>
+        {geslotenReden ? (
+          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">
+            {okBoodschap[`gesloten_${geslotenReden}`]}
+          </p>
+        ) : (
+          <div className="panel mt-4 p-4">
+            <h3 className="font-display text-base font-bold text-ink-900">Regel toevoegen</h3>
+            <p className="veld-hint">Zoek het artikel en kies daarna de kleur en de maat. De prijs vult zichzelf.</p>
+            <RegelToevoegen orderId={order.id} />
+          </div>
+        )}
       </section>
 
       <section>
@@ -375,7 +417,7 @@ export default async function OrderDetailPage({
           <h2 className="font-display text-xl font-bold text-ink-900">Drukproeven</h2>
           <Link href={`/dashboard/drukproeven?org=${order.organisatie_id}&order=${order.id}`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Drukproef maken</Link>
         </div>
-        <p className="mt-1 text-sm text-warm">Een goedgekeurde drukproef zet deze order automatisch door naar borduren of bedrukken.</p>
+        <p className="mt-1 text-sm text-warm">Zijn alle drukproeven van deze order goedgekeurd, dan gaat de werkbon op goedgekeurd. Ligt alle kleding er al, dan gaat de order meteen door naar borduren of bedrukken.</p>
         {drukproeven.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen drukproeven aan deze order gekoppeld.</p>
         ) : (
@@ -407,13 +449,37 @@ export default async function OrderDetailPage({
         />
         <div className="panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Status</h2>
+          <p className="mt-1 text-xs text-warm">Nu: <span className="font-semibold text-ink-900">{statusLabel(order.status)}</span></p>
+          {volgende && (
+            <form action={wijzigStatus} className="mt-3">
+              <input type="hidden" name="orderId" value={order.id} />
+              <input type="hidden" name="status" value={volgende} />
+              <button type="submit" className="knop-primair w-full">Volgende stap: {ORDER_STATUS_LABEL[volgende]}</button>
+            </form>
+          )}
           <form action={wijzigStatus} className="mt-3 flex flex-col gap-2">
             <input type="hidden" name="orderId" value={order.id} />
-            <select name="status" defaultValue={order.status} className={inputCls}>
-              {ORDER_STATUSSEN.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+            <label className="veld-label" htmlFor="order-status">Andere status kiezen</label>
+            <select id="order-status" name="status" defaultValue={order.status} className={inputCls}>
+              {ORDER_STATUSSEN.filter((s) => s !== 'geannuleerd' || geannuleerd).map((s) => (
+                <option key={s} value={s}>{ORDER_STATUS_LABEL[s]}</option>
+              ))}
             </select>
-            <button type="submit" className="self-start knop-donker">Status opslaan</button>
+            <button type="submit" className="self-start knop-stil">Status opslaan</button>
           </form>
+          <p className="mt-2 text-[11px] text-warm">Bij elke statuswissel krijgt de besteller een mail. Bij Bezorgen of Verzonden wordt wat van de plank kwam van de voorraad afgeboekt.</p>
+          {!geannuleerd && (
+            <form action={wijzigStatus} className="mt-3 border-t border-line pt-3">
+              <input type="hidden" name="orderId" value={order.id} />
+              <input type="hidden" name="status" value="geannuleerd" />
+              <ConfirmSubmit
+                message="Deze order annuleren? Inkoop die nog niet besteld is wordt ingetrokken. Al bestelde artikelen moet je zelf bij de leverancier afzeggen."
+                className="text-xs font-semibold text-red-700 hover:text-red-800"
+              >
+                Order annuleren
+              </ConfirmSubmit>
+            </form>
+          )}
         </div>
 
         <div className="panel p-4">

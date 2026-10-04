@@ -9,6 +9,7 @@ import { ProductKaart } from '@/components/ProductKaart';
 import { JsonLd } from '@/components/JsonLd';
 import { RegioKaart } from '@/components/RegioKaart';
 import { Uitklap } from '@/components/Uitklap';
+import { CtaKnoppen } from '@/components/CtaKnoppen';
 import { NormIcoon, type NormSoort } from '@/components/NormIcoon';
 import { breadcrumbJsonLd, faqJsonLd } from '@/lib/jsonld';
 import { listPubliekeProducten, categorieVanSlug, type PubliekProduct, naarKaart } from '@/lib/kms/catalogus';
@@ -174,20 +175,20 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
       />
       <JsonLd data={faqJsonLd(v.veelgesteld)} />
 
-      {/* 1. Kruimelpad */}
-      <nav className="container-x pt-6 text-xs text-warm" aria-label="Kruimelpad">
-        <Link href="/" className="hover:text-amber-800">Home</Link>
-        <span className="px-1.5">/</span>
-        <Link href="/voor" className="hover:text-amber-800">Vakgebieden</Link>
-        <span className="px-1.5">/</span>
-        <span className="text-ink-700">{v.naam}</span>
-      </nav>
-
+      {/* 1. Kop met kruimelpad. Er stond hier eerst een tweede, losse kruimelnav
+          boven de PageHero: twee keer "Kruimelpad" voor een screenreader. */}
       <PageHero
         eyebrow={v.eyebrow}
         title={v.titel}
-        kruimels={[{ label: 'Voor jouw vak', href: '/voor' }]}
+        kruimels={[{ label: 'Home', href: '/' }, { label: 'Voor jouw vak', href: '/voor' }]}
         beeld={<RegioKaart className="w-full lg:max-w-lg" />}
+        acties={
+          <CtaKnoppen
+            plek="vak-hero"
+            offerteHref={`/offerte?branche=${encodeURIComponent(v.naam)}`}
+            afspraakHref={`/afspraak?branche=${encodeURIComponent(v.naam)}`}
+          />
+        }
       />
 
       {/* 2. Het werk zelf */}
@@ -326,14 +327,16 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
           <p className="mt-4 max-w-xl text-ink-200">
             Gratis en vrijblijvend, op een moment dat jou uitkomt.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href={`/offerte?branche=${encodeURIComponent(v.naam)}`} className="btn-primary">
-              Plan een pasafspraak
-            </Link>
-            <a href={`tel:${site.phoneIntl}`} className="btn-outline border-white/40 text-white hover:border-white">
-              Bel {site.phone}
-            </a>
-          </div>
+          <CtaKnoppen
+            plek="vak-slot"
+            donker
+            className="mt-8"
+            offerteHref={`/offerte?branche=${encodeURIComponent(v.naam)}`}
+            afspraakHref={`/afspraak?branche=${encodeURIComponent(v.naam)}`}
+          />
+          <p className="mt-3 text-sm text-ink-200" data-plek="vak-slot">
+            Of bel <a href={`tel:${site.phoneIntl}`} className="font-semibold text-white underline decoration-amber-500 underline-offset-4">{site.phone}</a>
+          </p>
         </div>
       </section>
 

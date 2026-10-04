@@ -1,7 +1,8 @@
+import Kruimelpad from '@/components/dashboard/ui/Kruimelpad';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import { getOfferte, offerteTotalen, OFFERTE_STATUSSEN, listKlantenVoorOfferte } from '@/lib/kms/offertes';
+import { getOfferte, offerteTotalen, OFFERTE_STATUSSEN, listKlantenVoorOfferte, orderVanOfferte } from '@/lib/kms/offertes';
 import { formatEuro, formatDatum } from '@/lib/format';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import {
@@ -38,6 +39,19 @@ const statusBadge: Record<string, string> = {
   afgewezen: 'bg-red-100 text-red-800',
 };
 
+/**
+ * Meldingen die de algemene toast niet kent. Ze blijven staan tot Jessi verder
+ * klikt, omdat ze zeggen wat de volgende stap is of wat er mis ging.
+ */
+const PAGINA_MELDING: Record<string, { tekst: string; fout: boolean }> = {
+  'ok:akkoord': { tekst: 'Offerte staat op geaccepteerd. Volgende stap: klik op Omzetten naar order.', fout: false },
+  'fout:status': { tekst: 'Deze status bestaat niet. Kies concept, verstuurd, geaccepteerd of afgewezen.', fout: true },
+  'fout:aantal': { tekst: 'Een aantal kan niet negatief zijn. De regel is niet opgeslagen.', fout: true },
+  'fout:korting': { tekst: 'Korting moet tussen 0 en 100 procent liggen. De regel is niet opgeslagen.', fout: true },
+  'fout:geen_regels': { tekst: 'Deze offerte heeft nog geen regels met een aantal. Voeg eerst een regel toe.', fout: true },
+  'fout:verlopen': { tekst: 'De geldigheidsdatum ligt in het verleden. Zet bij Kopgegevens een nieuwe datum en verstuur hem dan.', fout: true },
+};
+
 function dateInputWaarde(d: string | null): string {
   if (!d) return '';
   const dt = new Date(d);
@@ -48,7 +62,8 @@ function dateInputWaarde(d: string | null): string {
 export default async function OfferteDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; fout?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const { id } = await params;
-  await searchParams;
+  const sp = await searchParams;
+  const melding = (sp.fout && PAGINA_MELDING[`fout:${sp.fout}`]) || (sp.ok && PAGINA_MELDING[`ok:${sp.ok}`]) || null;
   const sb = kmsAdmin();
 
   if (!sb) {
@@ -77,26 +92,42 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
   }
 
   const { subtotaal, korting, btw, totaal, marge } = offerteTotalen(offerte.regels, offerte.btw_pct);
-  const [pakketten, klantAdres] = await Promise.all([
+  const [pakketten, klantAdres, order] = await Promise.all([
     offerte.organisatie_id ? listPakketten(offerte.organisatie_id) : Promise.resolve([]),
     klantAdresVoorDocument(offerte.organisatie_id),
+    orderVanOfferte(offerte.id),
   ]);
+  const heeftRegels = offerte.regels.some((r) => (Number(r.aantal) || 0) > 0);
   const verlopen = !!offerte.geldig_tot && offerte.status !== 'geaccepteerd' && offerte.status !== 'afgewezen' && new Date(offerte.geldig_tot) < new Date(new Date().toDateString());
 
   return (
     <OfferteVoorbeeldProvider opgeslagen={{ ...naarDocumentData(offerte), klant_adres: klantAdres }} afdrukHref={`/dashboard/offertes/${id}/afdruk`}>
     <main className="container-app py-6">
       <div className="dash-kop justify-between gap-4">
-        <div>
+        <div className="min-w-0">
+          <Kruimelpad />
           <h1 className="dash-h1">Offerte {offerte.offertenummer != null ? `#${offerte.offertenummer}` : 'concept'}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <VoorbeeldKnop />
           <Link href={`/dashboard/offertes/${id}/afdruk`} className="knop-stil">Afdrukken / PDF</Link>
-          <Link href="/dashboard/offertes" className="knop-tekst">Terug naar offertes</Link>
         </div>
       </div>
       <p className="mt-2 text-[13px] text-warm">{offerte.organisatie_naam || 'Geen klant gekoppeld'} · {formatDatum(offerte.created_at)}</p>
+      {melding && (
+        <p className={`mt-3 rounded-lg border px-4 py-2.5 text-[13px] font-semibold ${melding.fout ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-800'}`}>
+          {melding.tekst}
+        </p>
+      )}
+      {order && (
+        <p className="mt-3 rounded-lg border border-line bg-mist px-4 py-2.5 text-[13px] text-ink-800">
+          Van deze offerte is order{' '}
+          <Link href={`/dashboard/orders/${order.id}`} className="font-semibold text-amber-700 hover:text-amber-800">
+            #{order.ordernummer ?? ''}
+          </Link>{' '}
+          gemaakt. Wijzigingen aan de offerte gaan niet meer vanzelf naar de order.
+        </p>
+      )}
 
       {/* Werkblad links, financiën en acties in een meelopend spoor rechts.
           Met het voorbeeld open (breed scherm) staat het voorbeeld rechts en het spoor onder het werkblad. */}
@@ -275,11 +306,19 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
               <MailNaarVeld standaard={offerte.organisatie_email ?? ''} klantEmail={offerte.klant_email ?? ''} />
               <button type="submit" className="knop-donker mt-2 w-full">Mail naar klant</button>
             </form>
-            <form action={maakOrderVanOfferteActie} className="mt-4 border-t border-line pt-4">
-              <input type="hidden" name="offerteId" value={offerte.id} />
-              <button type="submit" disabled={!offerte.organisatie_id} className="knop-primair w-full">Omzetten naar order</button>
-              {!offerte.organisatie_id && <p className="veld-hint">Koppel eerst een klant om een order te maken.</p>}
-            </form>
+            {order ? (
+              <div className="mt-4 border-t border-line pt-4">
+                <Link href={`/dashboard/orders/${order.id}`} className="knop-primair block w-full text-center">Naar order #{order.ordernummer ?? ''}</Link>
+              </div>
+            ) : (
+              <form action={maakOrderVanOfferteActie} className="mt-4 border-t border-line pt-4">
+                <input type="hidden" name="offerteId" value={offerte.id} />
+                <button type="submit" disabled={!offerte.organisatie_id || !heeftRegels} className="knop-primair w-full">Omzetten naar order</button>
+                {!offerte.organisatie_id && <p className="veld-hint">Koppel eerst een klant om een order te maken.</p>}
+                {offerte.organisatie_id && !heeftRegels && <p className="veld-hint">Voeg eerst regels toe.</p>}
+                {offerte.organisatie_id && heeftRegels && <p className="veld-hint">Akkoord van de klant? Dan maakt dit de order en zet de offerte op geaccepteerd.</p>}
+              </form>
+            )}
           </div>
 
           <form action={verwijderOfferteActie} className="rounded-lg border border-red-200 bg-red-50 p-4">

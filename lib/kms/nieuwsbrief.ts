@@ -66,6 +66,8 @@ export type NieuwsbriefOverzicht = {
    * niet doet laat Jessi eindeloos opnieuw klikken zonder dat er iets verandert.
    */
   afmeldenMogelijk: boolean;
+  /** Aanmeldingen die nog op de bevestigingsklik wachten (double opt-in); niet in de lijst. */
+  wachtOpBevestiging?: number;
 };
 
 export type BrancheTelling = { branche: string; aantal: number };
@@ -87,6 +89,12 @@ type InschrijvingRij = {
   organisatie_id: string | null;
   afgemeld: boolean | null;
   created_at: string;
+  /**
+   * Double opt-in: false zolang een aanmelding via de site nog niet via de
+   * bevestigingsmail is bevestigd. Rijen zonder token (van vóór de opt-in, uit
+   * het dashboard of van een afmelding) tellen als bevestigd.
+   */
+  bevestigd: boolean;
 };
 
 /**
@@ -118,12 +126,25 @@ type InschrijvingenResultaat = {
  * afmelding ook niet worden opgeslagen en moet de knop daarvoor weg blijven.
  */
 async function haalInschrijvingen(sb: SupabaseClient): Promise<InschrijvingenResultaat> {
+  const metOptin = await sb
+    .from('nieuwsbrief_inschrijvingen')
+    .select('id, email, naam, bron, organisatie_id, afgemeld, created_at, bevestigd_op, bevestig_token')
+    .order('created_at', { ascending: false });
+  if (!metOptin.error && metOptin.data) {
+    const rijen = metOptin.data as unknown as (Omit<InschrijvingRij, 'bevestigd'> & { bevestigd_op: string | null; bevestig_token: string | null })[];
+    return {
+      rijen: rijen.map(({ bevestigd_op, bevestig_token, ...r }) => ({ ...r, bevestigd: bevestigd_op !== null || bevestig_token === null })),
+      kolommenAanwezig: true,
+    };
+  }
+
   const nieuw = await sb
     .from('nieuwsbrief_inschrijvingen')
     .select('id, email, naam, bron, organisatie_id, afgemeld, created_at')
     .order('created_at', { ascending: false });
   if (!nieuw.error && nieuw.data) {
-    return { rijen: nieuw.data as unknown as InschrijvingRij[], kolommenAanwezig: true };
+    const rijen = nieuw.data as unknown as Omit<InschrijvingRij, 'bevestigd'>[];
+    return { rijen: rijen.map((r) => ({ ...r, bevestigd: true })), kolommenAanwezig: true };
   }
 
   const oud = await sb
@@ -131,9 +152,9 @@ async function haalInschrijvingen(sb: SupabaseClient): Promise<InschrijvingenRes
     .select('id, email, naam, bron, created_at')
     .order('created_at', { ascending: false });
   if (oud.error || !oud.data) return { rijen: [], kolommenAanwezig: false };
-  const rijen = oud.data as unknown as Omit<InschrijvingRij, 'organisatie_id' | 'afgemeld'>[];
+  const rijen = oud.data as unknown as Omit<InschrijvingRij, 'organisatie_id' | 'afgemeld' | 'bevestigd'>[];
   return {
-    rijen: rijen.map((r) => ({ ...r, organisatie_id: null, afgemeld: false })),
+    rijen: rijen.map((r) => ({ ...r, organisatie_id: null, afgemeld: false, bevestigd: true })),
     kolommenAanwezig: false,
   };
 }
@@ -142,6 +163,8 @@ type Adresbouw = {
   adressen: NieuwsbriefAdres[];
   orgs: OrgRij[];
   kolommenAanwezig: boolean;
+  /** Aanmeldingen via de site die de bevestigingsmail nog niet hebben aangeklikt. */
+  wachtOpBevestiging: number;
 };
 
 /**
@@ -159,6 +182,7 @@ async function bouwAdressen(sb: SupabaseClient): Promise<Adresbouw> {
   const orgs = (orgRes.data as OrgRij[]) ?? [];
   const orgVan = new Map(orgs.map((o) => [o.id, o]));
   const perEmail = new Map<string, NieuwsbriefAdres>();
+  let wachtOpBevestiging = 0;
 
   // Klanten eerst: die brengen bedrijf en branche mee. Staat hetzelfde adres
   // later ook als losse aanmelding in de tabel, dan wint deze regel.
@@ -189,6 +213,11 @@ async function bouwAdressen(sb: SupabaseClient): Promise<Adresbouw> {
       if (!bestaand.naam && i.naam?.trim()) bestaand.naam = i.naam.trim();
       continue;
     }
+    // Double opt-in: een aanmelding die nog niet is bevestigd, komt niet in de lijst.
+    if (!i.bevestigd && !afgemeld) {
+      wachtOpBevestiging += 1;
+      continue;
+    }
     const org = i.organisatie_id ? orgVan.get(i.organisatie_id) : undefined;
     perEmail.set(email, {
       email,
@@ -209,7 +238,7 @@ async function bouwAdressen(sb: SupabaseClient): Promise<Adresbouw> {
       a.email.localeCompare(b.email, 'nl'),
   );
 
-  return { adressen, orgs, kolommenAanwezig: inschrijvingenRes.kolommenAanwezig };
+  return { adressen, orgs, kolommenAanwezig: inschrijvingenRes.kolommenAanwezig, wachtOpBevestiging };
 }
 
 /**
@@ -220,7 +249,7 @@ export async function getNieuwsbriefOverzicht(): Promise<NieuwsbriefOverzicht> {
   const sb = kmsAdmin();
   if (!sb) return { adressen: [], zonderAdres: [], afmeldenMogelijk: false };
 
-  const { adressen, orgs, kolommenAanwezig } = await bouwAdressen(sb);
+  const { adressen, orgs, kolommenAanwezig, wachtOpBevestiging } = await bouwAdressen(sb);
 
   const missend = orgs.filter((o) => !schoonEmail(o.email_algemeen));
   // De contactpersonen alleen ophalen als er ook echt klanten zonder adres zijn.
@@ -234,7 +263,7 @@ export async function getNieuwsbriefOverzicht(): Promise<NieuwsbriefOverzicht> {
     suggestie: schoonEmail(contactVan.get(o.id)?.email),
   }));
 
-  return { adressen, zonderAdres, afmeldenMogelijk: kolommenAanwezig };
+  return { adressen, zonderAdres, afmeldenMogelijk: kolommenAanwezig, wachtOpBevestiging };
 }
 
 /** De adressen die daadwerkelijk gemaild mogen worden. */

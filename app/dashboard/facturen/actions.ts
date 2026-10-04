@@ -22,7 +22,9 @@ export async function factuurVanOrder(formData: FormData) {
 export async function factureerAlleActie() {
   if (!(await dashAuthed())) redirect('/dashboard');
   await eisEigenaar();
-  const orders = await listFactureerbareOrders();
+  // Alleen geleverde orders: een order die nog besteld of bedrukt moet worden,
+  // factureer je bewust per stuk (vooruitbetaling), niet met één klik.
+  const orders = (await listFactureerbareOrders()).filter((o) => o.klaar);
   let aantal = 0;
   for (const o of orders) {
     const id = await maakFactuurVanOrder(o.id);

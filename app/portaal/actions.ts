@@ -10,6 +10,10 @@ export async function portaalLogout() {
 }
 
 export async function markeerMeldingenGelezenActie() {
+  // Loopt via de sessie-client (RLS): zonder login wijzigt dit niets. Expliciete check:
+  const sb = await getServerSupabase();
+  const { data } = sb ? await sb.auth.getUser() : { data: { user: null } };
+  if (!data.user) redirect('/portaal/login');
   await markeerMeldingenGelezen();
   redirect('/portaal');
 }

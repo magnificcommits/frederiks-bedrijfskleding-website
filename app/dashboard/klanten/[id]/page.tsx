@@ -1,3 +1,4 @@
+import Kruimelpad from '@/components/dashboard/ui/Kruimelpad';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { isLeadsDbConfigured } from '@/lib/env';
@@ -564,10 +565,17 @@ export default async function KlantPage({
                 <label className="veld-label">Naam</label>
                 <input name="naam" placeholder="Naam" className={inputCls} />
               </div>
+              <label className="flex items-center gap-2 text-[13px] text-ink-800">
+                <input type="checkbox" name="uitnodigen" defaultChecked />
+                Stuur een uitnodiging per mail
+              </label>
               <button type="submit" className="self-start knop-donker">Koppelen</button>
             </form>
           </Drawer>
         </div>
+        {startTab === 'contact' && meldingParam && (
+          <p className="mb-3 rounded-lg border border-line bg-mist px-4 py-2.5 text-[13px] font-semibold text-ink-800">{meldingParam}</p>
+        )}
 
         {gebruikers.length === 0 ? (
           <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen gebruikers gekoppeld.</p>
@@ -754,16 +762,16 @@ export default async function KlantPage({
   return (
     <main className="container-app py-6">
       <div className="dash-kop flex items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0">
+          <Kruimelpad />
           <h1 className="dash-h1">{org.naam}</h1>
           <p className="mt-1 text-sm text-warm">
             {[org.klantnummer ? `Klantnummer ${org.klantnummer}` : null, org.plaats || 'Geen plaats', org.branche].filter(Boolean).join(' · ')}
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <Link href={`/dashboard/offertes/nieuw?klant=${id}`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Nieuwe offerte</Link>
-          <Link href={`/dashboard/klanten/${id}/structuur`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Inrichting</Link>
-          <Link href="/dashboard/klanten" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar klanten</Link>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Link href={`/dashboard/klanten/${id}/structuur`} className="knop-stil">Inrichting</Link>
+          <Link href={`/dashboard/offertes/nieuw?klant=${id}`} className="knop-primair">Nieuwe offerte</Link>
         </div>
       </div>
 

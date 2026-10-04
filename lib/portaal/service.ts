@@ -434,10 +434,16 @@ export async function meldKlacht(input: {
   if (!toegang.organisatieId) return { ok: false, error: 'Geen organisatie gekoppeld' };
   const inst = await getKlachtInstellingen();
   const categorie = input.categorie && inst.categorieen.includes(input.categorie) ? input.categorie : null;
+  // Order alleen koppelen als RLS hem voor deze gebruiker laat zien (eigen organisatie).
+  let orderId: string | null = null;
+  if (input.orderId) {
+    const { data: o } = await sb.from('orders').select('id').eq('id', input.orderId).maybeSingle();
+    orderId = (o as { id: string } | null)?.id ?? null;
+  }
   const rij: Record<string, unknown> = {
     organisatie_id: toegang.organisatieId,
     medewerker_id: toegang.medewerkerId,
-    order_id: input.orderId,
+    order_id: orderId,
     soort: input.soort,
     omschrijving: input.omschrijving,
     status: 'open',

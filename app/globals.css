@@ -166,7 +166,7 @@
   /* Invoer. */
   .veld {
     @apply w-full rounded-md border border-line bg-white px-2.5 py-1.5 text-[13px] text-ink-900
-           placeholder:text-ink-300 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200;
+           placeholder:text-ink-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200;
   }
   .veld-label { @apply mb-1 block text-[11px] font-semibold uppercase tracking-wide text-warm; }
   .veld-hint { @apply mt-1 text-[12px] leading-snug text-warm; }
@@ -174,6 +174,76 @@
   /* Lade rechts. */
   .drawer-overlay { @apply absolute inset-0 cursor-default bg-ink-900/30; animation: drawer-overlay-in 0.18s ease-out; }
   .drawer-paneel { animation: drawer-paneel-in 0.18s ease-out; }
+
+  /* --- Gedeelde UI-patronen KMS en portaal ------------------------------
+     Eén set knoppen, velden, badges en staten. Zie components/dashboard/ui. */
+
+  /* Gevaar: alleen voor de knop die echt iets weghaalt, nooit als gewone actie. */
+  .knop-gevaar { @apply knop bg-red-700 text-white hover:bg-red-800 focus-visible:ring-red-400; }
+  /* Ruimere knop voor vensters en telefoon: minstens 44 px hoog. */
+  .knop-groot { @apply min-h-[44px] px-4 text-[14px]; }
+
+  /* Formulier: label boven het veld, hulptekst eronder, fout in rood eronder. */
+  .veld-fout { @apply mt-1 text-[12px] font-medium leading-snug text-red-700; }
+  .veld[aria-invalid="true"] { @apply border-red-400 focus:border-red-500 focus:ring-red-100; }
+  .verplicht { @apply ml-0.5 font-bold text-red-700; }
+
+  .badge-fout { @apply badge bg-red-100 text-red-800; }
+
+  /* Laadstaat: grijze blokken op de plek van de inhoud. */
+  .skelet { @apply animate-pulse rounded bg-ink-100; }
+
+  /* Kruimelpad boven de paginatitel op detailpagina's. */
+  .kruimels { @apply flex min-w-0 flex-wrap items-center gap-x-1 text-[12px] leading-tight text-warm; }
+  .kruimels a { @apply rounded-sm font-medium hover:text-ink-900 hover:underline; }
+
+  /* Vaste actieknop onderaan op een telefoon: de hoofdhandeling van de lijst. */
+  .actie-mobiel {
+    @apply fixed right-4 z-40 inline-flex min-h-[52px] items-center gap-2 rounded-full bg-amber-500 px-5 text-[15px]
+           font-semibold text-ink-900 shadow-card hover:bg-amber-400 focus:outline-none focus-visible:ring-2
+           focus-visible:ring-ink-900 focus-visible:ring-offset-2 md:hidden;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .bevestig-paneel { animation: bevestig-in 0.16s ease-out; }
+
+  /* Aanraakschermen: knoppen en velden minstens 44 px, chips 40 px. */
+  @media (pointer: coarse) {
+    .knop, .veld { min-height: 44px; }
+    .chip { min-height: 40px; }
+  }
+  /* Telefoon: 16 px in velden, anders zoomt iOS bij elke tik in en blijft de pagina vergroot staan. */
+  @media (max-width: 767.98px) {
+    .veld { font-size: 16px !important; }
+  }
+
+  /* Tabel als kaartenlijst op een telefoon. Zet .tbl-kaart naast .tbl en geef
+     elke cel een data-label. De cel met .kaart-kop wordt de titel van de kaart,
+     .kaart-verberg valt op de telefoon weg. De link in .rij-link maakt de hele
+     kaart aanklikbaar; velden en knoppen in de kaart blijven gewoon bruikbaar. */
+  @media (max-width: 767.98px) {
+    table.tbl.tbl-kaart thead {
+      position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+    }
+    table.tbl.tbl-kaart, table.tbl.tbl-kaart tbody { display: block; }
+    table.tbl.tbl-kaart tbody tr {
+      @apply relative grid grid-cols-2 gap-x-3 gap-y-2 border-b border-line px-3 py-3;
+    }
+    table.tbl.tbl-kaart tbody tr:last-child { @apply border-b-0; }
+    table.tbl.tbl-kaart tbody td { @apply block min-w-0 border-0 p-0 text-[14px]; white-space: normal; }
+    table.tbl.tbl-kaart tbody td:first-child { padding-left: 0; }
+    table.tbl.tbl-kaart tbody tr:hover td { background: transparent; }
+    table.tbl.tbl-kaart tbody td[data-label]::before {
+      content: attr(data-label);
+      @apply mb-0.5 block text-[11px] font-semibold uppercase tracking-wide text-warm;
+    }
+    table.tbl.tbl-kaart tbody td.kaart-kop { @apply order-first col-span-2 text-[15px]; }
+    table.tbl.tbl-kaart tbody td.kaart-kop::before { content: none; }
+    table.tbl.tbl-kaart tbody td.kaart-verberg, table.tbl.tbl-kaart tbody td:empty { display: none; }
+    table.tbl.tbl-kaart tbody td.num { text-align: left; }
+    table.tbl.tbl-kaart .rij-link::after { content: ''; position: absolute; inset: 0; }
+    table.tbl.tbl-kaart :is(input, select, button, a:not(.rij-link), label) { position: relative; z-index: 1; }
+  }
 
 
   /* Sectielabel, bewust kaal. Het gestippelde oranje kadertje eromheen stond op
@@ -233,3 +303,4 @@
 
 @keyframes drawer-paneel-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @keyframes drawer-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bevestig-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

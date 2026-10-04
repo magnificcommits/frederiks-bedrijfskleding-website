@@ -1,4 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { DataLaadFout } from '@/lib/dbFout';
 import {
   listTaakStatussen,
   beginStatus,
@@ -346,7 +347,12 @@ export async function listTaken(
   };
 
   // Kan de koppeling naar orders (nog) niet gelegd worden, dan zonder ordernummer.
-  const rijen = (await haal(true)) ?? (await haal(false)) ?? [];
+  const rijen = (await haal(true)) ?? (await haal(false));
+  if (!rijen) {
+    // Beide pogingen faalden: een fout tonen, niet stil "geen taken".
+    console.error(`[db] taken.lijst: ophalen mislukt (weergave ${weergave})`);
+    throw new DataLaadFout('taken.lijst', null);
+  }
   const taken = rijen.map(naarTaak);
   if (weergave !== 'archief' && weergave !== 'prullenbak') taken.sort(vergelijkTaken);
   return taken;

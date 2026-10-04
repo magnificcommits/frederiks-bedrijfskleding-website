@@ -12,6 +12,7 @@ import {
   zetFactuurEmail,
   mailFactuurNaarKlant,
   getFactuur,
+  factuurRegelsGeslotenReden,
 } from '@/lib/kms/facturen';
 import { zoekArtikelen, kleurenVanArtikel, type ZoekArtikel, type ZoekKleur } from '@/lib/kms/productZoeker';
 import { logAudit } from '@/lib/kms/audit';
@@ -38,6 +39,17 @@ function pct(raw: FormDataEntryValue | null, standaard: number): number {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Regels van een verzonden, betaalde of doorgezette factuur blijven staan. */
+async function eisConcept(factuurId: string): Promise<void> {
+  const reden = await factuurRegelsGeslotenReden(factuurId);
+  if (!reden) return;
+  const tekst =
+    reden === 'boekhouding'
+      ? 'Deze factuur staat al in Moneybird. Corrigeer met een creditfactuur.'
+      : `Deze factuur is ${reden}. Zet hem eerst terug naar Concept, of corrigeer met een creditfactuur.`;
+  redirect('/dashboard/facturen/' + factuurId + '?mailfout=' + encodeURIComponent(tekst));
+}
 
 function ververs(factuurId: string) {
   revalidatePath('/dashboard/facturen');
@@ -72,6 +84,7 @@ export async function voegRegel(formData: FormData) {
   const kleur = product_id ? String(formData.get('kleur') ?? '').trim() || null : null;
   const maat = product_id ? String(formData.get('maat') ?? '').trim() || null : null;
   if (!omschrijving) redirect('/dashboard/facturen/' + factuurId + '?fout=omschrijving');
+  await eisConcept(factuurId);
   const ok = await voegFactuurregelToe(factuurId, { omschrijving, aantal, stukprijs, korting_pct, btw_pct, product_id, kleur, maat });
   if (!ok) redirect('/dashboard/facturen/' + factuurId + '?fout=regel');
   await logAudit('factuurregel_toegevoegd', {
@@ -98,6 +111,7 @@ export async function werkRegel(formData: FormData) {
   const maatVeld = formData.get('maat');
   const maat = maatVeld == null ? undefined : String(maatVeld).trim() || null;
   if (!regelId || !omschrijving) redirect('/dashboard/facturen/' + factuurId + '?fout=omschrijving');
+  await eisConcept(factuurId);
   const voor = await getFactuurregel(regelId);
   const ok = await werkFactuurregel(regelId, {
     omschrijving,
@@ -137,6 +151,7 @@ export async function verwijderRegel(formData: FormData) {
   const regelId = String(formData.get('regelId') ?? '').trim();
   if (regelId) {
     const oud = await getFactuurregel(regelId);
+    await eisConcept(oud?.factuur_id ?? factuurId);
     const ok = await verwijderFactuurregel(regelId);
     if (ok) {
       await logAudit('factuurregel_verwijderd', { entiteit: 'facturen', entiteitId: factuurId, details: { regelId, omschrijving: oud?.omschrijving ?? null } });

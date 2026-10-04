@@ -65,7 +65,9 @@ export async function zetProspectStatusActie(formData: FormData) {
   await eisEigenaar();
   const id = String(formData.get('id') ?? '').trim();
   const status = String(formData.get('status') ?? '').trim();
-  const terug = String(formData.get('terug') ?? '').trim() || '/dashboard/prospects';
+  const terugRuw = String(formData.get('terug') ?? '').trim();
+  // Alleen terug naar de prospectslijst zelf: geen doorsturen naar een externe site.
+  const terug = terugRuw.startsWith('/dashboard/prospects') ? terugRuw : '/dashboard/prospects';
   if (id && status) await zetProspectStatus(id, status);
   redirect(`${terug}${terug.includes('?') ? '&' : '?'}ok=status`);
 }

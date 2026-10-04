@@ -1,4 +1,5 @@
 'use client';
+import { useBevestigKlik } from '@/components/dashboard/ui/useBevestigKlik';
 
 /** Verzendknop die eerst om bevestiging vraagt (voor verwijderen e.d.). */
 export default function BevestigKnop({
@@ -10,13 +11,12 @@ export default function BevestigKnop({
   children: React.ReactNode;
   className?: string;
 }) {
+  const onClick = useBevestigKlik(vraag, { children, className });
   return (
     <button
       type="submit"
       className={className}
-      onClick={(e) => {
-        if (!window.confirm(vraag)) e.preventDefault();
-      }}
+      onClick={onClick}
     >
       {children}
     </button>

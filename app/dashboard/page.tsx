@@ -4,6 +4,9 @@ import { env, isLeadsDbConfigured } from '@/lib/env';
 import { login } from './actions';
 import { dashAuthed, adminSessieStatus, getHuidigeAdmin, magEigenaar } from '@/lib/kms/adminClient';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+import { getAanDeSlag, AAN_DE_SLAG_COOKIE } from '@/lib/kms/aanDeSlag';
+import AanDeSlag from '@/components/dashboard/overzicht/AanDeSlag';
 import AdminLoginForm from '@/components/dashboard/AdminLoginForm';
 import { getVandaagSignalen } from '@/lib/kms/overzicht';
 import { getDashboardStats } from '@/lib/kms/dashboardStats';
@@ -98,12 +101,18 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
     );
   }
 
-  const [stats, signalen, admin, eigenaar] = await Promise.all([
+  const [stats, signalen, admin, eigenaar, cookieLijst] = await Promise.all([
     getDashboardStats(),
     getVandaagSignalen(),
     getHuidigeAdmin().catch(() => null),
     magEigenaar().catch(() => false),
+    cookies(),
   ]);
+  // Aan de slag: alleen voor de eigenaar, tot alles staat of tot ze het verbergt.
+  const aanDeSlag =
+    eigenaar && cookieLijst.get(AAN_DE_SLAG_COOKIE)?.value !== 'verborgen'
+      ? await getAanDeSlag(admin).catch(() => null)
+      : null;
 
   const nl = nlDelen();
   const voornaam = admin?.naam?.trim().split(/\s+/)[0] ?? null;
@@ -326,6 +335,8 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
         <div className="lg:col-span-7"><Vandaag items={stats.agenda} vandaag={stats.vandaag} nuTijd={stats.nuTijd} /></div>
         <div className="lg:col-span-5"><Aandacht items={aandacht} /></div>
       </div>
+
+      {aanDeSlag && <AanDeSlag stappen={aanDeSlag} />}
 
       <h2 className="sr-only">Kerncijfers</h2>
       <div className={`mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 ${tegels.length === 5 ? 'xl:grid-cols-5' : ''}`}>

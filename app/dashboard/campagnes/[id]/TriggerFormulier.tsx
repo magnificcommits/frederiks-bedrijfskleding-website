@@ -15,6 +15,7 @@ import {
   type Trigger,
   type TriggerSoort,
 } from '@/lib/campagnes/flow';
+import { BRON_KANALEN, BRON_KANAAL_LABEL } from '@/lib/leadHerkomst';
 import { bewaarInstellingenActie } from './actions';
 
 /** Welke triggers kijken alleen naar nieuwe gebeurtenissen, en welke naar de huidige stand? */
@@ -44,7 +45,7 @@ export default function TriggerFormulier({
 
   function kiesSoort(s: TriggerSoort) {
     const basis = standaardTrigger(s);
-    setTrigger((t) => ({ ...basis, bron: t.bron, status: t.status, branche: t.branche }));
+    setTrigger((t) => ({ ...basis, bron: t.bron, kanaal: t.kanaal, status: t.status, branche: t.branche }));
   }
 
   function wisselDoel(s: DoelSoort) {
@@ -84,6 +85,20 @@ export default function TriggerFormulier({
                 ))}
               </select>
               <p className="veld-hint">Bepaalt wat je standaard ziet bij Ontvangers. Je kunt daar ook andere groepen inschrijven.</p>
+            </div>
+          )}
+          {trigger.soort === 'lead_nieuw' && (
+            <div>
+              <label className="veld-label">Ingang (optioneel)</label>
+              <select value={trigger.kanaal} onChange={(e) => zet({ kanaal: e.target.value })} className="veld w-64">
+                <option value="">Elke ingang</option>
+                {BRON_KANALEN.map((k) => (
+                  <option key={k} value={k}>
+                    {BRON_KANAAL_LABEL[k]}
+                  </option>
+                ))}
+              </select>
+              <p className="veld-hint">Bijvoorbeeld alleen aanvragen uit de pakketconfigurator. Oudere leads hebben geen ingang en tellen dan niet mee.</p>
             </div>
           )}
           {trigger.soort === 'lead_nieuw' && (

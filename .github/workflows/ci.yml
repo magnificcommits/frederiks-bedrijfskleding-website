@@ -16,4 +16,6 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm test
+      - run: node scripts/check-auth.mjs --strict
       - run: npm run build

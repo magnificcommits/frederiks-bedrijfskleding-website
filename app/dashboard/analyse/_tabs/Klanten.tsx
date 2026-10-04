@@ -2,12 +2,18 @@ import Link from 'next/link';
 import KpiTegel from '@/components/dashboard/overzicht/KpiTegel';
 import LegeStaat from '@/components/dashboard/overzicht/LegeStaat';
 import { analyseKlanten } from '@/lib/kms/analyse';
+import { npsStand } from '@/lib/reviews/reviews';
 import { datumKort, periodeParams, urlMet, type Periode } from '@/lib/kms/analysePeriode';
 import Blok from '../_delen/Blok';
 import { aantal, euro, pct } from '../_delen/opmaak';
 
 export default async function Klanten({ periode, slaap }: { periode: Periode; slaap: number }) {
-  const d = await analyseKlanten(periode, slaap);
+  const totDag = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + 86_400_000).toISOString();
+  const [d, nps, npsVgl] = await Promise.all([
+    analyseKlanten(periode, slaap),
+    npsStand(`${periode.van}T00:00:00Z`, totDag(periode.tot)),
+    periode.vgl ? npsStand(`${periode.vgl.van}T00:00:00Z`, totDag(periode.vgl.tot)) : Promise.resolve(null),
+  ]);
   const vgl = periode.vgl?.label ?? null;
   const pp = periodeParams(periode);
   const klant = (id: string, tab = 'verkoop') => `/dashboard/klanten/${id}?tab=${tab}`;
@@ -204,6 +210,34 @@ export default async function Klanten({ periode, slaap }: { periode: Periode; sl
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </Blok>
+
+      <Blok
+        titel="Tevredenheid (NPS)"
+        uitleg={`Antwoorden op de tevredenheidsmail na levering, verstuurd in ${periode.label.toLowerCase()}. NPS = % promotors (9-10) min % criticasters (0-6).`}
+        link={{ href: '/dashboard/reviews', label: 'Reviews' }}
+      >
+        {nps.aantal === 0 ? (
+          <LegeStaat titel="Nog geen antwoorden" tekst="Een week na levering krijgt de klant een korte mail met een cijfer van 0 tot 10. De antwoorden komen hier." />
+        ) : (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <KpiTegel
+              label="NPS"
+              waarde={String(nps.nps ?? '–')}
+              href="/dashboard/reviews"
+              delta={vgl && npsVgl && npsVgl.nps !== null && nps.nps !== null ? { nu: nps.nps, vorige: npsVgl.nps, richting: 'hoger-beter', vergelijk: vgl } : undefined}
+              sub={<span className="text-warm">{nps.aantal} antwoorden{nps.respons !== null ? `, respons ${nps.respons}%` : ''}</span>}
+            />
+            <KpiTegel
+              label="Gemiddeld cijfer"
+              waarde={nps.gemiddelde === null ? '–' : nps.gemiddelde.toFixed(1).replace('.', ',')}
+              href="/dashboard/reviews"
+              sub={<span className="text-warm">op een schaal van 0 tot 10</span>}
+            />
+            <KpiTegel label="Promotors (9-10)" waarde={aantal(nps.promotors)} href="/dashboard/reviews?filter=beantwoord" sub={<span className="text-warm">{pct(nps.promotors / nps.aantal)}</span>} />
+            <KpiTegel label="Criticasters (0-6)" waarde={aantal(nps.criticasters)} href="/dashboard/reviews?filter=laag" sub={<span className="text-warm">{pct(nps.criticasters / nps.aantal)}, werden een klacht</span>} />
           </div>
         )}
       </Blok>

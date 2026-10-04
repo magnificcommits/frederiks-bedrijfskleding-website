@@ -15,14 +15,14 @@ export async function keurGoed(formData: FormData) {
   const toegang = await guardGoedkeurder();
   const orderId = String(formData.get('order_id') ?? '').trim();
   const door = toegang.email ?? 'onbekend';
-  if (orderId) await beslisOverOrder(orderId, 'goedgekeurd', door);
-  redirect('/portaal/goedkeuringen?ok=goedgekeurd');
+  const res = orderId ? await beslisOverOrder(orderId, 'goedgekeurd', door) : { ok: false };
+  redirect(res.ok ? '/portaal/goedkeuringen?ok=goedgekeurd' : '/portaal/goedkeuringen?fout=opslaan');
 }
 
 export async function wijsAf(formData: FormData) {
   const toegang = await guardGoedkeurder();
   const orderId = String(formData.get('order_id') ?? '').trim();
   const door = toegang.email ?? 'onbekend';
-  if (orderId) await beslisOverOrder(orderId, 'afgewezen', door);
-  redirect('/portaal/goedkeuringen?ok=afgewezen');
+  const res = orderId ? await beslisOverOrder(orderId, 'afgewezen', door) : { ok: false };
+  redirect(res.ok ? '/portaal/goedkeuringen?ok=afgewezen' : '/portaal/goedkeuringen?fout=opslaan');
 }

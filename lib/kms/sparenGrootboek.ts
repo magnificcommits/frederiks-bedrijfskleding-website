@@ -13,6 +13,7 @@ import {
   niveauVoor,
   plusMaanden,
   ronde2,
+  vloerPunten,
   type GrootboekRegel,
   type InwisselStatus,
   type Inwisseling,
@@ -282,7 +283,7 @@ function doelenVoorOrders(b: SpaarBundel): Map<string, Map<string, Doel>> {
       let basis = 0;
 
       for (const r of actief.filter((x) => x.soort === 'per_euro' && geldig(x))) {
-        const p = Math.floor(bedrag * r.factor);
+        const p = vloerPunten(bedrag * r.factor);
         basis += p;
         if (p > 0) {
           doelen.set(r.id, {
@@ -298,7 +299,7 @@ function doelenVoorOrders(b: SpaarBundel): Map<string, Map<string, Doel>> {
       // Niveaubonus alleen voor orders van na de invoering van niveaus; bestaande saldi blijven zo gelijk.
       const niveau = b.niveausSinds && dag >= b.niveausSinds ? niveauOpMoment(b, lijst, mutPerOrg.get(orgId) ?? [], o.id, datumVan(o)) : null;
       if (niveau && niveau.puntenFactor > 1 && basis > 0) {
-        const p = Math.floor(basis * (niveau.puntenFactor - 1));
+        const p = vloerPunten(basis * (niveau.puntenFactor - 1));
         if (p > 0) {
           doelen.set('niveau', {
             punten: p,
@@ -326,7 +327,7 @@ function doelenVoorOrders(b: SpaarBundel): Map<string, Map<string, Doel>> {
         if (r.soort === 'periode_actie') {
           const binnen = (!r.startDatum || dag >= r.startDatum) && (!r.eindDatum || dag <= r.eindDatum);
           if (binnen) {
-            const p = Math.floor(basis * Math.max(0, r.factor - 1)) + Math.max(0, r.punten);
+            const p = vloerPunten(basis * Math.max(0, r.factor - 1)) + Math.max(0, r.punten);
             if (p > 0) {
               doelen.set(r.id, { punten: p, regelId: r.id, regelSoort: r.soort, omschrijving: `${nr}, ${r.naam}`, bedragAfhankelijk: true });
             }
@@ -702,7 +703,7 @@ function virtueleMutaties(b: SpaarBundel): MutatieRij[] {
   const basis = b.regels.find((r) => r.soort === 'per_euro' && r.actief);
   const factor = basis?.factor ?? b.instellingen.puntenPerEuro;
   return b.orders.filter(telt).flatMap((o) => {
-    const p = Math.floor((Number(o.bedrag) || 0) * factor);
+    const p = vloerPunten((Number(o.bedrag) || 0) * factor);
     if (!o.organisatie_id || p <= 0) return [];
     return [
       {

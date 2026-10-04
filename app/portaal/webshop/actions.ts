@@ -19,6 +19,7 @@ import {
   type Verstrekking,
 } from '@/lib/portaal/webshop';
 import { getServerSupabase } from '@/lib/portaal/supabaseServer';
+import { getMijnToegang } from '@/lib/portaal/team';
 import { getVertaler } from '@/lib/i18n/portaal/server';
 
 /** Bepaalt de medewerker: eigen match, anders de gekozen medewerker uit het formulier. */
@@ -28,12 +29,20 @@ async function bepaalMedewerker(
   const eigen = await getMijnMedewerker();
   if (eigen) return { id: eigen.id, medewerker: eigen };
 
+  const lijst = await getWebshopMedewerkers();
+  // Een gewone medewerker bestelt alleen voor zichzelf, niet op het budget van een collega.
+  // Geen e-mailmatch? Dan de werknemer waaraan de beheerder zijn account heeft gekoppeld.
+  const toegang = await getMijnToegang();
+  if (toegang.rol === 'medewerker') {
+    const gekoppeld = toegang.medewerkerId ? lijst.find((m) => m.id === toegang.medewerkerId) ?? null : null;
+    return { id: gekoppeld?.id ?? null, medewerker: gekoppeld };
+  }
+
   const gekozen = String(formData.get('medewerker_id') ?? '').trim();
   if (!gekozen) return { id: null, medewerker: null };
-
-  const lijst = await getWebshopMedewerkers();
+  // Alleen een medewerker uit de eigen lijst (RLS), geen willekeurig id uit een aangepast formulier.
   const mw = lijst.find((m) => m.id === gekozen) ?? null;
-  return { id: gekozen, medewerker: mw };
+  return { id: mw?.id ?? null, medewerker: mw };
 }
 
 export async function plaatsBestelling(formData: FormData) {
@@ -158,11 +167,15 @@ export async function bestelPakketActie(formData: FormData) {
 
 /** Zet een product aan/uit als favoriet voor de eigen organisatie. Geen redirect: blijf op de pagina. */
 export async function toggleFavorietActie(formData: FormData) {
+  // Login-check via getMijnWebshopOrganisatie (RLS met sessie; zonder sessie null).
+  const sb = await getServerSupabase();
+  const { data: auth } = sb ? await sb.auth.getUser() : { data: { user: null } };
+  if (!auth.user) return;
   const org = await getMijnWebshopOrganisatie();
   if (!org) return;
 
   const productId = String(formData.get('product_id') ?? '').trim();
-  if (!productId) return;
+  if (!/^[0-9a-f-]{36}$/i.test(productId)) return;
 
   await toggleFavoriet(org.id, productId);
   revalidatePath('/portaal/webshop');

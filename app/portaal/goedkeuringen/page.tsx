@@ -23,7 +23,7 @@ const meldingen = {
 export default async function Goedkeuringen({
   searchParams,
 }: {
-  searchParams: Promise<{ ok?: string }>;
+  searchParams: Promise<{ ok?: string; fout?: string }>;
 }) {
   const { t, euro, datum } = await getVertaler();
   if (!isPortalConfigured) {
@@ -94,6 +94,11 @@ export default async function Goedkeuringen({
       {melding && (
         <div className="mt-6 rounded-xl border border-green-300 bg-green-50 p-4 text-sm text-green-800">
           {melding}
+        </div>
+      )}
+      {sp?.fout && (
+        <div role="alert" className="mt-6 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+          {t('algemeen.foutOpslaan')}
         </div>
       )}
 

@@ -1,3 +1,4 @@
+import Kruimelpad from '@/components/dashboard/ui/Kruimelpad';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -75,7 +76,8 @@ export default async function PassessieDetail({
   return (
     <main className="container-app py-6">
       <div className="dash-kop flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
+          <Kruimelpad />
           <h1 className="dash-h1">{sessie.organisatie_naam}</h1>
           <p className="mt-1 text-sm text-warm">
             Passessie {new Date(sessie.datum).toLocaleDateString('nl-NL')}

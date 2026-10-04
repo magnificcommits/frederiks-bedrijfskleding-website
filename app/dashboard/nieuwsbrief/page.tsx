@@ -48,7 +48,7 @@ async function AdressenTab({ branche, zoek, ok }: { branche?: string; zoek?: str
   const brancheFilter = (branche ?? '').trim();
   const zoekTerm = (zoek ?? '').trim();
 
-  const { adressen, zonderAdres, afmeldenMogelijk } = await getNieuwsbriefOverzicht();
+  const { adressen, zonderAdres, afmeldenMogelijk, wachtOpBevestiging } = await getNieuwsbriefOverzicht();
   // De tellers op de chips gaan over de zoekterm die nu actief is. Tellen over
   // de hele lijst zou een chip "Bouw 42" laten zien terwijl je er na het
   // aanklikken 3 overhoudt, en dan klopt het getal dat je kopieert niet.
@@ -162,6 +162,14 @@ async function AdressenTab({ branche, zoek, ok }: { branche?: string; zoek?: str
           Een adres op niet mailen zetten kan nog niet. De database mist daar nog een veld voor, dus
           die knop staat uit tot dat is bijgewerkt. Zoeken, filteren, kopiëren en exporteren werken
           gewoon.
+        </p>
+      )}
+
+      {(wachtOpBevestiging ?? 0) > 0 && (
+        <p className="mt-4 text-[13px] text-warm">
+          {wachtOpBevestiging === 1 ? 'Eén aanmelding' : `${wachtOpBevestiging} aanmeldingen`} via de site{' '}
+          {wachtOpBevestiging === 1 ? 'wacht' : 'wachten'} nog op de klik in de bevestigingsmail. Die adressen staan pas in de lijst als ze
+          bevestigd zijn (AVG).
         </p>
       )}
 

@@ -1,6 +1,6 @@
 import { cache } from 'react';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env, isLeadsDbConfigured } from '@/lib/env';
@@ -227,7 +227,22 @@ export async function isWachtwoordLogin(): Promise<boolean> {
  * blijft toegang gegarandeerd, ook zonder Supabase-sessie.
  */
 export async function dashAuthed(): Promise<boolean> {
-  return (await wachtwoordCookieGeldig()) || (await sessieIsAdmin());
+  if (await wachtwoordCookieGeldig()) return true;
+  if (!(await sessieIsAdmin())) return false;
+  // Rol 'lezer' mag kijken, niet wijzigen. Elke wijziging in het KMS loopt via een
+  // Server Action (herkenbaar aan de header Next-Action); die weigeren we hier
+  // centraal, zodat niet elke actie apart een rolcheck nodig heeft.
+  if ((await getHuidigeAdmin())?.rol === 'lezer' && (await isServerAction())) return false;
+  return true;
+}
+
+/** Is het huidige verzoek een Server Action-aanroep? */
+async function isServerAction(): Promise<boolean> {
+  try {
+    return (await headers()).has('next-action');
+  } catch {
+    return false;
+  }
 }
 
 /**

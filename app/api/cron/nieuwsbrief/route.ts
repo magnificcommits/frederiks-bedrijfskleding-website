@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
+import { veiligGelijk } from '@/lib/kms/adminClient';
+import { ruimOudeLogsOp } from '@/lib/avg/bewaartermijnen';
 import { verwerkGeplandeNieuwsbrieven } from '@/lib/nieuwsbrief/verzenden';
+import { verwerkDagelijkseKlantmails } from '@/lib/klantmails';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,10 +23,16 @@ export async function GET(req: Request) {
 
   const auth = req.headers.get('authorization');
   const param = new URL(req.url).searchParams.get('secret');
-  if (auth !== `Bearer ${secret}` && param !== secret) {
+  if (!veiligGelijk(auth ?? '', `Bearer ${secret}`) && !veiligGelijk(param ?? '', secret)) {
     return NextResponse.json({ error: 'Niet toegestaan' }, { status: 401 });
   }
 
-  const res = await verwerkGeplandeNieuwsbrieven(50_000);
-  return NextResponse.json({ ok: true, ...res });
+  // Eerst de klantmails (afspraakherinneringen voor morgen en tevredenheidsmails);
+  // dat zijn er weinig. De rest van de tijd gaat naar de nieuwsbrief.
+  const begin = Date.now();
+  const klantmails = await verwerkDagelijkseKlantmails().catch((e) => ({ fout: String(e) }));
+  const res = await verwerkGeplandeNieuwsbrieven(Math.max(10_000, 50_000 - (Date.now() - begin)));
+  // Dagelijks meteen ook de logtabellen opschonen (AVG-bewaartermijnen, lib/avg/bewaartermijnen.ts).
+  const opgeschoond = await ruimOudeLogsOp().catch(() => []);
+  return NextResponse.json({ ok: true, ...res, klantmails, opgeschoond });
 }

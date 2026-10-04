@@ -1,3 +1,4 @@
+import Kruimelpad from '@/components/dashboard/ui/Kruimelpad';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
@@ -93,7 +94,8 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
   return (
     <main className="container-app py-6">
       <div className="dash-kop flex flex-wrap items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0">
+          <Kruimelpad />
           <h1 className="dash-h1">{p.bedrijfsnaam}</h1>
           <p className="mt-1 text-sm text-warm">{[p.branche, p.plaats].filter(Boolean).join(' · ') || 'Prospect'}{p.bron ? ` · bron: ${p.bron}` : ''}</p>
         </div>
@@ -104,7 +106,6 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
           {p.website && (
             <a href={websiteHref(p.website)} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-amber-700 hover:text-amber-800">Website openen</a>
           )}
-          <Link href="/dashboard/prospects" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar prospects</Link>
         </div>
       </div>
 

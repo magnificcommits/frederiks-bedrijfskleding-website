@@ -8,6 +8,7 @@ import {
   maakContactpersoon,
   werkContactpersoon,
   geefPortaalToegang,
+  stuurPortaalUitnodiging,
 } from '@/lib/kms/crm';
 import { werknemerVanContact } from '@/lib/kms/werknemers';
 import { listAfdelingen, maakAfdelingMetId, verwijderAfdeling, afdelingInGebruik } from '@/lib/kms/structuur';
@@ -227,6 +228,10 @@ export async function slaContactenOpActie(formData: FormData) {
       const uitkomst = await geefPortaalToegang(klantId, r.email, r.naam, werknemerId);
       if (uitkomst === 'toegevoegd') {
         await logAudit('portaalgebruiker_gekoppeld', { entiteit: 'organisatie', entiteitId: klantId, details: { email: r.email, via: 'wizard' } });
+        // Zonder uitnodiging weet de nieuwe gebruiker niet dat hij kan inloggen.
+        if (!(await stuurPortaalUitnodiging(r.email, r.naam, klantId))) {
+          meldingen.push(`${r.email} heeft portaaltoegang, maar de uitnodiging kon niet worden gemaild.`);
+        }
       } else if (uitkomst === 'elders') {
         meldingen.push(`${r.email} kan al inloggen bij een andere klant en is daarom hier niet gekoppeld.`);
       } else if (uitkomst === 'mislukt') {

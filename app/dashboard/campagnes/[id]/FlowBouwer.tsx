@@ -1,4 +1,5 @@
 'use client';
+import { bevestig } from '@/components/dashboard/ui/Bevestig';
 
 import { Fragment, useEffect, useMemo, useState, useTransition } from 'react';
 import {
@@ -141,14 +142,14 @@ export default function FlowBouwer(props: FlowBouwerProps) {
     setOpenPlek(null);
   }
 
-  function verwijder(id: string) {
+  async function verwijder(id: string) {
     const k = vindKnoop(flow, id);
     if (!k) return;
     const wachtend = opStapIn(k);
     const vragen: string[] = [];
     if (k.type === 'voorwaarde' && (k.ja.length || k.nee.length)) vragen.push('De stappen in beide takken gaan ook weg.');
     if (wachtend) vragen.push(`Er ${wachtend === 1 ? 'staat 1 persoon' : `staan ${wachtend} mensen`} op deze stap. ${wachtend === 1 ? 'Die stopt' : 'Die stoppen'} na het opslaan.`);
-    if (vragen.length && !window.confirm(`Deze stap verwijderen?\n\n${vragen.join('\n')}`)) return;
+    if (vragen.length && !(await bevestig({ titel: 'Deze stap verwijderen?', tekst: vragen.join('\n'), bevestigLabel: 'Verwijderen', gevaar: true }))) return;
     wijzig((s) => verwijderKnoop(s, id));
     setGekozen(null);
   }

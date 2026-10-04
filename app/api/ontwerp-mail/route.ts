@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { sendEmail, escapeHtml, emailLayout } from '@/lib/email';
-import { env } from '@/lib/env';
-import { rateLimit, clientIp } from '@/lib/ratelimit';
+import { env, isLeadsDbConfigured } from '@/lib/env';
+import { publiekeLimiet, clientIp } from '@/lib/ratelimit';
+import { eigenSiteUrl, logoBijlage } from '@/lib/bijlagen';
 import { site } from '@/content/site';
-import { saveLead } from '@/lib/supabase';
+import { neemWebleadIn, type WebleadUitkomst } from '@/lib/kms/leadInname';
+import { herkomstTekst } from '@/lib/leadHerkomst';
+import { herkomstSchema, leadRegelsSchema, schoneHerkomst, schoneRegels } from '@/lib/leadHerkomstValidatie';
 
 export const runtime = 'nodejs';
 
@@ -24,10 +27,13 @@ const schema = z.object({
   bron: z.string().max(400).optional().or(z.literal('')),
   consent: z.union([z.literal('on'), z.boolean()]).optional(),
   website: z.string().max(200).optional(), // honeypot
+  herkomst: herkomstSchema.optional().nullable(),
+  regels: leadRegelsSchema.optional().nullable(),
 });
 
 export async function POST(req: Request) {
-  if (!rateLimit(`ontwerp:${clientIp(req)}`, 5, 600_000)) {
+  // auth: publiek (zachte leadcapture); beschermd met rate limit, honeypot en Zod.
+  if (!(await publiekeLimiet('ontwerp', clientIp(req), 5, 600_000))) {
     return NextResponse.json({ error: 'Te veel verzoeken. Probeer het later opnieuw.' }, { status: 429 });
   }
   const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -39,13 +45,10 @@ export async function POST(req: Request) {
 
   // Logo (optioneel) als bijlage meesturen.
   const attachments: { filename: string; content: string }[] = [];
-  if (d.logo) {
-    const m = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(d.logo);
-    if (m) {
-      const ext = m[1].split('/')[1].replace('svg+xml', 'svg').replace('jpeg', 'jpg');
-      attachments.push({ filename: (d.logoNaam && d.logoNaam.trim()) || `logo.${ext}`, content: m[2] });
-    }
-  }
+  // Deze mail gaat naar een adres dat de bezoeker zelf invult: geen SVG (kan script
+  // bevatten) en nooit een zelfgekozen extensie.
+  const logo = logoBijlage(d.logo, d.logoNaam, { svgToegestaan: false });
+  if (logo) attachments.push(logo);
   if (d.ontwerp) {
     const mo = /^data:image\/png;base64,(.+)$/i.exec(d.ontwerp);
     if (mo) attachments.push({ filename: 'Jouw-ontwerp-Frederiks.png', content: mo[1] });
@@ -53,27 +56,44 @@ export async function POST(req: Request) {
 
   const berichtHtml = escapeHtml(d.bericht ?? '').replace(/\n/g, '<br>');
   // Alleen een hervat-link op de eigen site toestaan (geen open redirect in de mail).
-  const veiligeResume = d.resumeUrl && d.resumeUrl.startsWith(site.url) ? d.resumeUrl : '';
+  // startsWith(site.url) liet ook https://<onze-site>.evil.nl door: vergelijk de origin.
+  const veiligeResume = escapeHtml(eigenSiteUrl(d.resumeUrl, site.url));
 
-  // Warme lead opslaan (best effort; faalt nooit het verzoek).
-  await saveLead({
-    name: d.name || 'Onbekend (ontwerp gemaild)',
-    company: null,
-    email: d.email,
-    phone: null,
-    branche: null,
-    aantal: null,
-    bericht: d.bericht || null,
-    bron: `${d.bron ?? ''} | ontwerp gemaild, nog niet afgerond`.trim(),
-  }).catch(() => ({ saved: false }));
+  // Warme lead in het KMS: lead, gekozen kleding als regels, logo in de logobibliotheek
+  // en een opvolgtaak. Geen concept-offerte: de bezoeker heeft nog niets aangevraagd.
+  const herkomst = schoneHerkomst(d.herkomst);
+  const inname = await neemWebleadIn({
+    lead: {
+      name: d.name || 'Onbekend (ontwerp gemaild)',
+      company: null,
+      email: d.email,
+      phone: null,
+      branche: null,
+      aantal: null,
+      bericht: d.bericht || null,
+      bron: `${d.bron || herkomstTekst(herkomst)} | ontwerp gemaild, nog niet afgerond`.slice(0, 400),
+      bron_kanaal: 'configurator',
+      ...herkomst,
+    },
+    regels: schoneRegels(d.regels),
+    logo: d.logo ? { dataUrl: d.logo, naam: d.logoNaam || null } : null,
+    opties: { offerte: false },
+  }).catch((e): WebleadUitkomst => {
+    console.error('[ontwerp-mail] inname mislukt:', e);
+    return { opgeslagen: false, id: null, fout: e instanceof Error ? e.message : 'Onbekende fout', waarschuwingen: [] };
+  });
+  const dbFout = isLeadsDbConfigured && !inname.opgeslagen;
+  const kmsLink = inname.id ? `${env.siteUrl.replace(/\/$/, '')}/dashboard/leads/${inname.id}` : null;
 
   // Notificatie naar Frederiks: warme lead om proactief op te volgen.
   await sendEmail({
     to: env.notifyEmail,
     replyTo: d.email,
     attachments,
-    subject: 'Ontwerp gemaild via de configurator (nog niet afgerond)',
+    subject: `${dbFout ? 'LET OP, niet in het KMS: ' : ''}Ontwerp gemaild via de configurator (nog niet afgerond)`,
     html: `
+      ${dbFout ? `<p style="padding:10px 12px;background:#fdecea;border:1px solid #f5c2c0;color:#8a1c14;"><strong>Deze lead staat niet in het KMS.</strong> Opslaan lukte niet${inname.fout ? ` (${escapeHtml(inname.fout)})` : ''}. Voer hem met de hand in bij Leads.</p>` : ''}
+      ${kmsLink ? `<p><a href="${kmsLink}">Open in het KMS</a></p>` : ''}
       <h3>Ontwerp gemaild via de pakketsamensteller</h3>
       <p>Deze bezoeker heeft zichzelf het ontwerp gemaild, maar nog geen offerte aangevraagd. Een mooi moment om proactief te bellen of mailen.</p>
       <p><strong>E-mail:</strong> ${escapeHtml(d.email)}</p>

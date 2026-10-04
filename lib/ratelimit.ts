@@ -109,6 +109,29 @@ export async function loginGeblokkeerd(
   }
 }
 
+/**
+ * Rate limit voor publieke formulieren (lead, nieuwsbrief, ontwerp mailen, retourlink,
+ * pasdag). De teller in het geheugen alleen werkt slecht op Vercel: elke serverless
+ * instantie heeft een eigen geheugen. Daarom tellen we daarnaast in de tabel
+ * login_pogingen (gehashte sleutel `form:<soort>:ip:<ip>`, geen leesbaar IP-adres).
+ * Elke inzending telt, ook een geslaagde. Zonder bekend IP alleen het geheugen.
+ * Geeft true als het verzoek door mag.
+ */
+export async function publiekeLimiet(
+  soort: string,
+  ip: string | null,
+  max = 5,
+  vensterMs = 600_000,
+): Promise<boolean> {
+  const ipSchoon = (ip ?? '').trim();
+  if (!rateLimit(`${soort}:${ipSchoon || 'onbekend'}`, max, vensterMs)) return false;
+  if (!ipSchoon || ipSchoon === 'onbekend') return true;
+  const sleutel = `form:${soort}:ip:${ipSchoon}`;
+  if (await loginGeblokkeerd([sleutel], max, vensterMs)) return false;
+  await registreerMisluktePoging([sleutel]);
+  return true;
+}
+
 /** Legt een mislukte poging vast voor alle opgegeven sleutels (database + geheugen). */
 export async function registreerMisluktePoging(sleutels: string[]): Promise<void> {
   const hashes = sleutels.filter(Boolean).map(hashSleutel);

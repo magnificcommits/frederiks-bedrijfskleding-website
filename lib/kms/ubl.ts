@@ -1,5 +1,5 @@
 import { bedrijf } from '@/content/bedrijf';
-import { factuurTotalen, regelBedrag } from '@/lib/kms/facturen';
+import { btwTarief, factuurTotalen, regelBedrag } from '@/lib/kms/facturen';
 
 /**
  * UBL 2.1-factuur volgens SI-UBL 2.0 (NLCIUS, de Nederlandse invulling van de
@@ -150,7 +150,7 @@ export function factuurNaarUbl(f: UblFactuur): string {
   const regels = f.regels.map((r, i) => {
     const aantal = Number(r.aantal) || 0;
     const stuk = Number(r.stukprijs) || 0;
-    const pct = Number.isFinite(Number(r.btw_pct)) ? Number(r.btw_pct) : 21;
+    const pct = btwTarief(r.btw_pct);
     const netto = regelBedrag(r);
     const bruto = r2(aantal * stuk);
     const korting = r2(bruto - netto);

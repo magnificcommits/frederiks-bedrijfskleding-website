@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useEffect } from 'react';
+import { site } from '@/content/site';
 
 /**
  * Gebrande foutpagina (error boundary) voor onverwachte fouten in een route.
@@ -21,6 +22,9 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         <button type="button" onClick={reset} className="btn-primary">Opnieuw proberen</button>
         <Link href="/contact" className="btn-outline">Contact</Link>
       </div>
+      <p className="mt-4 text-sm text-warm">
+        Haast? Bel <a href={`tel:${site.phoneIntl}`} className="font-semibold text-ink-900 underline decoration-amber-500 underline-offset-4">{site.phone}</a>, dan regelen we het telefonisch.
+      </p>
     </section>
   );
 }

@@ -35,9 +35,8 @@ export function localBusinessJsonLd() {
       opens: h.open,
       closes: h.close,
     })),
-    ...(site.rating.count > 0
-      ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: site.rating.value, reviewCount: site.rating.count, bestRating: 5 } }
-      : {}),
+    // Geen vaste aggregateRating meer: components/Reviews.tsx voegt hem toe zodra er
+    // echte, gepubliceerde beoordelingen uit de database zijn.
     sameAs: [site.social.linkedin, site.social.facebook].filter(Boolean),
     areaServed: ['Achterhoek', ...plaatsen.map((p) => p.name)],
   };
@@ -70,12 +69,18 @@ export function serviceJsonLd(opts: { name: string; description: string; url: st
   };
 }
 
+/**
+ * Kruimelpad. Relatieve URL's ('/assortiment') worden hier absoluut gemaakt:
+ * Google wil volledige URL's in `item`, en een paar pagina's gaven paden mee.
+ */
 export function breadcrumbJsonLd(items: Array<{ name: string; url: string }>) {
+  const basis = site.url.replace(/\/$/, '');
+  const absoluut = (u: string) => (u.startsWith('/') ? `${basis}${u === '/' ? '' : u}` : u);
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: items.map((it, i) => ({
-      '@type': 'ListItem', position: i + 1, name: it.name, item: it.url,
+      '@type': 'ListItem', position: i + 1, name: it.name, item: absoluut(it.url),
     })),
   };
 }

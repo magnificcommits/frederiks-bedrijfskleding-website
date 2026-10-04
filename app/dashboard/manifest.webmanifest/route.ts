@@ -4,6 +4,7 @@ import { bouwManifest } from '@/lib/pwa/apps';
 export const dynamic = 'force-static';
 
 export function GET() {
+  // auth: publiek (statisch web-app-manifest, geen gegevens).
   return new Response(JSON.stringify(bouwManifest('kms')), {
     headers: {
       'Content-Type': 'application/manifest+json; charset=utf-8',

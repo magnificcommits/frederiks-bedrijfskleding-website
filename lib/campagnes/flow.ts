@@ -8,6 +8,8 @@
  * (server) gebruiken dezelfde functies.
  */
 
+import { bronKanaalLabel } from '@/lib/leadHerkomst';
+
 /* ------------------------------------------------------------------ */
 /* Stappen                                                             */
 /* ------------------------------------------------------------------ */
@@ -459,6 +461,8 @@ export type Trigger = {
   soort: TriggerSoort;
   /** Voor lead_nieuw: alleen leads waarvan de bron dit bevat. Leeg = alle. */
   bron: string;
+  /** Voor lead_nieuw: alleen leads via deze ingang (leads.bron_kanaal, bv. 'configurator'). Leeg = alle. */
+  kanaal: string;
   /** Voor prospect_status. */
   status: string;
   /** Voor klant_slapend. */
@@ -478,7 +482,7 @@ export type Trigger = {
 };
 
 export function standaardTrigger(soort: TriggerSoort = 'handmatig'): Trigger {
-  return { soort, bron: '', status: '', maanden: 6, spaarModus: 'niveau', niveauPct: 80, drempel: 1000, marge: 150, branche: '', herhalen: soort === 'klant_jubileum' || soort === 'order_geleverd', herhaalNaDagen: soort === 'klant_jubileum' ? 300 : 60 };
+  return { soort, bron: '', kanaal: '', status: '', maanden: 6, spaarModus: 'niveau', niveauPct: 80, drempel: 1000, marge: 150, branche: '', herhalen: soort === 'klant_jubileum' || soort === 'order_geleverd', herhaalNaDagen: soort === 'klant_jubileum' ? 300 : 60 };
 }
 
 export function normaliseerTrigger(v: unknown): Trigger {
@@ -488,6 +492,7 @@ export function normaliseerTrigger(v: unknown): Trigger {
   return {
     soort,
     bron: tekst(o.bron, 100).trim(),
+    kanaal: tekst(o.kanaal, 40).trim(),
     status: tekst(o.status, 40).trim(),
     maanden: getal(o.maanden, 1, 36, basis.maanden),
     spaarModus: o.spaarModus === 'punten' ? 'punten' : 'niveau',
@@ -503,6 +508,8 @@ export function normaliseerTrigger(v: unknown): Trigger {
 export function triggerOmschrijving(t: Trigger): string {
   switch (t.soort) {
     case 'lead_nieuw':
+      if (t.kanaal && t.bron) return `Nieuwe lead via ${bronKanaalLabel(t.kanaal).toLowerCase()}, bron "${t.bron}"`;
+      if (t.kanaal) return `Nieuwe lead via ${bronKanaalLabel(t.kanaal).toLowerCase()}`;
       return t.bron ? `Nieuwe lead via "${t.bron}"` : 'Iedere nieuwe lead';
     case 'prospect_status':
       return `Prospect met status "${t.status || '…'}"`;

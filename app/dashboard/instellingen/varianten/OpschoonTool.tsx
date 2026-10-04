@@ -1,4 +1,5 @@
 'use client';
+import { bevestig } from '@/components/dashboard/ui/Bevestig';
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -131,17 +132,15 @@ export default function OpschoonTool({ rijen, lijst, kanOpslaan }: { rijen: Opsc
     });
   }
 
-  function omzetten() {
+  async function omzetten() {
     if (plan.paren.length === 0) return;
     const regels = [
       `${nl(plan.varianten)} varianten worden aangepast (${plan.paren.length} ${plan.paren.length === 1 ? 'waarde' : 'waarden'}).`,
       plan.nieuw.length ? `${plan.nieuw.length} nieuwe ${plan.nieuw.length === 1 ? 'kleur wordt' : 'kleuren worden'} aangemaakt: ${plan.nieuw.slice(0, 6).map((k) => k.naam).join(', ')}${plan.nieuw.length > 6 ? ' …' : ''}.` : '',
       leerAlias ? 'De oude schrijfwijze wordt onthouden als alias.' : '',
       veld === 'kleur' ? 'De leverancierswaarde (met kleurcode) blijft bewaard bij elke variant. Kleurfoto’s en klantassortimenten gaan mee.' : 'De leverancierswaarde blijft bewaard bij elke variant.',
-      '',
-      'Doorgaan?',
-    ].filter((r, i, a) => r !== '' || a[i - 1] !== '');
-    if (!window.confirm(regels.join('\n'))) return;
+    ].filter((r) => r !== '');
+    if (!(await bevestig({ titel: 'Waarden omzetten?', tekst: regels.join('\n'), bevestigLabel: 'Omzetten' }))) return;
     start(async () => {
       const r = await omzettenActie({ veld, paren: plan.paren, nieuweKleuren: plan.nieuw, leerAlias });
       setUitkomst(r);

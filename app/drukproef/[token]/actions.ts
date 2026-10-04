@@ -11,9 +11,10 @@ import { env } from '@/lib/env';
  * Bij succes krijgt Jessi een mailtje; een mailfout breekt de flow niet.
  */
 export async function beslisActie(formData: FormData): Promise<void> {
-  const token = String(formData.get('token') ?? '').trim();
+  // auth: token (beslisDrukproefViaToken zoekt het token op; alleen concept/verstuurd).
+  const token = String(formData.get('token') ?? '').trim().slice(0, 100);
   const besluit = String(formData.get('besluit') ?? '');
-  const opmerking = String(formData.get('opmerking') ?? '').trim();
+  const opmerking = String(formData.get('opmerking') ?? '').trim().slice(0, 2000);
   const akkoord = besluit === 'akkoord';
 
   if (!token) redirect('/');

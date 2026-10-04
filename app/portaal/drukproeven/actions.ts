@@ -4,6 +4,9 @@ import { getPortaalUser } from '@/lib/portaal/queries';
 import { getMijnToegang } from '@/lib/portaal/team';
 import { getServerSupabase } from '@/lib/portaal/supabaseServer';
 import { verwerkDrukproefGoedkeuring } from '@/lib/kms/drukproeven';
+import { eisRijen } from '@/lib/dbFout';
+import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
+import { env } from '@/lib/env';
 
 /**
  * Beslist een drukproef vanuit het portaal: goedkeuren of afkeuren met een opmerking.
@@ -28,17 +31,43 @@ export async function beslisDrukproefPortaalActie(formData: FormData) {
   const sb = await getServerSupabase();
   if (!sb) redirect('/portaal/drukproeven');
 
-  await sb
+  // Alleen een proef die bij de klant ligt (verstuurd). Een concept is nog niet
+  // af, en een proef die al beslist is (en misschien al op de machine ligt)
+  // mag niet via een oud tabblad alsnog omgegooid worden.
+  // .select(): weigert RLS stil (andere klant, geen rechten), dan niet "opgeslagen" melden.
+  const { data, error } = await sb
     .from('drukproeven')
     .update({
       status: besluit === 'akkoord' ? 'goedgekeurd' : 'afgekeurd',
       opmerking: opmerking || null,
       behandeld_op: new Date().toISOString(),
     })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('status', 'verstuurd')
+    .select('naam');
+  if (!eisRijen('portaal.drukproefBesluit', { data, error }).ok) redirect('/portaal/drukproeven?fout=opslaan');
+  const bijgewerkt = (data ?? [])[0];
 
-  // Hangt de drukproef aan een order, dan zet een goedkeuring die order door naar productie.
+  // Hangt de drukproef aan een order, dan gaat de werkbon (en zo mogelijk de order) door naar productie.
+  // Alleen als RLS de wijziging toeliet: verwerkDrukproefGoedkeuring werkt met de service-role.
   if (besluit === 'akkoord') await verwerkDrukproefGoedkeuring(id);
+
+  // Jessi een seintje, net als bij beslissen via de link in de mail.
+  const akkoord = besluit === 'akkoord';
+  const naam = (bijgewerkt as { naam: string | null }).naam ?? 'Drukproef';
+  const heading = akkoord ? 'Drukproef goedgekeurd' : 'Drukproef afgekeurd';
+  await sendEmail({
+    to: env.notifyEmail,
+    subject: `${heading} in het portaal: ${naam}`,
+    html: emailLayout({
+      heading,
+      preheader: `${toegang.email ?? 'Een klant'} heeft gereageerd op een drukproef.`,
+      bodyHtml: `
+        <p style="margin:0;">${escapeHtml(toegang.email ?? 'Een klant')} heeft drukproef <strong>${escapeHtml(naam)}</strong> ${akkoord ? 'goedgekeurd' : 'afgekeurd'} in het klantportaal.</p>
+        ${opmerking ? `<p style="margin:12px 0 0;"><strong>Opmerking:</strong><br/>${escapeHtml(opmerking)}</p>` : ''}
+      `,
+    }),
+  }).catch(() => {});
 
   redirect('/portaal/drukproeven?ok=opgeslagen');
 }

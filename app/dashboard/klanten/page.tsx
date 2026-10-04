@@ -5,6 +5,8 @@ import { kmsAdmin, dashAuthed, getHuidigeAdmin } from '@/lib/kms/adminClient';
 import { mogelijkDubbeleKlanten } from '@/lib/kms/tellingen';
 import { listKlantenGefilterd } from '@/lib/kms/klantenLijst';
 import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
+import EmptyState from '@/components/dashboard/EmptyState';
+import ActieKnopMobiel from '@/components/dashboard/ui/ActieKnopMobiel';
 import FilterBalk from '@/components/dashboard/FilterBalk';
 import { lijstParam, lijstUrl, param, periodeParam, sleutelsVan, type FilterDef } from '@/lib/filterBalk';
 
@@ -160,7 +162,7 @@ export default async function KlantenPage({
         </div>
         {/* Nieuwe klant gaat stap voor stap: bedrijf, contactpersonen, afdelingen,
             werknemers en assortiment. Elke stap slaat meteen op. */}
-        <Link href="/dashboard/klanten/nieuw" className="knop-primair">Nieuwe klant</Link>
+        <Link href="/dashboard/klanten/nieuw" className="knop-primair max-md:hidden">Nieuwe klant</Link>
       </div>
 
       <FilterBalk filters={filterDefs} opslag="klanten" gebruiker={admin?.email} wisOok={['zoek']}>
@@ -172,13 +174,30 @@ export default async function KlantenPage({
         />
       </FilterBalk>
 
-      <div className="panel mt-4">
-        {orgs.length === 0 ? (
-          <p className="px-4 py-8 text-center text-[13px] text-warm">
-            {heeftFilter ? 'Geen klanten die aan deze filters voldoen. Haal een filter weg via het kruisje.' : 'Nog geen klanten.'}
-          </p>
+      {orgs.length === 0 ? (
+        heeftFilter ? (
+          <EmptyState
+            className="mt-4"
+            soort="gefilterd"
+            titel="Geen klanten gevonden"
+            tekst="Geen klant past bij deze zoekterm of filters. Haal een filter weg via het kruisje, of zoek op een deel van de naam."
+            actieHref="/dashboard/klanten"
+            actieLabel="Alle klanten tonen"
+          />
         ) : (
-          <table className="tbl">
+          <EmptyState
+            className="mt-4"
+            titel="Nog geen klanten"
+            tekst="Zet je eerste klant erin: bedrijf, contactpersoon en eventueel afdelingen en werknemers. Daarna maak je offertes en orders voor ze."
+            actieHref="/dashboard/klanten/nieuw"
+            actieLabel="Maak je eerste klant"
+            tweedeHref="/dashboard/import"
+            tweedeLabel="Klanten inlezen uit Excel"
+          />
+        )
+      ) : (
+      <div className="panel mt-4">
+          <table className="tbl tbl-kaart">
             <thead className="thead-sticky-filter">
               <tr>
                 <th className="w-20">Klantnr.</th>
@@ -194,8 +213,8 @@ export default async function KlantenPage({
             <tbody>
               {orgs.map((o) => (
                 <tr key={o.id}>
-                  <td className="stil tabular-nums">{o.klantnummer || '—'}</td>
-                  <td>
+                  <td className="stil tabular-nums" data-label="Klantnr.">{o.klantnummer || '—'}</td>
+                  <td className="kaart-kop">
                     <Link href={`/dashboard/klanten/${o.id}`} className="rij-link">{o.naam}</Link>
                     {o.actief === false && <span className="badge-rust ml-1.5">inactief</span>}
                     {o.heeft_portaal && <span className="ml-1.5 text-[11px] text-warm" title="Heeft een account in het klantportaal">portaal</span>}
@@ -203,11 +222,11 @@ export default async function KlantenPage({
                       <span className="mt-0.5 block text-[11px] text-amber-800">{dubbelReden.get(o.id)}</span>
                     )}
                   </td>
-                  <td className="stil">{o.branche || '—'}</td>
-                  <td className="stil">{o.plaats || '—'}</td>
-                  <td className="stil">{o.contactpersoon || '—'}</td>
-                  <td className="num stil">{aantalPerOrg[o.id] ?? 0}</td>
-                  <td className="num">
+                  <td className="stil kaart-verberg" data-label="Branche">{o.branche || '—'}</td>
+                  <td className="stil" data-label="Plaats">{o.plaats || '—'}</td>
+                  <td className="stil" data-label="Contactpersoon">{o.contactpersoon || '—'}</td>
+                  <td className="num stil kaart-verberg" data-label="Medewerkers">{aantalPerOrg[o.id] ?? 0}</td>
+                  <td className="num" data-label="Open orders">
                     {o.open_orders > 0 ? (
                       <Link href={`/dashboard/orders?klant=${o.id}&fase=open`} className="font-semibold text-ink-900 hover:text-amber-700 hover:underline">
                         {o.open_orders}
@@ -216,13 +235,13 @@ export default async function KlantenPage({
                       <span className="text-warm">0</span>
                     )}
                   </td>
-                  <td className="stil whitespace-nowrap">{fmt(o.datum_klant || o.created_at)}</td>
+                  <td className="stil whitespace-nowrap kaart-verberg" data-label="Klant sinds">{fmt(o.datum_klant || o.created_at)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        )}
       </div>
+      )}
 
       {aantalPaginas > 1 && (
         <nav className="mt-3 flex items-center justify-between gap-4 text-[13px]" aria-label="Paginering">
@@ -235,6 +254,8 @@ export default async function KlantenPage({
           ) : <span />}
         </nav>
       )}
+
+      <ActieKnopMobiel href="/dashboard/klanten/nieuw" label="Nieuwe klant" />
     </main>
   );
 }

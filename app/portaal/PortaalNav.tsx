@@ -80,6 +80,13 @@ export default function PortaalNav({ rol, actief }: { rol: PortaalRol | null; ac
   const linkActief = (href: string) => (href === '/portaal' ? huidig === '/portaal' || pathname === '/portaal' : leafActief(href));
   const groupActief = (items: Leaf[]) => items.some((i) => leafActief(i.href));
 
+  // Actieve pagina: vet én een streep in de huisstijlkleur van de klant; kleur alleen
+  // is niet genoeg (kleurenblind), vet alleen viel nauwelijks op.
+  const actiefStijl =
+    'font-semibold text-ink-900 underline decoration-2 underline-offset-[6px] [text-decoration-color:var(--portaal-accent,theme(colors.amber.500))]';
+  // Op een telefoon minstens 44 px hoog, zodat je met een duim het goede item raakt.
+  const tik = 'inline-flex items-center rounded-sm max-md:min-h-[44px]';
+
   return (
     <nav ref={navRef} className="relative mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-line py-3 text-sm">
       {entries
@@ -90,7 +97,7 @@ export default function PortaalNav({ rol, actief }: { rol: PortaalRol | null; ac
               key={e.href}
               href={e.href}
               aria-current={linkActief(e.href) ? 'page' : undefined}
-              className={linkActief(e.href) ? 'font-semibold text-ink-900' : 'font-semibold text-warm hover:text-ink-800'}
+              className={`${tik} ${linkActief(e.href) ? actiefStijl : 'font-semibold text-warm hover:text-ink-800'}`}
             >
               {e.label}
             </Link>
@@ -101,7 +108,7 @@ export default function PortaalNav({ rol, actief }: { rol: PortaalRol | null; ac
                 onClick={() => setOpen((v) => (v === e.id ? null : e.id))}
                 aria-haspopup="true"
                 aria-expanded={open === e.id}
-                className={`flex items-center gap-1 font-semibold ${groupActief(e.items) ? 'text-ink-900' : 'text-warm hover:text-ink-800'}`}
+                className={`${tik} gap-1 ${groupActief(e.items) ? actiefStijl : 'font-semibold text-warm hover:text-ink-800'}`}
               >
                 {e.label}
                 <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true" className={`transition-transform ${open === e.id ? 'rotate-180' : ''}`}>
@@ -116,7 +123,7 @@ export default function PortaalNav({ rol, actief }: { rol: PortaalRol | null; ac
                       href={i.href}
                       onClick={() => setOpen(null)}
                       aria-current={leafActief(i.href) ? 'page' : undefined}
-                      className={`block rounded-lg px-3 py-2 font-medium ${leafActief(i.href) ? 'bg-mist text-ink-900' : 'text-ink-700 hover:bg-mist'}`}
+                      className={`block rounded-lg px-3 py-2 font-medium max-md:py-3 ${leafActief(i.href) ? 'bg-mist text-ink-900' : 'text-ink-700 hover:bg-mist'}`}
                     >
                       {i.label}
                     </Link>
@@ -127,7 +134,7 @@ export default function PortaalNav({ rol, actief }: { rol: PortaalRol | null; ac
           ),
         )}
       <form action={portaalLogout} className="ml-auto shrink-0">
-        <button className="font-semibold text-warm hover:text-ink-800">{t('algemeen.uitloggen')}</button>
+        <button className={`${tik} font-semibold text-warm hover:text-ink-800`}>{t('algemeen.uitloggen')}</button>
       </form>
     </nav>
   );

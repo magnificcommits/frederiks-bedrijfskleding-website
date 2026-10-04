@@ -10,6 +10,7 @@ import ChromeGate from '@/components/ChromeGate';
 import { Analytics } from '@/components/Analytics';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { ConsentBanner } from '@/components/ConsentBanner';
+import { HerkomstTracker } from '@/components/HerkomstTracker';
 import { JsonLd } from '@/components/JsonLd';
 import { OfferteSelectieProvider, OfferteBalk } from '@/components/OfferteSelectie';
 import { localBusinessJsonLd } from '@/lib/jsonld';
@@ -31,8 +32,9 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: '/' },
   openGraph: {
-    type: 'website', locale: 'nl_NL', url: site.url, siteName: site.name,
-    title: 'Bedrijfskleding in de Achterhoek | Frederiks Bedrijfskleding',
+    // Geen url/title hier: die erfden alle subpagina's zonder eigen openGraph,
+    // waardoor een gedeelde link naar /contact als de homepage verscheen.
+    type: 'website', locale: 'nl_NL', siteName: site.name,
     description: site.description,
     images: ['/Frederiks-bedrijfskleding-hengelo-.jpg'],
   },
@@ -63,6 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ChromeGate><WhatsAppButton /></ChromeGate>
         <Analytics />
         <ConsentBanner />
+        <HerkomstTracker />
       </body>
     </html>
   );

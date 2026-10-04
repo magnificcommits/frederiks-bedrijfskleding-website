@@ -3,6 +3,8 @@ import { zoekWoorden, klantIdsVoorZoekterm } from '@/lib/kms/zoeken';
 import { offerteContactOrFilter } from '@/lib/kms/filterOpties';
 import { kolomOntbreekt as kolomMist } from '@/lib/kms/kolomTerugval';
 import { maakOrder, voegOrderregelToe, type OrderregelVelden } from '@/lib/kms/orders';
+import { offerteTotalen as offerteTotalenBerekend } from '@/components/dashboard/OfferteDocument';
+import { eisData, logDbFout } from '@/lib/dbFout';
 
 /**
  * Data-access voor de module Offertes. Offertes met regels, status en een
@@ -156,26 +158,29 @@ async function totalenVoorOffertes(sb: NonNullable<ReturnType<typeof kmsAdmin>>,
   const totaalPerOfferte = new Map<string, number>();
   if (rows.length === 0) return totaalPerOfferte;
   const ids = rows.map((r) => r.id);
-  const subtotaalPer = new Map<string, number>();
+  type RegelRij = { offerte_id: string; aantal: number | null; stukprijs: number | null; korting_pct: number | null };
+  const regelsPer = new Map<string, RegelRij[]>();
   for (let i = 0; i < ids.length; i += 150) {
-    const { data: regelData } = await sb
-      .from('offerteregels')
-      .select('offerte_id, aantal, stukprijs, korting_pct')
-      .in('offerte_id', ids.slice(i, i + 150))
-      .limit(5000);
-    const regels = (regelData as { offerte_id: string; aantal: number | null; stukprijs: number | null; korting_pct: number | null }[]) ?? [];
-    for (const r of regels) {
-      const kort = Number(r.korting_pct) || 0;
-      const sub = (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0) * (1 - kort / 100);
-      subtotaalPer.set(r.offerte_id, (subtotaalPer.get(r.offerte_id) ?? 0) + sub);
+    const blok = ids.slice(i, i + 150);
+    // Per 1000 rijen ophalen: Supabase geeft nooit meer dan 1000 rijen per verzoek terug.
+    for (let start = 0; start < 100_000; start += 1000) {
+      const { data: regelData, error } = await sb
+        .from('offerteregels')
+        .select('offerte_id, aantal, stukprijs, korting_pct')
+        .in('offerte_id', blok)
+        .order('id')
+        .range(start, start + 999);
+      if (error) {
+        logDbFout('offertes.totalen', error);
+        break;
+      }
+      const regels = (regelData as RegelRij[]) ?? [];
+      for (const r of regels) regelsPer.set(r.offerte_id, [...(regelsPer.get(r.offerte_id) ?? []), r]);
+      if (regels.length < 1000) break;
     }
   }
-  for (const o of rows) {
-    const subtotaal = subtotaalPer.get(o.id) ?? 0;
-    const pct = Number(o.btw_pct);
-    const btw = subtotaal * (Number.isFinite(pct) ? pct : 0) / 100;
-    totaalPerOfferte.set(o.id, Math.round((subtotaal + btw) * 100) / 100);
-  }
+  // Dezelfde berekening als op de offerte zelf (offerteTotalen), zodat lijst en document gelijk zijn.
+  for (const o of rows) totaalPerOfferte.set(o.id, offerteTotalenBerekend(regelsPer.get(o.id) ?? [], o.btw_pct).totaal);
   return totaalPerOfferte;
 }
 
@@ -245,7 +250,8 @@ export async function listOffertesPaged(opts: {
   let res = await bouw(contactOr?.metId ?? null);
   // Kolom contactpersoon_id bestaat nog niet (migratie niet gedraaid): alleen op naam.
   if (contactOr && kolomMist(res.error)) res = await bouw(contactOr.zonderId);
-  const { data, count } = res;
+  const data = eisData('offertes.lijst', res);
+  const count = res.count;
   let rows = (data as unknown as (Offerte & { organisaties: { naam: string } | null })[]) ?? [];
 
   const totaalPerOfferte = await totalenVoorOffertes(sb, rows);
@@ -302,20 +308,22 @@ async function fotoPerRegel(regels: Offerteregel[]): Promise<Map<string, string>
 
 export async function getOfferte(id: string): Promise<OfferteDetail | null> {
   const sb = kmsAdmin(); if (!sb) return null;
-  const { data } = await sb
-    .from('offertes')
-    .select('*, organisaties(naam, email_algemeen, factuur_email)')
-    .eq('id', id)
-    .maybeSingle();
+  const data = eisData(
+    'offertes.detail',
+    await sb.from('offertes').select('*, organisaties(naam, email_algemeen, factuur_email)').eq('id', id).maybeSingle(),
+  );
   if (!data) return null;
   const rij = data as unknown as Offerte & { organisaties: { naam: string; email_algemeen: string | null; factuur_email: string | null } | null };
   const { organisaties, ...rest } = rij;
-  const { data: regelData } = await sb
-    .from('offerteregels')
-    .select('*')
-    .eq('offerte_id', id)
-    .order('positie', { ascending: true, nullsFirst: false })
-    .order('created_at', { ascending: true });
+  const regelData = eisData(
+    'offertes.regels',
+    await sb
+      .from('offerteregels')
+      .select('*')
+      .eq('offerte_id', id)
+      .order('positie', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true }),
+  );
   const regels = (regelData as Offerteregel[]) ?? [];
   const fotos = await fotoPerRegel(regels);
 
@@ -472,16 +480,53 @@ export async function werkOfferte(id: string, v: OfferteVelden): Promise<boolean
   return !error;
 }
 
+export function isOfferteStatus(s: string): s is OfferteStatus {
+  return (OFFERTE_STATUSSEN as readonly string[]).includes(s);
+}
+
 export async function zetOfferteStatus(id: string, status: string): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
-  const { error } = await sb.from('offertes').update({ status }).eq('id', id);
-  return !error;
+  if (!isOfferteStatus(status)) return false;
+  const { data, error } = await sb.from('offertes').update({ status }).eq('id', id).select('lead_id').maybeSingle();
+  if (error) return false;
+  await volgLeadStatus((data as { lead_id: string | null } | null)?.lead_id ?? null, status);
+  return true;
+}
+
+/**
+ * De lead achter een offerte loopt mee: offerte verstuurd zet een lead die nog in
+ * een vroege fase zat op "offerte"; een geaccepteerde offerte maakt de lead
+ * gewonnen. Een afgewezen offerte laat de lead staan: vaak volgt er een tweede
+ * offerte, en verloren zetten vraagt om een reden die alleen Jessi kent.
+ * Best effort: een fout hier laat de offerte nooit mislukken.
+ */
+async function volgLeadStatus(leadId: string | null, offerteStatus: string): Promise<void> {
+  if (!leadId) return;
+  try {
+    const { getLeadRij, zetLeadStatus } = await import('@/lib/kms/leads');
+    const { GEWONNEN } = await import('@/lib/kms/leadsModel');
+    const lead = await getLeadRij(leadId);
+    if (!lead) return;
+    if (offerteStatus === 'verstuurd' && ['nieuw', 'contact', 'afspraak'].includes(lead.status)) {
+      await zetLeadStatus(leadId, 'offerte', null);
+    } else if (offerteStatus === 'geaccepteerd' && lead.status !== GEWONNEN) {
+      await zetLeadStatus(leadId, GEWONNEN, null);
+    }
+  } catch {
+    // Lead bijwerken is bijzaak.
+  }
 }
 
 export async function verwijderOfferte(id: string): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
   const { error } = await sb.from('offertes').delete().eq('id', id);
   return !error;
+}
+
+/** Korting tussen 0 en 100 procent. 150% korting gaf een negatieve regel op de offerte. */
+function kortingBinnenGrenzen(k: unknown): number {
+  const n = Number(k);
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
 }
 
 /** Volgende positie onderaan de offerte, zodat nieuwe regels altijd achteraan komen. */
@@ -497,9 +542,9 @@ export async function voegRegelToe(offerteId: string, v: RegelVelden): Promise<b
   const rij: Record<string, unknown> = {
     offerte_id: offerteId,
     omschrijving: v.omschrijving,
-    aantal: Number(v.aantal) || 0,
+    aantal: Math.max(0, Number(v.aantal) || 0),
     stukprijs: Number(v.stukprijs) || 0,
-    korting_pct: Number(v.korting_pct) || 0,
+    korting_pct: kortingBinnenGrenzen(v.korting_pct),
     inkoop: v.inkoop != null && Number.isFinite(Number(v.inkoop)) ? Number(v.inkoop) : null,
     positie: await volgendePositie(sb, offerteId),
   };
@@ -515,9 +560,9 @@ export async function werkRegel(regelId: string, v: RegelVelden): Promise<boolea
   const sb = kmsAdmin(); if (!sb) return false;
   const patch: Record<string, unknown> = {
     omschrijving: v.omschrijving,
-    aantal: Number(v.aantal) || 0,
+    aantal: Math.max(0, Number(v.aantal) || 0),
     stukprijs: Number(v.stukprijs) || 0,
-    korting_pct: Number(v.korting_pct) || 0,
+    korting_pct: kortingBinnenGrenzen(v.korting_pct),
   };
   if (v.inkoop !== undefined) patch.inkoop = v.inkoop != null ? Number(v.inkoop) : null;
   // Maat mag later alsnog ingevuld of gewist worden; kleur en artikel blijven staan.
@@ -731,18 +776,47 @@ export async function voegPakketAlsRegels(offerteId: string, pakketId: string): 
   return error ? 0 : rows.length;
 }
 
-export async function maakOrderVanOfferte(offerteId: string): Promise<string | null> {
+/** De order die al uit deze offerte is gemaakt, of null. Zonder kolom offerte_id: op de notitie. */
+export async function orderVanOfferte(offerteId: string): Promise<{ id: string; ordernummer: number | null } | null> {
+  const sb = kmsAdmin(); if (!sb || !offerteId) return null;
+  const { data, error } = await sb.from('orders').select('id, ordernummer').eq('offerte_id', offerteId).order('created_at').limit(1);
+  if (!error) return ((data as { id: string; ordernummer: number | null }[]) ?? [])[0] ?? null;
+  return null;
+}
+
+export type OrderUitOfferte = { orderId: string; bestond: boolean } | { fout: 'geen_klant' | 'geen_regels' | 'opslaan' };
+
+/**
+ * Zet een offerte om naar een order: zelfde klant, contactpersoon als aanvrager,
+ * de offerteregels (nettoprijs na korting) als orderregels, en de offerte op
+ * 'geaccepteerd'. Is er al een order uit deze offerte, dan krijg je die terug in
+ * plaats van een tweede. Regels met aantal 0 gaan niet mee (die staan er als
+ * optie op en tellen ook in het offertetotaal niet mee).
+ */
+export async function maakOrderVanOfferteMetUitkomst(offerteId: string): Promise<OrderUitOfferte> {
   const off = await getOfferte(offerteId);
-  if (!off || !off.organisatie_id) return null;
-  const orderId = await maakOrder({
+  if (!off || !off.organisatie_id) return { fout: 'geen_klant' };
+  const bestaand = await orderVanOfferte(offerteId);
+  if (bestaand) return { orderId: bestaand.id, bestond: true };
+  const regels = off.regels.filter((r) => (Number(r.aantal) || 0) > 0);
+  if (regels.length === 0) return { fout: 'geen_regels' };
+
+  const velden: Parameters<typeof maakOrder>[0] = {
     organisatie_id: off.organisatie_id,
     status: 'concept',
     notitie: `Aangemaakt uit offerte ${off.offertenummer != null ? `#${off.offertenummer}` : ''}`.trim(),
-  });
-  if (!orderId) return null;
+  };
+  // De contactpersoon van de offerte is degene die besteld heeft.
+  const contactNaam = off.contact?.naam || off.contactpersoon?.trim() || null;
+  if (contactNaam) velden.aangevraagd_door = contactNaam;
+  if (off.contact?.id) velden.aangevraagd_door_contact_id = off.contact.id;
+  const orderId = await maakOrder(velden);
+  if (!orderId) return { fout: 'opslaan' };
   const sb = kmsAdmin();
-  for (const r of off.regels) {
-    const kort = Number(r.korting_pct) || 0;
+  // Koppeling order -> offerte (migratie 20261006_flow_koppelingen); faalt stil zonder kolom.
+  if (sb) await sb.from('orders').update({ offerte_id: offerteId }).eq('id', orderId);
+  for (const r of regels) {
+    const kort = kortingBinnenGrenzen(r.korting_pct);
     const netto = (Number(r.stukprijs) || 0) * (1 - kort / 100);
     const kleur = r.kleur?.trim() || null;
     const maat = r.maat?.trim() || null;
@@ -770,7 +844,10 @@ export async function maakOrderVanOfferte(offerteId: string): Promise<string | n
     const regel: OrderregelVelden = {
       item_naam: itemNaam,
       aantal: Math.max(1, Math.round(Number(r.aantal) || 1)),
-      stukprijs: Math.round(netto * 100) / 100,
+      // Vier decimalen in plaats van centen: 100 x 19,95 met 15% korting is op de
+      // offerte 1.695,75; met een afgeronde stukprijs (16,96) werd het 1.696,00 op
+      // order en factuur. De factuur rondt per regel af, dus het regelbedrag klopt weer.
+      stukprijs: Math.round(netto * 10000) / 10000,
     };
     if (r.product_id) regel.product_id = r.product_id;
     if (variantId) regel.variant_id = variantId;
@@ -780,5 +857,10 @@ export async function maakOrderVanOfferte(offerteId: string): Promise<string | n
     await voegOrderregelToe(orderId, regel);
   }
   await zetOfferteStatus(offerteId, 'geaccepteerd');
-  return orderId;
+  return { orderId, bestond: false };
+}
+
+export async function maakOrderVanOfferte(offerteId: string): Promise<string | null> {
+  const uitkomst = await maakOrderVanOfferteMetUitkomst(offerteId);
+  return 'orderId' in uitkomst ? uitkomst.orderId : null;
 }

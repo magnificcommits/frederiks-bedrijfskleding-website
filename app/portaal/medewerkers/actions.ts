@@ -91,8 +91,8 @@ export async function bewaarBudget(formData: FormData) {
   await guardBeheren();
   const id = String(formData.get('medewerker_id') ?? '');
   const budget = leesBudget(String(formData.get('budget') ?? ''));
-  if (id) await zetBudget(id, budget);
-  redirect('/portaal/medewerkers?ok=budget');
+  const res = id ? await zetBudget(id, budget) : { ok: false };
+  redirect(res.ok ? '/portaal/medewerkers?ok=budget' : '/portaal/medewerkers?fout=opslaan');
 }
 
 export async function bewaarMaten(formData: FormData) {
@@ -132,6 +132,6 @@ export async function wijzigRolAction(formData: FormData) {
 export async function trekToegangInAction(formData: FormData) {
   await guardBeheerder();
   const email = String(formData.get('email') ?? '').trim();
-  if (email) await trekToegangIn(email);
-  redirect('/portaal/medewerkers?ok=ingetrokken');
+  const res = email ? await trekToegangIn(email) : { ok: false };
+  redirect(res.ok ? '/portaal/medewerkers?ok=ingetrokken' : '/portaal/medewerkers?fout=opslaan');
 }

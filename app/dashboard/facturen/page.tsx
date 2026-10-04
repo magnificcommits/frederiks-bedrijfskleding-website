@@ -160,16 +160,17 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
                 <select name="order_id" required defaultValue={voorgeselecteerd} className={inputCls}>
                   <option value="">Kies een order</option>
                   {factureerbaar.map((o) => (
-                    <option key={o.id} value={o.id}>#{o.ordernummer}{o.organisatie_naam ? ` · ${o.organisatie_naam}` : ''}{o.bedrag != null ? ` · ${euro(Number(o.bedrag))}` : ''}</option>
+                    <option key={o.id} value={o.id}>#{o.ordernummer}{o.organisatie_naam ? ` · ${o.organisatie_naam}` : ''}{o.bedrag != null ? ` · ${euro(Number(o.bedrag))}` : ''}{o.klaar ? '' : ` · nog niet geleverd (${o.status.replace(/_/g, ' ')})`}</option>
                   ))}
                 </select>
               </div>
               <button type="submit" className="self-start knop-donker">Factuur aanmaken</button>
             </form>
           )}
-          {factureerbaar.length > 1 && (
+          {factureerbaar.filter((o) => o.klaar).length > 1 && (
             <form action={factureerAlleActie} className="mt-3 border-t border-line pt-3">
-              <button type="submit" className="w-full rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100">Factureer alle {factureerbaar.length} orders in een keer</button>
+              <button type="submit" className="w-full rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100">Factureer alle {factureerbaar.filter((o) => o.klaar).length} geleverde orders in een keer</button>
+              <p className="mt-1 text-[11px] text-warm">Orders die nog niet geleverd zijn, factureer je per order hierboven.</p>
             </form>
           )}
           </Drawer>

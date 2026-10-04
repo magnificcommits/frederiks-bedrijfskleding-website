@@ -1,19 +1,20 @@
 'use server';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import { logAudit } from '@/lib/kms/audit';
+import { logAudit, huidigeActor } from '@/lib/kms/audit';
 import {
   voegOrderregelToe,
   verwijderOrderregel,
-  zetOrderStatus,
+  zetOrderStatusMetGevolgen,
   zetGoedkeuring,
+  orderRegelsGeslotenReden,
   listVariantenVoorProduct,
   listProductenVoorRegels,
   werkOrderGegevens,
   type OrderVariant,
   type OrderProduct,
 } from '@/lib/kms/orders';
-import { genereerInkoopregels } from '@/lib/kms/inkoop';
+import { genereerInkoopregels, volgOrderNaInkoop } from '@/lib/kms/inkoop';
 import { bevestigPersoon, leesPersoonKeuze } from '@/lib/kms/personen';
 import { lijktOpEmail, normaleNaam } from '@/lib/personen';
 
@@ -40,9 +41,17 @@ function getalOfNull(raw: string): number | null {
 }
 
 /** Terug naar de orderpagina met een melding; zonder id terug naar de lijst. */
-function terugNaarOrder(orderId: string, ok: string): never {
+function terugNaarOrder(orderId: string, ok: string, extra?: Record<string, string | number>): never {
   if (!orderId) redirect('/dashboard/orders');
-  redirect(`/dashboard/orders/${orderId}?ok=${ok}`);
+  const p = new URLSearchParams({ ok });
+  for (const [k, v] of Object.entries(extra ?? {})) p.set(k, String(v));
+  redirect(`/dashboard/orders/${orderId}?${p.toString()}`);
+}
+
+/** Regels van een afgeronde, geannuleerde of al gefactureerde order blijven zoals ze zijn. */
+async function eisOpenOrder(orderId: string): Promise<void> {
+  const reden = await orderRegelsGeslotenReden(orderId);
+  if (reden) terugNaarOrder(orderId, `gesloten_${reden}`);
 }
 
 /**
@@ -80,6 +89,7 @@ export async function voegRegelToe(formData: FormData) {
   const stukprijs = getalOfNull(String(formData.get('stukprijs') ?? ''));
   if (!orderId) redirect('/dashboard/orders');
   if (!item_naam) terugNaarOrder(orderId, 'geen_item');
+  await eisOpenOrder(orderId);
 
   const gelukt = await voegOrderregelToe(orderId, { item_naam, product_id, variant_id, maat, kleur, lengte, aantal, stukprijs });
   if (!gelukt) terugNaarOrder(orderId, 'mislukt');
@@ -96,6 +106,7 @@ export async function verwijderRegel(formData: FormData) {
   const orderId = String(formData.get('orderId') ?? '').trim();
   const regelId = String(formData.get('regelId') ?? '').trim();
   if (regelId) {
+    await eisOpenOrder(orderId);
     await verwijderOrderregel(regelId);
     await logAudit('orderregel_verwijderd', { entiteit: 'order', entiteitId: orderId, details: { regelId } });
   }
@@ -142,10 +153,25 @@ export async function wijzigStatus(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const orderId = String(formData.get('orderId') ?? '').trim();
   const status = String(formData.get('status') ?? '').trim();
-  if (orderId && status) {
-    await zetOrderStatus(orderId, status);
-    await logAudit('order_status', { entiteit: 'order', entiteitId: orderId, details: { status } });
+  if (!orderId || !status) terugNaarOrder(orderId, 'mislukt');
+  const actor = await huidigeActor().catch(() => null);
+  const uitkomst = await zetOrderStatusMetGevolgen(orderId, status, actor);
+  if (!uitkomst.ok) terugNaarOrder(orderId, uitkomst.foutCode ? `annuleren_${uitkomst.foutCode}` : 'mislukt');
+  if (uitkomst.ongewijzigd) terugNaarOrder(orderId, 'status_gelijk');
+  await logAudit('order_status', {
+    entiteit: 'order',
+    entiteitId: orderId,
+    details: {
+      status,
+      ...(uitkomst.inkoopGeannuleerd ? { inkoop_ingetrokken: uitkomst.inkoopGeannuleerd } : {}),
+      ...(uitkomst.voorraadAfgeboekt ? { voorraad_afgeboekt: uitkomst.voorraadAfgeboekt } : {}),
+    },
+  });
+  if (status === 'geannuleerd') {
+    terugNaarOrder(orderId, 'geannuleerd', { ingetrokken: uitkomst.inkoopGeannuleerd ?? 0, besteld: uitkomst.inkoopAlBesteld ?? 0 });
   }
+  // Eigen code bij een afboeking: de algemene melding "status" haalt de toast weg, deze niet.
+  if (uitkomst.voorraadAfgeboekt) terugNaarOrder(orderId, 'status_afgeboekt', { afgeboekt: uitkomst.voorraadAfgeboekt });
   terugNaarOrder(orderId, 'status');
 }
 
@@ -161,9 +187,7 @@ export async function beslisGoedkeuring(formData: FormData) {
       contactId: goedkeurder.soort === 'contact' ? goedkeurder.id : null,
       medewerkerId: goedkeurder.soort === 'medewerker' ? goedkeurder.id : null,
     });
-    // Bij goedkeuring meteen inkoopregels aanmaken voor wat niet op voorraad is,
-    // zodat ze klaarstaan in het inkoop-bulkscherm. genereerInkoopregels voorkomt dubbels.
-    if (status === 'goedgekeurd') await genereerInkoopregels(orderId);
+    // Inkoopregels en orderstatus lopen mee in zetGoedkeuring (zelfde gedrag als in het portaal).
     await logAudit('order_goedkeuring', { entiteit: 'order', entiteitId: orderId, details: { status, doorWie } });
   }
   terugNaarOrder(orderId, 'goedkeuring');
@@ -174,6 +198,7 @@ export async function maakInkoopregels(formData: FormData) {
   const orderId = String(formData.get('orderId') ?? '').trim();
   if (orderId) {
     await genereerInkoopregels(orderId);
+    await volgOrderNaInkoop(orderId);
     await logAudit('inkoopregels_gegenereerd', { entiteit: 'order', entiteitId: orderId });
   }
   terugNaarOrder(orderId, 'inkoop');

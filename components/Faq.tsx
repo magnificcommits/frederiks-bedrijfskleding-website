@@ -2,7 +2,7 @@ export function Faq({ items, title = 'Veelgestelde vragen' }: { items: { q: stri
   if (!items.length) return null;
   return (
     <section className="container-x py-16 sm:py-20">
-      <h2 className="text-3xl font-bold">{title}</h2>
+      <h2 className="kop-2">{title}</h2>
       <div className="mt-8 max-w-3xl divide-y divide-line border-y border-line">
         {items.map((f) => (
           <details key={f.q} className="group py-4">

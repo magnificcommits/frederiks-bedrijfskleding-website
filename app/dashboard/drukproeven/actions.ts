@@ -313,8 +313,9 @@ export async function markeerVerstuurdActie(formData: FormData) {
 
 /**
  * Goedkeuren namens de klant, als die telefonisch of in de winkel akkoord gaf.
- * Werkt precies als goedkeuren via de klantlink: hangt de proef aan een order,
- * dan gaat die door naar bedrukken of borduren en de werkbon naar 'goedgekeurd'.
+ * Werkt precies als goedkeuren via de klantlink: hangt de proef aan een order en
+ * zijn alle proeven van die order akkoord, dan gaat de werkbon naar 'goedgekeurd'
+ * (en de order naar bedrukken of borduren als alle kleding al binnen is).
  */
 export async function keurGoedNamensKlantActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');

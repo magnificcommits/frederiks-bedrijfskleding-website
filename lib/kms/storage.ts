@@ -32,6 +32,16 @@ const MIME_PER_EXTENSIE: Record<string, string> = {
   eps: 'application/postscript',
 };
 
+/** Bovengrens per bestand (de hosting laat per verzoek toch maar 4,5 MB toe). */
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+/** Extensies die nooit in de publieke bucket horen: webpagina's, scripts en programma's. */
+const GEWEIGERDE_EXTENSIES = new Set([
+  'html', 'htm', 'xhtml', 'shtml', 'xml', 'xsl', 'js', 'mjs', 'cjs', 'php', 'phtml', 'asp', 'aspx', 'jsp',
+  'exe', 'msi', 'bat', 'cmd', 'com', 'scr', 'ps1', 'vbs', 'sh', 'jar', 'dll', 'hta', 'swf',
+]);
+/** Content-types die we van de browser overnemen. */
+const VEILIGE_TYPES = /^(image\/(png|jpeg|gif|webp|avif|bmp|heic|heif|svg\+xml|tiff)|application\/(pdf|postscript))$/i;
+
 export type Upload = {
   /** Publieke URL van het opgeslagen bestand. */
   url: string;
@@ -71,12 +81,14 @@ export function schoneBestandsnaam(ruw: string): string {
  */
 export async function uploadMediaMetNaam(file: File | null, prefix: string): Promise<Upload | null> {
   if (!isLeadsDbConfigured || !file || file.size === 0) return null;
+  if (file.size > MAX_UPLOAD_BYTES) return null;
   const sb = createClient(env.supabaseUrl, env.supabaseServiceKey, { auth: { persistSession: false } });
   // Een naam zonder punt ('logo') heeft geen extensie. split('.').pop() geeft dan
   // de hele naam terug en we zouden het bestand als '.logo' wegschrijven; daarna
   // klopt het content-type niet meer en toont de preview alleen nog een blokje.
   const punt = file.name.lastIndexOf('.');
   const ext = (punt > 0 ? file.name.slice(punt + 1) : '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (GEWEIGERDE_EXTENSIES.has(ext)) return null;
   const veiligPrefix = prefix.replace(/[^a-z0-9/_-]/gi, '').replace(/^\/+|\/+$/g, '') || 'overig';
   const naam = `${veiligPrefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext || 'bin'}`;
   const buf = Buffer.from(await file.arrayBuffer());
@@ -84,8 +96,12 @@ export async function uploadMediaMetNaam(file: File | null, prefix: string): Pro
   // meegestuurd. Zou dat als content-type blijven staan, dan weigert de browser
   // de PDF-preview te openen en biedt hij het bestand alleen nog aan als download.
   const meegestuurdType = file.type && file.type !== 'application/octet-stream' ? file.type : '';
+  // Het meegestuurde type komt van de browser (dus ook van een aanvaller). Alleen
+  // afbeeldingen, PDF en PostScript nemen we over; al het andere wordt een download
+  // (octet-stream), zodat de bucket nooit HTML of script als pagina serveert.
+  const veiligType = VEILIGE_TYPES.test(meegestuurdType) ? meegestuurdType : '';
   const { error } = await sb.storage.from('media').upload(naam, buf, {
-    contentType: meegestuurdType || MIME_PER_EXTENSIE[ext] || undefined,
+    contentType: veiligType || MIME_PER_EXTENSIE[ext] || 'application/octet-stream',
     upsert: false,
   });
   if (error) return null;

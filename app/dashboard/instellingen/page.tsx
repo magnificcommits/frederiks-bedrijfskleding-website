@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
 import { getBoekhouderEmail } from '@/lib/kms/facturen';
 import { zetBoekhouderActie } from './actions';
+import Veld from '@/components/dashboard/ui/Veld';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Instellingen', robots: { index: false, follow: false } };
@@ -16,6 +17,8 @@ const INSTELLING_KAARTEN = [
   { titel: 'Service: retouren en klachten', tekst: 'Retourtermijn (ook per klant), voorwaarden, retouradres, retourredenen, reparaties, klachtcategorieën en streefreactietijden.', href: '/dashboard/instellingen/service', knop: 'Naar service' },
   { titel: 'API en HR-koppeling', tekst: 'Klanten laten hun HR-systeem nieuwe en vertrokken medewerkers doorgeven. Uitleg, voorbeelden en foutcodes; sleutels maak je per klant onder Koppelingen.', href: '/dashboard/instellingen/api', knop: 'Naar de uitleg' },
   { titel: 'Taken en afspraken', tekst: 'Statussen, personen en de dag- en weekoverzichten per mail.', href: '/dashboard/taken/instellingen', knop: 'Naar taken' },
+  { titel: 'Online afspraken', tekst: 'Wanneer klanten zelf een adviesgesprek, showroombezoek of pasdag kunnen boeken: werkdagen, tijdvakken, buffer, maximum per dag en vrije dagen.', href: '/dashboard/afspraken/instellingen', knop: 'Naar beschikbaarheid' },
+  { titel: 'Reviews en NPS', tekst: 'Tevredenheidsmail na levering aan of uit, na hoeveel dagen, en de Google-reviewlink voor klanten die een 9 of 10 geven.', href: '/dashboard/reviews', knop: 'Naar reviews' },
   { titel: 'Campagnes', tekst: 'Daglimiet voor mails, testadres, reviewlink en alles pauzeren.', href: '/dashboard/campagnes/instellingen', knop: 'Naar campagnes' },
   { titel: 'Sparen', tekst: 'Puntwaarde, vervaltermijn en de standaardinstellingen van het spaarprogramma.', href: '/dashboard/sparen/instellingen', knop: 'Naar sparen' },
   { titel: 'Beheerders', tekst: 'Wie mag inloggen in het dashboard, met welke rol.', href: '/dashboard/admins', knop: 'Naar beheerders' },
@@ -39,7 +42,6 @@ export default async function InstellingenPage({
     <main className="container-app py-6">
       <div className="dash-kop flex items-center justify-between gap-4">
         <h1 className="dash-h1">Instellingen</h1>
-        <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
       <p className="mt-2 text-sm text-warm">Hier beheer je de instellingen die over meerdere modules verspreid stonden, op één plek bij elkaar.</p>
 
@@ -53,17 +55,19 @@ export default async function InstellingenPage({
           <h2 className="font-display text-lg font-bold text-ink-900">Boekhouder</h2>
           <p className="mt-1 text-xs text-warm">Facturen worden naar dit adres gemaild.</p>
           <form action={zetBoekhouderActie} className="mt-4 flex flex-col gap-3">
-            <div>
-              <label htmlFor="boekhouder_email" className="block text-xs font-semibold text-warm">E-mailadres boekhouder</label>
+            <Veld
+              id="boekhouder_email"
+              label="E-mailadres boekhouder"
+            >
               <input
-                id="boekhouder_email"
                 name="email"
                 type="email"
                 defaultValue={boekhouderEmail}
                 placeholder="boekhouder@voorbeeld.nl"
+                autoComplete="email"
                 className={inputCls}
               />
-            </div>
+            </Veld>
             <button type="submit" className="self-start knop-donker">Opslaan</button>
           </form>
         </div>

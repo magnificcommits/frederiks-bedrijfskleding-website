@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
  * naar de homepage. ?a=1 is de afmeldlink: registreren en door naar /afmelden.
  */
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
+  // auth: token (doorsturen alleen met geldige HMAC-handtekening over token + doel-url).
   const { token } = await params;
   const url = new URL(req.url);
 

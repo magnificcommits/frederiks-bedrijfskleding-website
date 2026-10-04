@@ -76,6 +76,14 @@ export type DatumPreset = (typeof DATUM_PRESETS)[number]['waarde'];
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
+/** JJJJ-MM-DD die echt bestaat (geen 30 februari of maand 13). */
+export function bestaandeDatum(s: string): boolean {
+  if (!ISO.test(s)) return false;
+  const [j, m, d] = s.split('-').map(Number);
+  const dt = new Date(Date.UTC(j, m - 1, d));
+  return dt.getUTCFullYear() === j && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+
 /** Vandaag in Nederland als { j, m, d } (maand 1-12). De server draait in UTC. */
 function vandaagNL(): { j: number; m: number; d: number } {
   const delen = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit' })
@@ -165,8 +173,10 @@ export function periodeParam(sp: Params, stam: string): Periode {
   const bereik = preset ? presetBereik(preset) : null;
   let van = bereik?.van ?? param(sp, `${stam}_van`);
   let tot = bereik?.tot ?? param(sp, `${stam}_tot`);
-  if (!ISO.test(van)) van = '';
-  if (!ISO.test(tot)) tot = '';
+  // Alleen bestaande datums: "2026-02-30" of "2026-13-01" uit een getypte URL gaf anders
+  // een stil verschoven periode (Date.UTC rekent 30 februari door naar maart).
+  if (!bestaandeDatum(van)) van = '';
+  if (!bestaandeDatum(tot)) tot = '';
   if (van && tot && van > tot) [van, tot] = [tot, van];
   const totExclusief = tot ? (() => {
     const [j, m, d] = tot.split('-').map(Number);

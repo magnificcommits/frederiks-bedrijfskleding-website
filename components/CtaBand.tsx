@@ -1,21 +1,30 @@
-import Link from 'next/link';
 import { site } from '@/content/site';
+import { CtaKnoppen } from '@/components/CtaKnoppen';
 
+/**
+ * Afsluitende band onderaan een pagina. Zelfde twee knoppen als in de hero
+ * (offerte primair, adviesgesprek secundair) en het telefoonnummer als tekst,
+ * zodat er per scherm maar één oranje knop staat.
+ */
 export function CtaBand({
   title = 'Klaar voor bedrijfskleding die klopt?',
-  text = 'Vraag vrijblijvend advies aan. We bespreken je wensen en komen graag langs om te passen.',
-}: { title?: string; text?: string }) {
+  text = 'Vertel wat je zoekt. We denken mee, komen langs om te passen en sturen een offerte waar alles in staat.',
+  plek = 'cta-band',
+}: { title?: string; text?: string; plek?: string }) {
   return (
     <section className="border-t-4 border-amber-500 bg-ink-900">
-      <div className="container-x flex flex-col items-start justify-between gap-6 py-12 sm:flex-row sm:items-center">
+      <div className="container-x grid items-center gap-8 py-12 sm:py-14 lg:grid-cols-[minmax(0,1fr)_auto]">
         <div>
-          <h2 className="text-2xl font-bold text-white text-balance">{title}</h2>
-          <p className="mt-2 max-w-xl text-ink-200">{text}</p>
+          <h2 className="kop-2 text-balance text-white">{title}</h2>
+          <p className="mt-3 max-w-xl text-ink-200">{text}</p>
+          <p className="mt-3 text-sm text-ink-200" data-plek={plek}>
+            Of bel {site.owner.split(' ')[0]} direct:{' '}
+            <a href={`tel:${site.phoneIntl}`} className="font-semibold text-white underline decoration-amber-500 underline-offset-4 hover:text-amber-300">
+              {site.phone}
+            </a>
+          </p>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-3">
-          <Link href="/kledingadvies" className="btn-primary">Vraag advies aan</Link>
-          <a href={`tel:${site.phoneIntl}`} className="btn border border-white/40 text-white hover:bg-white/10">{site.phone}</a>
-        </div>
+        <CtaKnoppen plek={plek} donker />
       </div>
     </section>
   );

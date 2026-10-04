@@ -1,7 +1,7 @@
 'use server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { addGebruiker, maakItem, zetItemActief, zetBestellingStatus } from '@/lib/portaalAdmin';
+import { maakItem, zetItemActief, zetBestellingStatus } from '@/lib/portaalAdmin';
 import { dashAuthed, kmsAdmin, magEigenaar } from '@/lib/kms/adminClient';
 import {
   maakContactpersoon,
@@ -9,6 +9,8 @@ import {
   verwijderContactpersoon,
   maakActiviteit,
   verwijderActiviteit,
+  geefPortaalToegang,
+  stuurPortaalUitnodiging,
 } from '@/lib/kms/crm';
 import { uploadMedia } from '@/lib/kms/storage';
 import { maakLogo, verwijderLogo } from '@/lib/kms/logos';
@@ -126,16 +128,34 @@ export async function zetRetourenActiefActie(formData: FormData) {
   terug(id, 'gegevens', 'opgeslagen');
 }
 
+/**
+ * Portaaltoegang geven. Zelfde regels als in de wizard Nieuwe klant: geen
+ * dubbele rij, en een adres dat al bij een andere klant inlogt niet nog een keer
+ * koppelen (dan weet het portaal niet welke klant het moet tonen). Daarna gaat
+ * er een uitnodiging naar het adres, tenzij Jessi dat vinkje uitzet.
+ */
 export async function koppelGebruiker(formData: FormData) {
   if (!(await authed())) redirect('/dashboard');
   const id = tekst(formData, 'orgId');
   const email = tekst(formData, 'email');
   const naam = tekst(formData, 'naam');
-  if (id && email) {
-    await addGebruiker(id, email, naam);
-    await logAudit('portaalgebruiker_gekoppeld', { entiteit: 'organisatie', entiteitId: id, details: { email } });
+  const uitnodigen = formData.get('uitnodigen') != null;
+  if (!id) redirect('/dashboard/klanten');
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    terug(id, 'contact', undefined, { melding: 'Vul een geldig e-mailadres in.' });
   }
-  terug(id, 'contact', 'toegevoegd');
+  const uitkomst = await geefPortaalToegang(id, email, naam || null);
+  if (uitkomst === 'elders') terug(id, 'contact', undefined, { melding: `${email} kan al inloggen bij een andere klant en is daarom hier niet gekoppeld.` });
+  if (uitkomst === 'bestond') terug(id, 'contact', undefined, { melding: `${email} had al toegang tot het portaal van deze klant.` });
+  if (uitkomst === 'mislukt') terug(id, 'contact', undefined, { melding: 'Koppelen is niet gelukt. Probeer het opnieuw.' });
+  await logAudit('portaalgebruiker_gekoppeld', { entiteit: 'organisatie', entiteitId: id, details: { email, uitgenodigd: uitnodigen } });
+  if (!uitnodigen) terug(id, 'contact', undefined, { melding: `${email} heeft toegang. Er is geen uitnodiging verstuurd.` });
+  const verstuurd = await stuurPortaalUitnodiging(email, naam || null, id);
+  terug(id, 'contact', undefined, {
+    melding: verstuurd
+      ? `${email} heeft toegang en heeft een uitnodiging per mail gekregen.`
+      : `${email} heeft toegang, maar de uitnodiging kon niet worden gemaild. Laat de klant zelf weten dat hij kan inloggen op /portaal/login.`,
+  });
 }
 
 export async function voegItemToe(formData: FormData) {

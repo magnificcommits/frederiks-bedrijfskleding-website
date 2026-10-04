@@ -1,4 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { eisData } from '@/lib/dbFout';
 
 /**
  * Portaal-data-access voor facturen. De facturen worden dashboard-side beheerd
@@ -20,11 +21,14 @@ export async function getFacturenVanOrg(orgId: string): Promise<PortaalFactuur[]
   if (!orgId) return [];
   const sb = kmsAdmin();
   if (!sb) return [];
-  const { data } = await sb
-    .from('facturen')
-    .select('id, factuurnummer, status, bedrag_incl, factuurdatum')
-    .eq('organisatie_id', orgId)
-    .order('factuurdatum', { ascending: false, nullsFirst: false })
-    .order('created_at', { ascending: false });
+  const data = eisData(
+    'portaal.facturen',
+    await sb
+      .from('facturen')
+      .select('id, factuurnummer, status, bedrag_incl, factuurdatum')
+      .eq('organisatie_id', orgId)
+      .order('factuurdatum', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false }),
+  );
   return (data as PortaalFactuur[]) ?? [];
 }

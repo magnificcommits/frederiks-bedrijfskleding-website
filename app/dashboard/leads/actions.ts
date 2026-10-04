@@ -6,6 +6,9 @@ import { aiTekst } from '@/lib/ai';
 import {
   isUuid,
   koppelLeadAanKlant,
+  listOngezieneWebleads,
+  markeerAlleWebleadsGezien,
+  type OngezieneWeblead,
   logActiviteit,
   maakKlantVanLead,
   maakLead,
@@ -297,4 +300,21 @@ export async function aiOpvolgmailActie(
     return { error: resultaat.error ?? 'Er ging iets mis bij het genereren.' };
   }
   return { tekst: resultaat.tekst };
+}
+
+/* ------------------------------------------------------------------ */
+/* Nieuwe webaanvragen (melding)                                       */
+/* ------------------------------------------------------------------ */
+
+/** Voor de melding bovenaan: webaanvragen die nog niemand heeft geopend. */
+export async function ongezieneWebleadsActie(): Promise<{ aantal: number; leads: OngezieneWeblead[] }> {
+  if (!(await dashAuthed())) return { aantal: 0, leads: [] };
+  // De melding pollt op de achtergrond: een databasefout mag die niet laten klappen.
+  return listOngezieneWebleads(5).catch(() => ({ aantal: 0, leads: [] }));
+}
+
+export async function allesGezienActie() {
+  if (!(await dashAuthed())) return;
+  await markeerAlleWebleadsGezien();
+  revalidatePath('/dashboard/leads');
 }

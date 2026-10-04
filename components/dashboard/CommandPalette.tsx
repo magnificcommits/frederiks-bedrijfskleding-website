@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { zoekScore } from '@/lib/zoekScore';
 
 type Hit = { type: string; label: string; sub: string; href: string; woorden?: string };
 
@@ -46,6 +47,8 @@ const SCHERMEN: Hit[] = [
   { type: 'Scherm', label: 'Drukproeven', sub: '', href: '/dashboard/drukproeven', woorden: 'drukproef proef mockup' },
   { type: 'Scherm', label: 'Retouren', sub: '', href: '/dashboard/retouren', woorden: 'retour ruilen terugsturen' },
   { type: 'Scherm', label: 'Klachten en vragen', sub: '', href: '/dashboard/klachten', woorden: 'klacht vraag service' },
+  { type: 'Scherm', label: 'Afspraken', sub: 'Online geboekt via de website', href: '/dashboard/afspraken', woorden: 'afspraak boeking pasdag showroom adviesgesprek agenda' },
+  { type: 'Scherm', label: 'Reviews en NPS', sub: 'Tevredenheid na levering', href: '/dashboard/reviews', woorden: 'review nps tevredenheid beoordeling google' },
   { type: 'Scherm', label: 'Pakketten', sub: 'Startpakketten en pakketten', href: '/dashboard/pakketten', woorden: 'startpakket bundel' },
   { type: 'Scherm', label: 'Analyse', sub: '', href: '/dashboard/analyse', woorden: 'cijfers omzet grafiek' },
   { type: 'Scherm', label: 'AI-assistent', sub: '', href: '/dashboard/ai-assistent', woorden: 'ai claude vraag' },
@@ -86,32 +89,8 @@ const SNELFILTERS: Hit[] = [
 
 const LOKAAL = [...ACTIES, ...SCHERMEN, ...SNELFILTERS];
 
-/** Kleine letters, zonder accenten, alleen letters/cijfers als woorden. */
-const norm = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[’']/g, '');
-
-/** Score > 0 als elk zoekwoord in label, sub of zoekwoorden voorkomt; hoger = beter. */
-function score(h: Hit, term: string): number {
-  const label = norm(h.label);
-  const rest = norm(`${h.sub} ${h.woorden ?? ''}`);
-  const woorden = norm(term).split(/\s+/).filter(Boolean);
-  if (woorden.length === 0) return 0;
-  let totaal = 0;
-  for (const w of woorden) {
-    const labelWoorden = label.split(/[^a-z0-9]+/);
-    const restWoorden = rest.split(/[^a-z0-9]+/);
-    if (labelWoorden.some((x) => x.startsWith(w))) totaal += 3;
-    else if (label.includes(w)) totaal += 2;
-    else if (restWoorden.some((x) => x.startsWith(w))) totaal += 1;
-    else return 0;
-  }
-  if (label.startsWith(norm(term))) totaal += 2;
-  return totaal;
-}
+/** Score > 0 als elk zoekwoord in label, sub of zoekwoorden voorkomt; hoger = beter (zie lib/zoekScore.ts). */
+const score = (h: Hit, term: string) => zoekScore(h, term);
 
 export default function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
@@ -123,11 +102,16 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
 
   useEffect(() => {
     if (!open) return;
+    // Na sluiten de focus terug naar waar je was (de zoekknop of de lijst).
+    const vorigeFocus = document.activeElement as HTMLElement | null;
     setQ('');
     setRecords([]);
     setActief(0);
     const t = setTimeout(() => inputRef.current?.focus(), 30);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      vorigeFocus?.focus?.();
+    };
   }, [open]);
 
   // Records ophalen vanaf 2 tekens, met debounce.
@@ -144,11 +128,13 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     const t = setTimeout(async () => {
       try {
         const res = await fetch(`/api/dashboard/search?q=${encodeURIComponent(term)}`, { signal: ctrl.signal });
-        const data = (await res.json()) as { results: Hit[] };
+        const data = res.ok ? ((await res.json()) as { results: Hit[] }) : { results: [] };
         setRecords(data.results ?? []);
         setBezig(false);
       } catch {
-        /* afgebroken of mislukt: stil laten */
+        // Afgebroken (nieuwe toets): de volgende zoekopdracht neemt het over.
+        // Echt mislukt: niet eeuwig "bezig" blijven tonen.
+        if (!ctrl.signal.aborted) setBezig(false);
       }
     }, 180);
     return () => {
@@ -169,6 +155,11 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   }, [q, records]);
 
   useEffect(() => setActief(0), [lijst.length]);
+
+  // Met de pijltjes door een lange lijst: de gekozen regel in beeld houden.
+  useEffect(() => {
+    if (open) document.getElementById(`palet-optie-${actief}`)?.scrollIntoView({ block: 'nearest' });
+  }, [actief, open]);
 
   function ga(hit: Hit) {
     onClose();
@@ -196,8 +187,8 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh]" onKeyDown={onKey}>
-      <button type="button" aria-label="Sluiten" onClick={onClose} className="absolute inset-0 cursor-default bg-black/50" />
-      <div className="relative w-full max-w-xl overflow-hidden rounded-lg border border-line bg-white shadow-soft">
+      <button type="button" tabIndex={-1} aria-label="Sluiten" onClick={onClose} className="absolute inset-0 cursor-default bg-black/50" />
+      <div role="dialog" aria-modal="true" aria-label="Zoeken" className="relative w-full max-w-xl overflow-hidden rounded-lg border border-line bg-white shadow-soft">
         <div className="flex items-center border-b border-line">
           <input
             ref={inputRef}
@@ -205,12 +196,17 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
             onChange={(e) => setQ(e.target.value)}
             placeholder="Zoek een scherm, klant, werknemer, order, offerte, factuur, product…"
             aria-label="Zoeken en navigeren"
-            className="w-full px-4 py-3 text-sm focus:outline-none"
+            role="combobox"
+            aria-expanded={lijst.length > 0}
+            aria-controls="palet-lijst"
+            aria-autocomplete="list"
+            aria-activedescendant={lijst[actief] ? `palet-optie-${actief}` : undefined}
+            className="w-full px-4 py-3 text-base focus:outline-none md:text-sm"
           />
           {bezig && (
             <span
               className="mr-4 inline-block h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-ink-300 border-t-transparent"
-              aria-label="Zoeken"
+              aria-hidden="true"
             />
           )}
         </div>
@@ -220,19 +216,23 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
               {bezig ? 'Zoeken…' : q.trim().length < 2 ? 'Typ nog een teken om ook in klanten en orders te zoeken.' : `Niets gevonden voor “${q.trim()}”.`}
             </p>
           ) : (
-            <ul className="py-1.5">
+            <ul id="palet-lijst" role="listbox" aria-label="Resultaten" className="py-1.5">
               {lijst.map((h, i) => {
                 const nieuweKop = i === 0 || kop(lijst[i - 1]) !== kop(h);
                 return (
-                  <li key={`${h.type}-${h.href}-${i}`}>
+                  <li key={`${h.type}-${h.href}-${i}`} role="presentation">
                     {nieuweKop && (
-                      <p className="px-4 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-300">{kop(h)}</p>
+                      <p aria-hidden="true" className="px-4 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-warm">{kop(h)}</p>
                     )}
                     <button
                       type="button"
+                      id={`palet-optie-${i}`}
+                      role="option"
+                      aria-selected={i === actief}
+                      tabIndex={-1}
                       onMouseEnter={() => setActief(i)}
                       onClick={() => ga(h)}
-                      className={`flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-[13px] ${i === actief ? 'bg-mist' : ''}`}
+                      className={`flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-[13px] max-md:min-h-[48px] ${i === actief ? 'bg-mist shadow-[inset_2px_0_0_theme(colors.amber.500)]' : ''}`}
                     >
                       <span className="min-w-0">
                         <span className="block truncate font-semibold text-ink-900">{h.label}</span>
@@ -247,7 +247,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
           )}
         </div>
         <div className="flex items-center justify-between border-t border-line px-4 py-1.5 text-[11px] text-warm">
-          <span>↑↓ kiezen · Enter openen · Esc sluiten</span>
+          <span className="[@media(pointer:coarse)]:hidden">↑↓ kiezen · Enter openen · Esc sluiten</span>
           <span>{q.trim().length < 2 ? 'Vanaf 2 tekens ook klanten, orders en meer' : bezig ? 'Zoeken…' : `${lijst.length} resultaten`}</span>
         </div>
       </div>

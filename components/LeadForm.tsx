@@ -1,7 +1,10 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
+import { site } from '@/content/site';
+import { track } from '@/lib/analytics';
 import { branches } from '@/content/branches';
-import { getHerkomst } from '@/lib/herkomst';
+import { getHerkomst, leesHerkomstVoorLead } from '@/lib/herkomst';
 
 type Status = 'idle' | 'sending' | 'ok' | 'error';
 
@@ -26,16 +29,14 @@ export function LeadForm({ defaultBranche = '' }: { defaultBranche?: string }) {
       const res = await fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, bron_kanaal: 'formulier', herkomst: leesHerkomstVoorLead() }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
         throw new Error(j?.error ?? 'Er ging iets mis. Probeer het later opnieuw.');
       }
-      // GA4 conversie-event (optioneel, alleen als gtag geladen is).
-      (window as unknown as { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'generate_lead', {
-        event_category: 'lead', event_label: String(payload.branche ?? ''),
-      });
+      // GA4 key event; gaat alleen weg na toestemming (lib/analytics.ts).
+      track('generate_lead', { formulier: 'contact', branche: String(payload.branche ?? '') });
       setStatus('ok');
     } catch (err) {
       setStatus('error');
@@ -45,9 +46,18 @@ export function LeadForm({ defaultBranche = '' }: { defaultBranche?: string }) {
 
   if (status === 'ok') {
     return (
-      <div className="card border-amber-200 bg-amber-50">
-        <h3 className="text-lg font-semibold text-ink-800">Bedankt voor je aanvraag!</h3>
-        <p className="mt-2 text-warm">We nemen zo snel mogelijk persoonlijk contact met je op. Je ontvangt ook een bevestiging per e-mail.</p>
+      <div className="card border-amber-200 bg-amber-50" role="status">
+        <h3 className="text-lg font-semibold text-ink-800">Bedankt, je bericht is binnen</h3>
+        <p className="mt-2 text-warm">
+          {site.owner.split(' ')[0]} neemt {site.beloftKort} contact met je op, op werkdagen. Je krijgt ook een
+          bevestiging per e-mail.
+        </p>
+        <p className="mt-4 text-sm text-ink-800">
+          Wil je niet wachten?{' '}
+          <Link href="/afspraak?soort=advies" className="font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-800" data-cta="afspraak">
+            Plan meteen een belmoment met {site.owner.split(' ')[0]}
+          </Link>
+        </p>
       </div>
     );
   }
@@ -56,7 +66,8 @@ export function LeadForm({ defaultBranche = '' }: { defaultBranche?: string }) {
   const label = 'block text-sm font-medium text-ink-800';
 
   return (
-    <form onSubmit={onSubmit} className="card grid gap-4" noValidate>
+    <form onSubmit={onSubmit} className="card grid gap-4" noValidate data-formulier="contact" aria-label="Contactformulier">
+      <p className="text-sm text-warm">Alleen naam en e-mail zijn verplicht. De rest helpt ons om goed voorbereid terug te bellen.</p>
       {/* Honeypot, verborgen voor mensen */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
 
@@ -94,7 +105,7 @@ export function LeadForm({ defaultBranche = '' }: { defaultBranche?: string }) {
         </div>
       </div>
       <div>
-        <label className={label} htmlFor="herkomst_self">Hoe heb je ons gevonden?</label>
+        <label className={label} htmlFor="herkomst_self">Hoe heb je ons gevonden? <span className="font-normal text-warm">(optioneel)</span></label>
         <select id="herkomst_self" name="herkomst_self" className={field}>
           <option value="">Kies...</option>
           <option>Via Google</option>
@@ -117,8 +128,11 @@ export function LeadForm({ defaultBranche = '' }: { defaultBranche?: string }) {
       <button type="submit" disabled={status === 'sending'} className="btn-primary w-full sm:w-auto">
         {status === 'sending' ? 'Versturen…' : 'Verstuur aanvraag'}
       </button>
-      <p className="text-sm font-medium text-ink-800">Vrijblijvend, geen verplichting &middot; Binnen 24 uur persoonlijk contact &middot; Geen prijsdruk.</p>
-      <p className="text-xs text-warm">Jessi neemt persoonlijk contact met je op om mee te denken. Of bel of WhatsApp ons direct.</p>
+      <p className="text-sm font-medium text-ink-800">Vrijblijvend &middot; {site.belofte} &middot; je zit nergens aan vast.</p>
+      <p className="text-xs text-warm">
+        {site.owner.split(' ')[0]} belt of mailt je zelf. Liever direct?{' '}
+        <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-700 underline underline-offset-2">Bel {site.phone}</a>.
+      </p>
     </form>
   );
 }

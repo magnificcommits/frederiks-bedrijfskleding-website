@@ -1,3 +1,4 @@
+import Kruimelpad from '@/components/dashboard/ui/Kruimelpad';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
@@ -107,16 +108,16 @@ export default async function FactuurDetailPage({ params, searchParams }: { para
       <DocumentAfdrukStijl voetLabel={`Factuur ${factuur.factuurnummer || 'concept'} · ${bedrijf.naam}`} />
 
       <div className="dash-kop justify-between gap-4 print:hidden">
-        <div>
+        <div className="min-w-0">
+          <Kruimelpad />
           <h1 className="dash-h1">Factuur {factuur.factuurnummer || 'concept'}</h1>
           <p className="mt-1 text-sm text-warm">{org?.naam || 'Onbekende klant'} · {fmt(factuur.factuurdatum)}</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-1.5">
           {factuur.order_id && (
-            <Link href={`/dashboard/orders/${factuur.order_id}`} className="text-sm font-semibold text-amber-700 hover:text-amber-800">Bekijk order</Link>
+            <Link href={`/dashboard/orders/${factuur.order_id}`} className="knop-stil">Bekijk order</Link>
           )}
           <PrintKnop />
-          <Link href="/dashboard/facturen" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar facturen</Link>
         </div>
       </div>
 
@@ -269,8 +270,17 @@ export default async function FactuurDetailPage({ params, searchParams }: { para
             </div>
           )}
 
-        {/* key: na het toevoegen van een regel begint de kiezer weer leeg. */}
-        <FactuurRegelToevoegen key={factuur.regels.length} factuurId={factuur.id} organisatieId={factuur.organisatie_id} klantKorting={klantKorting} />
+        {/* key: na het toevoegen van een regel begint de kiezer weer leeg.
+            Een verzonden, betaalde of doorgezette factuur is een boekstuk: geen regels meer toevoegen. */}
+        {factuur.status === 'concept' && !factuur.moneybird_factuur_id ? (
+          <FactuurRegelToevoegen key={factuur.regels.length} factuurId={factuur.id} organisatieId={factuur.organisatie_id} klantKorting={klantKorting} />
+        ) : (
+          <p className="mt-4 rounded-lg border border-line bg-mist px-4 py-3 text-[13px] text-warm">
+            {factuur.moneybird_factuur_id
+              ? 'Deze factuur staat in Moneybird. Regels wijzigen kan niet meer; corrigeer met een creditfactuur.'
+              : 'Deze factuur is niet meer concept. Regels wijzigen kan pas na Terug naar concept, of corrigeer met een creditfactuur.'}
+          </p>
+        )}
       </section>
 
       <section className="print:hidden">

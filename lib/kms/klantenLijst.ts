@@ -3,6 +3,8 @@ import { zoekWoorden, ilikeInKolommen, KLANT_ZOEKKOLOMMEN, klantIdsViaContactper
 import { AFGEHANDELDE_ORDERSTATUSSEN } from '@/lib/kms/orders';
 import type { Organisatie } from '@/lib/portaalAdmin';
 import type { FilterOptie } from '@/lib/filterBalk';
+import { alleRijen } from '@/lib/alleRijen';
+import { eisData } from '@/lib/dbFout';
 
 /**
  * De klantenlijst met filters. Een lokale zaak heeft er een paar honderd, dus
@@ -77,29 +79,41 @@ export async function listKlantenGefilterd(
       const extra = ids.length ? `,id.in.(${ids.join(',')})` : '';
       q = q.or(ilikeInKolommen(KLANT_ZOEKKOLOMMEN, w) + extra);
     });
-    const { data } = await q.limit(1000);
+    const data = eisData('klanten.zoeken', await q.limit(1000));
     return new Set(((data as { id: string }[] | null) ?? []).map((r) => r.id));
   };
 
-  const [alleRes, gezocht, portaalRes, ordersRes, contactRes] = await Promise.all([
-    sb.from('organisaties').select(KOLOMMEN).order('naam').limit(1000),
+  // In blokken van 1000 (alleRijen): Supabase kapt elk verzoek stil af op 1000 rijen.
+  // Een fout in de klantenquery zelf geeft een foutmelding in plaats van een lege lijst;
+  // de hulptellingen (portaal, open orders, contacten) vallen bij een fout terug op leeg.
+  type OrgId = { organisatie_id: string | null };
+  const [alleRuw, gezocht, portaalRijen, orderRijen, contactRijen] = await Promise.all([
+    alleRijen('klanten.lijst', (van, tot) => sb.from('organisaties').select(KOLOMMEN).order('naam').order('id').range(van, tot)),
     zoekIds(),
-    sb.from('portaal_gebruikers').select('organisatie_id').limit(5000),
-    sb
-      .from('orders')
-      .select('organisatie_id')
-      .not('status', 'in', `(${AFGEHANDELDE_ORDERSTATUSSEN.join(',')})`)
-      .limit(5000),
-    opts.contact ? sb.from('contactpersonen').select('organisatie_id').limit(10000) : Promise.resolve({ data: [] }),
+    alleRijen<OrgId>('klanten.portaal', (van, tot) => sb.from('portaal_gebruikers').select('organisatie_id').order('id').range(van, tot), { bijFout: 'leeg' }),
+    alleRijen<OrgId>(
+      'klanten.openOrders',
+      (van, tot) =>
+        sb
+          .from('orders')
+          .select('organisatie_id')
+          .not('status', 'in', `(${AFGEHANDELDE_ORDERSTATUSSEN.join(',')})`)
+          .order('id')
+          .range(van, tot),
+      { bijFout: 'leeg' },
+    ),
+    opts.contact
+      ? alleRijen<OrgId>('klanten.contacten', (van, tot) => sb.from('contactpersonen').select('organisatie_id').order('id').range(van, tot), { bijFout: 'leeg' })
+      : Promise.resolve([] as OrgId[]),
   ]);
 
-  const alle = (alleRes.data as unknown as Omit<KlantLijstRij, 'open_orders' | 'heeft_portaal'>[] | null) ?? [];
-  const metPortaal = new Set(((portaalRes.data as { organisatie_id: string | null }[] | null) ?? []).map((r) => r.organisatie_id).filter(Boolean) as string[]);
+  const alle = alleRuw as unknown as Omit<KlantLijstRij, 'open_orders' | 'heeft_portaal'>[];
+  const metPortaal = new Set(portaalRijen.map((r) => r.organisatie_id).filter(Boolean) as string[]);
   const openPerOrg = new Map<string, number>();
-  for (const r of (ordersRes.data as { organisatie_id: string | null }[] | null) ?? []) {
+  for (const r of orderRijen) {
     if (r.organisatie_id) openPerOrg.set(r.organisatie_id, (openPerOrg.get(r.organisatie_id) ?? 0) + 1);
   }
-  const metContactRij = new Set(((contactRes.data as { organisatie_id: string | null }[] | null) ?? []).map((r) => r.organisatie_id).filter(Boolean) as string[]);
+  const metContactRij = new Set(contactRijen.map((r) => r.organisatie_id).filter(Boolean) as string[]);
 
   // Opties voor de filters, geteld over alle klanten (niet over het filterresultaat):
   // zo zie je ook hoeveel er in een branche zitten die je nog niet gekozen hebt.

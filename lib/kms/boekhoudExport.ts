@@ -2,6 +2,7 @@ import { kmsAdmin } from '@/lib/kms/adminClient';
 import { factuurEmailVoor } from '@/lib/kms/factuurEmail';
 import { factuurTotalen, getFactuur, type Factuurregel } from '@/lib/kms/facturen';
 import { factuurNaarUbl, ublBestandsnaam, type UblKlant } from '@/lib/kms/ubl';
+import { DataLaadFout, eisData, logDbFout } from '@/lib/dbFout';
 
 /**
  * Export voor andere boekhoudpakketten en de accountant: UBL per factuur en
@@ -44,7 +45,8 @@ type FactuurRij = {
 export async function ublVoorFactuur(factuurId: string): Promise<{ ok: true; naam: string; xml: string } | { ok: false; melding: string; status: number }> {
   const sb = kmsAdmin();
   if (!sb) return { ok: false, melding: 'De database is niet gekoppeld.', status: 503 };
-  const f = await getFactuur(factuurId);
+  const f = await getFactuur(factuurId).catch(() => undefined);
+  if (f === undefined) return { ok: false, melding: 'De factuur kon niet uit de database worden gelezen. Probeer het opnieuw.', status: 503 };
   if (!f) return { ok: false, melding: 'Factuur niet gevonden.', status: 404 };
   if (f.status === 'concept' || !f.factuurnummer) {
     return { ok: false, melding: 'Een conceptfactuur kun je niet als UBL downloaden. Maak hem eerst definitief.', status: 400 };
@@ -104,7 +106,11 @@ export async function facturenInPeriode(van: string, tot: string): Promise<Expor
       .order('factuurnummer', { ascending: true })
       .order('id')
       .range(start, start + 999);
-    if (error) break;
+    // Een fout mag geen stil onvolledige export voor de accountant opleveren.
+    if (error) {
+      logDbFout('export.facturen', error);
+      throw new DataLaadFout('export.facturen', error.code ?? null);
+    }
     const rijen = (data as FactuurRij[]) ?? [];
     facturen.push(...rijen);
     if (rijen.length < 1000) break;
@@ -114,7 +120,7 @@ export async function facturenInPeriode(van: string, tot: string): Promise<Expor
   const orgIds = [...new Set(facturen.map((f) => f.organisatie_id))];
   const orgs = new Map<string, OrgRij>();
   for (let i = 0; i < orgIds.length; i += 200) {
-    const { data } = await sb.from('organisaties').select(ORG_KOLOMMEN).in('id', orgIds.slice(i, i + 200));
+    const data = eisData('export.klanten', await sb.from('organisaties').select(ORG_KOLOMMEN).in('id', orgIds.slice(i, i + 200)));
     for (const o of (data as OrgRij[]) ?? []) orgs.set(o.id, o);
   }
 
@@ -131,7 +137,10 @@ export async function facturenInPeriode(van: string, tot: string): Promise<Expor
         .order('positie', { ascending: true, nullsFirst: false })
         .order('id')
         .range(start, start + 999);
-      if (error) break;
+      if (error) {
+        logDbFout('export.factuurregels', error);
+        throw new DataLaadFout('export.factuurregels', error.code ?? null);
+      }
       const rijen = (data as Factuurregel[]) ?? [];
       for (const r of rijen) {
         const lijst = regels.get(r.factuur_id) ?? [];

@@ -1,4 +1,5 @@
 'use client';
+import { useBevestigKlik } from '@/components/dashboard/ui/useBevestigKlik';
 
 /**
  * Verzendknop met een bevestigingsvraag ervoor. Voor acties die iets klaarzetten
@@ -21,6 +22,7 @@ export default function BevestigKnop({
   value?: string;
   formAction?: (formData: FormData) => void | Promise<void>;
 }) {
+  const onClick = useBevestigKlik(vraag, { children, className });
   return (
     <button
       type="submit"
@@ -28,9 +30,7 @@ export default function BevestigKnop({
       value={value}
       formAction={formAction}
       disabled={disabled}
-      onClick={(e) => {
-        if (!window.confirm(vraag)) e.preventDefault();
-      }}
+      onClick={onClick}
       className={className}
     >
       {children}

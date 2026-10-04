@@ -115,10 +115,12 @@ export function Header() {
     };
   }, [openId]);
 
+  // Fragment, geen <div>: met een wrapper-div eromheen bleef de sticky header
+  // binnen die div gevangen en scrolde hij na 116 px gewoon mee weg.
   return (
-    <div>
+    <>
       {/* Topbalk: secundaire links + direct contact */}
-      <div className="hidden bg-ink-900 text-ink-200 lg:block">
+      <div className="hidden bg-ink-900 text-ink-200 lg:block" data-plek="topbalk">
         <div className="container-x flex h-9 items-center justify-between text-[13px]">
           <span className="text-ink-300">Bedrijfskleding met persoonlijke aandacht in de Achterhoek</span>
           <div className="flex items-center gap-5">
@@ -127,14 +129,16 @@ export function Header() {
             ))}
             <span className="h-3.5 w-px bg-white/15" aria-hidden="true" />
             <a href={`tel:${site.phoneIntl}`} className="font-semibold text-white hover:text-amber-400">{site.phone}</a>
-            <a href={`mailto:${site.email}`} className="text-ink-100 hover:text-amber-400">{site.email}</a>
+            <Link href="/afspraak" className="font-semibold text-amber-400 hover:text-amber-300" data-cta="afspraak">
+              Plan een adviesgesprek
+            </Link>
           </div>
         </div>
       </div>
 
       {/* Hoofdbalk: logo + primaire navigatie + CTA */}
-      <header className="sticky top-0 z-40 border-b border-line bg-white">
-        <div className="container-x flex h-20 items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 border-b border-line bg-white" data-plek="header">
+        <div className="container-x flex h-16 items-center justify-between gap-4 lg:h-20">
           <Logo />
           <nav ref={navRef} className="hidden min-w-0 items-center gap-1 lg:flex" aria-label="Hoofdnavigatie">
             <NavDropdown id="branches" label="Branches" openId={openId} setOpenId={setOpenId}>
@@ -163,36 +167,54 @@ export function Header() {
           </nav>
           <div className="hidden shrink-0 items-center gap-2 lg:flex">
             <PortaalKnop className="whitespace-nowrap rounded-md px-3 py-2.5 text-[13px] font-semibold text-ink-800 hover:text-amber-700 hover:bg-mist" />
-            <Link href="/kledingadvies" className="btn-primary whitespace-nowrap px-5 py-2.5 text-[13px] inline-flex">Vraag advies aan</Link>
+            <Link href="/offerte" className="btn-primary inline-flex whitespace-nowrap px-5 py-2.5 text-[13px]" data-cta="offerte">Offerte aanvragen</Link>
           </div>
-          <button className="shrink-0 rounded-md px-3 py-2.5 text-[15px] font-bold text-ink-900 hover:bg-mist lg:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Menu">
-            Menu
-          </button>
+          <div className="flex items-center gap-1 lg:hidden">
+            <a
+              href={`tel:${site.phoneIntl}`}
+              className="inline-flex min-h-[44px] items-center rounded-md px-3 text-[15px] font-semibold text-ink-900 hover:bg-mist"
+              aria-label={`Bel ${site.phone}`}
+            >
+              Bel
+            </a>
+            <button
+              type="button"
+              className="inline-flex min-h-[44px] shrink-0 items-center rounded-md border border-line px-3 text-[15px] font-bold text-ink-900 hover:bg-mist"
+              onClick={() => setOpen(!open)}
+              aria-expanded={open}
+              aria-controls="mobiel-menu"
+            >
+              {open ? 'Sluiten' : 'Menu'}
+            </button>
+          </div>
         </div>
         {open && (
-          <div className="border-t border-line bg-white lg:hidden">
+          <div id="mobiel-menu" className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-line bg-white lg:hidden">
             <nav className="container-x flex flex-col gap-1 py-4" aria-label="Mobiele navigatie">
+              <div className="mb-3 grid gap-2" data-plek="mobiel-menu">
+                <Link href="/offerte" className="btn-primary w-full" onClick={() => setOpen(false)} data-cta="offerte">Vraag een offerte aan</Link>
+                <Link href="/afspraak" className="btn-outline w-full" onClick={() => setOpen(false)} data-cta="afspraak">Plan een adviesgesprek</Link>
+              </div>
               <p className="px-3 pt-1 text-xs font-bold uppercase tracking-wide text-warm">Kleding</p>
               {kledingNav.map((i) => (
-                <Link key={i.href} href={i.href} className="rounded-md px-3 py-2.5 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{i.label}</Link>
+                <Link key={i.href} href={i.href} className="rounded-md px-3 py-3 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{i.label}</Link>
               ))}
               {hoofdNav.map((i) => (
-                <Link key={i.href} href={i.href} className="rounded-md px-3 py-2.5 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{i.label}</Link>
+                <Link key={i.href} href={i.href} className="rounded-md px-3 py-3 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{i.label}</Link>
               ))}
               {topNav.map((i) => (
-                <Link key={i.href} href={i.href} className="rounded-md px-3 py-2.5 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{i.label}</Link>
+                <Link key={i.href} href={i.href} className="rounded-md px-3 py-3 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{i.label}</Link>
               ))}
               <p className="px-3 pt-3 text-xs font-bold uppercase tracking-wide text-warm">Branches</p>
               {branches.map((b) => (
-                <Link key={b.slug} href={`/branches/${b.slug}`} className="rounded-md px-3 py-2.5 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{b.navLabel}</Link>
+                <Link key={b.slug} href={`/branches/${b.slug}`} className="rounded-md px-3 py-3 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{b.navLabel}</Link>
               ))}
               <a href={`tel:${site.phoneIntl}`} className="mt-2 rounded-md px-3 py-2.5 text-[15px] font-bold text-ink-900 hover:bg-mist">{site.phone}</a>
               <PortaalKnop className="mt-2 rounded-md border border-line px-3 py-2.5 text-center text-[15px] font-semibold text-ink-800 hover:bg-mist" />
-              <Link href="/kledingadvies" className="btn-primary mt-2" onClick={() => setOpen(false)}>Vraag advies aan</Link>
             </nav>
           </div>
         )}
       </header>
-    </div>
+    </>
   );
 }

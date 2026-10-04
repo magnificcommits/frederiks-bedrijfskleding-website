@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import Image from 'next/image';
 import { site } from '@/content/site';
+import { CtaKnoppen } from '@/components/CtaKnoppen';
 
 /**
  * Hero met de dienstbelofte boven de vouw: binnen 24 uur een offerte en passen
@@ -40,22 +40,12 @@ export function Hero() {
               langskomt om iedereen te laten passen en je logo in eigen huis aanbrengt.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/offerte" className="btn-primary">
-                Vraag een offerte aan
-              </Link>
-              <Link
-                href="/kledingbeheer"
-                className="btn border-2 border-white bg-transparent text-white hover:bg-white hover:text-ink-900"
-              >
-                Bekijk het kledingportaal
-              </Link>
-            </div>
-            <p className="mt-3 text-sm text-ink-200">
-              Van vijf man tot tweehonderdvijftig. En één jas voor een nieuwe kracht regelen we net zo goed.
-            </p>
+            {/* Eén primaire actie (offerte) en één zachte (eerst praten). Het
+                kledingportaal had hier de tweede knop, maar dat is pas relevant
+                als je al klant bent; het heeft verderop een eigen sectie. */}
+            <CtaKnoppen plek="hero" donker className="mt-8" />
 
-            <p className="mt-6 text-sm text-ink-100">
+            <p className="mt-6 text-sm text-ink-100" data-plek="hero">
               <a
                 href={`tel:${site.phoneIntl}`}
                 className="font-display text-xl font-extrabold text-white underline decoration-amber-500 decoration-2 underline-offset-4 hover:text-amber-300"

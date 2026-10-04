@@ -6,14 +6,20 @@ import { dashAuthed, getHuidigeAdmin } from '@/lib/kms/adminClient';
 import { listTaakPersonen, standaardPersoon } from '@/lib/kms/taakPersonen';
 import { getTaak } from '@/lib/kms/taken';
 import {
+  conceptOfferteVanLead,
   isUuid,
   klantNaam,
   listActiviteiten,
   listLeadKaarten,
+  listLeadRegels,
   listOffertesVanLead,
+  listOngezieneWebleads,
+  markeerLeadGezien,
   migratieStand,
   zoekKlantKandidaten,
 } from '@/lib/kms/leads';
+import { listLeadLogos } from '@/lib/kms/leadLogos';
+import { bronKanaalLabel, padSoort } from '@/lib/leadHerkomst';
 import {
   ACTIVITEIT_LABEL,
   AANTAL_OPTIES,
@@ -92,16 +98,23 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
   if (!isLeadsDbConfigured) redirect('/dashboard');
   if (!isUuid(id)) notFound();
 
-  const [alle, personen, admin, tijdlijn, offertes, migratie] = await Promise.all([
+  const [alle, personen, admin, tijdlijn, offertes, migratie, regels, logos, concept] = await Promise.all([
     listLeadKaarten(),
     listTaakPersonen(),
     getHuidigeAdmin().catch(() => null),
     listActiviteiten(id),
     listOffertesVanLead(id),
     migratieStand(),
+    listLeadRegels(id),
+    listLeadLogos(id),
+    conceptOfferteVanLead(id),
   ]);
   const lead = alle.find((l) => l.id === id);
   if (!lead) notFound();
+  // Geopend: telt niet meer als nieuwe webaanvraag in de melding.
+  if (!lead.gezien_op) await markeerLeadGezien(lead.id).catch(() => null);
+  // Startstand voor de melding "nieuwe webaanvraag" terwijl je in deze lead werkt.
+  const ongezien = await listOngezieneWebleads(1).catch(() => ({ aantal: 0, leads: [] }));
 
   const vandaag = vandaagNl();
   const actief = personen.filter((p) => p.actief);
@@ -126,12 +139,17 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
     .map((r) => `${datumKort(r.created_at)} ${ACTIVITEIT_LABEL[r.soort] ?? r.soort}${r.tekst ? `: ${r.tekst}` : ''}`)
     .join(' | ');
   const totaalStuks = aanvraag.stukken.reduce((t, s) => t + (s.aantal ?? 0), 0);
+  const regelStuks = regels.reduce((t, r) => t + (r.aantal ?? 0), 0);
+  const paden = lead.bezochte_paden ?? [];
+  const heeftHerkomst = !!(lead.bron_kanaal || lead.utm_source || lead.utm_campaign || lead.referrer || lead.landingspagina || lead.gclid);
+  const tijdOp = (sec: number) => (sec < 60 ? `${sec} s` : sec < 3600 ? `${Math.floor(sec / 60)} min` : `${Math.round(sec / 360) / 10} uur`);
+  const PAD_LABEL: Record<string, string> = { prijs: 'offerte/prijs', assortiment: 'assortiment', configurator: 'configurator', branche: 'branche', overig: '' };
   const vorigeOpen = !!vorigeTaak && vorigeTaak.status !== 'klaar' && !vorigeTaak.verwijderd_op;
   const stapSuggestie = lead.status === 'offerte' ? 'Offerte nabellen' : lead.status === 'nieuw' ? 'Terugbellen' : lead.status === 'contact' ? 'Pasafspraak plannen' : '';
 
   return (
     <main className="container-app py-6">
-      <LeadMelding />
+      <LeadMelding webleads={{ aantal: ongezien.aantal }} />
       <div className="dash-kop flex-wrap justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/dashboard/leads" className="knop-tekst -ml-2 shrink-0" aria-label="Terug naar leads">
@@ -145,7 +163,11 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
           {tel && <a href={`tel:${tel}`} className="knop-stil">Bellen</a>}
           {mail && <a href={`mailto:${mail}`} className="knop-stil">Mailen</a>}
           {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="knop-stil">WhatsApp</a>}
-          {lead.organisatie_id ? (
+          {concept ? (
+            <Link href={`/dashboard/offertes/${concept.id}`} className="knop-primair">
+              Open conceptofferte{concept.offertenummer ? ` ${concept.offertenummer}` : ''}
+            </Link>
+          ) : lead.organisatie_id ? (
             <form action={offerteActie}>
               <input type="hidden" name="id" value={lead.id} />
               <VerzendKnop className="knop-primair" bezigTekst="Offerte maken…">Offerte maken</VerzendKnop>
@@ -212,7 +234,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
               </dl>
             )}
 
-            {aanvraag.stukken.length > 0 && (
+            {aanvraag.stukken.length > 0 && regels.length === 0 && (
               <div className="mt-4 overflow-x-auto rounded-md border border-line">
                 <table className="tbl">
                   <thead>
@@ -267,6 +289,83 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
               </div>
             )}
           </Paneel>
+
+          {(regels.length > 0 || logos.length > 0) && (
+            <Paneel
+              titel="Gekozen artikelen"
+              id="artikelen"
+              rechts={
+                concept ? (
+                  <Link href={`/dashboard/offertes/${concept.id}`} className="text-[12px] font-semibold text-amber-700 hover:underline">
+                    Open conceptofferte
+                  </Link>
+                ) : null
+              }
+            >
+              {regels.length > 0 && (
+                <div className="overflow-x-auto rounded-md border border-line">
+                  <table className="tbl">
+                    <thead>
+                      <tr>
+                        <th>Artikel</th>
+                        <th>Kleur</th>
+                        <th>Opmerking</th>
+                        <th className="text-right">Aantal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {regels.map((r) => (
+                        <tr key={r.id}>
+                          <td className="font-medium text-ink-900">
+                            {r.product_id ? (
+                              <Link href={`/dashboard/producten/${r.product_id}`} className="hover:text-amber-700 hover:underline">{r.omschrijving}</Link>
+                            ) : (
+                              r.omschrijving
+                            )}
+                            {r.maat && <span className="block text-[11px] font-normal text-warm">maat {r.maat}</span>}
+                            {!r.product_id && <span className="block text-[11px] font-normal text-warm">geen artikel uit de catalogus</span>}
+                          </td>
+                          <td>{r.kleur ?? '-'}</td>
+                          <td className="text-warm">{r.opmerking ?? '-'}</td>
+                          <td className="num">{r.aantal ? `${r.aantal}x` : '-'}</td>
+                        </tr>
+                      ))}
+                      {regelStuks > 0 && (
+                        <tr>
+                          <td colSpan={3} className="text-right text-[12px] font-semibold uppercase tracking-wide text-warm">Totaal</td>
+                          <td className="num font-semibold text-ink-900">{regelStuks} stuks</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {logos.length > 0 && (
+                <div className={regels.length ? 'mt-4' : ''}>
+                  <p className="veld-label">Aangeleverd logo</p>
+                  <ul className="mt-1 flex flex-wrap gap-3">
+                    {logos.map((l) => (
+                      <li key={l.id} className="w-36 rounded-md border border-line p-2 text-[11px]">
+                        <a href={l.logo_url} target="_blank" rel="noopener noreferrer" className="block">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={l.logo_url} alt={`Logo ${lead.company || lead.name}`} className="h-20 w-full object-contain" />
+                        </a>
+                        <p className="mt-1 truncate text-ink-800" title={l.logo_naam ?? undefined}>{l.logo_naam ?? 'logo'}</p>
+                        {l.logo_id ? (
+                          <Link href={`/dashboard/logos/${l.logo_id}`} className="font-semibold text-amber-700 hover:underline">In de logobibliotheek</Link>
+                        ) : (
+                          <span className="text-warm">Gaat naar de logobibliotheek zodra dit een klant is</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {regels.length > 0 && !concept && offertes.length === 0 && (
+                <p className="veld-hint">Er staat nog geen offerte klaar. Maak eerst een klant van deze lead; de artikelen komen dan met catalogusprijzen op de offerte.</p>
+              )}
+            </Paneel>
+          )}
 
           <Paneel titel="Tijdlijn" id="tijdlijn" rechts={tijdlijn.viaAudit ? <span className="text-[11px] text-warm">tijdelijk uit het auditlog</span> : null}>
             <form action={logActiviteitActie} className="rounded-md border border-line bg-mist/60 p-3">
@@ -444,7 +543,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <VerzendKnop name="daarna" value="offerte" className={kandidaten.length ? 'knop-stil' : 'knop-primair'} bezigTekst="Bezig…">
-                      Nieuwe klant + offerte
+                      Maak klant + offerte
                     </VerzendKnop>
                     <VerzendKnop className="knop-stil" bezigTekst="Bezig…">Converteer naar klant</VerzendKnop>
                   </div>
@@ -462,6 +561,56 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
                   </li>
                 ))}
               </ul>
+            )}
+          </Paneel>
+
+          <Paneel titel="Herkomst" id="herkomst">
+            <dl className="grid gap-1.5 text-[13px]">
+              <div className="flex justify-between gap-3"><dt className="text-warm">Ingang</dt><dd className="text-right font-medium text-ink-900">{lead.bron_kanaal ? bronKanaalLabel(lead.bron_kanaal) : 'onbekend'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-warm">Kanaal</dt><dd className="text-right text-ink-900">{lead.kanaal}</dd></div>
+              {(lead.utm_campaign || lead.utm_source) && (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-warm">Campagne</dt>
+                  <dd className="min-w-0 text-right text-ink-900">
+                    {lead.utm_campaign ?? '-'}
+                    <span className="block text-[11px] text-warm">{[lead.utm_source, lead.utm_medium, lead.utm_content].filter(Boolean).join(' / ')}</span>
+                  </dd>
+                </div>
+              )}
+              {lead.utm_term && <div className="flex justify-between gap-3"><dt className="text-warm">Zoekwoord</dt><dd className="text-right text-ink-900">{lead.utm_term}</dd></div>}
+              {lead.gclid && <div className="flex justify-between gap-3"><dt className="text-warm">Google Ads</dt><dd className="text-right text-ink-900">klik-id bewaard</dd></div>}
+              {lead.referrer && <div className="flex justify-between gap-3"><dt className="text-warm">Verwijzer</dt><dd className="text-right text-ink-900">{lead.referrer}</dd></div>}
+              {lead.landingspagina && <div className="flex justify-between gap-3"><dt className="text-warm">Eerste pagina</dt><dd className="min-w-0 truncate text-right text-ink-900" title={lead.landingspagina}>{lead.landingspagina}</dd></div>}
+              {lead.conversiepagina && <div className="flex justify-between gap-3"><dt className="text-warm">Aanvraag vanaf</dt><dd className="min-w-0 truncate text-right text-ink-900" title={lead.conversiepagina}>{lead.conversiepagina}</dd></div>}
+              {lead.eerste_bezoek_op && <div className="flex justify-between gap-3"><dt className="text-warm">Eerste bezoek</dt><dd className="text-right text-ink-900">{datumTijd(lead.eerste_bezoek_op)}</dd></div>}
+              {(lead.bezoeken != null || lead.paginas_bekeken != null) && (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-warm">Gedrag</dt>
+                  <dd className="text-right text-ink-900">
+                    {[lead.bezoeken != null ? `${lead.bezoeken}e bezoek` : null, lead.paginas_bekeken != null ? `${lead.paginas_bekeken} pagina's deze sessie` : null].filter(Boolean).join(', ')}
+                  </dd>
+                </div>
+              )}
+            </dl>
+            {paden.length > 0 && (
+              <details className="mt-3 border-t border-line pt-3">
+                <summary className="cursor-pointer text-[12px] font-semibold text-warm hover:text-ink-900">Bekeken pagina&rsquo;s ({paden.length})</summary>
+                <ol className="mt-2 grid gap-1 text-[12px]">
+                  {paden.map((p, i) => (
+                    <li key={`${p.p}-${i}`} className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-2">
+                      <span className="tabular-nums text-ink-400">{i === 0 ? 'start' : `+${tijdOp(p.s)}`}</span>
+                      <span className="min-w-0 truncate text-ink-800" title={p.p}>
+                        {p.p}
+                        {PAD_LABEL[padSoort(p.p)] ? <span className="ml-1 text-[10px] uppercase tracking-wide text-amber-700">{PAD_LABEL[padSoort(p.p)]}</span> : null}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            )}
+            {!heeftHerkomst && <p className="mt-2 text-[12px] text-warm">Geen herkomst vastgelegd. Oudere aanvragen en zelf ingevoerde leads hebben alleen de bron hierboven.</p>}
+            {heeftHerkomst && paden.length === 0 && lead.bron_kanaal && ['formulier', 'configurator', 'selectie'].includes(lead.bron_kanaal) && (
+              <p className="mt-2 text-[12px] text-warm">Geen bekeken pagina&rsquo;s: de bezoeker gaf geen toestemming voor statistieken.</p>
             )}
           </Paneel>
 

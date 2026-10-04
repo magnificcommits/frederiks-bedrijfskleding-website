@@ -1,4 +1,5 @@
 'use client';
+import { bevestig } from '@/components/dashboard/ui/Bevestig';
 
 /**
  * Blokeditor voor de A4-brief met live voorbeeld.
@@ -593,8 +594,8 @@ export default function BriefEditor({
     setSelectie(id);
   };
 
-  const gebruikTemplate = (maak: () => BriefOntwerp, naam: string) => {
-    if (state.verleden.length > 0 && !window.confirm(`De brief vervangen door het template "${naam}"? Met Ongedaan maken kun je terug.`)) return;
+  const gebruikTemplate = async (maak: () => BriefOntwerp, naam: string) => {
+    if (state.verleden.length > 0 && !(await bevestig({ titel: `De brief vervangen door het template "${naam}"?`, tekst: 'Met Ongedaan maken kun je terug.', bevestigLabel: 'Vervangen' }))) return;
     dispatch({ type: 'vervang', ontwerp: kopieerOntwerp(maak()) });
     setSelectie(null);
     setTab('blokken');
@@ -611,7 +612,7 @@ export default function BriefEditor({
   };
 
   const verwijderTemplate = async (t: EditorTemplate) => {
-    if (!window.confirm(`Template "${t.naam}" verwijderen? Verzendingen die het al gebruiken houden hun brief.`)) return;
+    if (!(await bevestig({ titel: `Template "${t.naam}" verwijderen?`, tekst: 'Verzendingen die het al gebruiken houden hun brief.', bevestigLabel: 'Verwijderen', gevaar: true }))) return;
     const uit = await verwijderTemplateActie(t.id);
     if (uit.ok) setTemplates((l) => l.filter((x) => x.id !== t.id));
     else setTemplateMelding(uit.fout);

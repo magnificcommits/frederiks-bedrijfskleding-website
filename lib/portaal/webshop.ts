@@ -1,7 +1,11 @@
 import { getServerSupabase } from './supabaseServer';
+import { metIdTerugval } from '@/lib/kms/kolomTerugval';
 import { getVertaler } from '@/lib/i18n/portaal/server';
 import { maakVertaler, type Vertaler } from '@/lib/i18n/portaal/kern';
 import { nl } from '@/lib/i18n/portaal/nl';
+import { kmsAdmin } from '@/lib/kms/adminClient';
+import { genereerInkoopregels, volgOrderNaInkoop } from '@/lib/kms/inkoop';
+import { DUBBEL_VENSTER_SECONDEN, isDubbeleBestelling, type RegelKern } from '@/lib/portaal/dubbelBestelling';
 
 export type WebshopVariant = {
   id: string;
@@ -287,19 +291,38 @@ export async function getWebshopMedewerkers(): Promise<WebshopMedewerker[]> {
 /**
  * Totaal verbruikt budget (in euro) van een medewerker: som van aantal × stukprijs
  * over alle orderregels van diens orders. RLS borgt dat alleen de eigen organisatie meekomt.
+ * Afgewezen en geannuleerde bestellingen tellen niet mee: die zijn nooit geleverd,
+ * dus het budget moet weer vrijkomen.
  */
 export async function getBudgetVerbruik(medewerkerId: string): Promise<number> {
   const sb = await getServerSupabase();
   if (!sb) return 0;
-  const { data: orders } = await sb.from('orders').select('id').eq('medewerker_id', medewerkerId);
-  const orderIds = ((orders as { id: string }[]) ?? []).map((o) => o.id);
-  if (orderIds.length === 0) return 0;
-  const { data: regels } = await sb.from('orderregels').select('aantal, stukprijs').in('order_id', orderIds);
-  return ((regels as { aantal: number | null; stukprijs: number | null }[]) ?? []).reduce(
-    (sum, r) => sum + (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0),
-    0,
-  );
+  // In JavaScript filteren, niet met .neq(): die laat ook rijen met een lege status vallen.
+  const { data: orders } = await sb
+    .from('orders')
+    .select('id, status, goedkeuring_status, bedrag, notitie')
+    .eq('medewerker_id', medewerkerId);
+  type Rij = { id: string; status: string | null; goedkeuring_status: string | null; bedrag: number | null; notitie: string | null };
+  const tellend = ((orders as Rij[]) ?? []).filter((o) => o.status !== 'geannuleerd' && o.goedkeuring_status !== 'afgewezen');
+  if (tellend.length === 0) return 0;
+  const { data: regels } = await sb.from('orderregels').select('order_id, aantal, stukprijs').in('order_id', tellend.map((o) => o.id));
+  const perOrder = new Map<string, number>();
+  for (const r of (regels as { order_id: string; aantal: number | null; stukprijs: number | null }[]) ?? []) {
+    perOrder.set(r.order_id, (perOrder.get(r.order_id) ?? 0) + (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0));
+  }
+  return tellend.reduce((sum, o) => {
+    const regelTotaal = perOrder.get(o.id) ?? 0;
+    // Pakketbestelling: de artikelen staan op nul en de pakketprijs op de order (zie bestelPakket).
+    // Die telt mee, behalve een pakket dat buiten het budget valt.
+    if (regelTotaal === 0 && (Number(o.bedrag) || 0) > 0 && (o.notitie ?? '').startsWith('Pakket:')) {
+      return (o.notitie ?? '').includes(PAKKET_BUITEN_BUDGET) ? sum : sum + (Number(o.bedrag) || 0);
+    }
+    return sum + regelTotaal;
+  }, 0);
 }
+
+/** Staat in de notitie van een pakketbestelling die niet van het budget afgaat. */
+const PAKKET_BUITEN_BUDGET = '(buiten budget)';
 
 /** Eén afbeelding per kleur, per product, voor de eigen organisatie (RLS op assortiment). */
 export async function getKleurAfbeeldingen(): Promise<Record<string, Record<string, string>>> {
@@ -635,7 +658,7 @@ export async function maakWebshopBestelling(
   if (!sb) return { ok: false, error: v.t('algemeen.nietGeconfigureerd') };
   if (regels.length === 0) return { ok: false, error: v.t('webshop.wasLeeg') };
 
-  const bedrag = regels.reduce((sum, r) => sum + r.aantal * r.stukprijs, 0);
+  const bedrag = Math.round(regels.reduce((sum, r) => sum + r.aantal * r.stukprijs, 0) * 100) / 100;
   const aantalStuks = regels.reduce((sum, r) => sum + r.aantal, 0);
 
   // Verstrekking: bepaal welk deel van het bedrag werkelijk van het budget afgaat.
@@ -650,14 +673,19 @@ export async function maakWebshopBestelling(
   }, v);
   if (!check.ok) return { ok: false, error: check.reden };
 
+  // Dubbelklik, terugknop of twee tabbladen: dezelfde bestelling binnen een minuut weigeren.
+  if (await isRecentDubbel(sb, org.id, aangevraagdDoor, medewerkerId, regels)) {
+    return { ok: false, error: v.t('webshop.dubbel') };
+  }
+
   const goedkeuringStatus = org.goedkeuren_bestellingen ? 'wacht' : 'niet_nodig';
   const status = org.goedkeuren_bestellingen ? 'concept' : 'nog_bestellen';
   const vestigingId = opts.medewerker?.vestiging_id ?? null;
   const referentienr = org.gebruik_referentienr ? opts.referentienr?.trim() || null : null;
 
-  const { data, error } = await sb
-    .from('orders')
-    .insert({
+  // bron 'portaal' (kolom uit migratie 20261006_orders_bron.sql); zonder die kolom nogmaals zonder.
+  const { data, error } = await metIdTerugval(
+    {
       organisatie_id: org.id,
       medewerker_id: medewerkerId,
       aangevraagd_door: aangevraagdDoor,
@@ -667,9 +695,11 @@ export async function maakWebshopBestelling(
       notitie: notitie || null,
       vestiging_id: vestigingId,
       referentienr,
-    })
-    .select('id')
-    .single();
+      bron: 'portaal',
+    },
+    ['bron'],
+    (rij) => sb.from('orders').insert(rij).select('id').single(),
+  );
   if (error || !data) return { ok: false, error: error?.message ?? v.t('webshop.plaatsenMislukt') };
 
   const orderId = (data as { id: string }).id;
@@ -684,8 +714,77 @@ export async function maakWebshopBestelling(
     stukprijs: r.stukprijs,
   }));
   const { error: e2 } = await sb.from('orderregels').insert(rows);
-  if (e2) return { ok: false, error: e2.message };
+  if (e2) {
+    await ruimLegeOrderOp(orderId);
+    return { ok: false, error: e2.message };
+  }
+  await naPlaatsen(orderId, status);
   return { ok: true };
+}
+
+/**
+ * Heeft deze gebruiker in de laatste minuut al precies dezelfde bestelling geplaatst
+ * (zelfde klant, zelfde besteller, zelfde medewerker, zelfde regels)? Alleen met
+ * bestaande kolommen: orders.created_at, aangevraagd_door en de orderregels.
+ * Via de service-rol als die er is, zodat RLS het zicht op de eigen order niet
+ * beperkt. Lukt de controle niet, dan gaat de bestelling gewoon door.
+ */
+async function isRecentDubbel(
+  sb: NonNullable<Awaited<ReturnType<typeof getServerSupabase>>>,
+  organisatieId: string,
+  aangevraagdDoor: string,
+  medewerkerId: string | null,
+  regels: BestelRegelInput[],
+): Promise<boolean> {
+  try {
+    const db = kmsAdmin() ?? sb;
+    const sinds = new Date(Date.now() - DUBBEL_VENSTER_SECONDEN * 1000).toISOString();
+    let q = db
+      .from('orders')
+      .select('id')
+      .eq('organisatie_id', organisatieId)
+      .eq('aangevraagd_door', aangevraagdDoor)
+      .neq('status', 'geannuleerd')
+      .gte('created_at', sinds)
+      .limit(20);
+    q = medewerkerId ? q.eq('medewerker_id', medewerkerId) : q.is('medewerker_id', null);
+    const { data: recent, error } = await q;
+    const ids = ((recent as { id: string }[] | null) ?? []).map((o) => o.id);
+    if (error || ids.length === 0) return false;
+    const { data: rijen, error: e2 } = await db.from('orderregels').select('order_id, variant_id, product_id, item_naam, aantal').in('order_id', ids);
+    if (e2) return false;
+    const perOrder = new Map<string, RegelKern[]>();
+    for (const r of (rijen as ({ order_id: string } & RegelKern)[] | null) ?? []) {
+      const lijst = perOrder.get(r.order_id) ?? [];
+      lijst.push(r);
+      perOrder.set(r.order_id, lijst);
+    }
+    return isDubbeleBestelling(regels, [...perOrder.values()]);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Zijn de regels niet opgeslagen, dan de lege order weer weghalen. Anders blijft
+ * er een order van nul regels staan die wel budget en een ordernummer heeft.
+ * Via de service-rol: de portaalgebruiker mag zelf geen orders verwijderen.
+ */
+async function ruimLegeOrderOp(orderId: string): Promise<void> {
+  const admin = kmsAdmin();
+  if (!admin) return;
+  const { count } = await admin.from('orderregels').select('id', { count: 'exact', head: true }).eq('order_id', orderId);
+  if ((count ?? 0) === 0) await admin.from('orders').delete().eq('id', orderId);
+}
+
+/**
+ * Bestelling zonder goedkeuringsstap: meteen de inkoopregels klaarzetten voor
+ * wat niet op voorraad is, net als na een goedkeuring. Best effort.
+ */
+async function naPlaatsen(orderId: string, status: string): Promise<void> {
+  if (status !== 'nog_bestellen') return;
+  await genereerInkoopregels(orderId).catch(() => 0);
+  await volgOrderNaInkoop(orderId).catch(() => null);
 }
 
 /**
@@ -742,11 +841,14 @@ export async function bestelPakket(
   const status = org.goedkeuren_bestellingen ? 'concept' : 'nog_bestellen';
   const vestigingId = opts.medewerker?.vestiging_id ?? null;
   const referentienr = org.gebruik_referentienr ? opts.referentienr?.trim() || null : null;
-  const notitie = (opts.notitie ?? '').trim() || `Pakket: ${pakket.naam}`;
+  // Begint altijd met "Pakket:": daaraan herkennen de factuur en de budgetberekening de
+  // pakketprijs. Een pakket buiten budget krijgt dat erbij, zodat het budget het overslaat.
+  const extra = (opts.notitie ?? '').trim();
+  const notitie = `Pakket: ${pakket.naam}${pakket.buiten_budget ? ` ${PAKKET_BUITEN_BUDGET}` : ''}${extra ? ` · ${extra}` : ''}`;
 
-  const { data, error } = await sb
-    .from('orders')
-    .insert({
+  // bron 'portaal' (kolom uit migratie 20261006_orders_bron.sql); zonder die kolom nogmaals zonder.
+  const { data, error } = await metIdTerugval(
+    {
       organisatie_id: org.id,
       medewerker_id: medewerkerId,
       aangevraagd_door: aangevraagdDoor,
@@ -756,9 +858,11 @@ export async function bestelPakket(
       notitie,
       vestiging_id: vestigingId,
       referentienr,
-    })
-    .select('id')
-    .single();
+      bron: 'portaal',
+    },
+    ['bron'],
+    (rij) => sb.from('orders').insert(rij).select('id').single(),
+  );
   if (error || !data) return { ok: false, error: error?.message ?? v.t('webshop.plaatsenMislukt') };
 
   const orderId = (data as { id: string }).id;
@@ -773,6 +877,10 @@ export async function bestelPakket(
     stukprijs: r.stukprijs,
   }));
   const { error: e2 } = await sb.from('orderregels').insert(rows);
-  if (e2) return { ok: false, error: e2.message };
+  if (e2) {
+    await ruimLegeOrderOp(orderId);
+    return { ok: false, error: e2.message };
+  }
+  await naPlaatsen(orderId, status);
   return { ok: true };
 }

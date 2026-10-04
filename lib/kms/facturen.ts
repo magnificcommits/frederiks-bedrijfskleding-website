@@ -7,6 +7,7 @@ import { factuurMailHtml } from '@/lib/documentMail';
 import { factuurEmailVoor, type FactuurEmailBron } from '@/lib/kms/factuurEmail';
 import { artikelOmschrijving } from '@/lib/kms/productZoeker';
 import { bedrijf } from '@/content/bedrijf';
+import { eisData } from '@/lib/dbFout';
 
 /**
  * Data-access voor de module Facturatie (zelf gebouwd, geen externe boekhouding).
@@ -124,6 +125,16 @@ export function vervaldatumVoor(factuurdatum: string | null): string {
   return plusDagen(factuurdatum, bedrijf.betaaltermijnDagen);
 }
 
+/**
+ * Btw-tarief van een regel; zonder (geldig) tarief 21%. Let op: Number(null) is 0,
+ * dus een lege waarde moet apart worden afgevangen, anders werd het stil 0% btw.
+ */
+export function btwTarief(pct: number | string | null | undefined): number {
+  if (pct === null || pct === undefined || pct === '') return 21;
+  const n = Number(pct);
+  return Number.isFinite(n) ? n : 21;
+}
+
 /** Bedrag excl. btw van één regel: aantal x stukprijs min de regelkorting, op centen. */
 export function regelBedrag(r: { aantal: number | null; stukprijs: number | null; korting_pct?: number | null }): number {
   const aantal = Number(r.aantal) || 0;
@@ -157,7 +168,7 @@ export function factuurTotalen(
     const bedrag = regelBedrag(r);
     bruto += r2((Number(r.aantal) || 0) * (Number(r.stukprijs) || 0));
     excl += bedrag;
-    const pct = Number.isFinite(Number(r.btw_pct)) ? Number(r.btw_pct) : 21;
+    const pct = btwTarief(r.btw_pct);
     tarieven.set(pct, (tarieven.get(pct) ?? 0) + bedrag);
   }
   const perTarief = [...tarieven.entries()]
@@ -298,7 +309,9 @@ export async function listFacturenPaged(opts: { pagina: number; perPagina: numbe
     q = q.or(delen.join(','));
   }
 
-  const { data, count } = await q.range(from, to);
+  const res = await q.range(from, to);
+  const data = eisData('facturen.lijst', res);
+  const count = res.count;
   const rows = (data as unknown as (Factuur & { organisaties: { naam: string } | null })[]) ?? [];
   const rijen = rows.map((r) => {
     const { organisaties, ...rest } = r;
@@ -319,7 +332,8 @@ async function regelsVan(sb: SupabaseClient, factuurId: string): Promise<Factuur
     .order('created_at', { ascending: true })
     .order('id');
   if (!metVolgorde.error) return (metVolgorde.data as Factuurregel[]) ?? [];
-  const { data } = await sb.from('factuurregels').select('*').eq('factuur_id', factuurId).order('id');
+  // Zonder regels zou een factuur (of UBL, of Moneybird) stil op 0 euro uitkomen: fout tonen.
+  const data = eisData('facturen.regels', await sb.from('factuurregels').select('*').eq('factuur_id', factuurId).order('id'));
   return (data as Factuurregel[]) ?? [];
 }
 
@@ -349,7 +363,7 @@ async function voegFotosToe(sb: SupabaseClient, regels: Factuurregel[]): Promise
 
 export async function getFactuur(id: string): Promise<FactuurDetail | null> {
   const sb = kmsAdmin(); if (!sb) return null;
-  const { data } = await sb.from('facturen').select('*').eq('id', id).maybeSingle();
+  const data = eisData('facturen.detail', await sb.from('facturen').select('*').eq('id', id).maybeSingle());
   if (!data) return null;
   const factuur = data as Factuur;
   const [regels, { data: orgData }] = await Promise.all([
@@ -417,11 +431,27 @@ export async function maakFactuurVanOrder(orderId: string): Promise<string | nul
   const sb = kmsAdmin(); if (!sb) return null;
   const { data: orderData } = await sb
     .from('orders')
-    .select('id, organisatie_id, ordernummer')
+    .select('id, organisatie_id, ordernummer, status, bedrag, notitie')
     .eq('id', orderId)
     .maybeSingle();
-  const order = orderData as { id: string; organisatie_id: string; ordernummer: number | null } | null;
+  const order = orderData as {
+    id: string;
+    organisatie_id: string;
+    ordernummer: number | null;
+    status: string | null;
+    bedrag: number | null;
+    notitie: string | null;
+  } | null;
   if (!order) return null;
+  // Een geannuleerde order factureer je niet.
+  if (order.status === 'geannuleerd') return null;
+  // Al een factuur voor deze order (dubbele klik, of "Factureer alle" naast een
+  // losse factuur): die teruggeven in plaats van een tweede factuurnummer te verbruiken.
+  const { data: alData } = await sb.from('facturen').select('id').eq('order_id', orderId).order('created_at').limit(1);
+  const al = ((alData as { id: string }[]) ?? [])[0];
+  if (al) return al.id;
+  // Btw-tarief van de offerte waar de order uit komt (bijv. 0% bij een buitenlandse klant).
+  const offerteBtw = await btwVanOfferteVoorOrder(sb, orderId);
 
   const [{ data: regelData }, gevonden] = await Promise.all([
     sb
@@ -433,6 +463,8 @@ export async function maakFactuurVanOrder(orderId: string): Promise<string | nul
     factuurEmailVoor(order.organisatie_id),
   ]);
   const orderregels = (regelData as OrderregelRij[]) ?? [];
+  // Zonder regels wordt het een factuur van nul euro die wel een nummer opmaakt.
+  if (orderregels.length === 0) return null;
   // Adres van het facturatiecontact van de klant (met terugval, zie factuurEmailVoor).
   const factuurEmail = gevonden?.email ?? null;
 
@@ -491,7 +523,7 @@ export async function maakFactuurVanOrder(orderId: string): Promise<string | nul
     const maatErbij = maat && !laag.includes(`maat ${maat.toLowerCase()}`) ? maat : null;
     let omschrijving = artikelOmschrijving({ naam, merk: null }, kleurErbij, maatErbij);
     if (r.lengte != null && Number(r.lengte) > 0) omschrijving += `, lengte ${r.lengte} cm`;
-    const btwPct = prod?.btw != null && Number.isFinite(Number(prod.btw)) ? Number(prod.btw) : 21;
+    const btwPct = offerteBtw ?? (prod?.btw != null && Number.isFinite(Number(prod.btw)) ? Number(prod.btw) : 21);
     const rij: Record<string, unknown> = {
       factuur_id: factuurId,
       omschrijving,
@@ -507,6 +539,26 @@ export async function maakFactuurVanOrder(orderId: string): Promise<string | nul
     if (maat) rij.maat = maat;
     return rij;
   });
+  // Pakketbestelling: de artikelen staan op nul en de pakketprijs alleen op de
+  // order. Zonder deze regel werd het een factuur van nul euro.
+  const regelTotaal = rijen.reduce((t, r) => t + (Number(r.bedrag) || 0), 0);
+  const orderBedrag = r2(Number(order.bedrag) || 0);
+  if (regelTotaal === 0 && orderBedrag > 0) {
+    rijen.push({
+      factuur_id: factuurId,
+      // "(buiten budget)" is een interne markering voor het portaalbudget, niet voor de klant.
+      omschrijving: (order.notitie?.trim().startsWith('Pakket:')
+        ? order.notitie.trim().replace(/\s*\(buiten budget\)/, '').split(' · ')[0]
+        : `Pakketprijs order${order.ordernummer != null ? ` #${order.ordernummer}` : ''}`
+      ).slice(0, 200),
+      aantal: 1,
+      stukprijs: orderBedrag,
+      btw_pct: offerteBtw ?? 21,
+      korting_pct: 0,
+      bedrag: orderBedrag,
+      positie: rijen.length + 1,
+    });
+  }
   if (!(await voegRegelsIn(sb, rijen))) {
     // Geen halve factuur laten staan: zonder regels is hij niets waard.
     await sb.from('facturen').delete().eq('id', factuurId);
@@ -514,6 +566,37 @@ export async function maakFactuurVanOrder(orderId: string): Promise<string | nul
   }
   await herberekenFactuur(factuurId);
   return factuurId;
+}
+
+/**
+ * Btw van de offerte achter een order, als die afwijkt van het standaardtarief
+ * van de artikelen. Null als de order niet uit een offerte komt (of de kolom
+ * offerte_id nog niet bestaat): dan volgt de btw het artikel.
+ */
+async function btwVanOfferteVoorOrder(sb: SupabaseClient, orderId: string): Promise<number | null> {
+  const { data, error } = await sb.from('orders').select('offerte_id').eq('id', orderId).maybeSingle();
+  const offerteId = error ? null : (data as { offerte_id: string | null } | null)?.offerte_id ?? null;
+  if (!offerteId) return null;
+  const { data: off } = await sb.from('offertes').select('btw_pct').eq('id', offerteId).maybeSingle();
+  const pct = Number((off as { btw_pct: number | null } | null)?.btw_pct);
+  return Number.isFinite(pct) ? pct : null;
+}
+
+/**
+ * Reden waarom de regels van een factuur niet meer mogen wijzigen, of null.
+ * Een verzonden of betaalde factuur is een boekstuk: corrigeren gaat met een
+ * creditfactuur, of eerst terug naar concept (kan niet meer als hij al in
+ * Moneybird staat).
+ */
+export async function factuurRegelsGeslotenReden(factuurId: string): Promise<'verzonden' | 'betaald' | 'boekhouding' | null> {
+  const sb = kmsAdmin(); if (!sb || !factuurId) return null;
+  const { data } = await sb.from('facturen').select('status, moneybird_factuur_id').eq('id', factuurId).maybeSingle();
+  const f = data as { status: string; moneybird_factuur_id: string | null } | null;
+  if (!f) return null;
+  if (f.moneybird_factuur_id) return 'boekhouding';
+  if (f.status === 'betaald') return 'betaald';
+  if (f.status === 'verzonden') return 'verzonden';
+  return null;
 }
 
 export async function voegFactuurregelToe(factuurId: string, v: FactuurregelVelden): Promise<boolean> {
@@ -598,6 +681,9 @@ export async function herberekenFactuur(factuurId: string): Promise<void> {
     .eq('id', factuurId);
 }
 
+/** Orderstatussen van waaruit een betaalde factuur de order afrondt (de afleverfase). */
+const AFROND_NA_BETALING: readonly string[] = ['compleet_geleverd', 'verpakken', 'bezorgen', 'verzonden', 'factureren'];
+
 export function isFactuurStatus(s: string): s is FactuurStatus {
   return (FACTUUR_STATUSSEN as readonly string[]).includes(s);
 }
@@ -611,9 +697,11 @@ export function isFactuurStatus(s: string): s is FactuurStatus {
 export async function zetFactuurStatus(id: string, status: string, betaaldatum?: string | null): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
   if (!isFactuurStatus(status)) return false;
-  const { data } = await sb.from('facturen').select('factuurdatum, vervaldatum, betaaldatum').eq('id', id).maybeSingle();
-  const huidig = data as { factuurdatum: string | null; vervaldatum: string | null; betaaldatum: string | null } | null;
+  const { data } = await sb.from('facturen').select('factuurdatum, vervaldatum, betaaldatum, order_id, moneybird_factuur_id').eq('id', id).maybeSingle();
+  const huidig = data as { factuurdatum: string | null; vervaldatum: string | null; betaaldatum: string | null; order_id: string | null; moneybird_factuur_id: string | null } | null;
   if (!huidig) return false;
+  // Staat hij al in Moneybird, dan kan hij niet meer terug naar concept: dan lopen KMS en boekhouding uit elkaar.
+  if (status === 'concept' && huidig.moneybird_factuur_id) return false;
   const patch: Record<string, unknown> = { status };
   if (status === 'betaald') {
     patch.betaaldatum = betaaldatum ?? huidig.betaaldatum ?? vandaagISO();
@@ -624,7 +712,22 @@ export async function zetFactuurStatus(id: string, status: string, betaaldatum?:
     patch.vervaldatum = vervaldatumVoor(huidig.factuurdatum);
   }
   const { error } = await sb.from('facturen').update(patch).eq('id', id);
-  return !error;
+  if (error) return false;
+  // Betaald: de order is klaar. Alleen vanuit de afleverfase, een order die nog
+  // in productie staat (vooruitbetaling) laten we staan.
+  // Via zetOrderStatusMetGevolgen, zodat de voorraad wordt afgeboekt (één keer) en de
+  // besteller zijn statusmail krijgt; een kale update sloeg dat over.
+  if (status === 'betaald' && huidig.order_id) {
+    const { data: o } = await sb.from('orders').select('status').eq('id', huidig.order_id).maybeSingle();
+    const orderStatus = (o as { status: string } | null)?.status ?? '';
+    if (AFROND_NA_BETALING.includes(orderStatus)) {
+      // Dynamisch geladen: orders.ts en facturen.ts mogen elkaar niet bij het laden nodig hebben.
+      const { zetOrderStatusMetGevolgen } = await import('@/lib/kms/orders');
+      const uitkomst = await zetOrderStatusMetGevolgen(huidig.order_id, 'afgerond').catch(() => ({ ok: false }));
+      if (!uitkomst.ok) console.error('[factuur] betaald, maar de order kon niet worden afgerond:', huidig.order_id);
+    }
+  }
+  return true;
 }
 
 export async function listOrganisaties(): Promise<{ id: string; naam: string }[]> {
@@ -640,7 +743,15 @@ export async function listOrganisaties(): Promise<{ id: string; naam: string }[]
   return uit;
 }
 
-export async function listFactureerbareOrders(): Promise<{ id: string; ordernummer: number; organisatie_naam: string | null; bedrag: number | null }[]> {
+/** Orderstatussen waarin een order klaar is om te factureren (geleverd of verder). */
+export const FACTUREERBARE_ORDERSTATUSSEN: readonly string[] = ['compleet_geleverd', 'verpakken', 'bezorgen', 'verzonden', 'factureren', 'afgerond'];
+
+/**
+ * Orders zonder factuur. Concept- en geannuleerde orders en orders zonder bedrag
+ * vallen af. `klaar` zegt of de order al geleverd is; alleen die gaan mee met
+ * "Factureer alle" (vooraf factureren kan per order).
+ */
+export async function listFactureerbareOrders(): Promise<{ id: string; ordernummer: number; organisatie_naam: string | null; bedrag: number | null; status: string; klaar: boolean }[]> {
   const sb = kmsAdmin(); if (!sb) return [];
   // Beide lijsten in blokken van 1000: Supabase geeft er per verzoek niet meer.
   const metFactuur = new Set<string>();
@@ -651,12 +762,13 @@ export async function listFactureerbareOrders(): Promise<{ id: string; ordernumm
     for (const f of rijen) if (f.order_id) metFactuur.add(f.order_id);
     if (rijen.length < 1000) break;
   }
-  type Rij = { id: string; ordernummer: number; bedrag: number | null; organisaties: { naam: string } | null };
+  type Rij = { id: string; ordernummer: number; bedrag: number | null; status: string; organisaties: { naam: string } | null };
   const orders: Rij[] = [];
   for (let van = 0; van < 100000; van += 1000) {
     const { data, error } = await sb
       .from('orders')
-      .select('id, ordernummer, bedrag, organisaties(naam)')
+      .select('id, ordernummer, bedrag, status, organisaties(naam)')
+      .not('status', 'in', '(concept,geannuleerd)')
       .order('ordernummer', { ascending: false })
       .range(van, van + 999);
     if (error) break;
@@ -665,8 +777,15 @@ export async function listFactureerbareOrders(): Promise<{ id: string; ordernumm
     if (rijen.length < 1000) break;
   }
   return orders
-    .filter((o) => !metFactuur.has(o.id))
-    .map((o) => ({ id: o.id, ordernummer: o.ordernummer, bedrag: o.bedrag, organisatie_naam: o.organisaties?.naam ?? null }));
+    .filter((o) => !metFactuur.has(o.id) && (Number(o.bedrag) || 0) !== 0)
+    .map((o) => ({
+      id: o.id,
+      ordernummer: o.ordernummer,
+      bedrag: o.bedrag,
+      organisatie_naam: o.organisaties?.naam ?? null,
+      status: o.status,
+      klaar: FACTUREERBARE_ORDERSTATUSSEN.includes(o.status),
+    }));
 }
 
 /** Het ingestelde e-mailadres van de boekhouder ('' als nog niet ingesteld). */
@@ -810,7 +929,8 @@ export async function mailFactuurNaarKlant(id: string, to: string): Promise<{ ok
   const adres = to.trim();
   if (!adres || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adres)) return { ok: false, error: 'Vul een geldig e-mailadres in.' };
   if (!isEmailConfigured) return { ok: false, error: 'E-mail is nog niet ingesteld. Vraag Tim om dit aan te zetten.' };
-  const f = await getFactuur(id);
+  const f = await getFactuur(id).catch(() => undefined);
+  if (f === undefined) return { ok: false, error: 'De factuur kon niet uit de database worden gelezen. Probeer het opnieuw.' };
   if (!f) return { ok: false, error: 'Factuur niet gevonden.' };
 
   const vervaldatum = f.vervaldatum ?? vervaldatumVoor(f.factuurdatum);

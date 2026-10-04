@@ -8,6 +8,7 @@ import {
   migratieOntbreekt,
   verhoogVoorraad,
   getVoorraadOverzicht,
+  RESERVERENDE_ORDERSTATUSSEN,
 } from '@/lib/kms/voorraad';
 
 /**
@@ -72,9 +73,22 @@ export async function genereerInkoopregels(orderId: string): Promise<number> {
   const regels = (regelData as OrderregelRij[]) ?? [];
   if (regels.length === 0) return 0;
 
+  // Een geannuleerde order hoeft niets meer te laten bestellen, en een order die nog op
+  // goedkeuring van de klant wacht (of is afgewezen) nog niet: dan bestel je misschien voor niets.
+  const { data: orderData } = await sb.from('orders').select('status, goedkeuring_status').eq('id', orderId).maybeSingle();
+  const orderStand = orderData as { status: string | null; goedkeuring_status: string | null } | null;
+  if (!orderStand || orderStand.status === 'geannuleerd') return 0;
+  if (orderStand.goedkeuring_status === 'wacht' || orderStand.goedkeuring_status === 'afgewezen') return 0;
+
   // Voorkom dubbele inkoopregels: welke orderregels hebben er al een?
-  const { data: bestaand } = await sb.from('inkoopregels').select('orderregel_id').eq('order_id', orderId);
-  const alAanwezig = new Set(((bestaand as { orderregel_id: string | null }[]) ?? []).map((b) => b.orderregel_id).filter(Boolean));
+  // Een geannuleerde inkoopregel telt niet: wordt de order weer actief, dan mag hij opnieuw.
+  const { data: bestaand } = await sb.from('inkoopregels').select('orderregel_id, status').eq('order_id', orderId);
+  const alAanwezig = new Set(
+    ((bestaand as { orderregel_id: string | null; status: string | null }[]) ?? [])
+      .filter((b) => b.status !== INKOOPREGEL_GEANNULEERD)
+      .map((b) => b.orderregel_id)
+      .filter(Boolean),
+  );
 
   // Varianten ophalen voor de voorraadcheck.
   const variantIds = regels.map((r) => r.variant_id).filter((v): v is string => Boolean(v));
@@ -98,11 +112,22 @@ export async function genereerInkoopregels(orderId: string): Promise<number> {
     }
   }
 
+  // Voorraad die andere open orders al uit het magazijn claimen. Zonder deze
+  // aftrek zien twee orders dezelfde vijf jassen op de plank en bestelt geen
+  // van beide iets bij.
+  const geclaimd = await geclaimdDoorAndereOrders(sb, Array.from(new Set(variantIds)), orderId);
+
   const nieuw: Record<string, unknown>[] = [];
   for (const r of regels) {
     if (alAanwezig.has(r.id)) continue;
-    const voorraad = r.variant_id ? (voorraadPerVariant.get(r.variant_id) ?? 0) : 0;
-    const tekort = Math.max(0, (Number(r.aantal) || 0) - voorraad);
+    // Een vrije regel zonder artikel (borduurkosten, instelkosten, een pakketprijs)
+    // is geen kleding en hoeft niet bij een leverancier besteld te worden.
+    if (!r.product_id && !r.variant_id) continue;
+    const opPlank = r.variant_id ? (voorraadPerVariant.get(r.variant_id) ?? 0) : 0;
+    const beschikbaar = Math.max(0, opPlank - (r.variant_id ? geclaimd.get(r.variant_id) ?? 0 : 0));
+    const tekort = Math.max(0, (Number(r.aantal) || 0) - beschikbaar);
+    // Wat deze regel zelf van de plank haalt, is niet meer beschikbaar voor de volgende regel met dezelfde variant.
+    if (r.variant_id) geclaimd.set(r.variant_id, (geclaimd.get(r.variant_id) ?? 0) + ((Number(r.aantal) || 0) - tekort));
     if (tekort <= 0) continue;
     const info = r.product_id ? productInfo.get(r.product_id) : undefined;
     nieuw.push({
@@ -125,6 +150,180 @@ export async function genereerInkoopregels(orderId: string): Promise<number> {
   if (nieuw.length === 0) return 0;
   const { error } = await voegRegelsToe(sb, nieuw);
   return error ? 0 : nieuw.length;
+}
+
+/** Status van een inkoopregel waarvan de klantorder is geannuleerd. Telt nergens meer mee. */
+export const INKOOPREGEL_GEANNULEERD = 'geannuleerd';
+
+/**
+ * Hoeveel stuks per variant andere open orders uit de eigen voorraad halen:
+ * hun aantal min wat er voor die regel al bij de leverancier besteld is.
+ */
+async function geclaimdDoorAndereOrders(sb: SupabaseClient, variantIds: string[], behalveOrderId: string): Promise<Map<string, number>> {
+  const geclaimd = new Map<string, number>();
+  if (variantIds.length === 0) return geclaimd;
+  const { data: regelData } = await sb
+    .from('orderregels')
+    .select('id, order_id, variant_id, aantal, orders!inner(status)')
+    .in('variant_id', variantIds)
+    .neq('order_id', behalveOrderId)
+    .in('orders.status', [...RESERVERENDE_ORDERSTATUSSEN])
+    .limit(5000);
+  const regels = (regelData as unknown as { id: string; variant_id: string; aantal: number | null }[]) ?? [];
+  if (regels.length === 0) return geclaimd;
+  const ingekocht = await ingekochtPerOrderregel(sb, regels.map((r) => r.id));
+  for (const r of regels) {
+    const uitVoorraad = Math.max(0, (Number(r.aantal) || 0) - (ingekocht.get(r.id) ?? 0));
+    if (uitVoorraad > 0) geclaimd.set(r.variant_id, (geclaimd.get(r.variant_id) ?? 0) + uitVoorraad);
+  }
+  return geclaimd;
+}
+
+/** Per orderregel: hoeveel stuks er via een (niet-geannuleerde) inkoopregel komen. */
+async function ingekochtPerOrderregel(sb: SupabaseClient, orderregelIds: string[]): Promise<Map<string, number>> {
+  const uit = new Map<string, number>();
+  for (let i = 0; i < orderregelIds.length; i += 200) {
+    const { data } = await sb
+      .from('inkoopregels')
+      .select('orderregel_id, aantal, status')
+      .in('orderregel_id', orderregelIds.slice(i, i + 200));
+    for (const r of (data as { orderregel_id: string | null; aantal: number | null; status: string | null }[]) ?? []) {
+      if (!r.orderregel_id || r.status === INKOOPREGEL_GEANNULEERD) continue;
+      uit.set(r.orderregel_id, (uit.get(r.orderregel_id) ?? 0) + (Number(r.aantal) || 0));
+    }
+  }
+  return uit;
+}
+
+/**
+ * Een klantorder is geannuleerd (of een orderregel verwijderd): inkoopregels die
+ * nog niet bij de leverancier liggen, gaan uit de werkvoorraad. Regels die al
+ * besteld of binnen zijn blijven staan; die moet Jessi zelf bij de leverancier
+ * afzeggen of op voorraad nemen. Geeft beide aantallen terug.
+ */
+export async function annuleerInkoopVoorOrder(
+  orderId: string,
+  alleenOrderregelId?: string,
+): Promise<{ geannuleerd: number; alBesteld: number }> {
+  const sb = kmsAdmin();
+  if (!sb || !orderId) return { geannuleerd: 0, alBesteld: 0 };
+  let q = sb.from('inkoopregels').select('*').eq('order_id', orderId);
+  if (alleenOrderregelId) q = q.eq('orderregel_id', alleenOrderregelId);
+  const { data } = await q;
+  const regels = (data as Inkoopregel[]) ?? [];
+  const poIds = Array.from(new Set(regels.map((r) => r.inkooporder_id).filter((x): x is string => !!x)));
+  // Regels in een inkooporder die nog concept is, zijn nog niet bij de leverancier.
+  const conceptPo = new Set<string>();
+  if (poIds.length) {
+    const { data: poData } = await sb.from('inkooporders').select('id, status').in('id', poIds);
+    for (const po of (poData as { id: string; status: string }[]) ?? []) if (po.status === 'concept') conceptPo.add(po.id);
+  }
+  const weg: string[] = [];
+  let alBesteld = 0;
+  for (const r of regels) {
+    if (r.status === INKOOPREGEL_GEANNULEERD) continue;
+    const nogNietWeg = r.status === 'te_bestellen' && (!r.inkooporder_id || conceptPo.has(r.inkooporder_id));
+    if (nogNietWeg && !(Number(r.geleverd_aantal) > 0)) weg.push(r.id);
+    else if (r.status !== 'geleverd') alBesteld += 1;
+  }
+  if (weg.length) {
+    const res = await metIdTerugval(
+      { status: INKOOPREGEL_GEANNULEERD, inkooporder_id: null },
+      ['inkooporder_id'],
+      (rij) => sb.from('inkoopregels').update(rij).in('id', weg),
+    );
+    if (res.error) return { geannuleerd: 0, alBesteld };
+  }
+  return { geannuleerd: weg.length, alBesteld };
+}
+
+/**
+ * Boekt de voorraad af die een order van de plank heeft gehaald, op het moment
+ * dat de order de deur uitgaat. Per regel: het aantal min wat er speciaal voor
+ * deze order is ingekocht (dat ging nooit de voorraad in). Alleen voor
+ * voorraadartikelen. Gebeurt één keer per order: een tweede keer (status heen
+ * en weer) ziet de eerdere afboeking via voorraad_mutaties.order_id.
+ * Zonder die kolom (migratie 20261006_flow_koppelingen) boeken we niets af,
+ * want dan kunnen we dubbel afboeken niet uitsluiten.
+ */
+export async function boekOrderVoorraadAf(orderId: string, actor?: string | null): Promise<{ geboekt: number; stuks: number }> {
+  const niets = { geboekt: 0, stuks: 0 };
+  const sb = kmsAdmin();
+  if (!sb || !orderId) return niets;
+  const al = await sb.from('voorraad_mutaties').select('id').eq('order_id', orderId).eq('soort', 'verkoop').limit(1);
+  if (al.error || ((al.data as unknown[]) ?? []).length > 0) return niets;
+
+  const [{ data: oData }, { data: rData }] = await Promise.all([
+    sb.from('orders').select('ordernummer').eq('id', orderId).maybeSingle(),
+    sb.from('orderregels').select('id, variant_id, aantal').eq('order_id', orderId),
+  ]);
+  const nummer = (oData as { ordernummer: number | null } | null)?.ordernummer ?? null;
+  const regels = ((rData as { id: string; variant_id: string | null; aantal: number | null }[]) ?? []).filter((r) => r.variant_id);
+  if (regels.length === 0) return niets;
+  const ingekocht = await ingekochtPerOrderregel(sb, regels.map((r) => r.id));
+
+  const perVariant = new Map<string, number>();
+  for (const r of regels) {
+    const uit = Math.max(0, (Number(r.aantal) || 0) - (ingekocht.get(r.id) ?? 0));
+    if (uit > 0) perVariant.set(r.variant_id as string, (perVariant.get(r.variant_id as string) ?? 0) + uit);
+  }
+  if (perVariant.size === 0) return niets;
+
+  const { data: vData } = await sb
+    .from('product_varianten')
+    .select('id, product_id, voorraad, voorraad_bijhouden')
+    .in('id', [...perVariant.keys()]);
+  let geboekt = 0;
+  let stuks = 0;
+  for (const v of (vData as { id: string; product_id: string | null; voorraad: number | null; voorraad_bijhouden: boolean | null }[]) ?? []) {
+    const oud = Number(v.voorraad) || 0;
+    // Geen voorraadartikel (niets op de plank en niet bijgehouden): niets af te boeken.
+    if (v.voorraad_bijhouden === false || (v.voorraad_bijhouden == null && oud <= 0)) continue;
+    const uit = perVariant.get(v.id) ?? 0;
+    const nieuw = Math.max(0, oud - uit);
+    if (nieuw === oud) continue;
+    const { error } = await sb.from('product_varianten').update({ voorraad: nieuw }).eq('id', v.id);
+    if (error) continue;
+    await sb.from('voorraad_mutaties').insert({
+      variant_id: v.id,
+      product_id: v.product_id,
+      veld: 'voorraad',
+      soort: 'verkoop',
+      oud,
+      nieuw,
+      verschil: nieuw - oud,
+      notitie: `Uitgeleverd met order${nummer != null ? ` #${nummer}` : ''}`,
+      order_id: orderId,
+      actor: actor ?? null,
+    });
+    geboekt += 1;
+    stuks += oud - nieuw;
+  }
+  return { geboekt, stuks };
+}
+
+/**
+ * Na het aanmaken van de inkoopregels de order de juiste stap geven. Hoeft er
+ * niets besteld te worden (alles ligt op de plank), dan gaat een order die op
+ * "nog bestellen" stond meteen naar "alles binnen". Anders dezelfde regels als
+ * bij een ontvangst (besteld, deels binnen, alles binnen).
+ */
+export async function volgOrderNaInkoop(orderId: string): Promise<string | null> {
+  const sb = kmsAdmin();
+  if (!sb || !orderId) return null;
+  const [{ data: oData }, { data: iData }, { count }] = await Promise.all([
+    sb.from('orders').select('status').eq('id', orderId).maybeSingle(),
+    sb.from('inkoopregels').select('status').eq('order_id', orderId),
+    sb.from('orderregels').select('id', { count: 'exact', head: true }).eq('order_id', orderId),
+  ]);
+  const huidig = (oData as { status: string | null } | null)?.status ?? null;
+  const actief = ((iData as { status: string }[]) ?? []).filter((r) => r.status !== INKOOPREGEL_GEANNULEERD);
+  if (huidig === 'nog_bestellen' && actief.length === 0 && (count ?? 0) > 0) {
+    const { error } = await sb.from('orders').update({ status: 'compleet_geleverd' }).eq('id', orderId).eq('status', 'nog_bestellen');
+    return error ? null : 'compleet_geleverd';
+  }
+  const w = await werkKlantordersBij(sb, [orderId]);
+  return w[0]?.status ?? null;
 }
 
 export async function listInkoopregels(status?: string): Promise<InkoopregelMetLeverancier[]> {
@@ -1023,7 +1222,9 @@ async function werkKlantordersBij(sb: SupabaseClient, orderIds: string[]): Promi
       sb.from('inkoopregels').select('status, aantal, geleverd_aantal').eq('order_id', orderId),
     ]);
     const huidig = (oData as { status: string | null } | null)?.status ?? null;
-    const regels = (rData as { status: string; aantal: number; geleverd_aantal: number | null }[]) ?? [];
+    const regels = ((rData as { status: string; aantal: number; geleverd_aantal: number | null }[]) ?? []).filter(
+      (r) => r.status !== INKOOPREGEL_GEANNULEERD,
+    );
     if (!huidig || regels.length === 0) continue;
 
     const allesBinnen = regels.every((r) => r.status === 'geleverd' || (Number(r.geleverd_aantal) || 0) >= (Number(r.aantal) || 0));

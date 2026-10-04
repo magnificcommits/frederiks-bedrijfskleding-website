@@ -1,4 +1,5 @@
 import { getServerSupabase } from './supabaseServer';
+import { eisData } from '@/lib/dbFout';
 
 /** Eén regel binnen een order: het bestelde artikel met maat, kleur en aantal. */
 export type MijnOrderRegel = {
@@ -80,12 +81,17 @@ export async function getMijnOrders(): Promise<MijnOrder[]> {
   const sb = await getServerSupabase();
   if (!sb) return [];
 
-  const { data } = await sb
-    .from('orders')
-    .select(
-      'id, ordernummer, status, goedkeuring_status, bedrag, besteldatum, created_at, aangevraagd_door, notitie, vervoerder, track_trace_code, medewerker_id, medewerkers(naam)',
-    )
-    .order('created_at', { ascending: false });
+  // Join met expliciete FK-naam: orders heeft meer verwijzingen naar medewerkers
+  // gehad, en dan faalt een kale `medewerkers(naam)` met PGRST201 (lege orderlijst).
+  const data = eisData(
+    'portaal.orders',
+    await sb
+      .from('orders')
+      .select(
+        'id, ordernummer, status, goedkeuring_status, bedrag, besteldatum, created_at, aangevraagd_door, notitie, vervoerder, track_trace_code, medewerker_id, medewerkers!orders_medewerker_id_fkey(naam)',
+      )
+      .order('created_at', { ascending: false }),
+  );
 
   const orders =
     (data as unknown as (Omit<MijnOrder, 'regels' | 'medewerker_naam'> & {
@@ -94,10 +100,10 @@ export async function getMijnOrders(): Promise<MijnOrder[]> {
   if (orders.length === 0) return [];
 
   const orderIds = orders.map((o) => o.id);
-  const { data: regelData } = await sb
-    .from('orderregels')
-    .select('id, order_id, item_naam, maat, kleur, aantal')
-    .in('order_id', orderIds);
+  const regelData = eisData(
+    'portaal.orderregels',
+    await sb.from('orderregels').select('id, order_id, item_naam, maat, kleur, aantal').in('order_id', orderIds),
+  );
   const regels = (regelData as (MijnOrderRegel & { order_id: string })[]) ?? [];
 
   return orders.map((o) => {

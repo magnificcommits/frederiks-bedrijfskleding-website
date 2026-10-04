@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { PageHero } from '@/components/PageHero';
 import { CtaBand } from '@/components/CtaBand';
+import { CtaKnoppen } from '@/components/CtaKnoppen';
 import { site } from '@/content/site';
 import { catalogusOverzicht } from '@/lib/kms/catalogus';
 
@@ -65,6 +66,7 @@ export default async function OverOnsPage() {
         eyebrow="Over ons"
         title="Persoonlijke aandacht is bij ons geen extra"
         intro={`${site.name} wordt gerund door ${site.owner}, vanuit de Brouwersmolen in ${site.address.city} (Gld).`}
+        acties={<CtaKnoppen plek="over-ons-hero" />}
       />
 
       {/* Feitenstrook: vier dingen die je in twee seconden meeneemt. */}

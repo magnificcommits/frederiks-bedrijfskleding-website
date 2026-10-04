@@ -324,3 +324,33 @@ export async function geefPortaalToegang(
   const { error } = await sb.from('portaal_gebruikers').insert(rij);
   return error ? 'mislukt' : 'toegevoegd';
 }
+
+/**
+ * Uitnodiging voor het klantportaal. Zonder deze mail wist een nieuwe gebruiker
+ * niet dat hij kon inloggen, of waar. Inloggen gaat met een link per mail: de
+ * gebruiker vult op de inlogpagina zijn adres in en krijgt de link toegestuurd.
+ * Best effort: false als mailen niet lukte (dan moet Jessi het zelf laten weten).
+ */
+export async function stuurPortaalUitnodiging(email: string, naam: string | null, orgId: string): Promise<boolean> {
+  const [{ sendEmail, emailLayout, escapeHtml }, { site }] = await Promise.all([import('@/lib/email'), import('@/content/site')]);
+  const sb = kmsAdmin();
+  const { data } = sb ? await sb.from('organisaties').select('naam').eq('id', orgId).maybeSingle() : { data: null };
+  const klant = (data as { naam: string | null } | null)?.naam ?? null;
+  const inlog = `${site.url}/portaal/login`;
+  const res = await sendEmail({
+    to: email,
+    replyTo: site.email,
+    subject: 'Je toegang tot het klantportaal van Frederiks Bedrijfskleding',
+    html: emailLayout({
+      heading: 'Welkom in het klantportaal',
+      preheader: 'Je kunt nu inloggen in het klantportaal.',
+      bodyHtml: `
+        <p style="margin:0;">${naam ? `Hallo ${escapeHtml(naam)},` : 'Hallo,'}</p>
+        <p style="margin:14px 0 0;">Je hebt toegang gekregen tot het klantportaal van Frederiks Bedrijfskleding${klant ? ` voor ${escapeHtml(klant)}` : ''}. Daar bestel je kleding, volg je bestellingen en keur je drukproeven goed.</p>
+        <p style="margin:14px 0 0;">Ga naar <a href="${escapeHtml(inlog)}">${escapeHtml(inlog)}</a> en vul dit e-mailadres in (${escapeHtml(email)}). Je krijgt dan een inloglink toegestuurd. Een wachtwoord is niet nodig.</p>
+        <p style="margin:14px 0 0;">Vragen? Bel of app gerust: <strong>${escapeHtml(site.phone)}</strong>.</p>
+      `,
+    }),
+  }).catch(() => ({ sent: false }));
+  return res.sent;
+}

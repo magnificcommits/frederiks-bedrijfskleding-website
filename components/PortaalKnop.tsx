@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createPortalBrowserClient } from '@/lib/portaal/supabaseBrowser';
 
 /**
  * Context-bewuste inlog-ingang. Toont standaard een rustige "Inloggen"-link.
@@ -12,10 +11,20 @@ export default function PortaalKnop({ className }: { className?: string }) {
   const [ingelogd, setIngelogd] = useState(false);
 
   useEffect(() => {
-    const sb = createPortalBrowserClient();
-    if (sb) {
-      sb.auth.getSession().then(({ data }) => setIngelogd(Boolean(data.session)));
-    }
+    // Supabase (tientallen kB) alleen laden als er een sessiecookie staat. Een
+    // eerste bezoeker op de homepage heeft die nooit en hoeft dat dus ook niet
+    // te downloaden; dat scheelt JavaScript op elke publieke pagina.
+    if (!/(^|;\s*)sb-[^=]*-auth-token/.test(document.cookie)) return;
+    let actief = true;
+    import('@/lib/portaal/supabaseBrowser').then(({ createPortalBrowserClient }) => {
+      const sb = createPortalBrowserClient();
+      sb?.auth.getSession().then(({ data }) => {
+        if (actief) setIngelogd(Boolean(data.session));
+      });
+    });
+    return () => {
+      actief = false;
+    };
   }, []);
 
   if (ingelogd) {

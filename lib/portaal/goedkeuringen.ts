@@ -1,5 +1,7 @@
 import { getServerSupabase } from './supabaseServer';
-import { stuurStatusMail, stuurLeverancierBestelmail } from '@/lib/kms/notificaties';
+import { eisRijen } from '@/lib/dbFout';
+import { stuurStatusMail } from '@/lib/kms/notificaties';
+import { genereerInkoopregels, annuleerInkoopVoorOrder, volgOrderNaInkoop } from '@/lib/kms/inkoop';
 
 export type OrderRegel = {
   id: string;
@@ -132,18 +134,34 @@ export async function beslisOverOrder(
   const sb = await getServerSupabase();
   if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
   const nieuweStatus = besluit === 'goedgekeurd' ? 'nog_bestellen' : 'geannuleerd';
-  const { error } = await sb
-    .from('orders')
-    .update({
-      goedkeuring_status: besluit,
-      goedgekeurd_door: doorNaam,
-      status: nieuweStatus,
-    })
-    .eq('id', orderId);
-  if (error) return { ok: false, error: error.message };
-  // Statusupdate naar de besteller; bij goedkeuring ook de bestelmail naar de leverancier(s).
-  // Best effort: een mislukte mail laat de beslissing nooit falen.
+  // Alleen een order die echt nog wacht en die RLS deze gebruiker laat wijzigen.
+  // Zonder deze voorwaarde kon een tweede klik (of een oud tabblad) een order die al
+  // in productie is alsnog annuleren. RLS geeft bij een vreemd order-id 0 rijen: zonder
+  // de controle zou het vervolg hieronder (service-role) voor een ander bedrijf lopen.
+  const r = eisRijen(
+    'portaal.beslisOverOrder',
+    await sb
+      .from('orders')
+      .update({
+        goedkeuring_status: besluit,
+        goedgekeurd_door: doorNaam,
+        status: nieuweStatus,
+      })
+      .eq('id', orderId)
+      .eq('goedkeuring_status', 'wacht')
+      .select('id'),
+    'Order niet gevonden of al beoordeeld.',
+  );
+  if (!r.ok) return { ok: false, error: r.fout };
+  // Zelfde vervolg als goedkeuren in het KMS: inkoopregels voor wat niet op
+  // voorraad is; bij afwijzen eventuele open inkoop intrekken.
+  if (besluit === 'goedgekeurd') {
+    await genereerInkoopregels(orderId).catch(() => 0);
+    await volgOrderNaInkoop(orderId).catch(() => null);
+  } else await annuleerInkoopVoorOrder(orderId).catch(() => null);
+  // Statusupdate naar de besteller (best effort). Bestellen bij de leverancier
+  // gaat via Inkoop, op basis van de inkoopregels hierboven; een directe
+  // bestelmail hier zorgde voor dubbel bestellen.
   await stuurStatusMail(orderId).catch(() => {});
-  if (besluit === 'goedgekeurd') await stuurLeverancierBestelmail(orderId).catch(() => {});
   return { ok: true };
 }

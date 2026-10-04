@@ -5,10 +5,10 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { logAudit } from '@/lib/kms/audit';
-import { saveLead } from '@/lib/supabase';
+import { neemWebleadIn } from '@/lib/kms/leadInname';
 import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
 import { env } from '@/lib/env';
-import { rateLimit } from '@/lib/ratelimit';
+import { publiekeLimiet, rateLimit } from '@/lib/ratelimit';
 import { site } from '@/content/site';
 import { meldAdres } from '@/content/kennismaking';
 import {
@@ -49,7 +49,7 @@ export async function pasdagAanvraagActie(_vorige: PasdagStaat, formData: FormDa
   if (String(formData.get('bedrijfswebsite') ?? '').trim()) return { ok: true, fout: null };
 
   const ip = await ipAdres();
-  if (!rateLimit(`pasdag:${ip}`, 5, 600_000) || !rateLimit(`pasdag-token:${token}`, 10, 3_600_000)) {
+  if (!rateLimit(`pasdag-token:${token}`, 10, 3_600_000) || !(await publiekeLimiet('pasdag', ip, 5, 600_000))) {
     return { ok: false, fout: `Er kwamen net al een paar aanvragen binnen. Probeer het later nog eens, of bel ${site.phone}.` };
   }
 
@@ -75,17 +75,29 @@ export async function pasdagAanvraagActie(_vorige: PasdagStaat, formData: FormDa
     d.opmerking ? `Voorkeur / opmerking: ${d.opmerking}` : null,
   ].filter(Boolean).join('\n');
 
-  // 1. Lead volgens het bestaande patroon (best effort).
-  await saveLead({
-    name: d.naam,
-    company: bedrijf,
-    email: d.email || p?.email || '',
-    phone: d.telefoon || null,
-    branche: p?.branche ?? null,
-    aantal: d.aantal || null,
-    bericht,
-    bron: `Kennismakingsbrief (QR) | ${token}`,
-  }).catch(() => ({ saved: false }));
+  // 1. Lead in het KMS. De opvolgtaak maakt zetProspectTaak hieronder al, dus hier niet nog een.
+  const inname = await neemWebleadIn({
+    lead: {
+      name: d.naam,
+      company: bedrijf,
+      email: d.email || p?.email || '',
+      phone: d.telefoon || null,
+      branche: p?.branche ?? null,
+      aantal: d.aantal || null,
+      bericht,
+      bron: `Kennismakingsbrief (QR) | ${token}`,
+      bron_kanaal: 'kennismaking',
+      utm_source: 'brief',
+      utm_medium: 'qr',
+      landingspagina: '/kennismaking',
+      conversiepagina: '/kennismaking',
+    },
+    opties: { taak: false, offerte: false },
+  }).catch((e) => {
+    console.error('[kennismaking] lead opslaan mislukt:', e);
+    return null;
+  });
+  if (inname && !inname.opgeslagen) console.error('[kennismaking] lead niet opgeslagen:', inname.fout);
 
   if (sb && p) {
     try {

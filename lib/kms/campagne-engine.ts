@@ -131,7 +131,7 @@ export async function laadFlow(c: CampagneRij): Promise<Flow> {
 }
 
 /** Datum (YYYY-MM-DD) in Nederlandse tijd, zoveel werkdagen vanaf nu. */
-function werkdagenVanaf(nu: Date, dagen: number): string {
+export function werkdagenVanaf(nu: Date, dagen: number): string {
   const d = new Date(nu.getTime());
   let over = Math.max(0, dagen);
   while (over > 0) {
@@ -143,7 +143,7 @@ function werkdagenVanaf(nu: Date, dagen: number): string {
 }
 
 /** 1 = maandag … 7 = zondag, in Nederlandse tijd. */
-function nlWeekdag(d: Date): number {
+export function nlWeekdag(d: Date): number {
   const kort = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', weekday: 'short' }).format(d);
   return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(kort) + 1 || 1;
 }
@@ -154,10 +154,14 @@ export function wachtTot(k: WachtKnoop, nu: Date): Date | null {
     const vandaag = nlWeekdag(nu);
     if (vandaag === k.weekdag) return null;
     const verschil = (k.weekdag - vandaag + 7) % 7;
-    const doel = new Date(nu.getTime() + verschil * DAG);
-    // Vroeg op die dag, zodat de run van die ochtend hem oppakt.
-    doel.setUTCHours(4, 0, 0, 0);
-    return doel;
+    // De doeldag als Nederlandse kalenderdatum. Eerst UTC-uren zetten op `nu + verschil`
+    // ging mis tussen 22:00/23:00 en middernacht UTC: dan is het in Nederland al de
+    // volgende dag en kwam de wachtstap een dag te vroeg uit.
+    const doelDag = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit' }).format(
+      new Date(nu.getTime() + verschil * DAG),
+    );
+    // Vroeg op die dag (04:00 UTC = 05:00/06:00 in Nederland), zodat de run van die ochtend hem oppakt.
+    return new Date(`${doelDag}T04:00:00Z`);
   }
   const ms = k.modus === 'uren' ? k.aantal * UUR : k.aantal * DAG;
   if (ms <= 0) return null;
@@ -456,6 +460,7 @@ async function triggerKandidaten(c: CampagneRij, t: Trigger): Promise<Contact[]>
   if (t.soort === 'lead_nieuw') {
     let q = sb.from('leads').select('id').gte('created_at', sinds).limit(MAX_PER_TRIGGER);
     if (t.bron) q = q.ilike('bron', `%${t.bron.replace(/[\\%_]/g, (x) => `\\${x}`)}%`);
+    if (t.kanaal) q = q.eq('bron_kanaal', t.kanaal);
     const { data } = await q;
     const m = await laadContacten({ leadIds: ((data as { id: string }[]) ?? []).map((r) => r.id) });
     return Array.from(m.values());

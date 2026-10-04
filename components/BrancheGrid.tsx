@@ -4,7 +4,7 @@ import { branches } from '@/content/branches';
 
 export function BrancheGrid() {
   return (
-    <section className="border-y border-line bg-mist">
+    <section id="branches" className="scroll-mt-20 border-y border-line bg-mist">
       <div className="container-x py-16 sm:py-24">
         <div className="max-w-2xl">
           <p className="eyebrow">Voor elke branche</p>

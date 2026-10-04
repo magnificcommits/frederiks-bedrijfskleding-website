@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { isLeadsDbConfigured } from '@/lib/env';
 import { dashAuthed, getHuidigeAdmin } from '@/lib/kms/adminClient';
 import { listTaakPersonen, standaardPersoon } from '@/lib/kms/taakPersonen';
-import { berekenKpis, herkomstAnalyse, listLeadKaarten, migratieStand, type LeadKaart } from '@/lib/kms/leads';
+import { berekenKpis, herkomstAnalyse, listLeadKaarten, listOngezieneWebleads, migratieStand, type LeadKaart } from '@/lib/kms/leads';
 import {
   GEWONNEN,
   LEAD_STATUSSEN,
@@ -15,6 +15,7 @@ import {
   vandaagNl,
 } from '@/lib/kms/leadsModel';
 import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
+import PaginaKop from '@/components/dashboard/ui/PaginaKop';
 import Drawer from '@/components/dashboard/Drawer';
 import EmptyState from '@/components/dashboard/EmptyState';
 import KpiTegel from '@/components/dashboard/overzicht/KpiTegel';
@@ -24,6 +25,7 @@ import Herkomst from './Herkomst';
 import LeadFilters from './LeadFilters';
 import NieuweLeadForm from './NieuweLeadForm';
 import LeadMelding from './LeadMelding';
+import NieuweWebleads from './NieuweWebleads';
 
 export const metadata: Metadata = { title: 'Leads', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -111,11 +113,12 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 
   const nu = new Date();
   const vandaag = vandaagNl(nu);
-  const [alle, personen, admin, migratie] = await Promise.all([
+  const [alle, personen, admin, migratie, ongezien] = await Promise.all([
     listLeadKaarten(),
     listTaakPersonen(),
     getHuidigeAdmin().catch(() => null),
     migratieStand(),
+    listOngezieneWebleads(5),
   ]);
   const actievePersonen = personen.filter((p) => p.actief);
   const mijnPersoon = standaardPersoon(personen, admin?.email ?? null);
@@ -235,29 +238,30 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   return (
     <main className="container-app py-6">
       <LeadMelding />
-      <div className="dash-kop justify-between gap-3">
-        <div className="flex min-w-0 items-baseline gap-3">
-          <h1 className="dash-h1">Leads</h1>
-          <span className="hidden text-[13px] text-warm sm:inline">{kpi.openAantal} open</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <nav aria-label="Weergave" className="inline-flex rounded-md border border-line bg-white p-0.5">
-            {(['pijplijn', 'lijst'] as const).map((w) => (
-              <Link
-                key={w}
-                href={url({ weergave: w === 'pijplijn' ? null : 'lijst' })}
-                aria-current={weergave === w ? 'page' : undefined}
-                className={`rounded px-2.5 py-1 text-[13px] font-semibold ${weergave === w ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-mist'}`}
-              >
-                {w === 'pijplijn' ? 'Pijplijn' : 'Lijst'}
-              </Link>
-            ))}
-          </nav>
-          <Drawer knop="+ Lead" titel="Lead toevoegen" beschrijving="Voor een aanvraag die niet via de website kwam: aan de telefoon, op een beurs of in de winkel.">
-            <NieuweLeadForm personen={actievePersonen.map((p) => ({ id: p.id, naam: p.naam }))} mijnPersoon={mijnPersoon} />
-          </Drawer>
-        </div>
-      </div>
+      <PaginaKop
+        titel="Leads"
+        aantal={`${kpi.openAantal} open`}
+        acties={
+          <>
+            <nav aria-label="Weergave" className="inline-flex rounded-md border border-line bg-white p-0.5">
+              {(['pijplijn', 'lijst'] as const).map((w) => (
+                <Link
+                  key={w}
+                  href={url({ weergave: w === 'pijplijn' ? null : 'lijst' })}
+                  aria-current={weergave === w ? 'page' : undefined}
+                  className={`rounded px-2.5 py-1 text-[13px] font-semibold ${weergave === w ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-mist'}`}
+                >
+                  {w === 'pijplijn' ? 'Pijplijn' : 'Lijst'}
+                </Link>
+              ))}
+            </nav>
+            <Drawer knop="+ Lead" titel="Lead toevoegen" beschrijving="Voor een aanvraag die niet via de website kwam: aan de telefoon, op een beurs of in de winkel.">
+              <NieuweLeadForm personen={actievePersonen.map((p) => ({ id: p.id, naam: p.naam }))} mijnPersoon={mijnPersoon} />
+            </Drawer>
+          </>
+        }
+      />
+      <NieuweWebleads begin={ongezien} />
 
       {!migratie.kolommen || !migratie.tijdlijn ? (
         <p className="mt-4 rounded-md border border-line bg-mist px-3 py-2 text-[12px] text-warm">

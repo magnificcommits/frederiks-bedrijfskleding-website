@@ -1,4 +1,6 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { alleRijen } from '@/lib/alleRijen';
+import { DataLaadFout, logDbFout, type DbFoutInfo } from '@/lib/dbFout';
 import { zoekWoorden, ilikeInKolommen } from '@/lib/kms/zoeken';
 import { haalAllesOp, laadVariantLijsten, tabelOntbreekt } from '@/lib/kms/varianten';
 import { fotosVan } from '@/lib/kms/catalogus';
@@ -209,7 +211,11 @@ export async function listProductenGefilterd(opts: {
 
   const { data, count, error } = await q.range(van, tot);
   if (!error) return { rijen: (data as ProductLijstRij[] | null) ?? [], totaal: count ?? 0, bron: 'view' };
-  if (!tabelOntbreekt(error)) return { rijen: [], totaal: 0, bron: 'view' };
+  if (!tabelOntbreekt(error)) {
+    // Een echte fout (geen ontbrekende view): niet doen alsof er geen producten zijn.
+    logDbFout('producten.lijst', error);
+    throw new DataLaadFout('producten.lijst', error.code ?? null);
+  }
 
   // 2. Terugval zonder view: alles ophalen (een paar honderd producten) en hier filteren.
   return terugvalLijst(f, woorden, lijst, kolom, oplopend, van, opts.perPagina);
@@ -226,14 +232,15 @@ async function terugvalLijst(
 ): Promise<{ rijen: ProductLijstRij[]; totaal: number; bron: 'terugval' }> {
   const sb = kmsAdmin();
   if (!sb) return { rijen: [], totaal: 0, bron: 'terugval' };
-  let q = sb.from('producten').select('*, product_varianten(count)').order('naam').range(0, 4999);
-  if (f.merk) q = q.eq('merk', f.merk);
-  if (f.categorie) q = q.eq('categorie', f.categorie);
-  if (f.leverancier) q = q.eq('leverancier_id', f.leverancier);
-  if (f.status) q = q.eq('actief', f.status === 'actief');
-  const { data } = await q;
   type Rij = Product & { verkoopprijs_basis?: number | null; product_varianten: { count: number }[] };
-  let producten = (data as Rij[] | null) ?? [];
+  let producten = await alleRijen<Rij>('producten.terugval', (vanaf, tot) => {
+    let q = sb.from('producten').select('*, product_varianten(count)').order('naam').order('id');
+    if (f.merk) q = q.eq('merk', f.merk);
+    if (f.categorie) q = q.eq('categorie', f.categorie);
+    if (f.leverancier) q = q.eq('leverancier_id', f.leverancier);
+    if (f.status) q = q.eq('actief', f.status === 'actief');
+    return q.range(vanaf, tot) as unknown as PromiseLike<{ data: Rij[] | null; error: DbFoutInfo }>;
+  });
 
   // Variantgegevens alleen ophalen als een filter erom vraagt.
   const variantNodig = woorden.length > 0 || !!f.kleur || !!f.maat || !!f.opVoorraad || f.prijsMin != null || f.prijsMax != null || kolom === 'voorraad_totaal' || kolom === 'prijs_vanaf';
@@ -398,21 +405,30 @@ export async function listArtikelKeuze(): Promise<ArtikelKeuze[]> {
     actief: boolean | null;
   };
 
-  const [{ data: artikelData }, { data: variantData }] = await Promise.all([
-    sb
-      .from('producten')
-      .select('id, naam, merk, categorie, sku, art_nr_leverancier, afbeeldingen, verkoopprijs_basis')
-      .eq('actief', true)
-      .order('naam')
-      .limit(5000),
-    // Alle varianten in één keer: filteren op de productlijst zou 549 uuid's in
-    // de query-URL zetten, en dat loopt PostgREST vast.
-    sb.from('product_varianten').select('product_id, kleur, verkoopprijs, actief').limit(50000),
+  // Supabase geeft per verzoek hooguit 1000 rijen terug, ook met .limit(50000).
+  // Met 25.000 varianten miste de kiezer zo bij de meeste artikelen kleuren en
+  // prijs. Daarom in blokken van 1000 (haalAllesOp, 6 tegelijk) met vaste volgorde.
+  const [artikelData, variantData] = await Promise.all([
+    alleRijen<ArtikelRij>('producten.artikelKeuze', (van, tot) =>
+      sb
+        .from('producten')
+        .select('id, naam, merk, categorie, sku, art_nr_leverancier, afbeeldingen, verkoopprijs_basis')
+        .eq('actief', true)
+        .order('naam')
+        .order('id')
+        .range(van, tot) as unknown as PromiseLike<{ data: ArtikelRij[] | null; error: DbFoutInfo }>,
+    ),
+    // Alle varianten: filteren op de productlijst zou 549 uuid's in de query-URL
+    // zetten, en dat loopt PostgREST vast.
+    haalAllesOp<VariantRij>(
+      (van, tot) => sb.from('product_varianten').select('product_id, kleur, verkoopprijs, actief').order('id').range(van, tot),
+      100,
+    ),
   ]);
 
   const kleurenVan = new Map<string, string[]>();
   const laagstePrijs = new Map<string, number>();
-  for (const v of (variantData as VariantRij[]) ?? []) {
+  for (const v of variantData) {
     // Alleen een expliciete false verbergt een variant; bij oudere rijen staat
     // hier null en die horen er gewoon bij.
     if (v.actief === false) continue;
@@ -429,7 +445,7 @@ export async function listArtikelKeuze(): Promise<ArtikelKeuze[]> {
     }
   }
 
-  return ((artikelData as ArtikelRij[]) ?? []).map((p) => {
+  return artikelData.map((p) => {
     const basis = p.verkoopprijs_basis == null ? null : Number(p.verkoopprijs_basis);
     const terugval = basis != null && Number.isFinite(basis) && basis > 0 ? basis : null;
     return {

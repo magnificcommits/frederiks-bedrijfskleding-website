@@ -1,4 +1,4 @@
-import { kmsAdmin } from '@/lib/kms/adminClient';
+import { kmsAdmin, veiligGelijk } from '@/lib/kms/adminClient';
 import { afmeldToken } from '@/lib/kms/campagne-engine';
 
 export const runtime = 'nodejs';
@@ -52,7 +52,7 @@ function leesParams(req: Request): { email: string; geldig: boolean } {
   const url = new URL(req.url);
   const email = (url.searchParams.get('e') ?? '').trim().toLowerCase();
   const token = url.searchParams.get('t') ?? '';
-  return { email, geldig: Boolean(email) && token === afmeldToken(email) };
+  return { email, geldig: Boolean(email) && veiligGelijk(token, afmeldToken(email)) };
 }
 
 /** Afmeldlink uit campagnemails en nieuwsbrieven. */

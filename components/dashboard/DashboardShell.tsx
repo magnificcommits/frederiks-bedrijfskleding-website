@@ -7,94 +7,20 @@ import { bewaarNavFavorieten } from '@/app/dashboard/navActions';
 import CommandPalette from './CommandPalette';
 import BezigBalk from './BezigBalk';
 import Toast from './Toast';
+import Sneltoetsen, { zoekToetsLabel } from './Sneltoetsen';
+import { useFocusVal } from './ui/useFocusVal';
+import {
+  BEHEER_HREF,
+  EIGENAAR_ONLY,
+  NAV_GROEPEN as groepen,
+  STANDAARD_FAVORIETEN,
+  kruimelsVoor,
+  type NavItem as Item,
+} from './navigatie';
 import InstalleerApp from '@/components/pwa/InstalleerApp';
 
 /** Waar de menu-favorieten bewaard worden: bij de beheerder in de database, of in deze browser. */
 export type NavOpslag = 'db' | 'lokaal';
-
-type Item = { href: string; label: string };
-type Groep = { titel: string; items: Item[] };
-
-/** Favorieten voor wie nog niets gekozen heeft: wat je elke dag nodig hebt. */
-const STANDAARD_FAVORIETEN: string[] = [
-  '/dashboard',
-  '/dashboard/orders',
-  '/dashboard/offertes',
-  '/dashboard/klanten',
-  '/dashboard/passessie',
-  '/dashboard/producten',
-];
-
-/** Alleen zichtbaar voor de eigenaar en bij wachtwoordlogin (zie toonBeheerders). */
-const BEHEER_HREF = '/dashboard/admins';
-
-const groepen: Groep[] = [
-  { titel: 'Werk', items: [
-    { href: '/dashboard', label: 'Overzicht' },
-    { href: '/dashboard/taken', label: 'Taken en afspraken' },
-    { href: '/dashboard/meldingen', label: 'Meldingen' },
-  ] },
-  { titel: 'Verkoop', items: [
-    { href: '/dashboard/leads', label: 'Leads' },
-    { href: '/dashboard/klanten', label: 'Klanten' },
-    { href: '/dashboard/passessie', label: 'Passen en maten' },
-    { href: '/dashboard/medewerker-verzoeken', label: 'Medewerker-verzoeken' },
-    { href: '/dashboard/offertes', label: 'Offertes' },
-    { href: '/dashboard/orders', label: 'Orders' },
-    { href: '/dashboard/facturen', label: 'Facturen' },
-    { href: '/dashboard/sparen', label: 'Sparen' },
-  ] },
-  { titel: 'Groei', items: [
-    { href: '/dashboard/prospects', label: 'Prospects' },
-    { href: '/dashboard/prospects/brieven', label: 'Brieven met QR' },
-    { href: '/dashboard/campagnes', label: 'Campagnes' },
-    { href: '/dashboard/nieuwsbrief', label: 'Nieuwsbrief' },
-  ] },
-  { titel: 'Catalogus', items: [
-    { href: '/dashboard/producten', label: 'Producten' },
-    { href: '/dashboard/voorraad', label: 'Voorraad' },
-    { href: '/dashboard/leveranciers', label: 'Leveranciers' },
-    { href: '/dashboard/inkoop', label: 'Inkoop' },
-  ] },
-  { titel: 'Productie', items: [
-    { href: '/dashboard/logos', label: 'Werkbonnen en logo’s' },
-    { href: '/dashboard/drukproeven', label: 'Drukproeven' },
-  ] },
-  { titel: 'Service', items: [
-    { href: '/dashboard/retouren', label: 'Retouren' },
-    { href: '/dashboard/klachten', label: 'Klachten en vragen' },
-  ] },
-  { titel: 'Inzicht', items: [
-    { href: '/dashboard/analyse', label: 'Analyse' },
-    { href: '/dashboard/rapportages', label: 'Rapportages' },
-    { href: '/dashboard/ai-assistent', label: 'AI-assistent' },
-  ] },
-  { titel: 'Systeem', items: [
-    { href: '/dashboard/instellingen', label: 'Instellingen' },
-    { href: BEHEER_HREF, label: 'Beheerders' },
-    { href: '/dashboard/beveiliging', label: 'Beveiliging (2FA)' },
-    { href: '/dashboard/import', label: 'Import' },
-    { href: '/dashboard/export', label: 'Export CSV' },
-    { href: '/dashboard/audit', label: 'Logboek' },
-  ] },
-];
-
-// Onderdelen die alleen de eigenaar ziet (instellingen, beheer, financien, groei, systeem).
-// Medewerkers en lezers krijgen deze niet in de nav (ook niet in favorieten) en worden
-// server-side geweerd.
-const EIGENAAR_ONLY = new Set<string>([
-  '/dashboard/prospects',
-  '/dashboard/prospects/brieven',
-  '/dashboard/campagnes',
-  '/dashboard/facturen',
-  '/dashboard/sparen',
-  '/dashboard/analyse',
-  '/dashboard/rapportages',
-  '/dashboard/import',
-  '/dashboard/export',
-  '/dashboard/audit',
-  '/dashboard/instellingen',
-]);
 
 const NAV_SLEUTEL = 'fb_nav_groepen';
 const FAV_SLEUTEL = 'fb_nav_favorieten';
@@ -172,6 +98,10 @@ export function DashboardShell({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [toetsenOpen, setToetsenOpen] = useState(false);
+  const [zoekLabel, setZoekLabel] = useState('Ctrl K');
+  const mobielMenu = useRef<HTMLDivElement>(null);
+  useFocusVal(mobielMenu, open, () => setOpen(false));
   const [uitgeklapt, setUitgeklapt] = useState<Record<string, boolean>>({});
   const [favorieten, setFavorieten] = useState<string[] | null>(navFavorieten);
   const [bewerken, setBewerken] = useState(false);
@@ -266,6 +196,19 @@ export function DashboardShell({
   useEffect(() => () => {
     if (bewaarTimer.current) clearTimeout(bewaarTimer.current);
   }, []);
+
+  useEffect(() => setZoekLabel(zoekToetsLabel()), []);
+
+  // Naar een andere pagina: het telefoonmenu dicht.
+  useEffect(() => setOpen(false), [pathname]);
+
+  const openZoeken = useCallback(() => setSearchOpen(true), []);
+  const openToetsen = useCallback(() => setToetsenOpen(true), []);
+  const sluitToetsen = useCallback(() => setToetsenOpen(false), []);
+
+  // Op een telefoon in de bovenbalk: één stap terug op een detailpagina.
+  const kruimels = kruimelsVoor(pathname ?? '');
+  const terugStap = (pathname ?? '').split('/').filter(Boolean).length > 2 ? kruimels[kruimels.length - 1] : null;
 
   /**
    * Zonder eigen keuze staat alleen de groep van de huidige pagina open, behalve als
@@ -423,26 +366,33 @@ export function DashboardShell({
       <button
         type="button"
         onClick={() => { setOpen(false); setSearchOpen(true); }}
-        className="flex items-center justify-between rounded border border-ink-700 px-2.5 py-1.5 text-[13px] text-ink-300 hover:bg-ink-800"
+        aria-keyshortcuts="Control+K Meta+K"
+        className="flex items-center justify-between rounded border border-ink-700 px-2.5 py-1.5 text-[13px] text-ink-200 hover:bg-ink-800 max-md:min-h-[44px]"
       >
-        <span>Zoeken…</span>
-        <kbd className="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] font-semibold text-ink-200">⌘K</kbd>
+        <span className="flex items-center gap-2">
+          <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <circle cx="9" cy="9" r="5.5" />
+            <path d="M13.2 13.2L17 17" />
+          </svg>
+          Zoeken…
+        </span>
+        <kbd className="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] font-semibold text-ink-200 [@media(pointer:coarse)]:hidden">{zoekLabel}</kbd>
       </button>
 
       <section aria-label="Favorieten">
         <div className="mb-1 flex items-center justify-between px-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-400">Favorieten</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-300">Favorieten</p>
           <button
             type="button"
             onClick={() => setBewerken((v) => !v)}
             aria-label={bewerken ? 'Klaar met favorieten bewerken' : 'Favorieten bewerken'}
-            className="rounded px-1 text-[11px] font-semibold text-ink-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="rounded px-1 text-[11px] font-semibold text-ink-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 max-md:min-h-[32px] max-md:px-2"
           >
             {bewerken ? 'Klaar' : 'Bewerken'}
           </button>
         </div>
         {zichtbareFavorieten.length === 0 ? (
-          <p className="px-2 py-1 text-[12px] leading-snug text-ink-400">
+          <p className="px-2 py-1 text-[12px] leading-snug text-ink-300">
             Zet een ster bij een menu-item om het hier vast te zetten.
           </p>
         ) : (
@@ -451,7 +401,7 @@ export function DashboardShell({
           </div>
         )}
         {bewerken && (
-          <div className="mt-1.5 flex flex-col gap-1 px-2 text-[11px] leading-snug text-ink-400">
+          <div className="mt-1.5 flex flex-col gap-1 px-2 text-[11px] leading-snug text-ink-300">
             <p>Pijltjes zetten de volgorde, de ster haalt een item weg. Toevoegen doe je met de ster in de lijst hieronder.</p>
             {favorieten !== null && (
               <button
@@ -477,7 +427,7 @@ export function DashboardShell({
                 type="button"
                 onClick={() => schakelGroep(g.titel)}
                 aria-expanded={uit}
-                className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-400 hover:bg-ink-800 hover:text-ink-200"
+                className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-300 hover:bg-ink-800 hover:text-white max-md:py-2.5"
               >
                 <span className={heeftFel ? 'text-amber-500' : g.titel === actieveGroep ? 'text-ink-200' : undefined}>
                   {g.titel}
@@ -493,35 +443,100 @@ export function DashboardShell({
       <div className="mt-auto border-t border-ink-800 pt-3">
         <InstalleerApp gebied="kms" variant="zijbalk" />
         {adminNaam && (
-          <p className="mb-1.5 truncate px-2 text-[11px] text-ink-400" title={adminNaam}>
+          <p className="mb-1.5 truncate px-2 text-[11px] text-ink-300" title={adminNaam}>
             Ingelogd als <span className="font-semibold text-ink-200">{adminNaam}</span>
           </p>
         )}
-        <form action={logout}>
-          <button className="px-2 text-[13px] font-semibold text-ink-300 hover:text-white">Uitloggen</button>
-        </form>
+        <div className="flex items-center justify-between gap-2">
+          <form action={logout}>
+            <button className="rounded px-2 py-1 text-[13px] font-semibold text-ink-300 hover:text-white max-md:min-h-[44px]">Uitloggen</button>
+          </form>
+          <button
+            type="button"
+            onClick={() => { setOpen(false); setToetsenOpen(true); }}
+            aria-keyshortcuts="Shift+?"
+            className="rounded px-2 py-1 text-[11px] font-semibold text-ink-300 hover:bg-ink-800 hover:text-white [@media(pointer:coarse)]:hidden"
+          >
+            Sneltoetsen <kbd className="ml-1 rounded bg-ink-800 px-1 text-[10px]">?</kbd>
+          </button>
+        </div>
       </div>
     </nav>
   );
 
   return (
     <div className="min-h-screen md:flex">
-      <div className="flex items-center justify-between border-b border-line bg-ink-900 px-4 py-3 md:hidden">
-        <div>
-          <span className="font-display text-base font-extrabold text-white">FREDERIKS</span>
-          <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-500">KMS</span>
+      <a
+        href="#inhoud"
+        className="sr-only z-[100] rounded-md bg-amber-500 px-3 py-2 text-sm font-semibold text-ink-900 focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+      >
+        Naar de inhoud
+      </a>
+      <div className="flex items-center justify-between gap-2 border-b border-line bg-ink-900 px-3 py-2 md:hidden">
+        {terugStap ? (
+          <Link
+            href={terugStap.href}
+            className="flex min-h-[44px] min-w-0 items-center gap-1 rounded px-1 text-[15px] font-semibold text-white"
+          >
+            <span aria-hidden="true" className="text-xl leading-none text-amber-500">‹</span>
+            <span className="truncate"><span className="sr-only">Terug naar </span>{terugStap.label}</span>
+          </Link>
+        ) : (
+          <Link href="/dashboard" className="flex min-h-[44px] items-center px-1">
+            <span className="font-display text-base font-extrabold text-white">FREDERIKS</span>
+            <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-500">KMS</span>
+          </Link>
+        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label="Zoeken"
+            className="flex h-11 w-11 items-center justify-center rounded border border-ink-700 text-white"
+          >
+            <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <circle cx="9" cy="9" r="5.5" />
+              <path d="M13.2 13.2L17 17" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-controls="kms-menu-mobiel"
+            className="min-h-[44px] rounded border border-ink-700 px-3 text-sm font-semibold text-white"
+          >
+            Menu
+          </button>
         </div>
-        <button onClick={() => setOpen((v) => !v)} aria-label="Menu" aria-expanded={open} className="min-h-[40px] rounded border border-ink-700 px-3 py-1 text-sm font-semibold text-white">Menu</button>
       </div>
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <button type="button" aria-label="Menu sluiten" onClick={() => setOpen(false)} className="absolute inset-0 cursor-pointer bg-black/40" />
-          <div className="absolute left-0 top-0 h-full w-72 max-w-[85%] bg-ink-900 shadow-2xl">{nav}</div>
+          <button type="button" tabIndex={-1} aria-hidden="true" onClick={() => setOpen(false)} className="absolute inset-0 cursor-pointer bg-black/40" />
+          <div
+            ref={mobielMenu}
+            id="kms-menu-mobiel"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            className="absolute left-0 top-0 h-full w-72 max-w-[85%] bg-ink-900 shadow-2xl"
+          >
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Menu sluiten"
+              className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded text-xl text-ink-200 hover:bg-ink-800 hover:text-white"
+            >
+              <span aria-hidden="true">✕</span>
+            </button>
+            {nav}
+          </div>
         </div>
       )}
       <aside className="hidden w-60 shrink-0 bg-ink-900 md:sticky md:top-0 md:block md:h-screen">{nav}</aside>
-      <main className="min-w-0 flex-1">{children}</main>
+      <div id="inhoud" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">{children}</div>
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <Sneltoetsen open={toetsenOpen} onOpen={openToetsen} onSluit={sluitToetsen} onZoek={openZoeken} />
       <BezigBalk />
       <Toast />
     </div>

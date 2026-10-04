@@ -57,21 +57,22 @@ export function offerteTotalen(
   regels: { aantal: number | null; stukprijs: number | null; korting_pct?: number | null; inkoop?: number | null }[],
   btwPct: number | null | undefined,
 ): { subtotaal: number; korting: number; btw: number; totaal: number; marge: number } {
+  // Zelfde rekenregels als de factuur (lib/kms/facturen.ts regelBedrag): korting tussen
+  // 0 en 100%, elk regelbedrag op centen, en zonder tarief 21% (zoals het document toont).
+  const r2 = (n: number) => Math.round(n * 100) / 100;
   let bruto = 0;
   let netto = 0;
   let kostprijs = 0;
   for (const r of regels) {
     const aantal = Number(r.aantal) || 0;
     const stuk = Number(r.stukprijs) || 0;
-    const kort = Number(r.korting_pct) || 0;
-    const regelBruto = aantal * stuk;
-    bruto += regelBruto;
-    netto += regelBruto * (1 - kort / 100);
+    const kort = Math.min(100, Math.max(0, Number(r.korting_pct) || 0));
+    bruto += r2(aantal * stuk);
+    netto += r2(aantal * stuk * (1 - kort / 100));
     if (r.inkoop != null && Number.isFinite(Number(r.inkoop))) kostprijs += aantal * Number(r.inkoop);
   }
-  const pct = Number(btwPct);
-  const btw = netto * (Number.isFinite(pct) ? pct : 0) / 100;
-  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const pct = btwPct == null || !Number.isFinite(Number(btwPct)) ? 21 : Number(btwPct);
+  const btw = (r2(netto) * pct) / 100;
   return {
     subtotaal: r2(netto),
     korting: r2(bruto - netto),

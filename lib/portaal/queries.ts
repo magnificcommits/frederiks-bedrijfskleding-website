@@ -1,4 +1,5 @@
 import { getServerSupabase } from './supabaseServer';
+import { eisRijen } from '@/lib/dbFout';
 
 export type KledingItem = {
   id: string; naam: string; merk: string | null; kleur: string | null;
@@ -103,15 +104,36 @@ export async function getMatenMap(medewerkerId: string): Promise<Record<string, 
   return map;
 }
 
-/** Verbruik per medewerker: som van de waarde van hun bestellingen, als map { medewerkerId: bedrag }. */
+/**
+ * Verbruik per medewerker als map { medewerkerId: bedrag }. Zelfde rekenwijze als
+ * de budgetcheck in de webshop (getBudgetVerbruik): som van aantal x stukprijs
+ * over de orders van de medewerker, zonder afgewezen en geannuleerde orders.
+ * Vroeger kwam dit uit de oude tabel portaal_bestellingen; daardoor zag de
+ * beheerder hier een ander bedrag dan waar de webshop op blokkeerde.
+ */
 export async function getVerbruik(): Promise<Record<string, number>> {
   const sb = await getServerSupabase();
   if (!sb) return {};
-  const { data } = await sb.from('portaal_bestellingen').select('medewerker_id, waarde');
+  const { data: orders } = await sb
+    .from('orders')
+    .select('id, medewerker_id')
+    .not('medewerker_id', 'is', null)
+    .neq('status', 'geannuleerd')
+    .neq('goedkeuring_status', 'afgewezen')
+    .limit(5000);
+  const medewerkerVan = new Map<string, string>();
+  for (const o of (orders as { id: string; medewerker_id: string | null }[]) ?? []) {
+    if (o.medewerker_id) medewerkerVan.set(o.id, o.medewerker_id);
+  }
   const map: Record<string, number> = {};
-  ((data as { medewerker_id: string | null; waarde: number | null }[]) ?? []).forEach((r) => {
-    if (r.medewerker_id) map[r.medewerker_id] = (map[r.medewerker_id] ?? 0) + (Number(r.waarde) || 0);
-  });
+  const ids = [...medewerkerVan.keys()];
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data: regels } = await sb.from('orderregels').select('order_id, aantal, stukprijs').in('order_id', ids.slice(i, i + 200));
+    for (const r of (regels as { order_id: string; aantal: number | null; stukprijs: number | null }[]) ?? []) {
+      const mw = medewerkerVan.get(r.order_id);
+      if (mw) map[mw] = (map[mw] ?? 0) + (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0);
+    }
+  }
   return map;
 }
 
@@ -125,15 +147,14 @@ export async function maakMedewerker(organisatieId: string, naam: string, functi
 export async function verwijderMedewerker(id: string): Promise<boolean> {
   const sb = await getServerSupabase();
   if (!sb) return false;
-  const { error } = await sb.from('medewerkers').delete().eq('id', id);
-  return !error;
+  // .select(): 0 rijen betekent dat RLS het stil weigerde; dat is geen succes.
+  return eisRijen('portaal.verwijderMedewerker', await sb.from('medewerkers').delete().eq('id', id).select('id')).ok;
 }
 
 export async function zetBudget(medewerkerId: string, budget: number | null): Promise<boolean> {
   const sb = await getServerSupabase();
   if (!sb) return false;
-  const { error } = await sb.from('medewerkers').update({ budget }).eq('id', medewerkerId);
-  return !error;
+  return eisRijen('portaal.zetBudget', await sb.from('medewerkers').update({ budget }).eq('id', medewerkerId).select('id')).ok;
 }
 
 /** Slaat de maat voor een medewerker en kledinglijn-item op (upsert). */

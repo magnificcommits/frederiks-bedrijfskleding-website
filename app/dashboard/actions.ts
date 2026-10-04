@@ -48,6 +48,7 @@ export async function login(formData: FormData) {
  * per e-mailadres en 10 per IP-adres per 15 minuten. Elke aanvraag telt mee.
  */
 export async function controleerLinkAanvraag(emailRuw: string): Promise<{ ok: boolean; fout?: string }> {
+  // auth: publiek (rate limit vóór het aanvragen van een inloglink; geeft geen gegevens prijs).
   const email = String(emailRuw ?? '').toLowerCase().trim().slice(0, 254);
   if (!email || !email.includes('@')) return { ok: false, fout: 'Vul een geldig e-mailadres in.' };
   const ip = await ipUitHeaders();

@@ -2,6 +2,7 @@ import { cache } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { kolomOntbreekt } from '@/lib/kms/kolomTerugval';
+import { logDbFout } from '@/lib/dbFout';
 import {
   STANDAARD_LIJSTEN,
   kleurSleutel,
@@ -347,7 +348,11 @@ export async function haalAllesOp<T>(
     );
     let klaar = false;
     for (const b of blokken) {
-      if (b.error) return uit;
+      if (b.error) {
+        // Niet stil een halve lijst teruggeven zonder spoor: in de serverlog zetten.
+        logDbFout('varianten.haalAllesOp', b.error);
+        return uit;
+      }
       const rijen = (b.data as T[] | null) ?? [];
       uit.push(...rijen);
       if (rijen.length < BLOK) klaar = true;

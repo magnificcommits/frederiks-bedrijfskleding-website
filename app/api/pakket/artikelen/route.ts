@@ -12,9 +12,10 @@ export const dynamic = 'force-dynamic';
  * blijven hier expliciet buiten.
  */
 export async function GET(req: Request) {
+  // auth: publiek (alleen publieke catalogusvelden, zie hierboven).
   const sp = new URL(req.url).searchParams;
-  const type = (sp.get('type') ?? '').trim();
-  const kleur = (sp.get('kleur') ?? '').trim() || undefined;
+  const type = (sp.get('type') ?? '').trim().slice(0, 60);
+  const kleur = (sp.get('kleur') ?? '').trim().slice(0, 60) || undefined;
   if (!type) return NextResponse.json({ artikelen: [] });
   const artikelen = await artikelenVoorType(type, kleur);
   return NextResponse.json(

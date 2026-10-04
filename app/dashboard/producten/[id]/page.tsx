@@ -1,3 +1,4 @@
+import Kruimelpad from '@/components/dashboard/ui/Kruimelpad';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
@@ -92,8 +93,10 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   return (
     <main className="container-app py-6">
       <div className="dash-kop justify-between gap-4">
-        <h1 className="dash-h1">{product.naam}</h1>
-        <Link href="/dashboard/producten" className="knop-tekst">Terug naar producten</Link>
+        <div className="min-w-0">
+          <Kruimelpad />
+          <h1 className="dash-h1">{product.naam}</h1>
+        </div>
       </div>
 
       {/* Kerngegevens links in een meelopende rail, de rest op tabbladen. */}

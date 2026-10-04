@@ -24,7 +24,13 @@ export async function GET(req: Request) {
   if (!isIsoDatum(van) || !isIsoDatum(tot)) return tekst('Kies een begin- en einddatum.');
   if (van > tot) return tekst('De begindatum ligt na de einddatum.');
 
-  const facturen = await facturenInPeriode(van, tot);
+  let facturen: Awaited<ReturnType<typeof facturenInPeriode>>;
+  try {
+    facturen = await facturenInPeriode(van, tot);
+  } catch {
+    // Liever geen bestand dan een onvolledig bestand bij de accountant (details in de serverlog).
+    return tekst('De facturen konden niet volledig worden opgehaald. Probeer het opnieuw; er is geen bestand gemaakt.', 503);
+  }
   const naamBasis = `facturen-${van}-tm-${tot}`;
   await logAudit('facturen_export_boekhouding', { entiteit: 'facturen', details: { formaat, van, tot, aantal: facturen.length } });
 

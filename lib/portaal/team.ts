@@ -1,4 +1,5 @@
 import { getServerSupabase } from './supabaseServer';
+import { eisRijen } from '@/lib/dbFout';
 
 export type PortaalRol = 'beheerder' | 'leidinggevende' | 'medewerker';
 
@@ -170,9 +171,9 @@ export async function wijzigRol(email: string, rol: PortaalRol): Promise<{ ok: b
 export async function trekToegangIn(email: string): Promise<{ ok: boolean; error?: string }> {
   const sb = await getServerSupabase();
   if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
-  const { error } = await sb.from('portaal_gebruikers').delete().ilike('email', email);
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  // .select(): RLS weigert stil (0 rijen) als je geen beheerder bent of het een ander bedrijf is.
+  const r = eisRijen('portaal.trekToegangIn', await sb.from('portaal_gebruikers').delete().ilike('email', email).select('id'));
+  return r.ok ? { ok: true } : { ok: false, error: r.fout };
 }
 
 /** Geeft een bestaande medewerker (zonder account) toegang met een rol. Alleen beheerder (RLS). */
@@ -202,9 +203,8 @@ export async function geefToegang(input: {
 export async function zetBudget(medewerkerId: string, budget: number | null): Promise<{ ok: boolean; error?: string }> {
   const sb = await getServerSupabase();
   if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
-  const { error } = await sb.from('medewerkers').update({ budget }).eq('id', medewerkerId);
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  const r = eisRijen('portaal.zetBudget', await sb.from('medewerkers').update({ budget }).eq('id', medewerkerId).select('id'));
+  return r.ok ? { ok: true } : { ok: false, error: r.fout };
 }
 
 // --- Detailinstellingen per medewerker: budget + vestiging + voorkeursmaten ---
@@ -313,7 +313,7 @@ export async function zetBudgetInstellingen(
 ): Promise<{ ok: boolean; error?: string }> {
   const sb = await getServerSupabase();
   if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
-  const { error } = await sb
+  const { data, error } = await sb
     .from('medewerkers')
     .update({
       budget_type: velden.budget_type,
@@ -325,9 +325,11 @@ export async function zetBudgetInstellingen(
       budget_periode: velden.budget_periode,
       behoud_restbudget: velden.behoud_restbudget,
     })
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
   if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  const r = eisRijen('portaal.zetBudgetInstellingen', { data, error });
+  return r.ok ? { ok: true } : { ok: false, error: r.fout };
 }
 
 /** Koppelt een medewerker aan een vestiging (of maakt de koppeling leeg). Alleen beheerder (RLS). */
@@ -337,9 +339,8 @@ export async function zetVestiging(
 ): Promise<{ ok: boolean; error?: string }> {
   const sb = await getServerSupabase();
   if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
-  const { error } = await sb.from('medewerkers').update({ vestiging_id: vestigingId }).eq('id', medewerkerId);
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  const r = eisRijen('portaal.zetVestiging', await sb.from('medewerkers').update({ vestiging_id: vestigingId }).eq('id', medewerkerId).select('id'));
+  return r.ok ? { ok: true } : { ok: false, error: r.fout };
 }
 
 /** Lijst van vestigingen van de eigen organisatie. RLS borgt de scope. */
@@ -418,7 +419,6 @@ export async function zetVoorkeursmaat(
 export async function verwijderVoorkeursmaat(id: string): Promise<{ ok: boolean; error?: string }> {
   const sb = await getServerSupabase();
   if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
-  const { error } = await sb.from('medewerker_maten').delete().eq('id', id);
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  const r = eisRijen('portaal.verwijderVoorkeursmaat', await sb.from('medewerker_maten').delete().eq('id', id).select('id'));
+  return r.ok ? { ok: true } : { ok: false, error: r.fout };
 }

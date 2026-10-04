@@ -8,7 +8,8 @@ import {
   voegRegelToe,
   werkRegel,
   verwijderRegel,
-  maakOrderVanOfferte,
+  maakOrderVanOfferteMetUitkomst,
+  isOfferteStatus,
   voegPakketAlsRegels,
   getOfferte,
   getRegel,
@@ -93,11 +94,14 @@ export async function wijzigStatusActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const id = String(formData.get('offerteId') ?? '').trim();
   const status = String(formData.get('status') ?? '').trim();
-  if (id && status) {
-    await zetOfferteStatus(id, status);
-    await logAudit('offerte_status_gewijzigd', { entiteit: 'offertes', entiteitId: id, details: { status } });
-  }
-  redirect('/dashboard/offertes/' + id + '?ok=status');
+  if (!id) redirect('/dashboard/offertes');
+  if (!isOfferteStatus(status)) redirect('/dashboard/offertes/' + id + '?fout=status');
+  const ok = await zetOfferteStatus(id, status);
+  if (!ok) redirect('/dashboard/offertes/' + id + '?fout=status');
+  await logAudit('offerte_status_gewijzigd', { entiteit: 'offertes', entiteitId: id, details: { status } });
+  // Akkoord van de klant: de volgende stap is de order. Die maakt de knop
+  // "Omzetten naar order"; de melding wijst Jessi erop.
+  redirect('/dashboard/offertes/' + id + (status === 'geaccepteerd' ? '?ok=akkoord' : '?ok=status'));
 }
 
 export async function verwijderOfferteActie(formData: FormData) {
@@ -123,6 +127,8 @@ export async function voegRegelActie(formData: FormData) {
   const kleur = String(formData.get('kleur') ?? '').trim() || null;
   const maat = String(formData.get('maat') ?? '').trim() || null;
   if (!offerteId) redirect('/dashboard/offertes');
+  if (aantal < 0) redirect('/dashboard/offertes/' + offerteId + '?fout=aantal');
+  if (korting_pct < 0 || korting_pct > 100) redirect('/dashboard/offertes/' + offerteId + '?fout=korting');
   if (omschrijving) {
     await voegRegelToe(offerteId, { omschrijving, aantal, stukprijs, korting_pct, inkoop, product_id, kleur, maat });
     await logAudit('offerteregel_toegevoegd', {
@@ -145,6 +151,8 @@ export async function werkRegelActie(formData: FormData) {
   // Maat staat alleen op artikelregels in het formulier; bij vrije regels blijft hij ongemoeid.
   const maatVeld = formData.get('maat');
   const maat = maatVeld == null ? undefined : String(maatVeld).trim() || null;
+  if (aantal < 0) redirect('/dashboard/offertes/' + offerteId + '?fout=aantal');
+  if (korting_pct < 0 || korting_pct > 100) redirect('/dashboard/offertes/' + offerteId + '?fout=korting');
   if (regelId && omschrijving) {
     const voorRegel = await getRegel(regelId);
     await werkRegel(regelId, { omschrijving, aantal, stukprijs, korting_pct, ...(maat !== undefined ? { maat } : {}) });
@@ -195,10 +203,14 @@ export async function maakOrderVanOfferteActie(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const id = String(formData.get('offerteId') ?? '').trim();
   if (!id) redirect('/dashboard/offertes');
-  const orderId = await maakOrderVanOfferte(id);
-  if (!orderId) redirect('/dashboard/offertes/' + id + '?fout=order');
-  await logAudit('offerte_omgezet_naar_order', { entiteit: 'offertes', entiteitId: id, details: { orderId } });
-  redirect('/dashboard/orders/' + orderId + '?ok=uit-offerte');
+  const uitkomst = await maakOrderVanOfferteMetUitkomst(id);
+  if ('fout' in uitkomst) {
+    redirect('/dashboard/offertes/' + id + (uitkomst.fout === 'geen_regels' ? '?fout=geen_regels' : '?fout=order'));
+  }
+  // Al eerder omgezet (dubbele klik, terugknop): naar die order, geen tweede.
+  if (uitkomst.bestond) redirect('/dashboard/orders/' + uitkomst.orderId);
+  await logAudit('offerte_omgezet_naar_order', { entiteit: 'offertes', entiteitId: id, details: { orderId: uitkomst.orderId } });
+  redirect('/dashboard/orders/' + uitkomst.orderId + '?ok=uit-offerte');
 }
 
 export async function mailOfferteActie(formData: FormData) {
@@ -209,6 +221,13 @@ export async function mailOfferteActie(formData: FormData) {
   if (!to) redirect('/dashboard/offertes/' + id + '?fout=mail');
   const off = await getOfferte(id);
   if (!off) redirect('/dashboard/offertes');
+  // Een offerte zonder regels (of met alleen nul-regels) is een lege mail met een totaal van nul.
+  if (!off.regels.some((r) => (Number(r.aantal) || 0) > 0)) redirect('/dashboard/offertes/' + id + '?fout=geen_regels');
+  // Een offerte waarvan de geldigheid al voorbij is, eerst een nieuwe datum geven.
+  const vandaag = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(new Date());
+  if (off.geldig_tot && String(off.geldig_tot).slice(0, 10) < vandaag && off.status !== 'geaccepteerd') {
+    redirect('/dashboard/offertes/' + id + '?fout=verlopen');
+  }
   const nummer = off.offertenummer != null ? `#${off.offertenummer}` : '';
   const verzending = await sendEmail({
     to,

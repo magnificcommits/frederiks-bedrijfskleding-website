@@ -41,14 +41,33 @@ export default function WerkschoenenPage() {
       <BrandStrip />
 
       <section className="container-x sec-md">
-        <div className="grid items-center gap-12 lg:grid-cols-2">
-          <div className="prose-nl text-lg">
-            <p>In de Achterhoek hechten we waarde aan hard werken, betrouwbaarheid en duurzaamheid. Die waarden zie je terug in onze collectie. We leveren uitsluitend merken die bekendstaan om hun lange levensduur, stevige constructie en goede bescherming: denk aan verstevigde of stalen neuzen, antislipzolen en modellen die tegen extreme temperaturen en ruwe ondergronden kunnen.</p>
-            <p>Goede werkschoenen zijn meer dan schoeisel, het is onderdeel van elke werkdag. We helpen je niet alleen aan schoenen die voldoen aan de veiligheidsvoorschriften, maar zorgen ook dat ze comfortabel zitten en passen bij de aard van je werk. Bij ons krijg je een product én een service die past bij de no-nonsense mentaliteit van de regio.</p>
+        <div className="grid items-stretch gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-14">
+          <div className="flex flex-col justify-center">
+            <h2 className="kop-2">Schoenen die na acht uur nog goed zitten</h2>
+            <div className="prose-nl mt-5 text-lg">
+              <p>We leveren alleen merken die bekendstaan om een lange levensduur en goede bescherming: stalen of composiet neuzen, antislipzolen en modellen voor kou, hitte en ruwe ondergrond.</p>
+              <p>Veilig is het minimum. Daarna gaat het om pasvorm en comfort, want een halve maat verkeerd voel je aan het eind van de dag.</p>
+            </div>
+            <ul className="mt-6 grid gap-3 sm:grid-cols-3">
+              {[
+                { t: 'S1 tot S7', d: 'de juiste klasse voor je werk' },
+                { t: 'Passen op locatie', d: 'wij nemen de maten mee' },
+                { t: 'A-merken', d: 'Snickers, U-Power, Grisport en meer' },
+              ].map((x) => (
+                <li key={x.t} className="rounded-xl border-l-4 border-amber-500 bg-mist px-4 py-3">
+                  <span className="block font-display font-extrabold text-ink-900">{x.t}</span>
+                  <span className="text-sm text-warm">{x.d}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link href="/kledingadvies" className="btn-primary" data-cta="schoenadvies">Vraag pasadvies aan</Link>
+              <a href={`tel:${site.phoneIntl}`} className="btn-secondary">Bel {site.phone}</a>
+            </div>
           </div>
-          <div className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-line shadow-card">
+          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-line shadow-card lg:aspect-auto">
             <Image src="/veiligheidsschoenen-achterhoek-1.jpg" alt="Jessi toont een veiligheidsschoen in de showroom van Frederiks Bedrijfskleding"
-              fill sizes="(max-width: 1024px) 90vw, 45vw" className="object-cover" />
+              fill sizes="(max-width: 1024px) 90vw, 45vw" className="object-cover object-[50%_45%]" />
           </div>
         </div>
 

@@ -1,37 +1,27 @@
 import { LeadForm } from '@/components/LeadForm';
-import { site } from '@/content/site';
+import { JessiPaneel } from '@/components/JessiPaneel';
 
-/** Contactsectie met formulier op de pagina zelf. Verlaagt de drempel tot aanvragen. */
+/**
+ * Contactsectie met formulier op de pagina zelf. Formulier en het paneel met
+ * Jessi staan naast elkaar over de volle breedte, even hoog, zonder lege kolom.
+ */
 export function ContactSectie({
-  title = 'Graag komen we met je in contact',
-  intro = 'Elke branche en elk bedrijf is anders. Vertel ons wat je zoekt, dan denken we mee en stemmen we alles af op jouw situatie. We nemen snel persoonlijk contact op.',
+  title = 'Vertel wat je zoekt, wij bellen je terug',
+  intro = 'Alleen je naam en e-mailadres zijn nodig. De rest helpt ons om goed voorbereid terug te bellen.',
   defaultBranche = '',
 }: { title?: string; intro?: string; defaultBranche?: string }) {
   return (
-    <section className="border-t border-line bg-mist">
-      <div className="container-x py-16 sm:py-20">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,34rem)_minmax(0,42rem)] lg:justify-between">
-          <div>
-            <p className="eyebrow">Contact</p>
-            <h2 className="mt-3 kop-2">{title}</h2>
-            <p className="mt-4 max-w-[58ch] text-warm">{intro}</p>
-
-            <div className="mt-8 rounded-xl border border-line bg-white p-6">
-              <h3 className="text-lg font-bold text-ink-900">Kom gerust langs</h3>
-              <p className="mt-2 text-sm text-warm">{site.name}<br />{site.address.street}<br />{site.address.postalCode} {site.address.city}</p>
-              <p className="mt-3 text-sm">
-                <a href={`tel:${site.phoneIntl}`} className="font-bold text-ink-900 hover:text-amber-800">{site.phone}</a><br />
-                <a href={`mailto:${site.email}`} className="font-semibold text-amber-700 hover:underline">{site.email}</a>
-              </p>
-              <p className="mt-3 text-xs text-warm">{site.openingNote}</p>
+    <section className="border-t border-line bg-mist" id="contact">
+      <div className="container-x sec-md">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-8">
+          <div className="rounded-2xl border border-line bg-white p-6 shadow-card sm:p-8">
+            <h2 className="kop-2">{title}</h2>
+            <p className="mt-2 max-w-[60ch] text-warm">{intro}</p>
+            <div className="mt-6">
+              <LeadForm defaultBranche={defaultBranche} kaal />
             </div>
           </div>
-          <div>
-            <p className="mb-4 rounded-xl border-l-2 border-amber-500 bg-white px-4 py-3 text-sm text-warm">
-              <strong className="text-ink-900">{site.owner.split(' ')[0]}</strong> neemt binnen 24 uur persoonlijk contact met je op. Vrijblijvend, je zit nergens aan vast.
-            </p>
-            <LeadForm defaultBranche={defaultBranche} />
-          </div>
+          <JessiPaneel plek="contact-sectie" className="self-start lg:sticky lg:top-28" />
         </div>
       </div>
     </section>

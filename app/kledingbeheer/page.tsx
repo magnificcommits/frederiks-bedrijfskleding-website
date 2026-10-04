@@ -4,7 +4,7 @@ import { PageHero } from '@/components/PageHero';
 import { PortaalDemo, PortaalFragmenten } from '@/components/PortaalDemo';
 import { ContactSectie } from '@/components/ContactSectie';
 import { JsonLd } from '@/components/JsonLd';
-import { Uitklap } from '@/components/Uitklap';
+import { Faq } from '@/components/Faq';
 import { breadcrumbJsonLd, faqJsonLd, serviceJsonLd } from '@/lib/jsonld';
 import { site } from '@/content/site';
 
@@ -137,6 +137,10 @@ const stappen = [
 
 const faq = [
   {
+    q: 'Hoe richten jullie het in?',
+    a: 'Je vertelt ons wie welk werk doet en wat daarbij hoort. Wij bouwen dat na in het portaal: per functie een pakket en een budget, met jouw logo en kleuren erin. Daarna komen we langs voor de passessie. Iedereen past, wij zetten de maat per persoon vast, en vanaf dat moment klopt elke bestelling meteen. Wil iemand iets buiten zijn pakket, dan komt die vraag eerst bij jou langs en niet pas op de factuur. Alles gaat per medewerker verpakt de deur uit, met de naam op de doos.',
+  },
+  {
     q: 'Kost het kledingbeheer extra?',
     a: 'Nee. Het hoort bij de samenwerking. Neem je je bedrijfskleding bij Frederiks af, dan richten wij het portaal voor je in en gebruik je het zonder extra kosten. Je betaalt voor de kleding, het overzicht krijg je erbij.',
   },
@@ -169,75 +173,56 @@ export default function KledingbeheerPage() {
       />
 
       <PageHero
+        donker
         eyebrow="Kledingbeheer"
         title="Het duurste aan bedrijfskleding is niet de kleding. Het zijn de uren."
-        intro="Wie heeft wat, wie moet nog, wie is nieuw, past het binnen budget. Elke maand kost dat iemand tijd die eigenlijk ander werk heeft."
+        intro="Wie heeft wat, wie is nieuw, past het binnen budget. In het kledingportaal bestellen je collega’s zelf, binnen jouw functies, budgetten en maten. Jij kijkt alleen nog naar wat jouw akkoord nodig heeft."
+        acties={
+          <div className="flex flex-wrap gap-3" data-plek="kledingbeheer-hero">
+            <Link href="/afspraak" className="btn-primary" data-cta="afspraak">Laat het mij zien in 15 minuten</Link>
+            <Link href="/portaal" className="btn border-2 border-white/70 text-white hover:border-white hover:bg-white hover:text-ink-900">Ik ben al klant, inloggen</Link>
+          </div>
+        }
+        beeld={
+          <ul className="grid w-full grid-cols-3 divide-x divide-dashed divide-white/25 rounded-2xl border border-dashed border-white/25 lg:max-w-xl">
+            {cijfers.map((c) => (
+              <li key={c.label} className="px-4 py-6 text-center sm:py-8">
+                <span className="block font-display text-6xl font-extrabold leading-none tabular-nums text-amber-500 sm:text-7xl">{c.getal}</span>
+                <span className="mt-3 block text-sm font-semibold leading-snug text-white">{c.label}</span>
+              </li>
+            ))}
+          </ul>
+        }
       />
 
-      <section className="container-x py-14 sm:py-16">
-        <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-          <div>
-            <p className="prose-nl text-lg">
-              De jas is zelden het probleem, het geregel eromheen wel. In het kledingportaal bestellen je collega’s
-              zelf binnen jouw functies, budgetten en maten. Jij kijkt alleen nog naar wat écht jouw akkoord nodig
-              heeft.
-            </p>
-            <ul className="mt-7 grid grid-cols-3 gap-3 sm:gap-5">
-              {cijfers.map((c) => (
-                <li key={c.label} className="rounded-lg border-l-2 border-amber-500 bg-white py-3 pl-4 shadow-soft">
-                  <span className="block font-display text-4xl font-extrabold leading-none tabular-nums text-ink-900 sm:text-5xl">
-                    {c.getal}
-                  </span>
-                  <span className="mt-2 block text-[13px] font-semibold leading-snug text-warm">{c.label}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="card">
-            <p className="text-sm font-semibold text-ink-900">Twee manieren om verder te gaan</p>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row lg:flex-col">
-              <Link href="/offerte" className="btn-primary flex-1">
-                Laat het mij zien in 15 minuten
-              </Link>
-              <Link href="/portaal" className="btn-outline flex-1">
-                Ik ben al klant — inloggen
-              </Link>
-            </div>
-            <p className="mt-4 text-sm text-warm">Demo online of bij jou op de zaak.</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="border-y border-line bg-mist">
-        <div className="container-x py-14 sm:py-16">
-          <p className="eyebrow">Zo ziet het eruit</p>
-          <h2 className="mt-3 kop-2">Dit is het scherm waar jij op inlogt</h2>
-          <div className="mt-8">
+      <section className="border-b border-line bg-mist">
+        <div className="container-x sec-md">
+          <h2 className="kop-2">Dit is het scherm waar jij op inlogt</h2>
+          <div className="mt-6">
             <PortaalDemo />
           </div>
-          <PortaalFragmenten className="mt-12" />
+          <PortaalFragmenten className="mt-8" />
           <p className="mt-6 text-sm text-warm">Jouw logo, jouw functies. De namen hierboven zijn een voorbeeld.</p>
         </div>
       </section>
 
-      <section className="container-x py-14 sm:py-16">
-        <p className="eyebrow">Wat het je oplevert</p>
-        <h2 className="mt-3 kop-2">Zes dingen die je niet meer zelf doet</h2>
+      <section className="container-x sec-md">
+        <h2 className="kop-2">Zes dingen die je niet meer zelf doet</h2>
 
-        <div className="mt-10 overflow-hidden rounded-xl border border-line">
-          <div className="hidden grid-cols-2 border-b border-line bg-mist text-[13px] font-bold uppercase tracking-[0.14em] sm:grid">
+        <div className="mt-6 overflow-hidden rounded-2xl border border-line bg-white shadow-card">
+          <div className="hidden grid-cols-2 text-sm font-semibold sm:grid" aria-hidden="true">
             <p className="px-5 py-3 text-warm">Hoe het nu gaat</p>
-            <p className="border-l border-line px-5 py-3 text-ink-900">Met het kledingportaal</p>
+            <p className="bg-ink-900 px-5 py-3 text-white">Met het kledingportaal</p>
           </div>
-          <ul className="divide-y divide-line">
+          <ul>
             {vergelijking.map((v) => (
-              <li key={v.straks} className="grid sm:grid-cols-2">
-                <p className="bg-mist px-5 py-4 text-sm leading-relaxed text-warm sm:bg-transparent">
-                  <span className="mr-2 font-bold text-ink-300 sm:hidden">Nu</span>
-                  {v.nu}
+              <li key={v.straks} className="grid border-t border-line sm:grid-cols-2">
+                <p className="flex gap-3 px-5 py-4 text-sm leading-snug text-warm">
+                  <svg className="mt-0.5 h-4 w-4 shrink-0 text-ink-300" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+                  <span><span className="font-semibold sm:sr-only">Nu: </span>{v.nu}</span>
                 </p>
-                <p className="flex gap-3 border-t border-line px-5 py-4 text-sm leading-relaxed text-ink-800 sm:border-l sm:border-t-0">
-                  <span className="mt-0.5 shrink-0 text-amber-600">
+                <p className="flex gap-3 bg-ink-900 px-5 py-4 text-sm font-medium leading-snug text-white">
+                  <span className="mt-0.5 shrink-0 text-amber-400">
                     <Icoon pad={v.i} />
                   </span>
                   <span>{v.straks}</span>
@@ -249,71 +234,35 @@ export default function KledingbeheerPage() {
       </section>
 
       <section className="border-y border-line bg-mist">
-        <div className="container-x py-14 sm:py-16">
-          <p className="eyebrow">Hoe het werkt</p>
-          <h2 className="mt-3 kop-2">In drie stappen geregeld</h2>
-          <ol className="mt-8 border-y border-line">
-            {stappen.map((s, i) => (
-              <li
-                key={s.t}
-                className="grid gap-x-6 gap-y-1 border-b border-line py-6 last:border-b-0 sm:grid-cols-[5rem_minmax(0,1fr)]"
-              >
-                <p className="pt-1 font-display text-xl font-extrabold tabular-nums leading-none text-amber-600">
-                  {String(i + 1).padStart(2, '0')}
-                </p>
-                <div>
-                  <h3 className="kop-3 text-ink-900">{s.t}</h3>
-                  <p className="mt-1.5 max-w-[62ch] text-sm leading-relaxed text-warm">{s.d}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-8 max-w-[62ch] text-warm">
-            Je hoeft niets voor te bereiden. Eén gesprek van een half uur is genoeg om te bepalen welke functies er
-            zijn en wat daarbij hoort; de rest doen wij.
-          </p>
-        </div>
-      </section>
-
-      <section className="container-x py-14 sm:py-16">
-        <figure className="mx-auto max-w-3xl rounded-lg border-l-2 border-amber-500 bg-white p-6 shadow-card sm:p-8">
-          <blockquote className="font-display text-xl font-extrabold leading-snug text-ink-900 sm:text-2xl">
-            “Binnen een paar dagen een duidelijke offerte en een week later kreeg ik een belletje dat alles al
-            klaarlag.”
-          </blockquote>
-          <figcaption className="mt-4 text-sm text-warm">Klant uit Hengelo Gld, Google-recensie</figcaption>
-        </figure>
-      </section>
-
-      <section className="border-t border-line">
-        <div className="container-x py-14 sm:py-16">
-          <p className="eyebrow">Meer weten</p>
-          <h2 className="mt-3 kop-2">Wat inkopers ons vragen</h2>
-          <div className="mt-6 max-w-3xl border-t border-line">
-            {faq.map((f, i) => (
-              <Uitklap key={f.q} titel={f.q} samenvatting={i === 0 ? 'Nee.' : undefined}>
-                <p>{f.a}</p>
-              </Uitklap>
-            ))}
-            <Uitklap titel="Hoe richten jullie het in?">
-              <p>
-                Je vertelt ons wie welk werk doet en wat daarbij hoort. Wij bouwen dat na in het portaal: per functie
-                een pakket, per functie een budget, met jouw logo en kleuren erin. Je hoeft geen bestandje aan te
-                leveren dat je zelf nog moet uitzoeken.
-              </p>
-              <p>
-                Daarna komen we langs voor de passessie. Iedereen past, wij noteren de maat en zetten die per persoon
-                vast. Vanaf dat moment klopt elke bestelling meteen en komt er niets terug omdat het net niet zat.
-              </p>
-              <p>
-                Wil iemand iets buiten zijn pakket, dan komt die vraag eerst bij jou langs en niet pas op de factuur.
-                Alles gaat per medewerker verpakt de deur uit, met de naam op de doos, zodat uitdelen geen halve
-                ochtend meer kost.
-              </p>
-            </Uitklap>
+        <div className="container-x sec-md grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-10">
+          <div>
+            <h2 className="kop-2">In drie stappen geregeld</h2>
+            <ol className="mt-6 grid gap-6 sm:grid-cols-3">
+              {stappen.map((s, i) => (
+                <li key={s.t} className="relative">
+                  {i < stappen.length - 1 && <span className="absolute left-12 right-0 top-4 hidden border-t-2 border-dashed border-amber-400 sm:block" aria-hidden="true" />}
+                  <span className="stap-nr relative" data-stand="nu" aria-hidden="true">{i + 1}</span>
+                  <h3 className="mt-3 font-display text-[1.0625rem] font-extrabold text-ink-900">{s.t}</h3>
+                  <p className="mt-1 text-sm leading-snug text-warm">{s.d}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-6 max-w-[62ch] text-warm">
+              Je hoeft niets voor te bereiden. Eén gesprek van een half uur is genoeg om te bepalen welke functies er
+              zijn en wat daarbij hoort; de rest doen wij.
+            </p>
           </div>
+          <figure className="paneel-donker self-start p-6 sm:p-7">
+            <svg className="h-7 w-7 text-amber-500" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 18v-5c0-4 2-7 6-8l1 2c-2 1-3 2.500-3 4h3v7zm9 0v-5c0-4 2-7 6-8l1 2c-2 1-3 2.500-3 4h3v7z" /></svg>
+            <blockquote className="mt-3 font-display text-xl font-extrabold leading-snug text-white">
+              Binnen een paar dagen een duidelijke offerte en een week later kreeg ik een belletje dat alles al klaarlag.
+            </blockquote>
+            <figcaption className="mt-4 text-sm text-ink-200">Klant uit Hengelo Gld, Google-recensie</figcaption>
+          </figure>
         </div>
       </section>
+
+      <Faq items={faq} title="Wat inkopers ons vragen" />
 
       <ContactSectie
         title="Kijk een keer mee in het portaal"

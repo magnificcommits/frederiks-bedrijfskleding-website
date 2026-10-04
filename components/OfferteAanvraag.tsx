@@ -159,13 +159,13 @@ export function OfferteAanvraag({
     );
   }
 
-  const field = 'mt-1 min-h-[44px] w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink-800 shadow-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
-  const label = 'block text-sm font-medium text-ink-800';
-  const legend = 'text-sm font-medium text-ink-800';
+  const field = 'invoer';
+  const label = 'invoer-label';
+  const legend = 'font-display text-lg font-extrabold text-ink-900';
   const foutTekst = 'mt-1 text-sm font-medium text-amber-700';
 
   return (
-    <form onSubmit={onSubmit} className="card grid gap-6" noValidate>
+    <form onSubmit={onSubmit} className="grid content-start gap-7 self-start rounded-2xl border border-line bg-white p-6 shadow-card sm:p-8" noValidate>
       {/* Honeypot, verborgen voor mensen */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
 
@@ -228,12 +228,12 @@ export function OfferteAanvraag({
 
       <fieldset className="border-0 p-0">
         <legend className={legend}>Ben je al klant bij ons?</legend>
-        <div className="mt-2 flex flex-wrap gap-3">
+        <div className="mt-3 flex flex-wrap gap-2">
           {(['ja', 'nee'] as const).map((keuze) => (
             <label
               key={keuze}
-              className={`inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
-                alKlant === keuze ? 'border-amber-400 bg-amber-50 text-ink-900' : 'border-line bg-white text-warm'
+              className={`inline-flex min-h-[48px] cursor-pointer items-center gap-2.5 rounded-xl border-2 px-4 py-3 text-[15px] font-semibold transition hover:border-ink-900 ${
+                alKlant === keuze ? 'border-amber-500 bg-amber-50 text-ink-900' : 'border-ink-200 bg-white text-ink-900'
               }`}
             >
               <input
@@ -259,13 +259,13 @@ export function OfferteAanvraag({
 
       <fieldset className="border-0 p-0">
         <legend className={legend}>Wat heb je nodig?</legend>
-        <p className="mt-1 text-sm text-warm">Meerdere antwoorden mogen.</p>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <p className="mt-0.5 text-sm text-warm">Meerdere antwoorden mogen.</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {BEHOEFTEN.map((b) => (
             <label
               key={b.id}
-              className={`flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm ${
-                behoeften.includes(b.label) ? 'border-amber-400 bg-amber-50 text-ink-900' : 'border-line bg-white text-warm'
+              className={`flex min-h-[52px] cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3 text-[15px] font-semibold transition hover:border-ink-900 ${
+                behoeften.includes(b.label) ? 'border-amber-500 bg-amber-50 text-ink-900' : 'border-ink-200 bg-white text-ink-900'
               }`}
             >
               <input
@@ -363,16 +363,14 @@ export function OfferteAanvraag({
         {status === 'error' && <p className="text-sm font-medium text-amber-700">{error}</p>}
       </div>
 
-      <div>
-        <button type="submit" disabled={status === 'sending'} className="btn-primary w-full sm:w-auto">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl bg-mist p-4">
+        <button type="submit" disabled={status === 'sending'} className="btn-primary w-full px-8 py-3.5 text-base sm:w-auto">
           {status === 'sending' ? 'Versturen…' : 'Verstuur mijn aanvraag'}
         </button>
-        <p className="mt-3 text-sm font-medium text-ink-800">
-          Binnen 24 uur reactie op werkdagen. Je spreekt {voornaam} zelf, geen callcenter.
-        </p>
-        <p className="mt-1 text-sm text-warm">
-          Liever nu meteen iemand aan de lijn?{' '}
-          <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-700 hover:underline">{site.phone}</a>
+        <p className="text-sm text-ink-900">
+          <strong>Binnen 24 uur reactie, op werkdagen.</strong>
+          <br />
+          Je spreekt {voornaam} zelf. Vrijblijvend.
         </p>
       </div>
     </form>

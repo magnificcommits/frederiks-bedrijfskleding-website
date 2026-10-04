@@ -38,118 +38,129 @@ function Portret({ className = '' }: { className?: string }) {
 
 /**
  * Wie je krijgt + waarom dat anders is dan een webshop + zekerheden.
- * Eén sectie, zodat het als één verhaal leest en niet als drie losse blokjes.
+ * Links het portret van Jessi als beeld, rechts één vergelijking waarin de
+ * Frederiks-kolom het donkere vlak is. De zekerheden staan als één strook
+ * eronder, zodat het één verhaal blijft en geen zes losse blokjes.
  */
 export function WieJeKrijgt() {
   const jaren = new Date().getFullYear() - site.foundedYear;
+  const voornaam = contactpersoon.naam.split(' ')[0];
   return (
-    <section className="container-x py-16 sm:py-24" aria-labelledby="wie-je-krijgt">
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-16">
-        <div>
-          <p className="eyebrow">Wie je aan de lijn krijgt</p>
-          <h2 id="wie-je-krijgt" className="kop-2 mt-3">Geen klantenservice. Gewoon {contactpersoon.naam.split(' ')[0]}.</h2>
-          <div className="mt-6 flex items-start gap-5">
-            <Portret className="aspect-[4/5] w-32 shrink-0 sm:w-40" />
-            <div>
-              <p className="font-display text-lg font-extrabold text-ink-900">{contactpersoon.naam}</p>
-              <p className="text-sm text-warm">{contactpersoon.rol}</p>
-              <p className="mt-3 text-[15px] leading-relaxed text-ink-800">{contactpersoon.tekst}</p>
+    <section className="border-y border-line bg-mist" aria-labelledby="wie-je-krijgt">
+      <div className="container-x sec">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-8">
+          {/* Portretkaart */}
+          <div className="paneel-donker flex flex-col">
+            <div className="relative min-h-[18rem] flex-1">
+              {contactpersoon.foto ? (
+                <Image
+                  src={contactpersoon.foto}
+                  alt={`${contactpersoon.naam}, ${site.name}`}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 24rem"
+                  className="object-cover object-[62%_20%]"
+                />
+              ) : (
+                <Portret className="h-full w-full" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-ink-900 via-ink-900/10 to-transparent" aria-hidden="true" />
+            </div>
+            <div className="p-6 pt-0">
+              <p className="font-display text-xl font-extrabold text-white">{contactpersoon.naam}</p>
+              <p className="text-sm text-ink-200">{contactpersoon.rol}</p>
+              <p className="mt-3 border-l-2 border-amber-500 pl-3 text-[15px] leading-relaxed text-white">{contactpersoon.tekst}</p>
+              <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-white/15 pt-4 text-sm">
+                <div>
+                  <dt className="text-ink-300">Actief sinds</dt>
+                  <dd className="font-semibold text-white">{site.foundedYear}{jaren >= 2 ? ` (${jaren} jaar)` : ''}</dd>
+                </div>
+                <div>
+                  <dt className="text-ink-300">KvK</dt>
+                  <dd className="font-semibold text-white">{bedrijf.kvk}</dd>
+                </div>
+                <div className="col-span-2">
+                  <dt className="text-ink-300">Showroom en bedrukkerij</dt>
+                  <dd className="font-semibold text-white">{site.address.street}, {site.address.postalCode} {site.address.city} (Gld)</dd>
+                </div>
+              </dl>
             </div>
           </div>
-          <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-6 text-sm">
-            <div>
-              <dt className="text-warm">Actief sinds</dt>
-              <dd className="font-semibold text-ink-900">
-                {site.foundedYear}
-                {jaren >= 2 ? ` (${jaren} jaar)` : ''}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-warm">KvK</dt>
-              <dd className="font-semibold text-ink-900">{bedrijf.kvk}</dd>
-            </div>
-            <div className="col-span-2">
-              <dt className="text-warm">Showroom en bedrukkerij</dt>
-              <dd className="font-semibold text-ink-900">
-                {site.address.street}, {site.address.postalCode} {site.address.city} (Gld)
-              </dd>
-            </div>
-          </dl>
-        </div>
 
-        <div>
-          <h3 className="kop-3 text-ink-900">Wat je bij ons anders krijgt dan bij een webshop</h3>
-          {/* Tabel op desktop, gestapelde kaartjes op mobiel. Eén bron, twee weergaven via CSS. */}
-          <table className="mt-5 hidden w-full border-collapse text-left text-sm md:table">
-            <caption className="sr-only">Verschil tussen een webshop en {site.name}</caption>
-            <thead>
-              <tr className="border-b-2 border-ink-900">
-                <th scope="col" className="w-28 py-3 pr-4 font-semibold text-warm"><span className="sr-only">Onderwerp</span></th>
-                <th scope="col" className="py-3 pr-4 font-semibold text-warm">Webshop</th>
-                <th scope="col" className="py-3 font-semibold text-ink-900">{site.name}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {verschilMetWebshop.map((r) => (
-                <tr key={r.onderwerp} className="border-b border-line align-top">
-                  <th scope="row" className="py-4 pr-4 font-display font-extrabold text-ink-900">{r.onderwerp}</th>
-                  <td className="py-4 pr-4 text-warm">{r.webshop}</td>
-                  <td className="py-4 text-ink-900">
-                    <span className="border-l-2 border-amber-500 pl-3 block">{r.wij}</span>
-                  </td>
-                </tr>
+          {/* Vergelijking */}
+          <div className="flex flex-col">
+            <h2 id="wie-je-krijgt" className="kop-2">Geen klantenservice. Gewoon {voornaam}.</h2>
+            <p className="mt-2 max-w-[60ch] text-warm">Dit krijg je bij ons, en bij een webshop niet.</p>
+
+            <div className="mt-6 flex-1 overflow-hidden rounded-2xl border border-line bg-white shadow-card">
+              <div className="hidden grid-cols-[7.5rem_minmax(0,1fr)_minmax(0,1.15fr)] text-sm font-semibold md:grid" aria-hidden="true">
+                <span />
+                <span className="px-5 py-3 text-warm">Webshop</span>
+                <span className="bg-ink-900 px-5 py-3 text-white">{site.name}</span>
+              </div>
+              <ul>
+                {verschilMetWebshop.map((r, i) => (
+                  <li key={r.onderwerp} className={`grid md:grid-cols-[7.5rem_minmax(0,1fr)_minmax(0,1.15fr)] ${i > 0 ? 'border-t border-line' : 'md:border-t md:border-line'}`}>
+                    <p className="px-5 pt-4 font-display font-extrabold text-ink-900 md:py-4">{r.onderwerp}</p>
+                    <p className="flex gap-2.5 px-5 pt-2 text-sm text-warm md:py-4">
+                      <svg className="mt-0.5 h-4 w-4 shrink-0 text-ink-300" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+                      <span><span className="font-semibold md:sr-only">Webshop: </span>{r.webshop}</span>
+                    </p>
+                    <p className="mt-3 flex gap-2.5 bg-ink-900 px-5 py-3 text-sm font-medium text-white md:mt-0 md:py-4">
+                      <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" /></svg>
+                      <span><span className="sr-only">{site.name}: </span>{r.wij}</span>
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <ul className="mt-4 grid overflow-hidden rounded-2xl border border-line bg-white sm:grid-cols-3">
+              {zekerheden.map((z, i) => (
+                <li key={z.titel} className={`p-5 ${i > 0 ? 'border-t border-line sm:border-l sm:border-t-0' : ''}`}>
+                  <p className="font-display font-extrabold text-ink-900">{z.titel}</p>
+                  <p className="mt-1 text-sm leading-snug text-warm">{z.tekst}</p>
+                  {z.href && (
+                    <Link href={z.href} className="mt-1 inline-flex min-h-[44px] items-center text-sm font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-800">
+                      Lees hoe dat werkt
+                    </Link>
+                  )}
+                </li>
               ))}
-            </tbody>
-          </table>
-          <ul className="mt-5 space-y-3 md:hidden">
-            {verschilMetWebshop.map((r) => (
-              <li key={r.onderwerp} className="rounded-lg border border-line bg-white p-4">
-                <p className="font-display font-extrabold text-ink-900">{r.onderwerp}</p>
-                <p className="mt-1 text-sm text-warm"><span className="font-semibold">Webshop:</span> {r.webshop}</p>
-                <p className="mt-2 border-l-2 border-amber-500 pl-3 text-sm text-ink-900">{r.wij}</p>
-              </li>
-            ))}
-          </ul>
-
-          <ul className="mt-8 grid gap-4 sm:grid-cols-3">
-            {zekerheden.map((z) => (
-              <li key={z.titel} className="kaart-nadruk">
-                <p className="font-semibold text-ink-900">{z.titel}</p>
-                <p className="mt-1 text-sm text-warm">{z.tekst}</p>
-                {z.href && (
-                  <Link href={z.href} className="mt-2 inline-flex min-h-[44px] items-center text-sm font-semibold text-amber-700 underline-offset-2 hover:underline">
-                    Lees hoe dat werkt
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
+            </ul>
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-/** Teaser voor het spaarprogramma. Rendert niets als het in content uit staat. */
+/** Teaser voor het spaarprogramma: één compacte strook. Rendert niets als het in content uit staat. */
 export function SpaarTeaser() {
   if (!spaarprogramma.actief) return null;
   return (
-    <section className="border-y border-line bg-mist" aria-labelledby="spaar-teaser">
-      <div className="container-x grid items-center gap-8 py-12 sm:py-14 lg:grid-cols-[minmax(0,1fr)_auto]">
-        <div className="max-w-2xl">
-          <p className="eyebrow">Voor zakelijke klanten</p>
-          <h2 id="spaar-teaser" className="kop-3 mt-2 text-ink-900 sm:text-2xl">{spaarprogramma.titel}</h2>
-          <p className="mt-3 text-warm">{spaarprogramma.tekst}</p>
-          <ul className="mt-4 flex flex-wrap gap-2">
-            {spaarprogramma.punten.map((p) => (
-              <li key={p} className="rounded-md border border-line bg-white px-3 py-1.5 text-sm font-semibold text-ink-800">{p}</li>
-            ))}
-          </ul>
-        </div>
-        <div data-plek="spaar-teaser">
-          <Link href="/kledingbeheer" className="btn-outline bg-white" data-cta="kledingbeheer">
-            Zo werkt het kledingportaal
-          </Link>
+    <section className="bg-white" aria-labelledby="spaar-teaser">
+      <div className="container-x pt-10 sm:pt-14">
+        <div className="grid items-center gap-5 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-5 sm:p-6 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-8">
+          <span className="hidden h-14 w-14 items-center justify-center rounded-full bg-amber-500 text-ink-900 lg:flex" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l2.6 5.6 6 .7-4.5 4.2 1.2 6L12 16.6 6.700 19.500l1.200-6L3.400 9.300l6-.7z" /></svg>
+          </span>
+          <div>
+            <h2 id="spaar-teaser" className="font-display text-xl font-extrabold text-ink-900">{spaarprogramma.titel}</h2>
+            <p className="mt-1 max-w-[70ch] text-[15px] text-ink-800">{spaarprogramma.tekst}</p>
+            <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-semibold text-ink-900">
+              {spaarprogramma.punten.map((p) => (
+                <li key={p} className="flex items-center gap-2">
+                  <svg className="h-4 w-4 shrink-0 text-amber-700" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" /></svg>
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div data-plek="spaar-teaser">
+            <Link href="/kledingbeheer" className="btn-secondary w-full lg:w-auto" data-cta="kledingbeheer">
+              Zo werkt het kledingportaal
+            </Link>
+          </div>
         </div>
       </div>
     </section>

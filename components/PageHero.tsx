@@ -24,6 +24,7 @@ export function PageHero({
   beeld,
   donker = false,
   acties,
+  punten,
 }: {
   eyebrow?: string;
   title: string;
@@ -38,6 +39,8 @@ export function PageHero({
    * Laat leeg op pagina's waar het formulier zelf al bovenaan staat.
    */
   acties?: React.ReactNode;
+  /** Drie korte zekerheden onder de intro (reactietijd, vrijblijvend). Voor pagina's met een formulier. */
+  punten?: string[];
 }) {
   const vlak = donker ? 'bg-ink-900 text-white' : 'bg-mist';
   const kop = donker ? 'text-white' : 'text-ink-900';
@@ -61,6 +64,16 @@ export function PageHero({
         {title}
       </h1>
       {intro && <p className={`mt-4 text-lg leading-relaxed ${tekst}`}>{intro}</p>}
+      {punten && punten.length > 0 && (
+        <ul className={`mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold ${donker ? 'text-white' : 'text-ink-900'}`}>
+          {punten.map((p) => (
+            <li key={p} className="flex items-center gap-2">
+              <svg className={`h-4 w-4 shrink-0 ${donker ? 'text-amber-400' : 'text-amber-600'}`} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" /></svg>
+              {p}
+            </li>
+          ))}
+        </ul>
+      )}
       {acties && <div className="mt-7">{acties}</div>}
     </>
   );
@@ -77,8 +90,8 @@ export function PageHero({
           <div className="flex items-center px-5 pb-10 sm:px-6 lg:px-0 lg:py-10 lg:pr-8">{beeld}</div>
         </div>
       ) : (
-        <div className="container-x py-12 sm:py-16">
-          <div className="max-w-[42rem]">{tekstblok}</div>
+        <div className="container-x py-9 sm:py-12">
+          <div className="max-w-[46rem]">{tekstblok}</div>
         </div>
       )}
     </section>

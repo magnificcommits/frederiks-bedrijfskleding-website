@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { OfferteAanvraag } from '@/components/OfferteAanvraag';
 import { PageHero } from '@/components/PageHero';
 import { JsonLd } from '@/components/JsonLd';
-import { Uitklap } from '@/components/Uitklap';
+import { Faq } from '@/components/Faq';
+import { JessiPaneel } from '@/components/JessiPaneel';
 import { breadcrumbJsonLd, faqJsonLd } from '@/lib/jsonld';
 import { site } from '@/content/site';
 
@@ -65,86 +66,59 @@ export default async function OffertePage({
       />
 
       <PageHero
+        donker
         eyebrow="Offerte aanvragen"
         title="Binnen 24 uur een reactie op je offerteaanvraag"
-        intro={`Vertel kort wat je zoekt. ${site.owner.split(' ')[0]} kijkt er zelf naar, belt je om het door te nemen en zorgt dat je een offerte krijgt waar alles in staat.`}
+        intro={`Vertel kort wat je zoekt. ${site.owner.split(' ')[0]} kijkt er zelf naar en belt je om het door te nemen.`}
+        punten={['Reactie binnen 24 uur', 'Passen op locatie', 'Kost niets, je zit nergens aan vast']}
       />
 
-      <section className="container-x py-16">
-        <div className="mx-auto grid max-w-[72rem] gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <div>
-            <OfferteAanvraag defaultBranche={branche ?? ''} defaultProduct={product ?? ''} />
-          </div>
+      <section className="bg-mist">
+        <div className="container-x sec-md grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-8">
+          <OfferteAanvraag defaultBranche={branche ?? ''} defaultProduct={product ?? ''} />
 
-          <aside className="space-y-6">
-            <div className="card">
-              <h2 className="font-display text-lg font-bold text-ink-900">Wat er gebeurt na je aanvraag</h2>
-              <ol className="mt-4 space-y-4">
-                {stappen.map((s) => (
-                  <li key={s.nr} className="flex gap-3">
-                    <span className="mt-0.5 text-sm font-bold text-amber-700" aria-hidden="true">{s.nr}</span>
+          <aside className="space-y-4 self-start lg:sticky lg:top-28">
+            <div className="rounded-2xl border border-line bg-white p-6">
+              <h2 className="font-display text-lg font-extrabold text-ink-900">Wat er gebeurt na je aanvraag</h2>
+              <ol className="mt-4">
+                {stappen.map((s, i) => (
+                  <li key={s.nr} className="relative flex gap-4 pb-5 last:pb-0">
+                    {i < stappen.length - 1 && <span className="absolute left-4 top-8 h-[calc(100%-2rem)] border-l-2 border-dashed border-amber-400" aria-hidden="true" />}
+                    <span className="stap-nr" data-stand="nu" aria-hidden="true">{i + 1}</span>
                     <span>
-                      <span className="block text-sm font-semibold text-ink-900">{s.t}</span>
-                      <span className="mt-1 block text-sm text-warm">{s.d}</span>
+                      <span className="block font-semibold text-ink-900">{s.t}</span>
+                      <span className="mt-1 block text-sm leading-snug text-warm">{s.d}</span>
                     </span>
                   </li>
                 ))}
               </ol>
             </div>
 
-            <div className="seam-card">
-              <h2 className="font-display text-lg font-bold text-ink-900">Liever meteen bellen?</h2>
-              <p className="mt-2 text-sm text-warm">
-                Je krijgt {site.owner.split(' ')[0]} zelf aan de lijn. Geen keuzemenu, geen callcenter, gewoon iemand
-                die je bedrijf leert kennen.
-              </p>
-              <p className="mt-3 text-sm">
-                <a href={`tel:${site.phoneIntl}`} className="font-bold text-ink-900 hover:text-amber-800">{site.phone}</a>
-                <br />
-                <a href={`mailto:${site.email}`} className="font-semibold text-amber-700 hover:underline">{site.email}</a>
-              </p>
-              <Link href="/contact" className="btn-outline mt-4 w-full">Alle contactgegevens</Link>
-            </div>
+            <JessiPaneel
+              plek="offerte-zijbalk"
+              kop="Liever meteen bellen?"
+              tekst={`Je krijgt ${site.owner.split(' ')[0]} zelf aan de lijn. Geen keuzemenu, geen callcenter.`}
+              punten={[]}
+            />
 
-            <div className="card" data-plek="offerte-zijbalk">
-              <h2 className="font-display text-lg font-bold text-ink-900">Eerst even praten?</h2>
-              <p className="mt-2 text-sm text-warm">
-                Weet je nog niet precies wat je nodig hebt? Plan een kort adviesgesprek, op de zaak of in de showroom.
-              </p>
+            <div className="rounded-2xl border border-line bg-white p-6" data-plek="offerte-zijbalk">
+              <h2 className="font-display text-lg font-extrabold text-ink-900">Eerst even praten?</h2>
+              <p className="mt-1 text-sm text-warm">Plan een kort adviesgesprek, op de zaak of in de showroom.</p>
               <Link href="/afspraak" className="btn-outline mt-4 w-full" data-cta="afspraak">Plan een adviesgesprek</Link>
-            </div>
-
-            <div className="card">
-              <h2 className="font-display text-lg font-bold text-ink-900">Wanneer we bereikbaar zijn</h2>
-              <dl className="mt-3 space-y-1 text-sm">
+              <dl className="mt-5 border-t border-line pt-4 text-sm">
                 {site.openingHours.map((h) => (
-                  <div key={h.dayCode} className="flex justify-between gap-4 border-b border-line py-1 last:border-0">
+                  <div key={h.dayCode} className="flex justify-between gap-4 py-0.5">
                     <dt className="text-warm">{h.day}</dt>
-                    <dd className="font-medium text-ink-800">{h.open} tot {h.close}</dd>
+                    <dd className="font-medium tabular-nums text-ink-800">{h.open} tot {h.close}</dd>
                   </div>
                 ))}
               </dl>
-              <p className="mt-3 text-xs text-warm">{site.openingNote}</p>
-              <p className="mt-2 text-xs text-warm">
-                {site.address.street}, {site.address.postalCode} Hengelo Gld
-              </p>
             </div>
           </aside>
         </div>
       </section>
 
-      <section className="border-t border-line bg-mist">
-        <div className="container-x py-16 sm:py-20">
-          <h2 className="font-display kop-2">Veelgestelde vragen over de offerte</h2>
-          <div className="mt-8 max-w-3xl divide-y divide-line border-y border-line">
-            {faq.map((f) => (
-              <Uitklap key={f.q} titel={f.q}>
-                <p>{f.a}</p>
-              </Uitklap>
-            ))}
-          </div>
-        </div>
-      </section>
+      <Faq items={faq} title="Veelgestelde vragen over de offerte" />
     </>
   );
 }

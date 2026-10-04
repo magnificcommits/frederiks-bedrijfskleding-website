@@ -14,8 +14,6 @@ const wensenOpties = [
 ];
 const aantalOpties = ['1 (zzp)', '2 tot 10', '11 tot 25', '26 tot 50', 'Meer dan 50'];
 
-const chip = 'cursor-pointer rounded-md border-2 px-4 py-3 text-sm font-semibold transition select-none min-h-[44px]';
-const field = 'mt-1 w-full rounded-md border border-line bg-white px-4 py-3 text-sm text-ink-900 shadow-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 
 export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: string }) {
   const [step, setStep] = useState(0);
@@ -76,42 +74,67 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
     );
   }
 
-  return (
-    <div className="rounded-2xl border border-line bg-white p-6 shadow-card sm:p-8">
-      {/* Voortgang */}
-      <div className="flex items-center gap-2">
-        {Array.from({ length: totalSteps }).map((_, i) => (
-          <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-amber-500' : 'bg-line'}`} />
-        ))}
-      </div>
-      <p className="mt-3 text-xs font-bold uppercase tracking-wide text-warm" aria-live="polite">Stap {step + 1} van {totalSteps}</p>
+  const stapNamen = ['Branche', 'Kleding', 'Aantal', 'Contact'];
+  const naarVolgende = () => {
+    if (step === 0) track('formulier_gestart', { formulier: 'kledingadvies', branche });
+    setStep((s) => Math.min(totalSteps - 1, s + 1));
+  };
+  const gekozen = step === 0 ? Boolean(branche) : step === 1 ? wensen.length > 0 : step === 2 ? Boolean(aantal) : true;
+  const kopKlas = 'font-display text-2xl font-extrabold text-ink-900';
 
+  return (
+    <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-card">
+      {/* Stappenbalk met namen: je ziet waar je bent en hoe kort het is. */}
+      <ol className="grid grid-cols-4 border-b border-line bg-ink-900">
+        {stapNamen.map((naam, i) => {
+          const stand = i < step ? 'klaar' : i === step ? 'nu' : 'straks';
+          return (
+            <li key={naam} className={`relative px-2 py-3 text-center sm:px-4 ${i > 0 ? 'border-l border-white/10' : ''}`} aria-current={stand === 'nu' ? 'step' : undefined}>
+              <span className={`block text-[11px] font-semibold tabular-nums ${stand === 'straks' ? 'text-ink-400' : 'text-amber-400'}`}>
+                {stand === 'klaar' ? 'Klaar' : `Stap ${i + 1}`}
+              </span>
+              <span className={`block text-sm font-semibold ${stand === 'straks' ? 'text-ink-400' : 'text-white'}`}>{naam}</span>
+              <span className={`absolute inset-x-0 bottom-0 h-1 ${stand === 'straks' ? 'bg-transparent' : 'bg-amber-500'}`} aria-hidden="true" />
+            </li>
+          );
+        })}
+      </ol>
+      <p className="sr-only" aria-live="polite">Stap {step + 1} van {totalSteps}</p>
+
+      <div className="p-5 sm:p-7">
       {step === 0 && (
-        <div className="mt-4">
-          <h3 className="text-xl font-extrabold text-ink-900">In welke branche werk je?</h3>
-          <div className="mt-4 flex flex-wrap gap-2.5">
-            {branches.map((b) => (
-              <button key={b.slug} type="button" onClick={() => setBranche(b.navLabel)} aria-pressed={branche === b.navLabel}
-                className={`${chip} ${branche === b.navLabel ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>
-                {b.navLabel}
+        <div>
+          <h3 className={kopKlas}>In welke branche werk je?</h3>
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+            {[...branches.map((b) => b.navLabel), 'Anders'].map((naam) => (
+              <button
+                key={naam}
+                type="button"
+                aria-pressed={branche === naam}
+                className="keuze keuze-rij"
+                onClick={() => {
+                  setBranche(naam);
+                  // Eén keuze, dus meteen door: scheelt een klik op "Volgende".
+                  track('formulier_gestart', { formulier: 'kledingadvies', branche: naam });
+                  setStep(1);
+                }}
+              >
+                <span className="keuze-rond" aria-hidden="true">✓</span>
+                {naam}
               </button>
             ))}
-            <button type="button" onClick={() => setBranche('Anders')} aria-pressed={branche === 'Anders'}
-              className={`${chip} ${branche === 'Anders' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>
-              Anders
-            </button>
           </div>
         </div>
       )}
 
       {step === 1 && (
-        <div className="mt-4">
-          <h3 className="text-xl font-extrabold text-ink-900">Waar zoek je naar?</h3>
+        <div>
+          <h3 className={kopKlas}>Waar zoek je naar?</h3>
           <p className="mt-1 text-sm text-warm">Meerdere antwoorden mogen.</p>
-          <div className="mt-4 flex flex-wrap gap-2.5">
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {wensenOpties.map((w) => (
-              <button key={w} type="button" onClick={() => toggleWens(w)} aria-pressed={wensen.includes(w)}
-                className={`${chip} ${wensen.includes(w) ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>
+              <button key={w} type="button" onClick={() => toggleWens(w)} aria-pressed={wensen.includes(w)} className="keuze keuze-rij">
+                <span className="keuze-rond !rounded-md" aria-hidden="true">✓</span>
                 {w}
               </button>
             ))}
@@ -120,38 +143,36 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
       )}
 
       {step === 2 && (
-        <div className="mt-4">
-          <h3 className="text-xl font-extrabold text-ink-900">Voor hoeveel mensen?</h3>
-          <div className="mt-4 flex flex-wrap gap-2.5">
+        <div>
+          <h3 className={kopKlas}>Voor hoeveel mensen?</h3>
+          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
             {aantalOpties.map((a) => (
-              <button key={a} type="button" onClick={() => setAantal(a)} aria-pressed={aantal === a}
-                className={`${chip} ${aantal === a ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>
+              <button key={a} type="button" onClick={() => setAantal(a)} aria-pressed={aantal === a} className="keuze keuze-rij">
+                <span className="keuze-rond" aria-hidden="true">✓</span>
                 {a}
               </button>
             ))}
           </div>
-          <label className="mt-5 flex items-center gap-3 text-sm text-ink-800">
+          <label className="mt-5 flex min-h-[52px] cursor-pointer items-center gap-3 rounded-xl bg-mist px-4 py-3 text-[15px] font-semibold text-ink-900">
             <input type="checkbox" checked={opLocatie} onChange={(e) => setOpLocatie(e.target.checked)}
-              className="h-4 w-4 rounded border-line text-amber-500 focus:ring-amber-300" />
-            Ik wil graag dat jullie langskomen om te passen
+              className="h-5 w-5 rounded border-ink-300 text-amber-500 focus:ring-amber-300" />
+            Kom bij ons langs om te passen
           </label>
         </div>
       )}
 
       {step === 3 && (
-        <div className="mt-4">
-          <h3 className="text-xl font-extrabold text-ink-900">Waar mogen we je advies naartoe sturen?</h3>
+        <div>
+          <h3 className={kopKlas}>Hoe bereiken we je met het advies?</h3>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {/* Labels waren niet aan hun veld gekoppeld (geen htmlFor/id): een
-                screenreader las vier keer "invoerveld" zonder naam. */}
-            <div><label htmlFor="wiz-naam" className="text-sm font-medium text-ink-800">Naam *</label>
-              <input id="wiz-naam" required aria-required="true" className={field} value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} autoComplete="name" /></div>
-            <div><label htmlFor="wiz-bedrijf" className="text-sm font-medium text-ink-800">Bedrijf</label>
-              <input id="wiz-bedrijf" className={field} value={contact.company} onChange={(e) => setContact({ ...contact, company: e.target.value })} autoComplete="organization" /></div>
-            <div><label htmlFor="wiz-email" className="text-sm font-medium text-ink-800">E-mail *</label>
-              <input id="wiz-email" type="email" required aria-required="true" className={field} value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} autoComplete="email" /></div>
-            <div><label htmlFor="wiz-telefoon" className="text-sm font-medium text-ink-800">Telefoon <span className="font-normal text-warm">(dan bellen we je)</span></label>
-              <input id="wiz-telefoon" type="tel" className={field} value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} autoComplete="tel" /></div>
+            <div><label htmlFor="wiz-naam" className="invoer-label">Naam *</label>
+              <input id="wiz-naam" required aria-required="true" className="invoer" value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} autoComplete="name" /></div>
+            <div><label htmlFor="wiz-bedrijf" className="invoer-label">Bedrijf</label>
+              <input id="wiz-bedrijf" className="invoer" value={contact.company} onChange={(e) => setContact({ ...contact, company: e.target.value })} autoComplete="organization" /></div>
+            <div><label htmlFor="wiz-email" className="invoer-label">E-mail *</label>
+              <input id="wiz-email" type="email" required aria-required="true" className="invoer" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} autoComplete="email" /></div>
+            <div><label htmlFor="wiz-telefoon" className="invoer-label">Telefoon <span className="font-normal text-warm">(dan bellen we je)</span></label>
+              <input id="wiz-telefoon" type="tel" className="invoer" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} autoComplete="tel" /></div>
           </div>
           <label className="mt-4 flex items-start gap-3 text-sm text-warm">
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)}
@@ -163,27 +184,26 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
 
       {error && <p className="mt-4 text-sm font-medium text-amber-700" role="alert">{error}</p>}
 
-      <div className="mt-6 flex items-center justify-between gap-3">
-        <button type="button" onClick={() => setStep((s) => Math.max(0, s - 1))}
-          className={`min-h-[44px] px-2 text-sm font-semibold text-warm hover:text-ink-800 ${step === 0 ? 'invisible' : ''}`}>
-          Terug
-        </button>
-        {step < totalSteps - 1 ? (
-          <button
-            type="button"
-            onClick={() => {
-              if (step === 0) track('formulier_gestart', { formulier: 'kledingadvies', branche });
-              setStep((s) => s + 1);
-            }}
-            className="btn-primary"
-          >
-            Volgende
+      <div className="mt-6 flex items-center justify-between gap-3 border-t border-line pt-5">
+        {step > 0 ? (
+          <button type="button" onClick={() => setStep((s) => Math.max(0, s - 1))} className="btn-ghost px-3">
+            Terug
           </button>
         ) : (
-          <button type="button" onClick={submit} disabled={status === 'sending'} className="btn-primary">
-            {status === 'sending' ? 'Versturen' : 'Verstuur aanvraag'}
+          <p className="text-sm text-warm">Kies je branche om te beginnen.</p>
+        )}
+        {step === 0 ? (
+          branche ? <button type="button" onClick={naarVolgende} className="btn-primary px-8">Volgende</button> : null
+        ) : step < totalSteps - 1 ? (
+          <button type="button" onClick={naarVolgende} className={gekozen ? 'btn-primary px-8' : 'btn-outline px-8'}>
+            {gekozen ? 'Volgende' : 'Sla over'}
+          </button>
+        ) : (
+          <button type="button" onClick={submit} disabled={status === 'sending'} className="btn-primary px-8 py-3.5 text-base">
+            {status === 'sending' ? 'Versturen' : 'Stuur mij advies'}
           </button>
         )}
+      </div>
       </div>
     </div>
   );

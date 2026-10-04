@@ -23,7 +23,7 @@ export async function BrancheArtikelen({
   const producten = await brancheArtikelen(brancheSlug, max);
   if (producten.length === 0) return null;
   return (
-    <section className="container-x py-14 sm:py-16" aria-labelledby={`artikelen-${brancheSlug}`}>
+    <section className="container-x sec-md" aria-labelledby={`artikelen-${brancheSlug}`}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="max-w-2xl">
           <p className="eyebrow">Uit het assortiment</p>

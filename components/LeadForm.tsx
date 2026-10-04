@@ -13,7 +13,7 @@ type Status = 'idle' | 'sending' | 'ok' | 'error';
  * Honeypot-veld 'website' is verborgen voor mensen, vult bots.
  * GA4-event 'generate_lead' wordt bij succes verstuurd (indien gtag aanwezig).
  */
-export function LeadForm({ defaultBranche = '' }: { defaultBranche?: string }) {
+export function LeadForm({ defaultBranche = '', kaal = false }: { defaultBranche?: string; /** Zonder eigen kaart en inleiding: de sectie eromheen levert die al. */ kaal?: boolean }) {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
 
@@ -62,12 +62,12 @@ export function LeadForm({ defaultBranche = '' }: { defaultBranche?: string }) {
     );
   }
 
-  const field = 'mt-1 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink-800 shadow-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
-  const label = 'block text-sm font-medium text-ink-800';
+  const field = 'invoer';
+  const label = 'invoer-label';
 
   return (
-    <form onSubmit={onSubmit} className="card grid gap-4" noValidate data-formulier="contact" aria-label="Contactformulier">
-      <p className="text-sm text-warm">Alleen naam en e-mail zijn verplicht. De rest helpt ons om goed voorbereid terug te bellen.</p>
+    <form onSubmit={onSubmit} className={`grid gap-4 ${kaal ? '' : 'card'}`} noValidate data-formulier="contact" aria-label="Contactformulier">
+      {!kaal && <p className="text-sm text-warm">Alleen naam en e-mail zijn verplicht. De rest helpt ons om goed voorbereid terug te bellen.</p>}
       {/* Honeypot, verborgen voor mensen */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
 
@@ -105,6 +105,10 @@ export function LeadForm({ defaultBranche = '' }: { defaultBranche?: string }) {
         </div>
       </div>
       <div>
+        <label className={label} htmlFor="bericht">Waar kunnen we mee helpen?</label>
+        <textarea id="bericht" name="bericht" rows={3} className={field} placeholder="Bijv. werkkleding + bedrukken voor 8 monteurs" />
+      </div>
+      <div>
         <label className={label} htmlFor="herkomst_self">Hoe heb je ons gevonden? <span className="font-normal text-warm">(optioneel)</span></label>
         <select id="herkomst_self" name="herkomst_self" className={field}>
           <option value="">Kies...</option>
@@ -116,23 +120,17 @@ export function LeadForm({ defaultBranche = '' }: { defaultBranche?: string }) {
           <option>Anders</option>
         </select>
       </div>
-      <div>
-        <label className={label} htmlFor="bericht">Waar kunnen we mee helpen?</label>
-        <textarea id="bericht" name="bericht" rows={4} className={field} placeholder="Bijv. werkkleding + bedrukken voor 8 monteurs" />
-      </div>
       <label className="flex items-start gap-3 text-sm text-warm">
         <input type="checkbox" name="consent" required className="mt-1 h-4 w-4 rounded border-line text-amber-500 focus:ring-amber-300" />
         <span>Ik ga ermee akkoord dat mijn gegevens worden gebruikt om mijn aanvraag te beantwoorden.</span>
       </label>
       {status === 'error' && <p className="text-sm text-amber-700" role="alert">{error}</p>}
-      <button type="submit" disabled={status === 'sending'} className="btn-primary w-full sm:w-auto">
-        {status === 'sending' ? 'Versturen…' : 'Verstuur aanvraag'}
-      </button>
-      <p className="text-sm font-medium text-ink-800">Vrijblijvend &middot; {site.belofte} &middot; je zit nergens aan vast.</p>
-      <p className="text-xs text-warm">
-        {site.owner.split(' ')[0]} belt of mailt je zelf. Liever direct?{' '}
-        <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-700 underline underline-offset-2">Bel {site.phone}</a>.
-      </p>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <button type="submit" disabled={status === 'sending'} className="btn-primary w-full px-8 py-3.5 text-base sm:w-auto">
+          {status === 'sending' ? 'Versturen…' : 'Verstuur aanvraag'}
+        </button>
+        <p className="text-sm text-warm">Vrijblijvend. {site.belofte}.</p>
+      </div>
     </form>
   );
 }

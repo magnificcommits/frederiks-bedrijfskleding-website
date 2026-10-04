@@ -282,14 +282,50 @@
 
   /* --- Verticaal ritme --------------------------------------------------
      Er stonden zeven verschillende sectiepaddings door elkaar. Drie is genoeg. */
-  .sec    { @apply py-16 sm:py-24; }
-  .sec-md { @apply py-12 sm:py-16; }
+  .sec    { @apply py-14 sm:py-20; }
+  .sec-md { @apply py-10 sm:py-14; }
   .sec-sm { @apply py-8 sm:py-10; }
 
   /* Feature-kaart. De gestikte oranje linkernaad die hier stond, stond ook op elk
      ander vlak; dan valt niets meer op. Nadruk leg je met .kaart-nadruk. */
   .seam-card { @apply rounded-lg border border-line bg-white p-5; }
   .kaart-nadruk { @apply rounded-lg border border-line border-l-2 border-l-amber-500 bg-white p-5; }
+
+  /* --- Keuzetegel -------------------------------------------------------
+     Voor alles wat je aanklikt om te kiezen (soort afspraak, branche, aantal).
+     Dikke rand, een keuzerondje rechtsboven en een duidelijke hover: het moet
+     in een oogopslag een knop zijn en geen tekstkaart. */
+  .keuze {
+    @apply relative flex min-h-[52px] cursor-pointer select-none flex-col rounded-xl border-2 border-ink-200 bg-white p-4 text-left
+           transition duration-150 hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2;
+  }
+  .keuze[aria-pressed="true"] { @apply border-amber-500 bg-amber-50 shadow-card; }
+  .keuze-rond {
+    @apply flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-ink-300 bg-white text-[13px] font-bold text-transparent transition;
+  }
+  .keuze:hover .keuze-rond { @apply border-ink-900; }
+  .keuze[aria-pressed="true"] .keuze-rond { @apply border-amber-500 bg-amber-500 text-ink-900; }
+  /* Liggende variant: korte labels zoals "2 tot 10". */
+  .keuze-rij { @apply flex-row items-center gap-3 px-4 py-3 text-[15px] font-semibold text-ink-900; }
+
+  /* Formulierveld op de publieke site: hoger en met dikkere rand dan in het KMS. */
+  .invoer {
+    @apply mt-1.5 w-full rounded-lg border-2 border-ink-200 bg-white px-4 py-3 text-[15px] text-ink-900 placeholder:text-ink-400
+           transition focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-100;
+  }
+  .invoer-label { @apply block text-sm font-semibold text-ink-900; }
+
+  /* Genummerde stap in een stappenbalk. */
+  .stap-nr {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-ink-200 bg-white font-display text-sm font-extrabold text-ink-500;
+  }
+  .stap-nr[data-stand="nu"] { @apply border-amber-500 bg-amber-500 text-ink-900; }
+  .stap-nr[data-stand="klaar"] { @apply border-ink-900 bg-ink-900 text-white; }
+
+  /* Donker paneel met stiksel: voor de plek waar de klant moet kiezen of bellen. */
+  .paneel-donker { @apply relative overflow-hidden rounded-2xl bg-ink-900 text-white; }
+  .stiksel { @apply pointer-events-none absolute inset-2 rounded-[1.1rem] border border-dashed border-white/20; }
 
   .prose-nl { @apply max-w-prose text-warm leading-relaxed; }
   .prose-nl p { @apply mb-4; }

@@ -8,7 +8,7 @@ import { plaatsen } from '@/content/plaatsen';
 
 export function Footer() {
   return (
-    <footer className="mt-24 border-t-2 border-dashed border-amber-500 bg-ink-900 text-ink-100">
+    <footer className="border-t-2 border-dashed border-amber-500 bg-ink-900 text-ink-100">
       <div className="container-x grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
         <div>
           <Logo light />

@@ -9,7 +9,7 @@ import { KledingadviesWizard } from '@/components/KledingadviesWizard';
 import { PortaalUsp } from '@/components/PortaalUsp';
 import { BewijsBalk } from '@/components/BewijsBalk';
 import { HoeWerktHet } from '@/components/HoeWerktHet';
-import { vakgebieden } from '@/content/vakgebieden';
+import { VakTegels } from '@/components/VakTegels';
 import { site } from '@/content/site';
 import { JsonLd } from '@/components/JsonLd';
 import { faqJsonLd } from '@/lib/jsonld';
@@ -67,35 +67,28 @@ export default async function HomePage() {
       {/* Vakgebied x streek: hier win je van landelijke webshops, die alleen
           op plaatsnaam schalen en niets met beroepen doen. */}
       <section className="bg-white">
-        <div className="container-x py-16 sm:py-20">
-          <p className="eyebrow">Voor jouw vak</p>
-          <h2 className="kop-2 mt-3">We weten wat jouw werk met kleding doet</h2>
-          <p className="mt-4 max-w-2xl text-lg text-warm">
-            Een hovenier sleept door de doornstruiken, een schilder zit op zijn knieën en een lasser heeft
-            met vonken te maken. Wat er dan misgaat verschilt per vak, en dat bepaalt wat je moet hebben.
-          </p>
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {vakgebieden.map((v) => (
-              <Link
-                key={v.slug}
-                href={`/voor/${v.slug}`}
-                className="group flex items-center justify-between gap-3 rounded-xl border border-line bg-white px-5 py-4 transition hover:border-amber-400 hover:shadow-card"
-              >
-                <span className="font-semibold text-ink-900">{v.naam}</span>
-                <span aria-hidden="true" className="text-amber-700 transition group-hover:translate-x-0.5">&rarr;</span>
-              </Link>
-            ))}
+        <div className="container-x sec-md grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:gap-10">
+          <div>
+            <h2 className="kop-2">We weten wat jouw werk met kleding doet</h2>
+            <p className="mt-3 max-w-[62ch] text-lg text-warm">
+              Een hovenier sleept door de doornstruiken, een schilder zit op zijn knieën en een lasser heeft
+              met vonken te maken. Kies je vak en zie wat je nodig hebt.
+            </p>
+            <VakTegels className="mt-6" />
           </div>
-          <h3 className="kop-3 mt-12 text-ink-900">Of zoek op soort kleding</h3>
-          <ul className="mt-4 flex flex-wrap gap-2">
-            {aanbod.map((c) => (
-              <li key={c.href}>
-                <Link href={c.href} className="inline-flex min-h-[44px] items-center rounded-md border border-line bg-white px-4 text-sm font-semibold text-ink-800 transition hover:border-amber-400 hover:text-amber-800">
-                  {c.t}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <div className="paneel-donker self-start p-6 lg:sticky lg:top-28">
+            <h3 className="font-display text-xl font-extrabold text-white">Of zoek op soort kleding</h3>
+            <ul className="mt-4 divide-y divide-white/15 border-y border-white/15">
+              {aanbod.map((c) => (
+                <li key={c.href}>
+                  <Link href={c.href} className="group flex min-h-[48px] items-center justify-between gap-3 py-2 font-semibold text-white hover:text-amber-400">
+                    {c.t}
+                    <svg className="h-5 w-5 shrink-0 text-ink-400 transition group-hover:translate-x-0.5 group-hover:text-amber-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5" /></svg>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -134,21 +127,26 @@ export default async function HomePage() {
       </section>
 
       {/* Leadtool */}
-      <section className="border-y border-line bg-mist">
-        <div className="container-x grid gap-10 py-16 sm:py-24 lg:grid-cols-5">
-          <div className="lg:col-span-2">
-            <p className="eyebrow">Kledingadvies in 1 minuut</p>
-            <h2 className="kop-2 mt-3">Niet zeker wat je nodig hebt?</h2>
-            <p className="mt-4 max-w-[54ch] text-lg text-warm">Beantwoord vier korte vragen. We bellen je binnen 24 uur terug (op werkdagen) met advies dat past bij je werk. Vrijblijvend.</p>
-            <p className="mt-4 text-sm text-warm" data-plek="kledingadvies-sectie">
+      <section className="border-y border-line bg-mist" id="kledingadvies">
+        <div className="container-x sec grid items-start gap-8 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-12">
+          <div className="lg:sticky lg:top-28">
+            <h2 className="kop-2">Niet zeker wat je nodig hebt?</h2>
+            <p className="mt-3 max-w-[48ch] text-lg text-warm">Vier korte vragen, een minuut werk. Jessi belt je binnen 24 uur terug met advies dat bij je werk past.</p>
+            <ul className="mt-5 space-y-2 text-[15px] font-semibold text-ink-900">
+              {['Geen verplichtingen', 'Advies van iemand die de kleding kent', 'Passen bij jou op de zaak'].map((p) => (
+                <li key={p} className="flex items-center gap-2.5">
+                  <svg className="h-4 w-4 shrink-0 text-amber-600" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" /></svg>
+                  {p}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-6 text-sm text-warm" data-plek="kledingadvies-sectie">
               Liever eerst praten?{' '}
               <Link href="/afspraak" className="font-semibold text-amber-700 underline underline-offset-2" data-cta="afspraak">Plan een adviesgesprek</Link>
               {' '}of bel <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-700 hover:underline">{site.phone}</a>.
             </p>
           </div>
-          <div className="lg:col-span-3">
-            <KledingadviesWizard />
-          </div>
+          <KledingadviesWizard />
         </div>
       </section>
 

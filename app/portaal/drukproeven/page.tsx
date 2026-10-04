@@ -48,7 +48,7 @@ function StatusBadge({ status }: { status: string }) {
         ? 'border-red-300 bg-red-50 text-red-700'
         : status === 'verstuurd'
           ? 'border-amber-300 bg-amber-50 text-amber-700'
-          : 'border-line bg-cream text-warm';
+          : 'border-line bg-mist text-warm';
   return <span className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${toon}`}>{label}</span>;
 }
 
@@ -164,7 +164,7 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
                       </div>
                     )}
                     {p.opmerking && (
-                      <div className="mt-3 rounded-lg border border-line bg-cream px-4 py-3 text-sm text-warm">
+                      <div className="mt-3 rounded-lg border border-line bg-mist px-4 py-3 text-sm text-warm">
                         <p className="text-xs font-semibold text-ink-900">Opmerking</p>
                         <p className="mt-1">{p.opmerking}</p>
                       </div>

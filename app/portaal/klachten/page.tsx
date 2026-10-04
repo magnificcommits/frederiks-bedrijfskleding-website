@@ -29,7 +29,7 @@ function StatusBadge({ status }: { status: KlachtStatus }) {
       ? 'border-green-300 bg-green-50 text-green-800'
       : status === 'in_behandeling'
         ? 'border-amber-300 bg-amber-50 text-amber-700'
-        : 'border-line bg-cream text-warm';
+        : 'border-line bg-mist text-warm';
   return <span className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${toon}`}>{label}</span>;
 }
 
@@ -158,7 +158,7 @@ export default async function Klachten({ searchParams }: { searchParams: Promise
                       {k.berichten.map((b) => (
                         <li
                           key={b.id}
-                          className={`rounded-lg px-4 py-3 text-sm ${b.soort === 'klant' ? 'ml-6 border border-line bg-white text-ink-800' : 'mr-6 bg-cream text-ink-800'}`}
+                          className={`rounded-lg px-4 py-3 text-sm ${b.soort === 'klant' ? 'ml-6 border border-line bg-white text-ink-800' : 'mr-6 bg-mist text-ink-800'}`}
                         >
                           <p className="text-xs font-semibold text-warm">
                             {b.soort === 'klant' ? 'Jij' : 'Frederiks Bedrijfskleding'} {'·'} {moment(b.created_at)}
@@ -169,7 +169,7 @@ export default async function Klachten({ searchParams }: { searchParams: Promise
                     </ol>
                   ) : (
                     k.antwoord && (
-                      <p className="mt-4 rounded-lg bg-cream px-4 py-3 text-sm text-warm"><span className="font-semibold text-ink-800">Antwoord:</span> {k.antwoord}</p>
+                      <p className="mt-4 rounded-lg bg-mist px-4 py-3 text-sm text-warm"><span className="font-semibold text-ink-800">Antwoord:</span> {k.antwoord}</p>
                     )
                   )}
 

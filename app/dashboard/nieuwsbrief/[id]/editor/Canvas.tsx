@@ -167,7 +167,7 @@ export default function Canvas({ ontwerp, selectie, dropDoel, dispatch, zetDoel,
             <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-teal-400 bg-white px-3 py-1.5 text-[13px] font-semibold text-teal-700 shadow-sm hover:bg-teal-50">
               + Sectie toevoegen
             </summary>
-            <div className="absolute left-1/2 z-40 mt-2 grid w-[420px] -translate-x-1/2 grid-cols-3 gap-2 rounded-lg border border-line bg-white p-3 shadow-card">
+            <div className="absolute left-1/2 z-40 mt-2 grid w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 grid-cols-3 gap-2 rounded-lg border border-line bg-white p-3 shadow-card">
               {STRUCTUREN.map((st) => (
                 <button
                   key={st.id}

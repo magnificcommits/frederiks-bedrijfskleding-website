@@ -289,7 +289,7 @@ export function MeldingBalk({ melding, onSluit }: { melding: Melding | null; onS
   }, [melding, onSluit]);
   if (!melding) return null;
   return (
-    <div className="fixed bottom-5 left-1/2 z-[70] -translate-x-1/2 md:left-auto md:right-6 md:translate-x-0">
+    <div className="fixed bottom-5 left-1/2 z-[70] w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 md:left-auto md:right-6 md:translate-x-0">
       <div
         role="status"
         aria-live="polite"

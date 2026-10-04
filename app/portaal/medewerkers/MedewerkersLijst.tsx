@@ -91,7 +91,7 @@ export default function MedewerkersLijst({ rijen }: { rijen: MedewerkerRij[] }) 
                           {r.loginLabel}
                         </span>
                       ) : (
-                        <span className="inline-block rounded-full border border-line bg-cream px-2.5 py-0.5 text-[11px] font-semibold text-warm">
+                        <span className="inline-block rounded-full border border-line bg-mist px-2.5 py-0.5 text-[11px] font-semibold text-warm">
                           {r.loginLabel}
                         </span>
                       )}

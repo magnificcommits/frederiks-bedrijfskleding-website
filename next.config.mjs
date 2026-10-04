@@ -15,6 +15,8 @@ const CSP = [
   "object-src 'none'",
   "img-src 'self' data: blob: https:", // blob: voor foto-voorbeelden/verkleinen in de editors
   "font-src 'self' data:",
+  "worker-src 'self'", // service worker van het KMS en het portaal (public/sw.js)
+  "manifest-src 'self'", // web-app-manifesten onder /dashboard en /portaal
   "style-src 'self' 'unsafe-inline'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://www.googletagmanager.com`,
   "connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://*.supabase.co" + (isDev ? ' ws: http://localhost:*' : ''),
@@ -50,6 +52,14 @@ const nextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           { key: 'Content-Security-Policy', value: CSP },
+        ],
+      },
+      {
+        // De service worker altijd vers ophalen, anders blijft een oude versie hangen.
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
         ],
       },
     ];

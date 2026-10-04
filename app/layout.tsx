@@ -44,7 +44,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="nl" className={`${inter.variable} ${archivo.variable}`}>
-      <body className="pb-14 lg:pb-0">
+      <body>
         <JsonLd data={localBusinessJsonLd()} />
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:shadow-soft">
           Naar hoofdinhoud
@@ -54,10 +54,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main id="main">{children}</main>
           <ChromeGate><Footer /></ChromeGate>
           <ChromeGate><MobileActionBar /></ChromeGate>
+          {/* Ruimte voor de mobiele actiebalk; niet in het KMS en het portaal, daar staat die balk niet. */}
+          <ChromeGate><div className="h-14 lg:hidden" aria-hidden="true" /></ChromeGate>
           {/* Verschijnt pas zodra er artikelen gekozen zijn. */}
           <OfferteBalk />
         </OfferteSelectieProvider>
-        <WhatsAppButton />
+        {/* Niet in het KMS en het portaal: daar lag de zwevende knop over knoppen en tabellen. */}
+        <ChromeGate><WhatsAppButton /></ChromeGate>
         <Analytics />
         <ConsentBanner />
       </body>

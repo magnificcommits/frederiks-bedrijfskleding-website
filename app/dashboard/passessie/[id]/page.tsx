@@ -113,7 +113,7 @@ export default async function PassessieDetail({
         </p>
       )}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
         <PasSessieFormulier
           passessieId={id}
           organisatieId={sessie.organisatie_id}

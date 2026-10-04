@@ -10,6 +10,7 @@ import { formatEuro, formatGetal } from '@/lib/format';
 import { portaalLogout, markeerMeldingenGelezenActie } from './actions';
 import { listMijnMeldingen } from '@/lib/portaal/verzoeken';
 import PortaalNav from './PortaalNav';
+import InstalleerApp from '@/components/pwa/InstalleerApp';
 
 export const metadata: Metadata = { title: 'Klantportaal', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -86,6 +87,8 @@ export default async function Portaal() {
       </div>
 
       <PortaalNav rol={toegang.rol} actief="/portaal" />
+
+      <InstalleerApp gebied="portaal" variant="blok" uitlegHref="/portaal/app" />
 
       {ongelezen.length > 0 && (
         <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-soft">

@@ -1,5 +1,11 @@
 import { dashAuthed, getHuidigeAdmin, kmsAdmin, type HuidigeAdmin } from '@/lib/kms/adminClient';
 import { DashboardShell, type NavOpslag } from '@/components/dashboard/DashboardShell';
+import PwaRegistratie from '@/components/pwa/PwaRegistratie';
+import { pwaMetadata, pwaViewport } from '@/lib/pwa/apps';
+
+// Installeerbaar als app "Frederiks KMS" (scope /dashboard), los van het portaal.
+export const metadata = pwaMetadata('kms');
+export const viewport = pwaViewport('kms');
 
 /**
  * Menu-favorieten van de ingelogde beheerder. Zonder admin-account (wachtwoordlogin)
@@ -30,7 +36,7 @@ async function leesNavFavorieten(
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const authed = await dashAuthed();
-  if (!authed) return <>{children}</>;
+  if (!authed) return <><PwaRegistratie gebied="kms" />{children}</>;
   const huidige = await getHuidigeAdmin();
   const nav = await leesNavFavorieten(huidige);
   return (
@@ -40,6 +46,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       navOpslag={nav.opslag}
       navFavorieten={nav.favorieten}
     >
+      <PwaRegistratie gebied="kms" />
       {children}
     </DashboardShell>
   );

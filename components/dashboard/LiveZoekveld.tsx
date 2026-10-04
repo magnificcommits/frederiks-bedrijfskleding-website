@@ -137,7 +137,7 @@ export default function LiveZoekveld({
     <form
       method="get"
       role="search"
-      className={breedte}
+      className={/(^|\s)max-w-/.test(breedte) ? breedte : `${breedte} max-w-full`}
       onSubmit={(e) => {
         e.preventDefault();
         zoek(tekst);

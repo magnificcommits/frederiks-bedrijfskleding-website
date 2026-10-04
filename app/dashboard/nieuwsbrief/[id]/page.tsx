@@ -357,7 +357,7 @@ export default async function NieuwsbriefDetailPage({
           <summary className="cursor-pointer text-[13px] font-semibold text-warm hover:text-ink-800">Naam wijzigen</summary>
           <form action={hernoemNieuwsbrief} className="mt-2 flex flex-wrap gap-2">
             <input type="hidden" name="id" value={brief.id} />
-            <input name="naam" defaultValue={brief.naam} required maxLength={200} className="veld w-80 text-[15px]" aria-label="Naam van de nieuwsbrief" />
+            <input name="naam" defaultValue={brief.naam} required maxLength={200} className="veld w-full text-[15px] sm:w-80" aria-label="Naam van de nieuwsbrief" />
             <button type="submit" className="knop-stil">
               Naam opslaan
             </button>

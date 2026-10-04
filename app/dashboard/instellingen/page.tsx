@@ -19,6 +19,7 @@ const INSTELLING_KAARTEN = [
   { titel: 'Beheerders', tekst: 'Wie mag inloggen in het dashboard, met welke rol.', href: '/dashboard/admins', knop: 'Naar beheerders' },
   { titel: 'Beveiliging', tekst: 'Tweestapsverificatie met een app op je telefoon en hoe lang je nog ingelogd bent.', href: '/dashboard/beveiliging', knop: 'Naar beveiliging' },
   { titel: 'Logboek', tekst: 'Wie wat heeft gewijzigd, met de oude en de nieuwe waarde.', href: '/dashboard/audit', knop: 'Naar het logboek' },
+  { titel: 'KMS als app', tekst: 'Het KMS op je telefoon, tablet of computer zetten, en de uitleglink voor klanten die het portaal als app willen.', href: '/dashboard/app', knop: 'Naar de uitleg' },
 ];
 
 export default async function InstellingenPage({

@@ -252,7 +252,7 @@ export default async function MedewerkerInstellingen({
                   <form
                     key={p.id}
                     action={zetVoorkeursmaatAction}
-                    className="rounded-xl border border-line bg-cream/40 p-4"
+                    className="rounded-xl border border-line bg-mist/60 p-4"
                   >
                     <input type="hidden" name="medewerker_id" value={medewerker.id} />
                     <input type="hidden" name="product_id" value={p.id} />

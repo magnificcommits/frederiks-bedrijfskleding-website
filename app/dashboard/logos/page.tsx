@@ -176,11 +176,12 @@ async function WerkbonnenTab({ zp }: { zp: Zoek }) {
           <EmptyState titel="Niets gevonden" tekst="Geen werkbonnen met deze filters." actieHref="/dashboard/logos" actieLabel="Filters wissen" />
         </div>
       ) : weergave === 'bord' ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        // Telefoon: kolommen naast elkaar, horizontaal swipen met snap; vanaf md een raster.
+        <div className="mt-5 grid gap-4 max-md:snap-x max-md:snap-mandatory max-md:auto-cols-[85%] max-md:grid-flow-col max-md:overflow-x-auto max-md:pb-3 md:grid-cols-2 xl:grid-cols-4">
           {WERKBON_STATUSSEN.map((s) => {
             const kolom = kaarten.filter((k) => k.status === s);
             return (
-              <section key={s} aria-labelledby={`kolom-${s}`} className="flex min-w-0 flex-col rounded-xl border border-line bg-mist/60 p-2.5">
+              <section key={s} aria-labelledby={`kolom-${s}`} className="flex min-w-0 snap-start flex-col rounded-xl border border-line bg-mist/60 p-2.5">
                 <header className="px-1 pb-2">
                   <h2 id={`kolom-${s}`} className="flex items-center justify-between font-display text-sm font-bold text-ink-900">
                     {WERKBON_LABEL[s]}

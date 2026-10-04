@@ -45,7 +45,7 @@ export default function PeriodeKiezer({
           <summary className={`chip cursor-pointer list-none ${periode.keuze === 'eigen' ? 'chip-aan' : ''}`}>
             {PERIODE_LABEL.eigen}
           </summary>
-          <form method="get" action={pad} className="absolute left-0 z-30 mt-1 flex w-[300px] flex-col gap-2 rounded-lg border border-line bg-white p-3 shadow-card">
+          <form method="get" action={pad} className="absolute left-0 z-30 mt-1 flex w-[300px] max-w-[calc(100vw-2.5rem)] flex-col gap-2 rounded-lg border border-line bg-white p-3 shadow-card">
             {Object.entries(bewaar).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
             <input type="hidden" name="periode" value="eigen" />
             {periode.vergelijk !== 'vorige' && <input type="hidden" name="vgl" value={periode.vergelijk} />}

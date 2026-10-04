@@ -48,7 +48,7 @@ function ToastInner() {
 
   if (!zichtbaar || !bericht) return null;
   return (
-    <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 md:left-auto md:right-6 md:translate-x-0">
+    <div className="fixed bottom-5 left-1/2 z-50 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 md:left-auto md:right-6 md:translate-x-0">
       <div
         role="status"
         className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold shadow-card ${

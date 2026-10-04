@@ -94,7 +94,7 @@ export default function PasdagMaten({
   return (
     <div>
       <div className="flex flex-wrap items-end gap-4">
-        <div className="w-72">
+        <div className="w-72 max-w-full">
           <label className="veld-label" htmlFor="pas-zoek">
             Werknemer zoeken
           </label>

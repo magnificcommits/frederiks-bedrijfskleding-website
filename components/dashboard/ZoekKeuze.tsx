@@ -122,7 +122,7 @@ export default function ZoekKeuze({
   const toon = open ? tekst : heeftKeuze ? waardeLabel || 'Gekozen' : '';
 
   return (
-    <div ref={wrapper} className={`relative ${breedte}`}>
+    <div ref={wrapper} className={`relative ${/(^|\s)max-w-/.test(breedte) ? '' : 'max-w-full'} ${breedte}`}>
       {label && (
         <label htmlFor={id} className="veld-label">
           {label}

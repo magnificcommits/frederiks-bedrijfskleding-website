@@ -194,7 +194,7 @@ export default function FotoControle({
   return (
     <div className="mt-5">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="w-72">
+        <div className="w-72 max-w-full">
           <label htmlFor="foto-zoek" className="veld-label">Zoeken</label>
           <input id="foto-zoek" type="search" value={zoek} onChange={(e) => setZoek(e.target.value)} placeholder="Product, merk of kleur" className="veld" />
         </div>

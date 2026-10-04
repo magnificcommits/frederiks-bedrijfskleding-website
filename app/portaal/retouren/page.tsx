@@ -25,7 +25,7 @@ function StatusBadge({ status }: { status: RetourStatus }) {
     status === 'goedgekeurd' || status === 'verwerkt'
       ? 'border-green-300 bg-green-50 text-green-800'
       : status === 'afgewezen'
-        ? 'border-line bg-cream text-warm'
+        ? 'border-line bg-mist text-warm'
         : 'border-amber-300 bg-amber-50 text-amber-700';
   return <span className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${toon}`}>{label}</span>;
 }
@@ -79,7 +79,7 @@ export default async function Retouren({ searchParams }: { searchParams: Promise
 
       <p className="mt-6 max-w-2xl text-sm text-warm">Meld een retour aan voor kleding die je terug wilt sturen. We beoordelen je aanmelding en sturen je het retouradres met de juiste instructies.</p>
 
-      <p className="mt-3 max-w-2xl rounded-lg bg-cream px-4 py-3 text-sm text-ink-800">
+      <p className="mt-3 max-w-2xl rounded-lg bg-mist px-4 py-3 text-sm text-ink-800">
         <span className="font-semibold">Retourbeleid:</span> je kunt tot {termijn} dagen na de besteldatum retourneren. Bestellingen daarbuiten kun je niet meer aanmelden.
         {info.voorwaarden.length > 0 && (
           <span className="mt-2 block">
@@ -159,10 +159,10 @@ export default async function Retouren({ searchParams }: { searchParams: Promise
                   )}
 
                   {r.retouradres && (
-                    <p className="mt-4 rounded-lg bg-cream px-4 py-3 text-sm text-warm"><span className="font-semibold text-ink-800">Retouradres:</span> {r.retouradres}</p>
+                    <p className="mt-4 rounded-lg bg-mist px-4 py-3 text-sm text-warm"><span className="font-semibold text-ink-800">Retouradres:</span> {r.retouradres}</p>
                   )}
                   {r.instructie && (
-                    <p className="mt-2 rounded-lg bg-cream px-4 py-3 text-sm text-warm"><span className="font-semibold text-ink-800">Instructie:</span> {r.instructie}</p>
+                    <p className="mt-2 rounded-lg bg-mist px-4 py-3 text-sm text-warm"><span className="font-semibold text-ink-800">Instructie:</span> {r.instructie}</p>
                   )}
                 </div>
               ))}

@@ -124,7 +124,7 @@ export default function TriggerFormulier({
             <>
               <div>
                 <label className="veld-label">Waarop</label>
-                <select value={trigger.spaarModus} onChange={(e) => zet({ spaarModus: e.target.value as 'niveau' | 'punten' })} className="veld w-72">
+                <select value={trigger.spaarModus} onChange={(e) => zet({ spaarModus: e.target.value as 'niveau' | 'punten' })} className="veld w-72 max-w-full">
                   <option value="niveau">Dicht bij het volgende spaarniveau</option>
                   <option value="punten">Saldo net onder een puntengrens</option>
                 </select>

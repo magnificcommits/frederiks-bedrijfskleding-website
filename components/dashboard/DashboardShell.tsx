@@ -7,6 +7,7 @@ import { bewaarNavFavorieten } from '@/app/dashboard/navActions';
 import CommandPalette from './CommandPalette';
 import BezigBalk from './BezigBalk';
 import Toast from './Toast';
+import InstalleerApp from '@/components/pwa/InstalleerApp';
 
 /** Waar de menu-favorieten bewaard worden: bij de beheerder in de database, of in deze browser. */
 export type NavOpslag = 'db' | 'lokaal';
@@ -314,7 +315,8 @@ export function DashboardShell({
     wijzigFavorieten([...STANDAARD_FAVORIETEN], 'Standaardfavorieten teruggezet');
   }
 
-  const linkBasis = 'block min-w-0 flex-1 truncate rounded py-1.5 pl-2 pr-8 text-[13px] font-medium';
+  // Op een telefoon iets hoger, zodat je met een duim niet het verkeerde item raakt.
+  const linkBasis = 'block min-w-0 flex-1 truncate rounded py-1.5 pl-2 pr-8 text-[13px] font-medium max-md:py-2.5 max-md:text-[14px]';
   const fel = 'bg-amber-500 text-ink-900';
   const rustig = 'text-ink-200 hover:bg-ink-800 hover:text-white';
   // Subtiel: de pagina is al fel gemarkeerd in favorieten, hier alleen een streepje links.
@@ -338,7 +340,7 @@ export function DashboardShell({
         }}
         aria-label={label}
         title={label}
-        className={`absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 group-focus-within:opacity-100 group-hover:opacity-100 ${
+        className={`absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center max-md:h-8 max-md:w-8 justify-center rounded transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 group-focus-within:opacity-100 group-hover:opacity-100 ${
           altijdZichtbaar ? 'opacity-100' : 'opacity-0 [@media(hover:none)]:opacity-100'
         } ${kleur}`}
       >
@@ -489,6 +491,7 @@ export function DashboardShell({
       </div>
 
       <div className="mt-auto border-t border-ink-800 pt-3">
+        <InstalleerApp gebied="kms" variant="zijbalk" />
         {adminNaam && (
           <p className="mb-1.5 truncate px-2 text-[11px] text-ink-400" title={adminNaam}>
             Ingelogd als <span className="font-semibold text-ink-200">{adminNaam}</span>
@@ -508,12 +511,12 @@ export function DashboardShell({
           <span className="font-display text-base font-extrabold text-white">FREDERIKS</span>
           <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-500">KMS</span>
         </div>
-        <button onClick={() => setOpen((v) => !v)} aria-label="Menu" aria-expanded={open} className="rounded border border-ink-700 px-3 py-1 text-sm font-semibold text-white">Menu</button>
+        <button onClick={() => setOpen((v) => !v)} aria-label="Menu" aria-expanded={open} className="min-h-[40px] rounded border border-ink-700 px-3 py-1 text-sm font-semibold text-white">Menu</button>
       </div>
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
           <button type="button" aria-label="Menu sluiten" onClick={() => setOpen(false)} className="absolute inset-0 cursor-pointer bg-black/40" />
-          <div className="absolute left-0 top-0 h-full w-72 max-w-[80%] bg-ink-900">{nav}</div>
+          <div className="absolute left-0 top-0 h-full w-72 max-w-[85%] bg-ink-900 shadow-2xl">{nav}</div>
         </div>
       )}
       <aside className="hidden w-60 shrink-0 bg-ink-900 md:sticky md:top-0 md:block md:h-screen">{nav}</aside>

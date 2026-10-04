@@ -127,7 +127,7 @@ export default function AssortimentBeheer({
     <div>
       <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-3">
-          <div className="w-72">
+          <div className="w-72 max-w-full">
             <label className="veld-label" htmlFor="assortiment-zoek">
               Zoek een artikel
             </label>

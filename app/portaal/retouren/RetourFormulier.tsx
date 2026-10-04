@@ -56,7 +56,7 @@ export default function RetourFormulier({ orders, redenen = [] }: { orders: Reto
 
   if (orders.length === 0) {
     return (
-      <p className="mt-4 rounded-lg bg-cream px-4 py-3 text-sm text-warm">
+      <p className="mt-4 rounded-lg bg-mist px-4 py-3 text-sm text-warm">
         Je hebt op dit moment geen bestellingen die nog binnen de retourtermijn vallen.
       </p>
     );
@@ -98,7 +98,7 @@ export default function RetourFormulier({ orders, redenen = [] }: { orders: Reto
               return (
                 <div
                   key={r.orderregel_id}
-                  className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-cream px-3 py-2"
+                  className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-mist px-3 py-2"
                 >
                   <label className="flex flex-1 items-start gap-2 text-sm text-ink-800">
                     <input

@@ -27,7 +27,7 @@ function StatusBadge({ status }: { status: string }) {
       ? 'border-green-300 bg-green-50 text-green-800'
       : status === 'verzonden'
         ? 'border-amber-300 bg-amber-50 text-amber-700'
-        : 'border-line bg-cream text-warm';
+        : 'border-line bg-mist text-warm';
   return <span className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${toon}`}>{label}</span>;
 }
 
@@ -95,7 +95,7 @@ export default async function Facturen() {
         <div className="mt-8 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
           <table className="w-full min-w-[480px] text-sm">
             <thead>
-              <tr className="border-b border-line bg-cream text-left text-xs font-bold uppercase tracking-[0.04em] text-warm">
+              <tr className="border-b border-line bg-mist text-left text-xs font-bold uppercase tracking-[0.04em] text-warm">
                 <th className="px-5 py-3">Factuurnummer</th>
                 <th className="px-5 py-3">Datum</th>
                 <th className="px-5 py-3 text-right">Bedrag incl.</th>

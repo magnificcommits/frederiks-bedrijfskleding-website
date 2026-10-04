@@ -60,20 +60,29 @@
   .container-smal { @apply mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-8; }
 
   /* Paginakop die blijft staan. De negatieve marges laten de balk tot de
-     rand van de container lopen, zodat er niets langs de zijkant doorschijnt. */
+     rand van de container lopen, zodat er niets langs de zijkant doorschijnt.
+     flex-wrap: op een telefoon zakken de knoppen onder de titel in plaats van
+     buiten beeld te lopen. Op een breed scherm past alles op één regel. */
   .dash-kop {
-    @apply sticky top-0 z-30 -mx-5 flex min-h-[3.5rem] items-center border-b border-line bg-white/95 px-5 py-2
+    @apply sticky top-0 z-30 -mx-5 flex min-h-[3.5rem] flex-wrap items-center gap-y-2 border-b border-line bg-white/95 px-5 py-2
            backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8;
   }
 
-  /* Filterbalk direct onder de kop. */
+  /* Telefoon: ook de knoppengroepen in de kop mogen naar een tweede regel. */
+  @media (max-width: 767.98px) {
+    .dash-kop > div { flex-wrap: wrap; row-gap: 0.5rem; }
+  }
+
+  /* Filterbalk direct onder de kop. Op een telefoon niet vast: de balk loopt
+     daar over meerdere regels en zou anders een groot deel van het scherm bedekken. */
   .dash-filter {
-    @apply sticky top-[3.5rem] z-20 -mx-5 flex min-h-[3.25rem] items-center border-b border-line bg-white px-5 py-2
-           sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8;
+    @apply static z-20 -mx-5 flex min-h-[3.25rem] items-center border-b border-line bg-white px-5 py-2
+           sm:-mx-6 sm:px-6 md:sticky md:top-[3.5rem] lg:-mx-8 lg:px-8;
   }
 
   /* Tabelkop die blijft staan. Werkt alleen als de tabelwrapper geen
-     overflow-container is; daarom is overflow-x-auto daar weggehaald. */
+     overflow-container is; daarom is overflow-x-auto daar weggehaald.
+     Onder 1024 px scrolt de tabel wel binnen zijn vlak (zie onder .tbl). */
   .thead-sticky { @apply sticky top-[3.25rem] z-10 bg-mist; }
   .thead-sticky-filter { @apply sticky top-[6.25rem] z-10 bg-mist; }
 
@@ -100,6 +109,30 @@
   .tbl .rij-link { @apply font-semibold text-ink-900 underline-offset-2 hover:text-amber-700 hover:underline; }
   .tbl .num { @apply whitespace-nowrap text-right tabular-nums; }
   .tbl .stil { @apply text-warm; }
+
+  /* Telefoon en tablet: een brede tabel scrolt binnen zijn eigen vlak in plaats
+     van de hele pagina breder te maken. Vanaf 1024 px blijft de wrapper zonder
+     overflow, zodat de vaste tabelkop (thead-sticky) daar werkt. */
+  @media (max-width: 1023.98px) {
+    :where(div, section, form, details):has(> table.tbl) {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+    }
+    /* In een scrollvlak plakt een vaste kop met top-offset midden in de tabel. */
+    .tbl thead.thead-sticky, .tbl thead.thead-sticky-filter { position: static; }
+    /* Nummers, datums en namen niet midden in een woord afbreken ("FR-/2026");
+       de tabel wordt dan breder en scrolt. Cellen met alinea's of lijsten
+       mogen wel over meerdere regels. Niet bij table-fixed: daar liggen de
+       kolombreedtes vast en zou tekst over de buurkolom heen lopen. */
+    .tbl:not(.table-fixed) tbody td { white-space: nowrap; }
+    .tbl:not(.table-fixed) tbody td:has(> p, > ul, > ol) { white-space: normal; min-width: 12rem; }
+  }
+  /* Telefoon: iets smallere cellen, zodat er meer kolommen in beeld passen. */
+  @media (max-width: 767.98px) {
+    .tbl thead th, .tbl tbody td { @apply px-2; }
+    .tbl thead th:first-child, .tbl tbody td:first-child { @apply pl-3; }
+  }
 
   /* Status. Kleur betekent iets: amber = actie nodig, groen = klaar, grijs = rust. */
   .badge { @apply inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-semibold; }

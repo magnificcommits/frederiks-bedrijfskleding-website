@@ -24,7 +24,7 @@ function StatusBadge({ status }: { status: string | null }) {
     status === 'afgerond' || status === 'compleet_geleverd' || status === 'verzonden'
       ? 'border-green-300 bg-green-50 text-green-800'
       : status === 'geannuleerd'
-        ? 'border-line bg-cream text-warm'
+        ? 'border-line bg-mist text-warm'
         : 'border-amber-300 bg-amber-50 text-amber-700';
   return <span className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${toon}`}>{label}</span>;
 }
@@ -132,7 +132,7 @@ export default async function Bestellingen({ searchParams }: { searchParams: Pro
               )}
 
               {o.notitie && (
-                <p className="mt-4 rounded-lg bg-cream px-4 py-3 text-sm text-warm"><span className="font-semibold text-ink-800">Opmerking:</span> {o.notitie}</p>
+                <p className="mt-4 rounded-lg bg-mist px-4 py-3 text-sm text-warm"><span className="font-semibold text-ink-800">Opmerking:</span> {o.notitie}</p>
               )}
 
               {o.status === 'verzonden' && (o.vervoerder || o.track_trace_code) && (

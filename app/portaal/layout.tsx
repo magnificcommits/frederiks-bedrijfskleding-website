@@ -3,6 +3,12 @@ import Link from 'next/link';
 import { isPortalConfigured } from '@/lib/env';
 import { getHuisstijl, veiligeKleur } from '@/lib/portaal/huisstijl';
 import { getMijnToegang } from '@/lib/portaal/team';
+import PwaRegistratie from '@/components/pwa/PwaRegistratie';
+import { pwaMetadata, pwaViewport } from '@/lib/pwa/apps';
+
+// Installeerbaar als app "Frederiks Kledingportaal" (scope /portaal), los van het KMS.
+export const metadata = pwaMetadata('portaal');
+export const viewport = pwaViewport('portaal');
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +30,7 @@ function initialen(naam: string): string {
  * kaarten uitkomen. Login en niet-ingelogde pagina's blijven kaal.
  */
 export default async function PortaalLayout({ children }: { children: React.ReactNode }) {
-  if (!isPortalConfigured) return <>{children}</>;
+  if (!isPortalConfigured) return <><PwaRegistratie gebied="portaal" />{children}</>;
 
   let naam: string | null = null;
   let kleur: string | null = null;
@@ -36,7 +42,7 @@ export default async function PortaalLayout({ children }: { children: React.Reac
   } catch { /* niet ingelogd */ }
 
   // Geen organisatie betekent: login of niet-gekoppeld. Kale weergave.
-  if (!naam) return <>{children}</>;
+  if (!naam) return <><PwaRegistratie gebied="portaal" />{children}</>;
 
   let rol: string | null = null;
   try { rol = (await getMijnToegang()).rol; } catch { /* rol optioneel */ }
@@ -46,6 +52,7 @@ export default async function PortaalLayout({ children }: { children: React.Reac
 
   return (
     <div style={style} className="min-h-screen bg-mist">
+      <PwaRegistratie gebied="portaal" />
       <header className="border-b border-line bg-white">
         <div className="container-x flex items-center justify-between gap-4 py-4">
           <div className="flex min-w-0 items-center gap-3">

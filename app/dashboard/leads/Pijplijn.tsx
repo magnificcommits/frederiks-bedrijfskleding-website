@@ -153,7 +153,7 @@ export default function Pijplijn({ kaarten, verborgen }: { kaarten: PijplijnKaar
 
       <div
         ref={bord}
-        className="-mx-5 grid auto-cols-[minmax(232px,1fr)] grid-flow-col gap-3 overflow-x-auto px-5 pb-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+        className="-mx-5 grid snap-x snap-proximity scroll-px-5 auto-cols-[minmax(232px,1fr)] grid-flow-col gap-3 overflow-x-auto px-5 pb-3 max-sm:auto-cols-[82%] sm:-mx-6 sm:scroll-px-6 sm:px-6 lg:-mx-8 lg:px-8"
       >
         {kolommen.map((kol) => {
           const open = OPEN_STATUSSEN.includes(kol.status);
@@ -178,7 +178,7 @@ export default function Pijplijn({ kaarten, verborgen }: { kaarten: PijplijnKaar
                 setBoven(null);
                 if (id) verplaats(id, kol.status);
               }}
-              className={`flex min-h-[14rem] flex-col rounded-lg border border-t-[3px] ${STATUS_RAND[kol.status] ?? ''} transition-colors ${
+              className={`flex min-h-[14rem] snap-start flex-col rounded-lg border border-t-[3px] ${STATUS_RAND[kol.status] ?? ''} transition-colors ${
                 isDoel ? 'border-amber-400 bg-amber-50/60' : 'border-line bg-mist/70'
               }`}
             >

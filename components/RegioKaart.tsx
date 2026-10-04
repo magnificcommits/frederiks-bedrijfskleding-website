@@ -51,8 +51,8 @@ export function RegioKaart({ className = '' }: { className?: string }) {
         Zit je plaats er niet bij? Bel{' '}
         <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-700 underline underline-offset-2">
           {site.phone}
-        </a>{' '}
-        — we rijden vaker dan je denkt.
+        </a>.{' '}
+        We rijden vaker dan je denkt.
       </p>
     </div>
   );

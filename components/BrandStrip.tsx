@@ -49,7 +49,7 @@ export async function BrandStrip() {
           ))}
         </ul>
         <p className="mt-5 text-center text-xs text-warm">
-          Klik op een merk om de collectie te zien. Van de merken zonder link leveren we op bestelling — vraag er
+          Klik op een merk om de collectie te zien. Van de merken zonder link leveren we op bestelling. Vraag er
           gerust naar.
         </p>
       </div>

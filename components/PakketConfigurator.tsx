@@ -15,9 +15,9 @@ const extrasOpties = [
   { id: 'accessoires', label: 'Accessoires (muts, handschoenen)' },
 ];
 const totaalStappen = 4;
-const chip = 'cursor-pointer rounded-md border-2 px-4 py-2.5 text-sm font-semibold transition select-none';
+const chip = 'min-h-[44px] cursor-pointer select-none rounded-lg border-2 px-4 py-2.5 text-sm font-semibold transition';
 const swatch = 'h-9 w-9 rounded-full border-2 transition';
-const field = 'mt-1 w-full rounded-md border border-line bg-white px-4 py-3 text-sm text-ink-900 shadow-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
+const field = 'invoer';
 
 /** UTF-8-veilig base64 coderen en decoderen, zodat accenten en speciale tekens heel blijven. */
 function encodeState(obj: unknown): string {
@@ -380,32 +380,43 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   const kant = draft.type === 'werkbroek' ? 'Voorkant' : draft.positie === 'rug' ? 'Achterkant' : 'Voorkant';
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-6xl">
       {/* Bij printen verbergen we de wizard en tonen we het gebrande ontwerpdocument. */}
       <style>{`@media print { @page { margin: 12mm; } .no-print { display: none !important; } }`}</style>
 
-      {/* Voortgang */}
-      <div className="no-print print:hidden flex items-center gap-2">
-        {Array.from({ length: totaalStappen }).map((_, i) => (
-          <div key={i} className="flex-1">
-            <div className={`h-1.5 rounded-full ${i <= step ? 'bg-amber-500' : 'bg-line'}`} />
-            <p className={`mt-2 text-xs font-bold uppercase tracking-wide ${i === step ? 'text-amber-700' : 'text-warm'}`}>{i + 1}. {stapTitels[i]}</p>
-          </div>
-        ))}
-      </div>
+      {/* Voortgang: zelfde stappenbalk als het kledingadvies, met namen. Terug naar een eerdere stap kan door erop te klikken. */}
+      <ol className="no-print grid grid-cols-4 overflow-hidden rounded-t-2xl bg-ink-900 print:hidden">
+        {Array.from({ length: totaalStappen }).map((_, i) => {
+          const stand = i < step ? 'klaar' : i === step ? 'nu' : 'straks';
+          return (
+            <li key={i} className={`relative ${i > 0 ? 'border-l border-white/10' : ''}`} aria-current={stand === 'nu' ? 'step' : undefined}>
+              <button
+                type="button"
+                disabled={stand === 'straks'}
+                onClick={() => setStep(i)}
+                className="block w-full px-2 py-3 text-center disabled:cursor-default sm:px-4"
+              >
+                <span className={`block text-[11px] font-semibold ${stand === 'straks' ? 'text-ink-400' : 'text-amber-400'}`}>{stand === 'klaar' ? 'Klaar' : `Stap ${i + 1}`}</span>
+                <span className={`block text-sm font-semibold ${stand === 'straks' ? 'text-ink-400' : 'text-white'}`}>{stapTitels[i]}</span>
+              </button>
+              <span className={`absolute inset-x-0 bottom-0 h-1 ${stand === 'straks' ? 'bg-transparent' : 'bg-amber-500'}`} aria-hidden="true" />
+            </li>
+          );
+        })}
+      </ol>
 
-      <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-soft sm:p-8 print:hidden">
+      <div className="rounded-b-2xl border border-t-0 border-line bg-white p-6 shadow-card sm:p-8 print:hidden">
         {step === 0 && (
           <div className="no-print">
-            <h3 className="text-xl font-extrabold text-ink-900">Voor wie is de kleding?</h3>
+            <h3 className="font-display text-2xl font-extrabold text-ink-900">Voor wie is de kleding?</h3>
             <p className="mt-1 text-sm text-warm">Zo stemmen we de modellen en het advies af op jouw werk.</p>
             <p className="mt-5 text-sm font-semibold text-ink-800">Branche</p>
             <div className="mt-2 flex flex-wrap gap-2.5">
               {branches.map((b) => (
                 <button key={b.slug} type="button" onClick={() => setBranche(b.navLabel)}
-                  className={`${chip} ${branche === b.navLabel ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>{b.navLabel}</button>
+                  className={`${chip} ${branche === b.navLabel ? 'border-amber-500 bg-amber-50 text-ink-900 shadow-soft' : 'border-ink-200 bg-white text-ink-900 hover:border-ink-900'}`}>{b.navLabel}</button>
               ))}
-              <button type="button" onClick={() => setBranche('Anders')} className={`${chip} ${branche === 'Anders' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>Anders</button>
+              <button type="button" onClick={() => setBranche('Anders')} className={`${chip} ${branche === 'Anders' ? 'border-amber-500 bg-amber-50 text-ink-900 shadow-soft' : 'border-ink-200 bg-white text-ink-900 hover:border-ink-900'}`}>Anders</button>
             </div>
             <p className="mt-6 text-sm font-semibold text-ink-800">Teamgrootte</p>
             <select className={`${field} max-w-xs`} value={team} onChange={(e) => setTeam(e.target.value)}>
@@ -418,7 +429,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         {step === 1 && (
           <div className="no-print grid gap-8 lg:grid-cols-2">
             <div>
-              <h3 className="text-xl font-extrabold text-ink-900">Je logo en afwerking</h3>
+              <h3 className="font-display text-2xl font-extrabold text-ink-900">Je logo en afwerking</h3>
               <p className="mt-1 text-sm text-warm">Upload je logo, dan zie je het zo op de kleding. Geen logo bij de hand? Sla over, je kunt het later aanleveren.</p>
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <button type="button" onClick={() => fileRef.current?.click()} className="btn-outline px-4 py-2 text-[13px]">{logo ? 'Ander logo kiezen' : 'Upload je logo'}</button>
@@ -429,13 +440,13 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               <p className="mt-5 text-sm font-semibold text-ink-800">Techniek</p>
               <div className="mt-2 flex flex-wrap gap-2.5">
                 {(['borduren', 'bedrukken'] as const).map((t) => (
-                  <button key={t} type="button" onClick={() => setTechniek(t)} className={`${chip} ${techniek === t ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>{t === 'borduren' ? 'Borduren' : 'Bedrukken'}</button>
+                  <button key={t} type="button" onClick={() => setTechniek(t)} className={`${chip} ${techniek === t ? 'border-amber-500 bg-amber-50 text-ink-900 shadow-soft' : 'border-ink-200 bg-white text-ink-900 hover:border-ink-900'}`}>{t === 'borduren' ? 'Borduren' : 'Bedrukken'}</button>
                 ))}
               </div>
               <p className="mt-5 text-sm font-semibold text-ink-800">Standaardpositie</p>
               <div className="mt-2 flex flex-wrap gap-2.5">
                 {logoposities.map((p) => (
-                  <button key={p.id} type="button" onClick={() => { setDefPositie(p.id); setDraft((d) => ({ ...d, positie: p.id })); }} className={`${chip} ${defPositie === p.id ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>{p.label}</button>
+                  <button key={p.id} type="button" onClick={() => { setDefPositie(p.id); setDraft((d) => ({ ...d, positie: p.id })); }} className={`${chip} ${defPositie === p.id ? 'border-amber-500 bg-amber-50 text-ink-900 shadow-soft' : 'border-ink-200 bg-white text-ink-900 hover:border-ink-900'}`}>{p.label}</button>
                 ))}
               </div>
             </div>
@@ -449,20 +460,20 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         {step === 2 && (
           <div className="no-print grid gap-8 lg:grid-cols-2">
             <div>
-              <h3 className="text-xl font-extrabold text-ink-900">Stel je kleding samen</h3>
+              <h3 className="font-display text-2xl font-extrabold text-ink-900">Stel je kleding samen</h3>
               <ol className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-warm">
                 <li><span className="text-amber-700">1.</span> Stel een stuk samen</li>
                 <li><span className="text-amber-700">2.</span> Voeg het toe</li>
                 <li><span className="text-amber-700">3.</span> Herhaal of ga verder</li>
               </ol>
-              <div className="relative mt-4 rounded-xl border border-line bg-mist p-4">
+              <div className="relative mt-4 rounded-xl border border-line bg-mist p-4 [&>div]:max-w-[17rem]">
                 <span className="absolute right-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-ink-600 shadow-sm">{kant}</span>
                 <Preview type={draft.type} kleur={draft.kleur} logo={logo} positie={draft.positie} techniek={techniek} />
               </div>
               <p className="mt-5 text-sm font-semibold text-ink-800">Kledingstuk</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {kledingtypes.map((t) => (
-                  <button key={t.id} type="button" onClick={() => chooseType(t.id)} className={`${chip} ${draft.type === t.id ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>{t.label}</button>
+                  <button key={t.id} type="button" onClick={() => chooseType(t.id)} className={`${chip} ${draft.type === t.id ? 'border-amber-500 bg-amber-50 text-ink-900 shadow-soft' : 'border-ink-200 bg-white text-ink-900 hover:border-ink-900'}`}>{t.label}</button>
                 ))}
               </div>
               <p className="mt-4 text-sm font-semibold text-ink-800">Kleur: <span className="text-warm">{kleuren[draft.kleur].name}</span></p>
@@ -474,7 +485,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               {(artikelen.length > 0 || artikelenBezig) && (
                 <div className="mt-5">
                   <p className="text-sm font-semibold text-ink-800">
-                    Uit ons assortiment <span className="font-normal text-warm">— optioneel, je hoeft nu nog niets te kiezen</span>
+                    Uit ons assortiment <span className="font-normal text-warm">(optioneel, je hoeft nu nog niets te kiezen)</span>
                   </p>
                   {artikelenBezig && artikelen.length === 0 ? (
                     <p className="mt-2 text-sm text-warm">Even zoeken…</p>
@@ -516,7 +527,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
                   <p className="text-sm font-semibold text-ink-800">Logo-positie</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {positiesVoor(draft.type).map((p) => (
-                      <button key={p.id} type="button" onClick={() => setDraft((d) => ({ ...d, positie: p.id }))} className={`${chip} px-3 py-2 ${draft.positie === p.id ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-line text-ink-700 hover:border-ink-300'}`}>{p.label}</button>
+                      <button key={p.id} type="button" onClick={() => setDraft((d) => ({ ...d, positie: p.id }))} className={`${chip} px-3 py-2 ${draft.positie === p.id ? 'border-amber-500 bg-amber-50 text-ink-900 shadow-soft' : 'border-ink-200 bg-white text-ink-900 hover:border-ink-900'}`}>{p.label}</button>
                     ))}
                   </div>
                 </div>

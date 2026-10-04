@@ -22,25 +22,20 @@ const stappen = [
 
 export function HoeWerktHet() {
   return (
-    <section className="bg-white py-16 sm:py-24">
-      <div className="container-x">
-        <p className="eyebrow">Zo werkt het</p>
-        <h2 className="mt-4 max-w-2xl font-display text-3xl font-extrabold tracking-tight text-ink-900 sm:text-4xl">
-          Van eerste telefoontje tot kleding op de werkvloer
-        </h2>
-        <ol className="mt-10 grid gap-6 md:grid-cols-3">
-          {stappen.map((s) => (
-            <li key={s.nr} className="seam-card h-full">
-              <span
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-amber-500 font-display text-lg font-extrabold text-white"
-                aria-hidden="true"
-              >
+    <section className="bg-white">
+      <div className="container-x sec-md">
+        <h2 className="kop-2 max-w-[24ch]">Van eerste telefoontje tot kleding op de werkvloer</h2>
+        <ol className="mt-7 grid gap-x-8 gap-y-7 md:grid-cols-3">
+          {stappen.map((s, i) => (
+            <li key={s.nr} className="relative">
+              {i < stappen.length - 1 && <span className="absolute left-14 right-0 top-5 hidden border-t-2 border-dashed border-amber-400 md:block" aria-hidden="true" />}
+              <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 font-display text-lg font-extrabold text-ink-900" aria-hidden="true">
                 {s.nr}
               </span>
-              <h3 className="mt-4 font-display text-lg font-extrabold text-ink-900">
+              <h3 className="mt-4 font-display text-xl font-extrabold text-ink-900">
                 <span className="sr-only">Stap {s.nr}: </span>{s.title}
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-warm">{s.text}</p>
+              <p className="mt-2 max-w-[42ch] leading-relaxed text-warm">{s.text}</p>
             </li>
           ))}
         </ol>

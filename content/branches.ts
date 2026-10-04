@@ -219,6 +219,8 @@ export const branches: Branche[] = [
     metaDescription:
       'Sport- en promotiekleding voor clubs, teams en evenementen. Teamshirts, hoodies en caps met opdruk of borduring, in kleine en grote oplagen.',
     image: '/Promotionele-sportkleding-Achterhoek.jpg',
+    // Foto is maar 355 px breed: niet schermvullend oprekken.
+    fit: 'contain',
     heroIntro:
       'Voor clubs, teams en sponsoren. Herkenbare kleding waarmee je opvalt.',
     body: [

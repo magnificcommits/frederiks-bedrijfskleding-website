@@ -75,6 +75,8 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
       const p = JSON.parse(ruw) as { type?: string; kleur?: number; positie?: string; logo?: string | null };
       if (typeof p.type === 'string' && typeof p.kleur === 'number' && kleuren[p.kleur]) {
         setDraft((d) => ({ ...d, type: p.type as string, kleur: p.kleur as number, positie: typeof p.positie === 'string' ? p.positie : d.positie }));
+        // Meteen naar de stap met de kleding: daar staat het ontwerp dat de bezoeker net maakte.
+        setStep(2);
       }
       if (typeof p.logo === 'string' && p.logo.startsWith('data:image/')) setLogo(p.logo);
     } catch {

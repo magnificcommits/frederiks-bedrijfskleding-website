@@ -98,7 +98,7 @@ export default async function HomePage() {
         <div className="container-x sec grid items-center gap-10 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-14">
           <div>
             <h2 className="kop-2">Stel je pakket samen en zie je logo meteen op de kleding</h2>
-            <p className="mt-4 max-w-[54ch] text-lg text-white/80">Probeer het hiernaast: kies een kledingstuk en een kleur, zet je logo erop en zie meteen hoe het staat. Tevreden? Vraag het pakket in één klik als offerte aan.</p>
+            <p className="mt-4 max-w-[54ch] text-lg text-white/80">Probeer het zelf: kies een kledingstuk en een kleur, zet je logo erop en zie meteen hoe het staat. Tevreden? Vraag het pakket in één klik als offerte aan.</p>
             {/* Wit omlijnd in plaats van oranje: oranje is gereserveerd voor de
                 offerte, en de samensteller eindigt zelf ook in een offerte. */}
             <div className="mt-6 flex flex-wrap gap-3" data-plek="pakket-sectie">

@@ -126,7 +126,7 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
     {
       key: 'goedkeuring', aantal: orders.wachtGoedkeuring, urgent: true,
       label: orders.wachtGoedkeuring === 1 ? 'Order wacht op goedkeuring' : 'Orders wachten op goedkeuring',
-      href: '/dashboard/orders?status=offerte_goedgekeurd',
+      href: '/dashboard/orders?goedkeuring=wacht',
     },
     ...(eigenaar
       ? [{

@@ -1,11 +1,15 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import Drawer from '@/components/dashboard/Drawer';
-import { kmsAdmin, dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
+import { kmsAdmin, dashAuthed, eisEigenaar, getHuidigeAdmin } from '@/lib/kms/adminClient';
 import StatusChips from '@/components/dashboard/StatusChips';
 import Zoekbalk from '@/components/dashboard/Zoekbalk';
+import FilterBalk from '@/components/dashboard/FilterBalk';
 import { telPerStatus } from '@/lib/kms/tellingen';
-import { listFacturenPaged, listOrganisaties, listFactureerbareOrders, getBoekhouderEmail, FACTUUR_STATUSSEN } from '@/lib/kms/facturen';
+import { listFacturenPaged, listOrganisaties, listFactureerbareOrders, getBoekhouderEmail, FACTUUR_STATUSSEN, type FactuurLijstFilters } from '@/lib/kms/facturen';
+import { klantLabel } from '@/lib/kms/filterOpties';
+import { zoekKlantenVoorFilter } from '@/lib/kms/filterActies';
+import { bedragParam, bewaarParams, isUuid, lijstUrl, param, periodeParam, sleutelsVan, type FilterDef } from '@/lib/filterBalk';
 import SortableTh from '@/components/dashboard/SortableTh';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { factuurVanOrder, legeFactuur, zetBoekhouderEmailActie, mailFacturenActie, factureerAlleActie, markeerBetaaldActie } from './actions';
@@ -28,7 +32,7 @@ const statusBadge: Record<string, string> = {
   betaald: 'bg-green-100 text-green-800',
 };
 
-export default async function FacturenPage({ searchParams }: { searchParams: Promise<{ status?: string; order?: string; ok?: string; gemaild?: string; mailfout?: string; pagina?: string; sort?: string; dir?: string; aantal?: string; zoek?: string }> }) {
+export default async function FacturenPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   await eisEigenaar();
   const sb = kmsAdmin();
@@ -45,27 +49,73 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
     );
   }
 
-  const { status, order, ok, gemaild, mailfout, pagina, sort, dir, aantal, zoek } = await searchParams;
-  const zoekTerm = (zoek ?? '').trim();
-  const huidigePagina = Math.max(1, Number(pagina) || 1);
-  const richting = dir === 'asc' ? 'asc' : 'desc';
-  const [{ rijen: facturen, totaal }, organisaties, factureerbaar, boekhouderEmail] = await Promise.all([
-    listFacturenPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, zoek: zoekTerm, status, sort, dir: richting }),
+  const sp = await searchParams;
+  const status = param(sp, 'status');
+  const order = param(sp, 'order');
+  const ok = param(sp, 'ok');
+  const gemaild = param(sp, 'gemaild');
+  const mailfout = param(sp, 'mailfout');
+  const aantal = param(sp, 'aantal');
+  const sort = param(sp, 'sort') || undefined;
+  const zoekTerm = param(sp, 'zoek');
+  const huidigePagina = Math.max(1, Number(param(sp, 'pagina')) || 1);
+  const richting = param(sp, 'dir') === 'asc' ? 'asc' : 'desc';
+
+  const klantId = isUuid(param(sp, 'klant')) ? param(sp, 'klant') : null;
+  const periode = periodeParam(sp, 'datum');
+  const bedrag = bedragParam(sp, 'bedrag');
+  const gemaildFilter = param(sp, 'gemaild_filter') === 'ja' || param(sp, 'gemaild_filter') === 'nee' ? (param(sp, 'gemaild_filter') as 'ja' | 'nee') : null;
+  const filters: FactuurLijstFilters = {
+    klant: klantId,
+    van: periode.van,
+    totExclusief: periode.totExclusief,
+    vervallen: param(sp, 'vervallen') === '1',
+    bedragMin: bedrag.min,
+    bedragMax: bedrag.max,
+    gemaild: gemaildFilter,
+  };
+
+  const [{ rijen: facturen, totaal }, organisaties, factureerbaar, boekhouderEmail, perStatus, klantNaam, admin] = await Promise.all([
+    listFacturenPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, zoek: zoekTerm, status, sort, dir: richting, filters }),
     listOrganisaties(),
     listFactureerbareOrders(),
     getBoekhouderEmail(),
+    telPerStatus('facturen'),
+    klantLabel(klantId),
+    getHuidigeAdmin(),
   ]);
   const voorgeselecteerd = order && factureerbaar.some((o) => o.id === order) ? order : '';
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
-  const statusQs = status ? `&status=${encodeURIComponent(status)}` : '';
-  // De zoekterm reist mee met bladeren, anders verdwijnt je zoekresultaat op pagina 2.
-  const sorteerQs = `${sort ? `&sort=${encodeURIComponent(sort)}` : ''}${dir ? `&dir=${encodeURIComponent(richting)}` : ''}${zoekTerm ? `&zoek=${encodeURIComponent(zoekTerm)}` : ''}`;
+  const alleFacturen = Object.values(perStatus).reduce((n, a) => n + a, 0);
 
-  const perStatus = await telPerStatus('facturen');
+  // `gemaild` is al de melding na het mailen (?gemaild=3); het filter heet daarom gemaild_filter.
+  const filterDefs: FilterDef[] = [
+    { soort: 'zoek', param: 'klant', label: 'Klant', hoofd: true, zoek: zoekKlantenVoorFilter, huidigLabel: klantNaam, placeholder: 'Alle klanten' },
+    { soort: 'datum', param: 'datum', label: 'Factuurdatum', hoofd: true },
+    { soort: 'aanuit', param: 'vervallen', label: 'Alleen vervallen', chipLabel: 'Vervallen en niet betaald', hoofd: true },
+    { soort: 'bedrag', param: 'bedrag', label: 'Bedrag incl. btw' },
+    {
+      soort: 'select',
+      param: 'gemaild_filter',
+      label: 'Boekhouder',
+      opties: [
+        { waarde: 'ja', label: 'Al gemaild' },
+        { waarde: 'nee', label: 'Nog niet gemaild' },
+      ],
+    },
+  ];
+  const filterActief = filterDefs.some((d) => sleutelsVan(d).some((k) => param(sp, k))) || Boolean(status || zoekTerm);
+  const basis = '/dashboard/facturen';
+  const vandaag = new Date().toISOString().slice(0, 10);
+  // Filters, zoekterm en sortering reizen mee met bladeren.
+  const urlMet = (wijzig: Record<string, string | number | null>) => lijstUrl(basis, sp, wijzig);
   return (
     <main className="container-app py-6">
       <div className="dash-kop flex items-center justify-between gap-4">
-        <h1 className="dash-h1">Facturen</h1>
+        <div className="flex items-baseline gap-2.5">
+          <h1 className="dash-h1">Facturen</h1>
+          <span className="text-[13px] tabular-nums text-warm">{filterActief ? `${totaal} van ${alleFacturen}` : alleFacturen}</span>
+        </div>
         <div className="flex items-center gap-2">
           <Link href="/dashboard" className="knop-tekst">Terug naar dashboard</Link>
           <Drawer
@@ -140,20 +190,20 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
         </form>
       </div>
 
-      <div className="dash-filter flex flex-wrap items-center gap-3">
-        <Zoekbalk waarde={zoekTerm} placeholder="Zoek op klant of factuurnummer" bewaar={{ status }} />
-      </div>
+      <FilterBalk filters={filterDefs} opslag="facturen" gebruiker={admin?.email} wisOok={['status', 'zoek']}>
+        <Zoekbalk placeholder="Zoek op klant of factuurnummer" />
+      </FilterBalk>
 
       <StatusChips
-        basePath="/dashboard/facturen"
-        huidig={status ?? ''}
+        basePath={basis}
+        huidig={status}
         statussen={FACTUUR_STATUSSEN}
         aantallen={perStatus}
-        bewaar={{ sort, dir: sort ? richting : undefined, zoek: zoekTerm || undefined }}
+        bewaar={bewaarParams(sp, ['status'])}
       />
 
         {facturen.length === 0 ? (
-          <EmptyState tekst="Geen facturen gevonden. Maak er rechtsboven een aan." />
+          <EmptyState tekst={filterActief ? 'Geen facturen die aan deze filters voldoen. Haal een filter weg via het kruisje.' : 'Nog geen facturen. Maak er rechtsboven een aan.'} />
         ) : (
           <form action={mailFacturenActie}>
             <div className="mb-3 flex flex-wrap justify-end gap-2">
@@ -185,7 +235,12 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
                       </td>
                       <td className="text-ink-900">{f.organisatie_naam || '-'}</td>
                       <td className="hidden whitespace-nowrap text-warm sm:table-cell">{fmt(f.factuurdatum)}</td>
-                      <td className="hidden whitespace-nowrap text-warm sm:table-cell">{fmt(f.vervaldatum)}</td>
+                      <td className="hidden whitespace-nowrap text-warm sm:table-cell">
+                        {fmt(f.vervaldatum)}
+                        {f.status !== 'betaald' && f.vervaldatum && f.vervaldatum < vandaag && (
+                          <span className="block text-[11px] font-semibold text-red-700">vervallen</span>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap text-warm">{f.bedrag_incl != null ? euro(Number(f.bedrag_incl)) : '-'}</td>
                       <td>
                         <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[f.status] ?? 'bg-ink-100 text-ink-600'}`}>{f.status}</span>
@@ -207,11 +262,11 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
         {aantalPaginas > 1 && (
           <nav className="mt-4 flex items-center justify-between gap-4 text-sm" aria-label="Paginering">
             {huidigePagina > 1 ? (
-              <Link href={`/dashboard/facturen?pagina=${huidigePagina - 1}${statusQs}${sorteerQs}`} className="font-semibold text-warm hover:text-ink-800">Vorige</Link>
+              <Link href={urlMet({ pagina: huidigePagina - 1 })} className="font-semibold text-warm hover:text-ink-800">Vorige</Link>
             ) : <span />}
             <span className="text-warm">Pagina {huidigePagina} van {aantalPaginas}</span>
             {huidigePagina < aantalPaginas ? (
-              <Link href={`/dashboard/facturen?pagina=${huidigePagina + 1}${statusQs}${sorteerQs}`} className="font-semibold text-warm hover:text-ink-800">Volgende</Link>
+              <Link href={urlMet({ pagina: huidigePagina + 1 })} className="font-semibold text-warm hover:text-ink-800">Volgende</Link>
             ) : <span />}
           </nav>
         )}

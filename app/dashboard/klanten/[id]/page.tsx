@@ -8,7 +8,7 @@ import { listLogos } from '@/lib/kms/logos';
 import { listKlantAssortiment } from '@/lib/kms/assortiment';
 import { listAfdelingen, listVestigingen } from '@/lib/kms/structuur';
 import { listWerknemers, pasdagGegevens } from '@/lib/kms/werknemers';
-import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus, nieuwContact, werkContactActie, verwijderContactActie, contactNaarWerknemerActie, nieuweActiviteit, verwijderActiviteitActie, nieuwLogoActie, verwijderLogoActie, zetRetourenActiefActie } from './actions';
+import { werkOrganisatie, koppelGebruiker, voegItemToe, wisselItemActief, zetStatus, nieuwContact, werkContactActie, verwijderContactActie, contactNaarWerknemerActie, nieuweActiviteit, verwijderActiviteitActie, zetRetourenActiefActie } from './actions';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import Tabs, { type TabDef } from '@/components/dashboard/Tabs';
 import Drawer from '@/components/dashboard/Drawer';
@@ -19,6 +19,9 @@ import AssortimentBeheer from './AssortimentBeheer';
 import WerknemersTab from './WerknemersTab';
 import AfdelingenTab from './AfdelingenTab';
 import InrichtingChecklist from './InrichtingChecklist';
+import LogosTab from './LogosTab';
+import DrukproevenTab from './DrukproevenTab';
+import { telDrukproevenVoorKlant } from '@/lib/kms/drukproeven';
 import { inrichtingPunten, eersteOpenStap, wizardUrl, type InrichtingTelling } from '../_delen/inrichting';
 
 export const dynamic = 'force-dynamic';
@@ -47,9 +50,8 @@ const SOORT_LABEL: Record<string, string> = {
 };
 
 const inputCls = 'veld py-2 text-[15px]';
-const fileCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-mist file:px-3 file:py-1 file:text-xs file:font-semibold file:text-ink-700 hover:file:bg-line focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 
-const TAB_IDS = ['gegevens', 'assortiment', 'werknemers', 'afdelingen', 'contact', 'verkoop', 'logos'];
+const TAB_IDS = ['gegevens', 'assortiment', 'werknemers', 'afdelingen', 'contact', 'verkoop', 'logos', 'drukproeven'];
 
 export default async function KlantPage({
   params,
@@ -705,74 +707,10 @@ export default async function KlantPage({
     </>
   );
 
-  const logosTab = (
-    <section>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-xl font-bold text-ink-900">Logo&apos;s</h2>
-        <Drawer knop="Logo toevoegen" titel="Logo toevoegen">
-          <p className="mt-1 text-xs text-warm">Upload een bestand, of plak een URL als alternatief.</p>
-          <form action={nieuwLogoActie} className="mt-4 flex flex-col gap-3">
-            <input type="hidden" name="orgId" value={id} />
-            <div>
-              <label className="veld-label">Naam</label>
-              <input name="naam" required placeholder="Bijv. Bedrijfslogo borst" className={inputCls} />
-            </div>
-            <div>
-              <label className="veld-label">Logo-bestand</label>
-              <input type="file" name="logo_bestand" accept="image/*" className={fileCls} />
-              <input name="logo_bestand_url" placeholder="of plak een URL" className={`${inputCls} mt-2`} />
-            </div>
-            <div>
-              <label className="veld-label">Vectorbestand</label>
-              <input type="file" name="vectorbestand" accept="image/*" className={fileCls} />
-              <input name="vectorbestand_url" placeholder="of plak een URL" className={`${inputCls} mt-2`} />
-            </div>
-            <div>
-              <label className="veld-label">Borduurbestand</label>
-              <input type="file" name="borduurbestand" accept="image/*" className={fileCls} />
-              <input name="borduurbestand_url" placeholder="of plak een URL" className={`${inputCls} mt-2`} />
-            </div>
-            <div>
-              <label className="veld-label">Opmerkingen / positie / techniek</label>
-              <textarea name="opmerkingen" rows={3} placeholder="Bijv. borst links, borduren, kleurcodes" className={inputCls} />
-            </div>
-            <button type="submit" className="self-start knop-donker">Logo opslaan</button>
-          </form>
-        </Drawer>
-      </div>
-
-      {logos.length === 0 ? (
-        <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen logo&apos;s voor deze klant. Voeg er rechts een toe.</p>
-      ) : (
-        <ul className="grid gap-4 sm:grid-cols-2">
-          {logos.map((l) => (
-            <li key={l.id} className="flex flex-col panel p-4">
-              <div className="flex h-32 items-center justify-center overflow-hidden rounded-xl border border-line bg-mist">
-                {l.logo_bestand_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={l.logo_bestand_url} alt={l.naam} className="max-h-full max-w-full object-contain" />
-                ) : (
-                  <span className="text-xs text-warm">Geen preview</span>
-                )}
-              </div>
-              <p className="mt-3 font-semibold text-ink-900">{l.naam}</p>
-              {l.opmerkingen && <p className="mt-1 text-xs text-warm">{l.opmerkingen}</p>}
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {l.logo_bestand_url && <a href={l.logo_bestand_url} target="_blank" rel="noreferrer" className="rounded-md border border-line px-2 py-0.5 text-xs font-semibold text-amber-700 hover:bg-mist">Logo</a>}
-                {l.vectorbestand_url && <a href={l.vectorbestand_url} target="_blank" rel="noreferrer" className="rounded-md border border-line px-2 py-0.5 text-xs font-semibold text-amber-700 hover:bg-mist">Vector</a>}
-                {l.borduurbestand_url && <a href={l.borduurbestand_url} target="_blank" rel="noreferrer" className="rounded-md border border-line px-2 py-0.5 text-xs font-semibold text-amber-700 hover:bg-mist">Borduur</a>}
-              </div>
-              <form action={verwijderLogoActie} className="mt-3">
-                <input type="hidden" name="orgId" value={id} />
-                <input type="hidden" name="logoId" value={l.id} />
-                <ConfirmSubmit message="Dit logo verwijderen?" className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Verwijderen</ConfirmSubmit>
-              </form>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
+  // Logo's en drukproeven: eigen componenten (LogosTab.tsx, DrukproevenTab.tsx).
+  const logosTab = <LogosTab orgId={id} orgNaam={org.naam} logos={logos} />;
+  const drukproevenTab = <DrukproevenTab orgId={id} orgNaam={org.naam} />;
+  const drukproefTelling = await telDrukproevenVoorKlant(id);
 
   // Assortiment staat vooraan na Gegevens: dit is het tabblad waar het dagelijkse
   // werk zit. De kledinglijn heeft geen eigen tabblad meer, die staat als klein
@@ -808,6 +746,7 @@ export default async function KlantPage({
     { id: 'contact', label: 'Contact', content: contactTab, badge: contactpersonen.length || null },
     { id: 'verkoop', label: 'Verkoop', content: verkoopTab, badge: verkoop.orders.length || null },
     { id: 'logos', label: "Logo's", content: logosTab, badge: logos.length || null },
+    { id: 'drukproeven', label: 'Drukproeven', content: drukproevenTab, badge: drukproefTelling.totaal || null },
   ];
 
   return (

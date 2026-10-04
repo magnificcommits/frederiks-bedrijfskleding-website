@@ -22,6 +22,9 @@ import KopieerKnop from './KopieerKnop';
 import VerzendKnop from '@/components/dashboard/VerzendKnop';
 import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
 import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
+import { brievenVanProspecten } from '@/lib/prospect/briefData';
+import { ONTVANGER_BADGE, ONTVANGER_LABEL, ONTVANGER_STATUSSEN, isOntvangerStatus } from '@/lib/prospect/briefStatus';
+import { zetOntvangerStatusActie } from '../brieven/actions';
 
 export const dynamic = 'force-dynamic';
 // "Logo ophalen" mag tot ~16 s duren (homepage + afbeelding, elk max 8 s).
@@ -76,11 +79,13 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
   }
 
   const rij = await getProspectRij(id);
-  const [bezoeken, mockup, zoekResultaten] = await Promise.all([
+  const [bezoeken, mockup, zoekResultaten, brievenMap] = await Promise.all([
     rij ? listBezoeken(id) : Promise.resolve([]),
     rij ? mockupVoorProspect(rij) : Promise.resolve(null),
     sp.artikelzoek ? zoekArtikelen(sp.artikelzoek) : Promise.resolve([]),
+    brievenVanProspecten([id]),
   ]);
+  const brieven = brievenMap.get(id) ?? [];
   const alt = (Array.isArray(sp.alt) ? sp.alt : sp.alt ? [sp.alt] : []).filter((u) => /^https?:\/\//.test(u)).slice(0, 5);
   const plek = Math.max(0, Math.min(3, Number(sp.plek ?? 0) || 0));
   const token = rij?.token ?? null;
@@ -216,7 +221,8 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <a href={`/kennismaking/${token}`} target="_blank" rel="noopener" className="knop-donker">Voorbeeld bekijken</a>
-                <Link href={`/dashboard/prospects/brieven?id=${p.id}`} className="knop-stil">Brief maken</Link>
+                <Link href={`/dashboard/prospects/brieven/nieuw?id=${p.id}&brief=alle`} className="knop-stil">In een verzending zetten</Link>
+                <Link href={`/dashboard/prospects/brieven/snel?id=${p.id}&toon=1`} className="knop-tekst">Losse brief printen</Link>
                 {!rij.brief_verstuurd_op && !rij.afgemeld_op && (
                   <form action={markeerBriefVerstuurdActie}>
                     <input type="hidden" name="id" value={p.id} />
@@ -224,6 +230,32 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
                   </form>
                 )}
               </div>
+              {brieven.length > 0 && (
+                <div className="mt-4 border-t border-line pt-3">
+                  <p className="veld-label">Brieven in verzendingen</p>
+                  <ul className="space-y-1.5">
+                    {brieven.map((b) => (
+                      <li key={b.ontvangerId} className="flex flex-wrap items-center gap-2 text-[13px]">
+                        <form action={zetOntvangerStatusActie}>
+                          <input type="hidden" name="id" value={b.ontvangerId} />
+                          <input type="hidden" name="batch" value={b.batchId} />
+                          <input type="hidden" name="terug" value={`/dashboard/prospects/${p.id}`} />
+                          <AutoSubmitSelect
+                            name="status"
+                            defaultValue={b.status}
+                            aria-label={`Briefstatus in ${b.batchNaam}`}
+                            className={`rounded border-0 py-0.5 pl-1.5 pr-6 text-[11px] font-semibold focus:ring-2 focus:ring-amber-300 ${isOntvangerStatus(b.status) ? ONTVANGER_BADGE[b.status] : 'badge-rust'}`}
+                            options={ONTVANGER_STATUSSEN.map((st) => ({ value: st, label: ONTVANGER_LABEL[st] }))}
+                          />
+                        </form>
+                        <Link href={`/dashboard/prospects/brieven/${b.batchId}?stap=volgen`} className="font-semibold text-ink-900 hover:text-amber-700">{b.batchNaam}</Link>
+                        {b.verstuurd_op && <span className="text-[12px] text-warm">verstuurd {fmtDatum(b.verstuurd_op)}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="veld-hint">Afspraak of klant zet de prospectstatus mee omhoog.</p>
+                </div>
+              )}
               <p className="veld-hint mt-3">Jouw eigen klikken op deze links tellen niet mee zolang je in het dashboard bent ingelogd.</p>
             </section>
 

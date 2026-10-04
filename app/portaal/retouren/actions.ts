@@ -34,12 +34,14 @@ export async function vraagRetour(formData: FormData) {
   if (!org) redirect('/portaal');
 
   const orderId = String(formData.get('order_id') ?? '').trim() || null;
-  const reden = String(formData.get('reden') ?? '').trim();
+  const toelichting = String(formData.get('reden') ?? '').trim();
+  const redenKeuze = String(formData.get('reden_keuze') ?? '').trim().slice(0, 120) || null;
+  const reden = toelichting || redenKeuze || '';
   const regels = leesRegels(formData.get('regels'));
   if (!reden) redirect('/portaal/retouren?leeg=1');
   if (!orderId || regels.length === 0) redirect('/portaal/retouren?geenregels=1');
 
-  const res = await meldRetour({ orderId, reden, regels });
+  const res = await meldRetour({ orderId, reden, redenKeuze, regels });
   if (!res.ok) redirect('/portaal/retouren?fout=1');
   redirect('/portaal/retouren?ok=1');
 }

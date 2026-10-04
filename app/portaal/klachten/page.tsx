@@ -3,15 +3,17 @@ import type { Metadata } from 'next';
 import { isPortalConfigured } from '@/lib/env';
 import { getPortaalUser, getMijnOrganisatie } from '@/lib/portaal/queries';
 import { getMijnToegang } from '@/lib/portaal/team';
-import { getMijnKlachten, getMijnOrders, type KlachtStatus, type KlachtSoort } from '@/lib/portaal/service';
+import { getKlachtCategorieen, getMijnKlachten, getMijnOrders, type KlachtStatus, type KlachtSoort } from '@/lib/portaal/service';
 import PortaalNav from '../PortaalNav';
-import { vraagKlacht } from './actions';
+import { reageerKlacht, vraagKlacht } from './actions';
 
 export const metadata: Metadata = { title: 'Vragen en klachten', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 const veld = 'mt-2 w-full rounded-lg border border-line px-3 py-2 text-sm text-ink-900 focus:border-amber-500 focus:outline-none';
 const datum = (s: string) => new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(s));
+const moment = (s: string) =>
+  new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }).format(new Date(s));
 
 const statusLabel: Record<KlachtStatus, string> = {
   open: 'Open',
@@ -31,7 +33,7 @@ function StatusBadge({ status }: { status: KlachtStatus }) {
   return <span className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${toon}`}>{label}</span>;
 }
 
-export default async function Klachten({ searchParams }: { searchParams: Promise<{ ok?: string; leeg?: string; fout?: string }> }) {
+export default async function Klachten({ searchParams }: { searchParams: Promise<{ ok?: string; leeg?: string; fout?: string; gereageerd?: string }> }) {
   if (!isPortalConfigured) {
     return (
       <main className="container-x py-20">
@@ -59,7 +61,7 @@ export default async function Klachten({ searchParams }: { searchParams: Promise
   }
 
   const sp = await searchParams;
-  const [klachten, orders, toegang] = await Promise.all([getMijnKlachten(), getMijnOrders(), getMijnToegang()]);
+  const [klachten, orders, toegang, categorieen] = await Promise.all([getMijnKlachten(), getMijnOrders(), getMijnToegang(), getKlachtCategorieen()]);
 
   return (
     <main className="container-x py-12">
@@ -76,6 +78,11 @@ export default async function Klachten({ searchParams }: { searchParams: Promise
       {sp?.ok && (
         <div className="mt-6 rounded-xl border border-green-300 bg-green-50 p-4 text-sm text-green-800">
           Je bericht is verstuurd. We nemen het in behandeling en reageren zo snel mogelijk.
+        </div>
+      )}
+      {sp?.gereageerd && (
+        <div className="mt-6 rounded-xl border border-green-300 bg-green-50 p-4 text-sm text-green-800">
+          Je reactie is verstuurd. We lezen mee en komen erop terug.
         </div>
       )}
       {sp?.leeg && (
@@ -99,6 +106,18 @@ export default async function Klachten({ searchParams }: { searchParams: Promise
                 <option value="vraag">Vraag</option>
                 <option value="klacht">Klacht</option>
               </select>
+
+              {categorieen.length > 0 && (
+                <>
+                  <label htmlFor="categorie" className="mt-4 block text-sm font-semibold text-ink-900">Waar gaat het over?</label>
+                  <select id="categorie" name="categorie" className={veld} defaultValue="">
+                    <option value="">Weet ik niet</option>
+                    {categorieen.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </>
+              )}
 
               <label htmlFor="order_id" className="mt-4 block text-sm font-semibold text-ink-900">Bestelling (optioneel)</label>
               <select id="order_id" name="order_id" className={veld} defaultValue="">
@@ -126,6 +145,7 @@ export default async function Klachten({ searchParams }: { searchParams: Promise
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-ink-900">
                       {soortLabel[k.soort] ?? k.soort}
+                      {k.categorie ? ` · ${k.categorie}` : ''}
                       {k.ordernummer ? ` · order ${k.ordernummer}` : ''} {"·"} {datum(k.created_at)}
                     </p>
                     <StatusBadge status={k.status} />
@@ -133,8 +153,33 @@ export default async function Klachten({ searchParams }: { searchParams: Promise
 
                   <p className="mt-3 text-sm text-ink-800">{k.omschrijving}</p>
 
-                  {k.antwoord && (
-                    <p className="mt-4 rounded-lg bg-cream px-4 py-3 text-sm text-warm"><span className="font-semibold text-ink-800">Antwoord:</span> {k.antwoord}</p>
+                  {k.berichten.length > 0 ? (
+                    <ol className="mt-4 space-y-2">
+                      {k.berichten.map((b) => (
+                        <li
+                          key={b.id}
+                          className={`rounded-lg px-4 py-3 text-sm ${b.soort === 'klant' ? 'ml-6 border border-line bg-white text-ink-800' : 'mr-6 bg-cream text-ink-800'}`}
+                        >
+                          <p className="text-xs font-semibold text-warm">
+                            {b.soort === 'klant' ? 'Jij' : 'Frederiks Bedrijfskleding'} {'·'} {moment(b.created_at)}
+                          </p>
+                          <p className="mt-1 whitespace-pre-line">{b.tekst}</p>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    k.antwoord && (
+                      <p className="mt-4 rounded-lg bg-cream px-4 py-3 text-sm text-warm"><span className="font-semibold text-ink-800">Antwoord:</span> {k.antwoord}</p>
+                    )
+                  )}
+
+                  {k.berichten.length > 0 && (
+                    <form action={reageerKlacht} className="mt-4">
+                      <input type="hidden" name="klacht_id" value={k.id} />
+                      <label htmlFor={`reactie-${k.id}`} className="block text-sm font-semibold text-ink-900">Reageren</label>
+                      <textarea id={`reactie-${k.id}`} name="tekst" rows={2} required placeholder="Typ je reactie" className={veld} />
+                      <button type="submit" className="btn-secondary mt-2">Reactie versturen</button>
+                    </form>
                   )}
                 </div>
               ))}

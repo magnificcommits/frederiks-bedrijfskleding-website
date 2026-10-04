@@ -19,10 +19,12 @@ async function bewaakt() {
   return sb;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function startPassessie(formData: FormData): Promise<void> {
   const sb = await bewaakt();
   const organisatie_id = String(formData.get('organisatie_id') || '').trim();
-  if (!organisatie_id) redirect('/dashboard/passessie?fout=geen-klant');
+  if (!UUID.test(organisatie_id)) redirect('/dashboard/passessie?fout=geen-klant');
   const admin = await getHuidigeAdmin();
   const { data, error } = await sb
     .from('passessies')
@@ -34,7 +36,8 @@ export async function startPassessie(formData: FormData): Promise<void> {
     })
     .select('id')
     .single();
-  if (error || !data) redirect('/dashboard/passessie?fout=aanmaken');
+  // De klantkeuze blijft staan, zodat Jessi het meteen opnieuw kan proberen.
+  if (error || !data) redirect(`/dashboard/passessie?klant=${organisatie_id}&fout=aanmaken`);
   await logAudit('passessie_gestart', { entiteit: 'passessie', entiteitId: data.id, details: { organisatie_id } });
   redirect(`/dashboard/passessie/${data.id}`);
 }
@@ -169,7 +172,9 @@ export async function maakOrder(formData: FormData): Promise<void> {
     .from('orders')
     .insert({
       organisatie_id: sessie.organisatie_id,
-      status: 'aangevraagd',
+      // 'aangevraagd' bestaat niet als orderstatus; de order viel daardoor buiten
+      // elke statuschip op de orderlijst. Concept is de eerste echte stap.
+      status: 'concept',
       aangevraagd_door: sessie.aangemaakt_door,
       notitie: `Uit passessie ${sessie.datum}${sessie.locatie ? ' - ' + sessie.locatie : ''}`,
     })
@@ -205,10 +210,14 @@ export async function maakOrder(formData: FormData): Promise<void> {
   redirect(`/dashboard/orders/${order.id}`);
 }
 
-/** Naar het tabblad Werknemers van de gekozen klant, waar je de maten per werknemer noteert. */
+/**
+ * Naar het tabblad Werknemers van de gekozen klant, waar je de maten per werknemer
+ * noteert zonder dat er een order van komt. De overzichtspagina linkt er nu direct
+ * naartoe; deze actie blijft voor formulieren die nog een organisatie_id posten.
+ */
 export async function naarKlantWerknemers(formData: FormData) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const orgId = String(formData.get('organisatie_id') ?? '').trim();
-  if (!orgId) redirect('/dashboard/passessie?fout=geen-klant');
+  if (!UUID.test(orgId)) redirect('/dashboard/passessie?fout=geen-klant');
   redirect(`/dashboard/klanten/${encodeURIComponent(orgId)}?tab=werknemers`);
 }

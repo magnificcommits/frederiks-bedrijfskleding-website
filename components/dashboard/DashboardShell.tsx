@@ -36,7 +36,7 @@ const groepen: Groep[] = [
   { titel: 'Verkoop', items: [
     { href: '/dashboard/leads', label: 'Leads' },
     { href: '/dashboard/klanten', label: 'Klanten' },
-    { href: '/dashboard/passessie', label: 'Passessies' },
+    { href: '/dashboard/passessie', label: 'Passen en maten' },
     { href: '/dashboard/medewerker-verzoeken', label: 'Medewerker-verzoeken' },
     { href: '/dashboard/offertes', label: 'Offertes' },
     { href: '/dashboard/orders', label: 'Orders' },
@@ -56,7 +56,7 @@ const groepen: Groep[] = [
     { href: '/dashboard/inkoop', label: 'Inkoop' },
   ] },
   { titel: 'Productie', items: [
-    { href: '/dashboard/logos', label: 'Logo’s en werkbonnen' },
+    { href: '/dashboard/logos', label: 'Werkbonnen en logo’s' },
     { href: '/dashboard/drukproeven', label: 'Drukproeven' },
   ] },
   { titel: 'Service', items: [

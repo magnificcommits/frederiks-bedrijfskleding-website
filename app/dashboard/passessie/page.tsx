@@ -1,19 +1,27 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { dashAuthed } from '@/lib/kms/adminClient';
-import { listKlantKeuze, listPassessies } from '@/lib/kms/passessies';
-import { startPassessie, naarKlantWerknemers } from './actions';
+import { dashAuthed, getHuidigeAdmin } from '@/lib/kms/adminClient';
+import FilterBalk from '@/components/dashboard/FilterBalk';
+import { klantLabel } from '@/lib/kms/filterOpties';
+import { zoekKlantenVoorFilter } from '@/lib/kms/filterActies';
+import { isUuid, param, periodeParam, sleutelsVan, type FilterDef } from '@/lib/filterBalk';
+import { startPassessie } from './actions';
+import { klantSamenvatting, listSessies, type SessieFilters } from './sessies';
+import KlantKiezer from './KlantKiezer';
 
 export const metadata: Metadata = { title: 'Passessies', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
-const statusBadge: Record<string, string> = {
-  open: 'bg-amber-100 text-amber-800',
-  afgerond: 'bg-ink-100 text-ink-700',
-  omgezet: 'bg-green-100 text-green-800',
+/**
+ * Status van een sessie in gewone taal. "Afgerond" alleen zei niet of er al
+ * besteld was; nu staat er wat de volgende stap is.
+ */
+const statusWeergave: Record<string, { label: string; badge: string; uitleg: string }> = {
+  open: { label: 'Open', badge: 'badge-actie', uitleg: 'Er kan nog gepast worden.' },
+  afgerond: { label: 'Afgerond, nog geen order', badge: 'badge-actie', uitleg: 'Klaar met passen. Open de sessie om er een order van te maken.' },
+  omgezet: { label: 'Order gemaakt', badge: 'badge-klaar', uitleg: 'De maten staan op een order.' },
 };
-const statusLabel: Record<string, string> = { open: 'Open', afgerond: 'Afgerond', omgezet: 'Order gemaakt' };
 
 /**
  * Elke redirect met ?fout= komt hier als leesbare zin terug. Een kale code als
@@ -26,9 +34,6 @@ const foutBoodschap: Record<string, string> = {
   onbekend: 'Die passessie bestaat niet meer.',
 };
 
-const inputCls =
-  'veld';
-
 function fmt(d: string) {
   try {
     return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -37,24 +42,52 @@ function fmt(d: string) {
   }
 }
 
-export default async function PassessiesPage({ searchParams }: { searchParams: Promise<{ fout?: string }> }) {
+export default async function PassessiesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
-  const { fout } = await searchParams;
+  const sp = await searchParams;
+  const fout = param(sp, 'fout');
+  const klantId = isUuid(param(sp, 'klant')) ? param(sp, 'klant') : '';
 
-  const [klanten, sessies] = await Promise.all([listKlantKeuze(), listPassessies()]);
+  // Filters op de lijst eerdere sessies. Eigen namen (s…), los van de klantkeuze
+  // bovenaan: een klant kiezen om te gaan passen hoort de lijst niet te verbergen.
+  const sKlant = isUuid(param(sp, 'sklant')) ? param(sp, 'sklant') : null;
+  const sStatus = (['open', 'afgerond', 'omgezet'] as const).find((s) => s === param(sp, 'sstatus')) ?? null;
+  const sPeriode = periodeParam(sp, 'speriode');
+  const sessieFilters: SessieFilters = { klant: sKlant, status: sStatus, van: sPeriode.van, totExclusief: sPeriode.totExclusief };
+
+  const [klant, sessies, sKlantNaam, admin] = await Promise.all([
+    klantId ? klantSamenvatting(klantId) : Promise.resolve(null),
+    listSessies(sessieFilters),
+    klantLabel(sKlant),
+    getHuidigeAdmin(),
+  ]);
+
+  const filterDefs: FilterDef[] = [
+    { soort: 'zoek', param: 'sklant', label: 'Klant', hoofd: true, zoek: zoekKlantenVoorFilter, huidigLabel: sKlantNaam, placeholder: 'Alle klanten' },
+    {
+      soort: 'select',
+      param: 'sstatus',
+      label: 'Status',
+      hoofd: true,
+      opties: [
+        { waarde: 'open', label: 'Open' },
+        { waarde: 'afgerond', label: 'Afgerond, nog geen order' },
+        { waarde: 'omgezet', label: 'Order gemaakt' },
+      ],
+    },
+    { soort: 'datum', param: 'speriode', label: 'Datum', hoofd: true },
+  ];
+  const lijstGefilterd = filterDefs.some((d) => sleutelsVan(d).some((k) => param(sp, k)));
+  const klantNaam = klant ? (klant.plaats ? `${klant.naam} (${klant.plaats})` : klant.naam) : null;
 
   return (
     <main className="container-app py-6">
       <div className="dash-kop flex items-center justify-between gap-4">
-        <h1 className="dash-h1">Passessies</h1>
-        <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">
+        <h1 className="dash-h1">Passen en maten</h1>
+        <Link href="/dashboard" className="knop-tekst">
           Terug naar dashboard
         </Link>
       </div>
-      <p className="mt-2 max-w-2xl text-sm text-warm">
-        Leg bij de klant op locatie per medewerker het artikel, de kleur en de maat vast. Werkt op een tablet. Als je
-        klaar bent maak je er in één keer een order van.
-      </p>
 
       {fout && (
         <p className="mt-4 rounded-md bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
@@ -62,110 +95,164 @@ export default async function PassessiesPage({ searchParams }: { searchParams: P
         </p>
       )}
 
-      <section className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
-        <h2 className="font-display text-lg font-bold text-ink-900">Maten noteren kan nu ook direct bij de klant</h2>
-        <p className="mt-1 max-w-3xl text-[14px] text-amber-900">
-          Op de klantpagina, tabblad Werknemers, zie je per werknemer alle artikelen uit zijn assortiment en vul je
-          meteen de maat in. Handig op een pasdag. Een passessie hieronder gebruik je als je er direct een order van
-          wilt maken.
-        </p>
-        <form action={naarKlantWerknemers} className="mt-3 flex flex-wrap items-end gap-3">
-          <label className="block text-sm font-medium text-ink-800">
-            Klant
-            <select name="organisatie_id" required className={`${inputCls} min-w-[16rem]`} defaultValue="">
-              <option value="" disabled>
-                Kies een klant
-              </option>
-              {klanten.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.naam}
-                  {k.plaats ? ` - ${k.plaats}` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="submit" className="knop-donker">Naar werknemers van deze klant</button>
-        </form>
+      {/* Stap 1: één klantzoeker voor beide keuzes. */}
+      <section className="mt-5">
+        <h2 className="text-[13px] font-semibold text-ink-900">
+          <span className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-ink-900 text-[11px] text-white">1</span>
+          Bij welke klant ben je?
+        </h2>
+        <div className="mt-2">
+          <KlantKiezer klantId={klantId} klantNaam={klantNaam} />
+        </div>
+        {klant && (
+          <p className="mt-2 text-[13px] text-warm">
+            {klant.werknemers === 0
+              ? 'Nog geen werknemers ingevoerd bij deze klant. Die kun je tijdens het passen toevoegen.'
+              : `${klant.werknemers} ${klant.werknemers === 1 ? 'actieve werknemer' : 'actieve werknemers'}.`}
+          </p>
+        )}
+        {klantId && !klant && <p className="mt-2 text-[13px] text-red-700">Deze klant bestaat niet meer. Kies een andere.</p>}
       </section>
 
-      <section className="mt-8 panel p-4">
-        <h2 className="font-display text-xl font-bold text-ink-900">Nieuwe sessie starten</h2>
-        <form action={startPassessie} className="mt-4 grid gap-4 sm:grid-cols-3">
-          <label className="block text-sm font-medium text-ink-800">
-            Klant
-            <select name="organisatie_id" required className={inputCls} defaultValue="">
-              <option value="" disabled>
-                Kies een klant
-              </option>
-              {klanten.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.naam}
-                  {k.plaats ? ` - ${k.plaats}` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm font-medium text-ink-800">
-            Locatie <span className="font-normal text-warm">(optioneel)</span>
-            <input name="locatie" className={inputCls} placeholder="Kantine, vestiging Hengelo" />
-          </label>
-          <label className="block text-sm font-medium text-ink-800">
-            Notitie <span className="font-normal text-warm">(optioneel)</span>
-            <input name="notitie" className={inputCls} placeholder="Nieuwe medewerkers najaar" />
-          </label>
-          <div className="sm:col-span-3">
-            <button
-              type="submit"
-              className="rounded-md bg-amber-500 px-5 py-2.5 text-sm font-bold text-ink-900 hover:bg-amber-400"
-            >
-              Sessie starten
-            </button>
-          </div>
-        </form>
+      {/* Stap 2: twee duidelijk verschillende dingen. */}
+      <section className="mt-6">
+        <h2 className="text-[13px] font-semibold text-ink-900">
+          <span className={`mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${klant ? 'bg-ink-900 text-white' : 'bg-ink-100 text-ink-600'}`}>2</span>
+          Wat kom je doen?
+        </h2>
+
+        <div className="mt-2 grid gap-3 md:grid-cols-2">
+          <article className={`panel flex flex-col p-4 ${klant ? '' : 'opacity-60'}`}>
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="font-display text-base font-bold text-ink-900">Alleen maten vastleggen</h3>
+              <span className="badge-rust shrink-0">geen order</span>
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed text-ink-800">
+              Per werknemer noteer je de vaste maat voor elk artikel uit zijn assortiment. Er wordt niets besteld. Bestelt
+              de klant later, via het portaal of bij jou, dan staan de maten al klaar.
+            </p>
+            <p className="mt-2 text-[12px] leading-relaxed text-warm">
+              Bijvoorbeeld: een nieuwe monteur komt even langs de winkel. Jas L, broek 52, schoen 44. Opgeslagen, klaar.
+            </p>
+            <div className="mt-auto pt-4">
+              {klant ? (
+                <Link href={`/dashboard/klanten/${klant.id}?tab=werknemers`} className="knop-donker">
+                  Naar de werknemers van {klant.naam}
+                </Link>
+              ) : (
+                <span className="text-[12px] text-warm">Kies eerst een klant.</span>
+              )}
+            </div>
+          </article>
+
+          <article className={`panel flex flex-col p-4 ${klant ? 'border-amber-300' : 'opacity-60'}`}>
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="font-display text-base font-bold text-ink-900">Passessie met bestelling</h3>
+              <span className="badge-actie shrink-0">maakt een order</span>
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed text-ink-800">
+              Op locatie past iedereen de kleding. Per werknemer leg je artikel, kleur en maat vast, op de tablet. Na
+              afloop zet je de hele sessie in één keer om naar één order.
+            </p>
+            <p className="mt-2 text-[12px] leading-relaxed text-warm">
+              Bijvoorbeeld: pasdag in de kantine, vijftien man past de nieuwe winterjas. Aan het eind staat er één order
+              klaar met alle maten erop.
+            </p>
+
+            {klant && klant.openSessies.length > 0 && (
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+                Er staat al een open sessie voor deze klant:
+                <ul className="mt-1">
+                  {klant.openSessies.map((s) => (
+                    <li key={s.id}>
+                      <Link href={`/dashboard/passessie/${s.id}`} className="font-semibold underline underline-offset-2 hover:text-ink-900">
+                        {fmt(s.datum)}
+                        {s.locatie ? `, ${s.locatie}` : ''} ({s.regels} {s.regels === 1 ? 'regel' : 'regels'})
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                Ga daar verder als het dezelfde pasdag is.
+              </div>
+            )}
+
+            <div className="mt-auto pt-4">
+              {klant ? (
+                <form action={startPassessie} className="grid gap-2 sm:grid-cols-2">
+                  <input type="hidden" name="organisatie_id" value={klant.id} />
+                  <label className="block">
+                    <span className="veld-label">Locatie (optioneel)</span>
+                    <input name="locatie" className="veld" placeholder="Kantine, vestiging Hengelo" />
+                  </label>
+                  <label className="block">
+                    <span className="veld-label">Notitie (optioneel)</span>
+                    <input name="notitie" className="veld" placeholder="Nieuwe medewerkers najaar" />
+                  </label>
+                  <div className="sm:col-span-2">
+                    <button type="submit" className="knop-primair">Passessie starten</button>
+                  </div>
+                </form>
+              ) : (
+                <span className="text-[12px] text-warm">Kies eerst een klant.</span>
+              )}
+            </div>
+          </article>
+        </div>
       </section>
 
       <section className="mt-10">
-        <h2 className="font-display text-xl font-bold text-ink-900">Eerdere sessies</h2>
+        <div className="flex items-baseline gap-2.5">
+          <h2 className="font-display text-lg font-bold text-ink-900">Eerdere sessies</h2>
+          <span className="text-[13px] tabular-nums text-warm">{sessies.length === 200 ? '200+' : sessies.length}</span>
+        </div>
+        <FilterBalk filters={filterDefs} opslag="passessies" gebruiker={admin?.email} />
+
         {sessies.length === 0 ? (
-          <p className="mt-3 rounded-xl border border-dashed border-line bg-mist p-6 text-sm text-warm">
-            Nog geen passessies. Start hierboven de eerste.
+          <p className="mt-3 rounded-lg border border-dashed border-line bg-mist p-6 text-[13px] text-warm">
+            {lijstGefilterd ? 'Geen sessies die aan deze filters voldoen.' : 'Nog geen passessies. Kies hierboven een klant en start de eerste.'}
           </p>
         ) : (
-          <div className="mt-3 overflow-x-auto rounded-xl border border-line bg-white">
+          <div className="panel mt-3">
             <table className="tbl">
               <thead>
                 <tr>
                   <th>Datum</th>
                   <th>Klant</th>
-                  <th>Locatie</th>
-                  <th>Regels</th>
+                  <th className="hidden sm:table-cell">Locatie</th>
+                  <th className="num">Regels</th>
                   <th>Status</th>
+                  <th className="hidden md:table-cell">Door</th>
                   <th />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line">
-                {sessies.map((s) => (
-                  <tr key={s.id}>
-                    <td className="whitespace-nowrap">{fmt(s.datum)}</td>
-                    <td className="font-medium text-ink-900">{s.organisatie_naam ?? '-'}</td>
-                    <td className="text-warm">{s.locatie ?? '-'}</td>
-                    <td>{s.regels}</td>
-                    <td>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          statusBadge[s.status] ?? 'bg-mist text-warm'
-                        }`}
-                      >
-                        {statusLabel[s.status] ?? s.status}
-                      </span>
-                    </td>
-                    <td className="text-right">
-                      <Link href={`/dashboard/passessie/${s.id}`} className="font-semibold text-warm hover:text-ink-800">
-                        Openen
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+              <tbody>
+                {sessies.map((s) => {
+                  const st = statusWeergave[s.status] ?? { label: s.status, badge: 'badge-rust', uitleg: '' };
+                  return (
+                    <tr key={s.id}>
+                      <td className="whitespace-nowrap">{fmt(s.datum)}</td>
+                      <td className="font-medium text-ink-900">{s.organisatie_naam ?? '-'}</td>
+                      <td className="stil hidden sm:table-cell">{s.locatie ?? '-'}</td>
+                      <td className="num">{s.regels}</td>
+                      <td>
+                        <span className={st.badge} title={st.uitleg}>
+                          {st.label}
+                        </span>
+                        {s.status === 'omgezet' && s.order_id && (
+                          <Link href={`/dashboard/orders/${s.order_id}`} className="ml-2 text-[12px] font-semibold text-ink-900 underline-offset-2 hover:text-amber-700 hover:underline">
+                            {s.ordernummer != null ? `Order #${s.ordernummer}` : 'Naar order'}
+                          </Link>
+                        )}
+                      </td>
+                      <td className="stil hidden md:table-cell">{s.aangemaakt_door ?? '-'}</td>
+                      <td className="text-right">
+                        <Link href={`/dashboard/passessie/${s.id}`} className="knop-tekst">
+                          {s.status === 'open' ? 'Verder passen' : s.status === 'afgerond' ? 'Order maken' : 'Bekijken'}
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

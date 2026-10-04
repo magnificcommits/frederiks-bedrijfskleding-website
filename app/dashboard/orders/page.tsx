@@ -1,13 +1,16 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import { listOrdersPaged, ORDER_STATUSSEN } from '@/lib/kms/orders';
+import { kmsAdmin, dashAuthed, getHuidigeAdmin } from '@/lib/kms/adminClient';
+import { listOrdersPaged, ORDER_STATUSSEN, GOEDKEURING_STATUSSEN, AFGEHANDELDE_ORDERSTATUSSEN, type OrderLijstFilters } from '@/lib/kms/orders';
 import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
 import SortableTh from '@/components/dashboard/SortableTh';
 import Zoekbalk from '@/components/dashboard/Zoekbalk';
+import FilterBalk from '@/components/dashboard/FilterBalk';
 import { wijzigOrderStatusInline, bulkOrderStatusActie } from './actions';
-import { aanvragersVoorOrderFilter } from '@/lib/kms/personen';
-import AanvragerFilter from './AanvragerFilter';
+import { aanvragerLabel } from '@/lib/kms/personen';
+import { klantLabel } from '@/lib/kms/filterOpties';
+import { zoekAanvragersVoorFilter, zoekKlantenVoorFilter } from '@/lib/kms/filterActies';
+import { bedragParam, isUuid, lijstUrl, param, periodeParam, sleutelsVan, type FilterDef } from '@/lib/filterBalk';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Orders', robots: { index: false, follow: false } };
@@ -47,26 +50,42 @@ const okBoodschap: Record<string, string> = {
   status: 'Status bijgewerkt.',
 };
 
+const goedkeurLabel: Record<string, string> = {
+  wacht: 'Wacht op goedkeuring',
+  goedgekeurd: 'Goedgekeurd',
+  afgewezen: 'Afgewezen',
+  niet_nodig: 'Niet nodig',
+};
+
 /**
- * Aantal orders per status, voor de tellers op de filterchips.
- * Eén query over één kolom. Boven ~20.000 orders is een database-functie
- * met GROUP BY zuiniger dan alle statussen ophalen.
+ * Aantal orders per status en per goedkeuring, voor de tellers op de chips en
+ * in het goedkeuringsfilter. Eén query over twee kolommen. Boven ~20.000
+ * orders is een database-functie met GROUP BY zuiniger.
  */
-async function ordersPerStatus(): Promise<Record<string, number>> {
+async function ordersPerStatus(): Promise<{ status: Record<string, number>; goedkeuring: Record<string, number> }> {
   const sb = kmsAdmin();
-  if (!sb) return {};
-  const { data } = await sb.from('orders').select('status');
-  const map: Record<string, number> = {};
-  ((data as { status: string | null }[]) ?? []).forEach((r) => {
-    if (r.status) map[r.status] = (map[r.status] ?? 0) + 1;
+  if (!sb) return { status: {}, goedkeuring: {} };
+  const { data } = await sb.from('orders').select('status, goedkeuring_status');
+  const status: Record<string, number> = {};
+  const goedkeuring: Record<string, number> = {};
+  ((data as { status: string | null; goedkeuring_status: string | null }[]) ?? []).forEach((r) => {
+    if (r.status) status[r.status] = (status[r.status] ?? 0) + 1;
+    if (r.goedkeuring_status) goedkeuring[r.goedkeuring_status] = (goedkeuring[r.goedkeuring_status] ?? 0) + 1;
   });
-  return map;
+  return { status, goedkeuring };
+}
+
+/** Aantal dagen sinds de besteldatum, voor de markering "loopt achter". */
+function dagenGeleden(d: string | null): number | null {
+  if (!d) return null;
+  const t = new Date(d).getTime();
+  return Number.isNaN(t) ? null : Math.floor((Date.now() - t) / 86_400_000);
 }
 
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; pagina?: string; sort?: string; dir?: string; zoek?: string; ok?: string; aanvrager?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const sb = kmsAdmin();
@@ -83,41 +102,117 @@ export default async function OrdersPage({
     );
   }
 
-  const { status, pagina, sort, dir, zoek, ok, aanvrager } = await searchParams;
-  const huidigeAanvrager = (aanvrager ?? '').trim();
-  const zoekTerm = (zoek ?? '').trim();
-  const huidigePagina = Math.max(1, Number(pagina) || 1);
-  const richting: 'asc' | 'desc' = dir === 'asc' ? 'asc' : 'desc';
-  const huidigeStatus = (status ?? '').trim();
+  const sp = await searchParams;
+  const ok = param(sp, 'ok');
+  const sort = param(sp, 'sort') || undefined;
+  const huidigeAanvrager = param(sp, 'aanvrager');
+  const zoekTerm = param(sp, 'zoek');
+  const huidigePagina = Math.max(1, Number(param(sp, 'pagina')) || 1);
+  const richting: 'asc' | 'desc' = param(sp, 'dir') === 'asc' ? 'asc' : 'desc';
+  const huidigeStatus = param(sp, 'status');
 
-  const [{ rijen: orders, totaal }, perStatus, aanvragers] = await Promise.all([
-    listOrdersPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, zoek: zoekTerm, status: huidigeStatus, sort, dir: richting, aanvrager: huidigeAanvrager }),
+  // Filters uit de URL. Onbekende waarden worden genegeerd in plaats van een lege lijst te geven.
+  const klantId = isUuid(param(sp, 'klant')) ? param(sp, 'klant') : null;
+  const periode = periodeParam(sp, 'datum');
+  const bedrag = bedragParam(sp, 'bedrag');
+  const goedkeuring = (GOEDKEURING_STATUSSEN as readonly string[]).includes(param(sp, 'goedkeuring')) ? param(sp, 'goedkeuring') : null;
+  const bron = param(sp, 'bron') === 'portaal' || param(sp, 'bron') === 'handmatig' ? (param(sp, 'bron') as 'portaal' | 'handmatig') : null;
+  const drukproef = param(sp, 'drukproef') === 'ja' || param(sp, 'drukproef') === 'nee' ? (param(sp, 'drukproef') as 'ja' | 'nee') : null;
+  const ouderDan = Math.max(0, Math.min(365, Number(param(sp, 'ouder')) || 0)) || null;
+  const fase = param(sp, 'fase') === 'open' || param(sp, 'fase') === 'klaar' ? (param(sp, 'fase') as 'open' | 'klaar') : null;
+  const filters: OrderLijstFilters = {
+    klant: klantId,
+    van: periode.van,
+    totExclusief: periode.totExclusief,
+    bedragMin: bedrag.min,
+    bedragMax: bedrag.max,
+    goedkeuring,
+    bron,
+    drukproef,
+    ouderDan,
+    fase,
+  };
+
+  const [{ rijen: orders, totaal }, tellingen, klantNaam, aanvragerNaam, admin] = await Promise.all([
+    listOrdersPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, zoek: zoekTerm, status: huidigeStatus, sort, dir: richting, aanvrager: huidigeAanvrager, filters }),
     ordersPerStatus(),
-    aanvragersVoorOrderFilter(),
+    klantLabel(klantId),
+    huidigeAanvrager ? aanvragerLabel(huidigeAanvrager) : Promise.resolve(null),
+    getHuidigeAdmin(),
   ]);
+  const perStatus = tellingen.status;
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
   const alleOrders = Object.values(perStatus).reduce((n, a) => n + a, 0);
 
+  const filterDefs: FilterDef[] = [
+    { soort: 'zoek', param: 'klant', label: 'Klant', hoofd: true, zoek: zoekKlantenVoorFilter, huidigLabel: klantNaam, placeholder: 'Alle klanten' },
+    { soort: 'datum', param: 'datum', label: 'Besteld', hoofd: true },
+    {
+      soort: 'select',
+      param: 'fase',
+      label: 'Fase',
+      leegLabel: 'Alle',
+      opties: [
+        { waarde: 'open', label: 'Open (nog niet geleverd)' },
+        { waarde: 'klaar', label: 'Geleverd of afgerond' },
+      ],
+    },
+    {
+      soort: 'select',
+      param: 'goedkeuring',
+      label: 'Goedkeuring',
+      leegLabel: 'Alle',
+      opties: (['wacht', 'goedgekeurd', 'afgewezen', 'niet_nodig'] as const).map((g) => ({ waarde: g, label: goedkeurLabel[g], aantal: tellingen.goedkeuring[g] ?? 0 })),
+    },
+    {
+      soort: 'zoek',
+      param: 'aanvrager',
+      label: 'Aangevraagd door',
+      zoek: zoekAanvragersVoorFilter,
+      huidigLabel: aanvragerNaam,
+      placeholder: klantId ? 'Kies een persoon' : 'Typ een naam',
+      hint: klantId ? 'Deze klant heeft nog geen orders met een aanvrager.' : 'Typ minstens 2 letters, of kies eerst een klant: dan zie je meteen wie daar bestelt.',
+    },
+    { soort: 'bedrag', param: 'bedrag', label: 'Bedrag' },
+    {
+      soort: 'select',
+      param: 'bron',
+      label: 'Binnengekomen via',
+      opties: [
+        { waarde: 'portaal', label: 'Klantportaal' },
+        { waarde: 'handmatig', label: 'Handmatig ingevoerd' },
+      ],
+    },
+    {
+      soort: 'select',
+      param: 'drukproef',
+      label: 'Drukproef',
+      opties: [
+        { waarde: 'ja', label: 'Met drukproef' },
+        { waarde: 'nee', label: 'Zonder drukproef' },
+      ],
+    },
+    {
+      soort: 'select',
+      param: 'ouder',
+      label: 'Loopt achter',
+      leegLabel: 'Niet filteren',
+      opties: [7, 14, 30, 60].map((d) => ({ waarde: String(d), label: `Open en ouder dan ${d} dagen` })),
+    },
+  ];
+  const filterActief = filterDefs.some((d) => sleutelsVan(d).some((k) => param(sp, k))) || Boolean(huidigeStatus || zoekTerm);
+
   /**
-   * Eén plek waar de URL van de lijst wordt opgebouwd. Zoekterm, statusfilter en
-   * sortering reizen standaard mee: bladeren of een status bijwerken mag je niet
+   * Eén plek waar de URL van de lijst wordt opgebouwd. Zoekterm, filters en
+   * sortering reizen altijd mee: bladeren of een status bijwerken mag je niet
    * uit je zoekresultaat schoppen.
    */
-  function lijstUrl(opties: { status?: string; pagina?: number } = {}) {
-    const p = new URLSearchParams();
-    const s = opties.status ?? huidigeStatus;
-    if (s) p.set('status', s);
-    if (zoekTerm) p.set('zoek', zoekTerm);
-    if (huidigeAanvrager) p.set('aanvrager', huidigeAanvrager);
-    if (sort) { p.set('sort', sort); p.set('dir', richting); }
-    const pag = opties.pagina ?? 1;
-    if (pag > 1) p.set('pagina', String(pag));
-    const qs = p.toString();
-    return qs ? `/dashboard/orders?${qs}` : '/dashboard/orders';
-  }
+  const basis = '/dashboard/orders';
+  const urlMet = (wijzig: Record<string, string | number | null>) => lijstUrl(basis, sp, wijzig);
 
   // Waar de statusformulieren na het opslaan naartoe terugkeren.
-  const huidigeUrl = lijstUrl({ pagina: huidigePagina });
+  const huidigeUrl = urlMet({ pagina: huidigePagina });
+  const afgehandeld = new Set<string>(AFGEHANDELDE_ORDERSTATUSSEN);
 
   return (
     <main className="container-app py-6">
@@ -125,7 +220,7 @@ export default async function OrdersPage({
         <div className="flex items-baseline gap-2.5">
           <h1 className="dash-h1">Orders</h1>
           <span className="text-[13px] tabular-nums text-warm">
-            {huidigeStatus ? `${totaal} van ${alleOrders}` : alleOrders}
+            {filterActief ? `${totaal} van ${alleOrders}` : alleOrders}
           </span>
         </div>
         {/* Een order aanmaken is de handeling van de dag en vraagt om ruimte:
@@ -139,36 +234,44 @@ export default async function OrdersPage({
         </p>
       )}
 
-      <div className="dash-filter flex flex-wrap items-center gap-3">
-        <Zoekbalk
-          waarde={zoekTerm}
-          placeholder="Zoek op klant of ordernummer"
-          bewaar={{ status: huidigeStatus, sort, dir: sort ? richting : undefined, aanvrager: huidigeAanvrager || undefined }}
-        />
-        <AanvragerFilter opties={aanvragers} waarde={huidigeAanvrager} />
-      </div>
+      <FilterBalk filters={filterDefs} opslag="orders" gebruiker={admin?.email} wisOok={['status', 'zoek']}>
+        <Zoekbalk placeholder="Zoek op klant, ordernummer of referentie" />
+      </FilterBalk>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <Link href={lijstUrl({ status: '' })} className={`chip ${huidigeStatus ? '' : 'chip-aan'}`}>
+        <Link href={urlMet({ status: null })} className={`chip ${huidigeStatus ? '' : 'chip-aan'}`}>
           Alle
           <span className="chip-tel">{alleOrders}</span>
         </Link>
         {ORDER_STATUSSEN.map((s) => {
           const aantal = perStatus[s] ?? 0;
           return (
-            <Link key={s} href={lijstUrl({ status: s })} className={`chip ${huidigeStatus === s ? 'chip-aan' : ''}`}>
+            <Link key={s} href={urlMet({ status: s })} className={`chip ${huidigeStatus === s ? 'chip-aan' : ''}`}>
               {leesbaar(s)}
               <span className="chip-tel">{aantal}</span>
             </Link>
           );
         })}
+        {/* Goedkeuring is een eigen veld naast de status: een order kan op "concept"
+            staan en wachten op de klant. Deze chip zet het filter goedkeuring=wacht. */}
+        <span className="mx-1 h-4 w-px bg-line" aria-hidden="true" />
+        <Link
+          href={urlMet({ goedkeuring: goedkeuring === 'wacht' ? null : 'wacht' })}
+          className={`chip ${goedkeuring === 'wacht' ? 'chip-aan' : ''}`}
+          title="Orders waarvan de klant de goedkeuring nog moet geven"
+        >
+          Wacht op goedkeuring
+          <span className="chip-tel">{tellingen.goedkeuring.wacht ?? 0}</span>
+        </Link>
       </div>
 
       {orders.length === 0 ? (
         <p className="panel mt-4 px-4 py-8 text-center text-[13px] text-warm">
           {zoekTerm
             ? `Geen orders gevonden voor “${zoekTerm}”${huidigeStatus ? ` met status “${leesbaar(huidigeStatus)}”` : ''}. Pas de zoekterm aan of kies een ander filter.`
-            : `Geen orders${huidigeStatus ? ` met status “${leesbaar(huidigeStatus)}”` : ''}. Maak er rechtsboven een aan.`}
+            : filterActief
+              ? 'Geen orders die aan deze filters voldoen. Haal een filter weg via het kruisje.'
+              : 'Nog geen orders. Maak er rechtsboven een aan.'}
         </p>
       ) : (
         <>
@@ -219,7 +322,15 @@ export default async function OrdersPage({
                       {o.medewerker_naam && <span className="block text-[11px] text-warm">{o.medewerker_naam}</span>}
                     </td>
                     <td className="stil">{o.referentienr || o.aangevraagd_door || '—'}</td>
-                    <td className="stil whitespace-nowrap">{fmt(o.besteldatum)}</td>
+                    <td className="stil whitespace-nowrap">
+                      {fmt(o.besteldatum)}
+                      {(() => {
+                        const dagen = dagenGeleden(o.besteldatum);
+                        return dagen != null && dagen > 14 && !afgehandeld.has(o.status) ? (
+                          <span className="block text-[11px] font-semibold text-amber-800" title="Nog niet geleverd">{dagen} dagen open</span>
+                        ) : null;
+                      })()}
+                    </td>
                     <td>
                       <form action={wijzigOrderStatusInline} className="flex items-center" data-statusform>
                         <input type="hidden" name="orderId" value={o.id} />
@@ -250,11 +361,11 @@ export default async function OrdersPage({
       {aantalPaginas > 1 && (
         <nav className="mt-3 flex items-center justify-between gap-4 text-[13px]" aria-label="Paginering">
           {huidigePagina > 1 ? (
-            <Link href={lijstUrl({ pagina: huidigePagina - 1 })} className="knop-stil">Vorige</Link>
+            <Link href={urlMet({ pagina: huidigePagina - 1 })} className="knop-stil">Vorige</Link>
           ) : <span />}
           <span className="text-warm">Pagina {huidigePagina} van {aantalPaginas}</span>
           {huidigePagina < aantalPaginas ? (
-            <Link href={lijstUrl({ pagina: huidigePagina + 1 })} className="knop-stil">Volgende</Link>
+            <Link href={urlMet({ pagina: huidigePagina + 1 })} className="knop-stil">Volgende</Link>
           ) : <span />}
         </nav>
       )}

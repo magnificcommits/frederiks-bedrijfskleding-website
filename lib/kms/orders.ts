@@ -2,6 +2,7 @@ import { kmsAdmin } from '@/lib/kms/adminClient';
 import { zoekWoorden, klantIdsVoorZoekterm } from '@/lib/kms/zoeken';
 import { stuurStatusMail, stuurLeverancierBestelmail } from '@/lib/kms/notificaties';
 import { metIdTerugval, orderIdsVoorAanvrager } from '@/lib/kms/personen';
+import { orderIdsMetDrukproef } from '@/lib/kms/filterOpties';
 
 /**
  * Data-access voor de module Orders.
@@ -168,14 +169,41 @@ export async function listOrders(status?: string): Promise<OrderMetKlant[]> {
 /** Toegestane sorteerkolommen (echte DB-kolommen op orders). */
 const SORTEERKOLOMMEN = ['ordernummer', 'besteldatum', 'bedrag', 'status', 'goedkeuring_status'] as const;
 
+/**
+ * Statussen waarin een order klaar is (geleverd of verder). Een order die
+ * hier níet in staat en ouder is dan x dagen, telt als "loopt achter".
+ */
+export const AFGEHANDELDE_ORDERSTATUSSEN = ['compleet_geleverd', 'verzonden', 'factureren', 'afgerond'] as const;
+
+/** Extra filters op de orderlijst (FilterBalk). Alles optioneel. */
+export type OrderLijstFilters = {
+  /** organisatie_id */
+  klant?: string | null;
+  /** Besteldatum vanaf (inclusief), ISO-datum. */
+  van?: string | null;
+  /** Besteldatum tot (exclusief), ISO-datum. */
+  totExclusief?: string | null;
+  bedragMin?: number | null;
+  bedragMax?: number | null;
+  goedkeuring?: string | null;
+  /** Portaalorders hebben het e-mailadres van de besteller als aanvrager; handmatige een naam of niets. */
+  bron?: 'portaal' | 'handmatig' | null;
+  drukproef?: 'ja' | 'nee' | null;
+  /** Alleen open orders (niet geleverd of verder) met een besteldatum van meer dan x dagen geleden. */
+  ouderDan?: number | null;
+  /** 'open': nog niet geleverd. 'klaar': geleverd, verzonden, te factureren of afgerond. */
+  fase?: 'open' | 'klaar' | null;
+};
+
 /** Eén pagina orders met optioneel statusfilter en sortering, plus het totaal aantal rijen voor paginering. */
-export async function listOrdersPaged(opts: { pagina: number; perPagina: number; status?: string; zoek?: string; sort?: string; dir?: 'asc' | 'desc'; aanvrager?: string }): Promise<{ rijen: OrderMetKlant[]; totaal: number }> {
+export async function listOrdersPaged(opts: { pagina: number; perPagina: number; status?: string; zoek?: string; sort?: string; dir?: 'asc' | 'desc'; aanvrager?: string; filters?: OrderLijstFilters }): Promise<{ rijen: OrderMetKlant[]; totaal: number }> {
   const sb = kmsAdmin(); if (!sb) return { rijen: [], totaal: 0 };
   const pagina = Math.max(1, opts.pagina);
   const from = (pagina - 1) * opts.perPagina;
   const to = from + opts.perPagina - 1;
   const kolom = (SORTEERKOLOMMEN as readonly string[]).includes(opts.sort ?? '') ? (opts.sort as string) : 'ordernummer';
   const oplopend = opts.dir === 'asc' ? true : false;
+  const f = opts.filters ?? {};
   let q = sb
     .from('orders')
     .select('*, organisaties(naam), medewerkers!orders_medewerker_id_fkey(naam)', { count: 'exact' })
@@ -187,6 +215,27 @@ export async function listOrdersPaged(opts: { pagina: number; perPagina: number;
     q = ids.length ? q.in('id', ids) : q.eq('id', '00000000-0000-0000-0000-000000000000');
   }
   if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
+
+  if (f.klant) q = q.eq('organisatie_id', f.klant);
+  if (f.van) q = q.gte('besteldatum', f.van);
+  if (f.totExclusief) q = q.lt('besteldatum', f.totExclusief);
+  if (f.bedragMin != null) q = q.gte('bedrag', f.bedragMin);
+  if (f.bedragMax != null) q = q.lte('bedrag', f.bedragMax);
+  if (f.goedkeuring) q = q.eq('goedkeuring_status', f.goedkeuring);
+  if (f.bron === 'portaal') q = q.ilike('aangevraagd_door', '%@%');
+  if (f.bron === 'handmatig') q = q.or('aangevraagd_door.is.null,aangevraagd_door.not.ilike.%@%');
+  if (f.drukproef) {
+    const ids = await orderIdsMetDrukproef();
+    if (f.drukproef === 'ja') q = ids.length ? q.in('id', ids) : q.eq('id', '00000000-0000-0000-0000-000000000000');
+    else if (ids.length) q = q.not('id', 'in', `(${ids.join(',')})`);
+  }
+  if (f.fase === 'open') q = q.not('status', 'in', `(${AFGEHANDELDE_ORDERSTATUSSEN.join(',')})`);
+  if (f.fase === 'klaar') q = q.in('status', [...AFGEHANDELDE_ORDERSTATUSSEN]);
+  if (f.ouderDan && f.ouderDan > 0) {
+    const grens = new Date(Date.now() - f.ouderDan * 86_400_000).toISOString();
+    q = q.lt('besteldatum', grens).not('status', 'in', `(${AFGEHANDELDE_ORDERSTATUSSEN.join(',')})`);
+  }
+
   // Zoeken op klant (naam, plaats, klantnummer, contactpersoon; elk woord moet
   // passen), ordernummer, referentie of aanvrager. De klant zit in een join, en
   // PostgREST kan daar niet zonder meer op filteren; daarom eerst de klant-ids.

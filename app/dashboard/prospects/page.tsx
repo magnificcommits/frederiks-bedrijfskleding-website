@@ -10,6 +10,8 @@ import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
 import EmptyState from '@/components/dashboard/EmptyState';
 import { importeerCsvActie, nieuweProspectActie, zetProspectStatusActie, bulkLogosOphalenActie } from './actions';
 import VerzendKnop from '@/components/dashboard/VerzendKnop';
+import { brievenVanProspecten } from '@/lib/prospect/briefData';
+import { ONTVANGER_BADGE, ONTVANGER_LABEL, isOntvangerStatus } from '@/lib/prospect/briefStatus';
 
 export const dynamic = 'force-dynamic';
 // De bulkactie "Logo's ophalen" loopt tot ~50 seconden.
@@ -56,6 +58,8 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
   const huidigePagina = Math.max(1, Number(pagina) || 1);
   const richting: 'asc' | 'desc' = dir === 'asc' ? 'asc' : 'desc';
   const { rijen: prospecten, totaal } = await listProspectenPaged({ pagina: huidigePagina, perPagina: PER_PAGINA, status, zoek, sort, dir: richting, gescand });
+  // Laatste brief per prospect (uit de verzendingen); leeg zolang die tabellen er niet zijn.
+  const brieven = await brievenVanProspecten(prospecten.map((p) => p.id));
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
   const statusQs = status ? `&status=${encodeURIComponent(status)}` : '';
   const zoekQs = zoek ? `&zoek=${encodeURIComponent(zoek)}` : '';
@@ -239,7 +243,18 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
                         <span className="text-warm">-</span>
                       )}
                     </td>
-                    <td className="hidden whitespace-nowrap text-warm md:table-cell">{fmt(p.brief_verstuurd_op ?? null)}</td>
+                    <td className="hidden whitespace-nowrap text-warm md:table-cell">
+                      {fmt(p.brief_verstuurd_op ?? null)}
+                      {(() => {
+                        const b = brieven.get(p.id)?.[0];
+                        if (!b) return null;
+                        return (
+                          <Link href={`/dashboard/prospects/brieven/${b.batchId}?stap=volgen`} title={b.batchNaam} className="mt-0.5 block">
+                            <span className={isOntvangerStatus(b.status) ? ONTVANGER_BADGE[b.status] : 'badge-rust'}>{isOntvangerStatus(b.status) ? ONTVANGER_LABEL[b.status] : b.status}</span>
+                          </Link>
+                        );
+                      })()}
+                    </td>
                     <td className="hidden lg:table-cell">
                       {p.logo_url ? (
                         // eslint-disable-next-line @next/next/no-img-element

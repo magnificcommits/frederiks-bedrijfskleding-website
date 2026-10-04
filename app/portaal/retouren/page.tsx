@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { isPortalConfigured } from '@/lib/env';
 import { getPortaalUser, getMijnOrganisatie, getRetourenActief } from '@/lib/portaal/queries';
 import { getMijnToegang } from '@/lib/portaal/team';
-import { getMijnRetouren, getMijnRetourneerbareOrders, getRetourtermijn, type RetourStatus } from '@/lib/portaal/service';
+import { getMijnRetouren, getMijnRetourneerbareOrders, getRetourInfo, type RetourStatus } from '@/lib/portaal/service';
 import PortaalNav from '../PortaalNav';
 import RetourFormulier from './RetourFormulier';
 
@@ -58,7 +58,8 @@ export default async function Retouren({ searchParams }: { searchParams: Promise
   }
 
   const sp = await searchParams;
-  const termijn = await getRetourtermijn();
+  const info = await getRetourInfo(org.id);
+  const termijn = info.termijn;
   const [retouren, orders, toegang, retourenAan] = await Promise.all([
     getMijnRetouren(),
     getMijnRetourneerbareOrders(termijn),
@@ -80,6 +81,16 @@ export default async function Retouren({ searchParams }: { searchParams: Promise
 
       <p className="mt-3 max-w-2xl rounded-lg bg-cream px-4 py-3 text-sm text-ink-800">
         <span className="font-semibold">Retourbeleid:</span> je kunt tot {termijn} dagen na de besteldatum retourneren. Bestellingen daarbuiten kun je niet meer aanmelden.
+        {info.voorwaarden.length > 0 && (
+          <span className="mt-2 block">
+            <span className="font-semibold">Voorwaarden:</span>
+            <span className="mt-1 block">
+              {info.voorwaarden.map((v) => (
+                <span key={v} className="block">{'- '}{v}</span>
+              ))}
+            </span>
+          </span>
+        )}
       </p>
 
       {sp?.ok && (
@@ -108,7 +119,7 @@ export default async function Retouren({ searchParams }: { searchParams: Promise
           <div className="rounded-xl border border-line bg-white p-5 shadow-soft">
             <h2 className="font-display text-lg font-extrabold text-ink-900">Retour aanmelden</h2>
             {retourenAan ? (
-              <RetourFormulier orders={orders} />
+              <RetourFormulier orders={orders} redenen={info.redenen} />
             ) : (
               <p className="mt-3 text-sm text-warm">Retouren via het portaal staan voor jullie uit. Neem contact op met Frederiks Bedrijfskleding om een retour te regelen.</p>
             )}

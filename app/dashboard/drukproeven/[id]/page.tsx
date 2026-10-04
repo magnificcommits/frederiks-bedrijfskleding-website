@@ -5,17 +5,19 @@ import { artikelVoorDrukproef, getDrukproef, listArtikelenVoorDrukproef, listLog
 import EmptyState from '@/components/dashboard/EmptyState';
 import DrukproefEditor from '../DrukproefEditor';
 import { normaliseerOntwerp } from '../ontwerp';
+import { veiligTerugPad } from '../terug';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Drukproef bewerken', robots: { index: false, follow: false } };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const STATUS: Record<string, string> = { concept: 'Concept', verstuurd: 'Wacht op klant', goedgekeurd: 'Goedgekeurd', afgekeurd: 'Afgekeurd' };
+const STATUS: Record<string, string> = { concept: 'Concept', verstuurd: 'Ter goedkeuring', goedgekeurd: 'Goedgekeurd', afgekeurd: 'Afgekeurd' };
 
-export default async function DrukproefBewerkenPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DrukproefBewerkenPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ terug?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const { id } = await params;
+  const terug = veiligTerugPad((await searchParams).terug);
   const dp = UUID.test(id) ? await getDrukproef(id) : null;
   if (!dp) {
     return (
@@ -45,7 +47,7 @@ export default async function DrukproefBewerkenPage({ params }: { params: Promis
         <div className="flex flex-wrap items-center gap-3">
           <Link href={`/dashboard/drukproeven/afdrukken?org=${dp.organisatie_id}&id=${dp.id}`} className="knop-stil">Afdrukken</Link>
           {dp.order_id && <Link href={`/dashboard/orders/${dp.order_id}`} className="knop-stil">Naar de order</Link>}
-          <Link href={`/dashboard/drukproeven?org=${dp.organisatie_id}`} className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar drukproeven</Link>
+          <Link href={terug ?? `/dashboard/drukproeven?org=${dp.organisatie_id}`} className="text-sm font-semibold text-warm hover:text-ink-800">{terug ? 'Terug' : 'Terug naar drukproeven'}</Link>
         </div>
       </div>
       {dp.opmerking && (dp.status === 'goedgekeurd' || dp.status === 'afgekeurd') && (
@@ -60,6 +62,7 @@ export default async function DrukproefBewerkenPage({ params }: { params: Promis
           orderId={dp.order_id}
           assortiment={assortiment}
           logos={logos}
+          terug={terug}
           bestaand={{
             id: dp.id,
             naam: dp.naam,

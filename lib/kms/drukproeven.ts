@@ -1,4 +1,6 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { kolomOntbreekt } from '@/lib/kms/kolomTerugval';
+import { logoExtraBestanden, tabelOntbreekt, schoneZoekterm, type Logo } from '@/lib/kms/logos';
 
 /**
  * Data-access voor de module Drukproeven. Een drukproef hoort bij een klant en toont
@@ -9,6 +11,21 @@ import { kmsAdmin } from '@/lib/kms/adminClient';
  */
 
 export const DRUKPROEF_STATUSSEN = ['concept', 'verstuurd', 'goedgekeurd', 'afgekeurd'] as const;
+
+/** Hoe Jessi de status leest. 'verstuurd' betekent: ligt bij de klant. */
+export const DRUKPROEF_STATUS_LABEL: Record<string, string> = {
+  concept: 'Concept',
+  verstuurd: 'Ter goedkeuring',
+  goedgekeurd: 'Goedgekeurd',
+  afgekeurd: 'Afgekeurd',
+};
+
+export const DRUKPROEF_STATUS_KLASSE: Record<string, string> = {
+  concept: 'bg-ink-100 text-ink-700',
+  verstuurd: 'bg-amber-100 text-amber-800',
+  goedgekeurd: 'bg-green-100 text-green-800',
+  afgekeurd: 'bg-red-100 text-red-700',
+};
 
 export type Drukproef = {
   id: string;
@@ -34,6 +51,8 @@ export type Drukproef = {
   achter_afbeelding_url?: string | null;
   /** Logo-plaatsingen { voor, achter }; zie app/dashboard/drukproeven/ontwerp.ts. */
   ontwerp?: unknown;
+  /** Moment van (laatste keer) versturen; na migratie 20261004_productie_logos_werkbonnen. */
+  verstuurd_op?: string | null;
 };
 
 export type DrukproefMetKlant = Drukproef & { organisatie_naam: string | null };
@@ -78,6 +97,7 @@ export async function verwerkDrukproefGoedkeuring(drukproefId: string): Promise<
   const { data } = await sb.from('drukproeven').select('order_id, techniek, status').eq('id', drukproefId).maybeSingle();
   const dp = data as { order_id: string | null; techniek: string | null; status: string } | null;
   if (!dp || dp.status !== 'goedgekeurd' || !dp.order_id) return;
+  await werkbonNaGoedkeuring(dp.order_id);
 
   const { data: orderData } = await sb.from('orders').select('status').eq('id', dp.order_id).maybeSingle();
   const huidige = (orderData as { status: string } | null)?.status;
@@ -85,6 +105,24 @@ export async function verwerkDrukproefGoedkeuring(drukproefId: string): Promise<
   if (!huidige || !vroeg.includes(huidige)) return;
   const nieuwe = dp.techniek === 'bedrukken' ? 'bedrukken' : 'borduren';
   await sb.from('orders').update({ status: nieuwe }).eq('id', dp.order_id);
+}
+
+/**
+ * Zet de werkbon van de order op 'goedgekeurd' zodra een drukproef akkoord is,
+ * maar alleen als hij nog op 'wacht op drukproef' stond (of nog geen rij had).
+ * Zonder tabel werkbonnen (migratie niet gedraaid) gebeurt er niets: dan leidt
+ * de planning de status af uit de goedgekeurde proef.
+ */
+async function werkbonNaGoedkeuring(orderId: string): Promise<void> {
+  const sb = kmsAdmin(); if (!sb) return;
+  const { data, error } = await sb.from('werkbonnen').select('status').eq('order_id', orderId).maybeSingle();
+  if (error) return; // ook tabelOntbreekt: niets te doen
+  const huidig = (data as { status: string } | null)?.status;
+  if (huidig && huidig !== 'wacht_op_drukproef') return;
+  const { error: fout } = await sb
+    .from('werkbonnen')
+    .upsert({ order_id: orderId, status: 'goedgekeurd', bijgewerkt_op: new Date().toISOString() }, { onConflict: 'order_id' });
+  if (fout && !tabelOntbreekt(fout)) console.error('werkbon na goedkeuring', fout.message);
 }
 
 export async function getDrukproef(id: string): Promise<DrukproefMetKlant | null> {
@@ -165,6 +203,9 @@ export async function verwijderDrukproef(id: string): Promise<boolean> {
 /** Zet de drukproef op 'verstuurd' zodat de klant hem kan beoordelen (mail of portaal). */
 export async function markeerVerstuurd(id: string): Promise<boolean> {
   const sb = kmsAdmin(); if (!sb) return false;
+  const eerste = await sb.from('drukproeven').update({ status: 'verstuurd', verstuurd_op: new Date().toISOString() }).eq('id', id);
+  if (!eerste.error) return true;
+  if (!kolomOntbreekt(eerste.error)) return false;
   const { error } = await sb.from('drukproeven').update({ status: 'verstuurd' }).eq('id', id);
   return !error;
 }
@@ -398,13 +439,20 @@ function isPlaatsbaar(url: string | null | undefined, naam?: string | null): boo
 export async function listLogosVoorDrukproef(orgId: string): Promise<DrukproefLogo[]> {
   const sb = kmsAdmin(); if (!sb || !orgId) return [];
   const [{ data: logos }, { data: org }] = await Promise.all([
-    sb.from('logos').select('id, naam, logo_bestand_url, logo_bestand_naam').eq('organisatie_id', orgId).order('naam'),
+    sb.from('logos').select('*').eq('organisatie_id', orgId).order('naam'),
     sb.from('organisaties').select('portaal_logo_url').eq('id', orgId).maybeSingle(),
   ]);
   const uit: DrukproefLogo[] = [];
-  for (const l of (logos as { id: string; naam: string | null; logo_bestand_url: string | null; logo_bestand_naam: string | null }[]) ?? []) {
+  for (const l of (logos as Logo[]) ?? []) {
+    const naam = l.naam?.trim() || 'Logo';
     if (l.logo_bestand_url && isPlaatsbaar(l.logo_bestand_url, l.logo_bestand_naam)) {
-      uit.push({ id: l.id, naam: l.naam?.trim() || 'Logo', url: l.logo_bestand_url });
+      uit.push({ id: l.id, naam, url: l.logo_bestand_url });
+    }
+    // Extra bitmaps en svg's uit de bibliotheek (bijv. een witte variant voor donkere stof).
+    for (const e of logoExtraBestanden(l)) {
+      if (isPlaatsbaar(e.url, e.naam) && !uit.some((x) => x.url === e.url)) {
+        uit.push({ id: `${l.id}:${e.id}`, naam: `${naam} (${e.naam?.trim() || 'variant'})`, url: e.url });
+      }
     }
   }
   const portaalLogo = (org as { portaal_logo_url: string | null } | null)?.portaal_logo_url;
@@ -439,4 +487,179 @@ export async function listDrukproevenOpIds(orgId: string, ids: string[]): Promis
   if (ids.length > 0) q = q.in('id', ids.slice(0, 100));
   const { data } = await q.order('created_at', { ascending: true });
   return (data as Drukproef[]) ?? [];
+}
+
+/* ------------------------------------------------------------------------- */
+/* Overzicht over alle klanten: filters, KPI's en context per kaart.          */
+/* ------------------------------------------------------------------------- */
+
+export type DrukproefFilter = {
+  status?: string;
+  org?: string;
+  techniek?: string;
+  /** '30' | '90' | 'maand' | '' (alles) */
+  periode?: string;
+  q?: string;
+};
+
+export const DRUKPROEF_PERIODES: { waarde: string; label: string }[] = [
+  { waarde: '', label: 'Alle periodes' },
+  { waarde: '30', label: 'Laatste 30 dagen' },
+  { waarde: 'maand', label: 'Deze maand' },
+  { waarde: '90', label: 'Laatste 90 dagen' },
+];
+
+function periodeVanaf(periode: string | undefined): string | null {
+  const nu = new Date();
+  if (periode === '30' || periode === '90') return new Date(nu.getTime() - Number(periode) * 86400000).toISOString();
+  if (periode === 'maand') return new Date(nu.getFullYear(), nu.getMonth(), 1).toISOString();
+  return null;
+}
+
+export const OVERZICHT_LIMIET = 120;
+
+/**
+ * Drukproeven voor het overzicht, met klantnaam. Geeft ook de aantallen per
+ * status terug binnen de overige filters, voor de statuschips.
+ */
+export async function listDrukproevenOverzicht(f: DrukproefFilter): Promise<{ proeven: DrukproefMetKlant[]; perStatus: Record<string, number>; totaal: number }> {
+  const sb = kmsAdmin();
+  if (!sb) return { proeven: [], perStatus: {}, totaal: 0 };
+
+  const term = schoneZoekterm(f.q);
+  let klantIds: string[] = [];
+  if (term) {
+    const { data } = await sb.from('organisaties').select('id').ilike('naam', `%${term}%`).limit(100);
+    klantIds = ((data as { id: string }[]) ?? []).map((o) => o.id);
+  }
+  const vanaf = periodeVanaf(f.periode);
+
+  // Zelfde filters voor de lijst en voor de telling; alleen de status verschilt.
+  // Het querytype van supabase-js is te diep genest om hier netjes te typen.
+  const metFilters = (q: any) => {
+    if (f.org) q = q.eq('organisatie_id', f.org);
+    if (f.techniek) q = q.eq('techniek', f.techniek);
+    if (vanaf) q = q.gte('created_at', vanaf);
+    if (term) q = klantIds.length ? q.or(`naam.ilike.%${term}%,organisatie_id.in.(${klantIds.join(',')})`) : q.ilike('naam', `%${term}%`);
+    return q;
+  };
+
+  let lijstQ = metFilters(sb.from('drukproeven').select('*, organisaties(naam)'));
+  if (f.status) lijstQ = lijstQ.eq('status', f.status);
+  const [lijst, telling] = await Promise.all([
+    lijstQ.order('created_at', { ascending: false }).limit(OVERZICHT_LIMIET),
+    metFilters(sb.from('drukproeven').select('status')).limit(5000),
+  ]);
+
+  const perStatus: Record<string, number> = {};
+  for (const r of (telling.data as { status: string }[]) ?? []) perStatus[r.status] = (perStatus[r.status] ?? 0) + 1;
+  const proeven = ((lijst.data as unknown as (Drukproef & { organisaties: { naam: string } | null })[]) ?? []).map(({ organisaties, ...rest }) => ({
+    ...rest,
+    organisatie_naam: organisaties?.naam ?? null,
+  }));
+  return { proeven, perStatus, totaal: f.status ? perStatus[f.status] ?? 0 : Object.values(perStatus).reduce((n, a) => n + a, 0) };
+}
+
+export type DrukproefKpis = {
+  wachtOpKlant: number;
+  langerDanDrieDagen: number;
+  goedgekeurdDezeMaand: number;
+  goedgekeurdVorigeMaand: number;
+  concepten: number;
+  /** false = verstuurd_op bestaat nog niet; dan rekenen we vanaf de aanmaakdatum. */
+  metVerstuurdOp: boolean;
+};
+
+/** De vier getallen bovenaan het overzicht, over alle klanten (of één klant). */
+export async function drukproefKpis(orgId?: string): Promise<DrukproefKpis> {
+  const leeg: DrukproefKpis = { wachtOpKlant: 0, langerDanDrieDagen: 0, goedgekeurdDezeMaand: 0, goedgekeurdVorigeMaand: 0, concepten: 0, metVerstuurdOp: false };
+  const sb = kmsAdmin(); if (!sb) return leeg;
+  type Rij = { status: string; created_at: string; behandeld_op: string | null; verstuurd_op?: string | null };
+  const vraag = (kolommen: string) => {
+    let q = sb.from('drukproeven').select(kolommen);
+    if (orgId) q = q.eq('organisatie_id', orgId);
+    return q.limit(5000);
+  };
+  let metVerstuurdOp = true;
+  let res = await vraag('status, created_at, behandeld_op, verstuurd_op');
+  if (res.error && kolomOntbreekt(res.error)) {
+    metVerstuurdOp = false;
+    res = await vraag('status, created_at, behandeld_op');
+  }
+  const rijen = (res.data as unknown as Rij[]) ?? [];
+  const nu = new Date();
+  const maandStart = new Date(nu.getFullYear(), nu.getMonth(), 1).getTime();
+  const vorigeStart = new Date(nu.getFullYear(), nu.getMonth() - 1, 1).getTime();
+  const drieDagen = nu.getTime() - 3 * 86400000;
+  let wacht = 0, lang = 0, dezeMaand = 0, vorige = 0, concepten = 0;
+  for (const r of rijen) {
+    if (r.status === 'concept') concepten++;
+    if (r.status === 'verstuurd') {
+      wacht++;
+      const sinds = Date.parse(r.verstuurd_op ?? r.created_at);
+      if (Number.isFinite(sinds) && sinds < drieDagen) lang++;
+    }
+    if (r.status === 'goedgekeurd' && r.behandeld_op) {
+      const t = Date.parse(r.behandeld_op);
+      if (t >= maandStart) dezeMaand++;
+      else if (t >= vorigeStart) vorige++;
+    }
+  }
+  return { wachtOpKlant: wacht, langerDanDrieDagen: lang, goedgekeurdDezeMaand: dezeMaand, goedgekeurdVorigeMaand: vorige, concepten, metVerstuurdOp };
+}
+
+/** Id's van drukproeven die langer dan 3 dagen bij de klant liggen. */
+export function staatLangOpen(d: Drukproef): boolean {
+  if (d.status !== 'verstuurd') return false;
+  const sinds = Date.parse(d.verstuurd_op ?? d.created_at);
+  return Number.isFinite(sinds) && sinds < Date.now() - 3 * 86400000;
+}
+
+export type DrukproefContext = {
+  artikel: Map<string, string>;
+  ordernummer: Map<string, number | null>;
+  adressen: Map<string, { email: string; naam: string }[]>;
+};
+
+/** Artikelnaam, ordernummer en mailadressen voor een rij kaarten, in een paar queries. */
+export async function drukproefContext(proeven: Drukproef[]): Promise<DrukproefContext> {
+  const ctx: DrukproefContext = { artikel: new Map(), ordernummer: new Map(), adressen: new Map() };
+  const sb = kmsAdmin(); if (!sb || proeven.length === 0) return ctx;
+  const productIds = [...new Set(proeven.map((p) => p.product_id).filter((v): v is string => Boolean(v)))];
+  const orderIds = [...new Set(proeven.map((p) => p.order_id).filter((v): v is string => Boolean(v)))];
+  const orgIds = [...new Set(proeven.map((p) => p.organisatie_id))];
+  const [producten, orders, contacten, orgs] = await Promise.all([
+    productIds.length ? sb.from('producten').select('id, naam, merk').in('id', productIds.slice(0, 200)) : Promise.resolve({ data: [] }),
+    orderIds.length ? sb.from('orders').select('id, ordernummer').in('id', orderIds.slice(0, 200)) : Promise.resolve({ data: [] }),
+    sb.from('contactpersonen').select('organisatie_id, naam, email, hoofdcontact').in('organisatie_id', orgIds.slice(0, 200)),
+    sb.from('organisaties').select('id, naam, email_algemeen').in('id', orgIds.slice(0, 200)),
+  ]);
+  for (const p of (producten.data as { id: string; naam: string | null; merk: string | null }[]) ?? []) {
+    ctx.artikel.set(p.id, [p.merk, p.naam].filter(Boolean).join(' ') || 'Artikel');
+  }
+  for (const o of (orders.data as { id: string; ordernummer: number | null }[]) ?? []) ctx.ordernummer.set(o.id, o.ordernummer);
+  type C = { organisatie_id: string; naam: string | null; email: string | null; hoofdcontact: boolean | null };
+  const perOrg = new Map<string, C[]>();
+  for (const c of (contacten.data as C[]) ?? []) {
+    if (!c.email?.trim()) continue;
+    perOrg.set(c.organisatie_id, [...(perOrg.get(c.organisatie_id) ?? []), c]);
+  }
+  for (const o of (orgs.data as { id: string; naam: string | null; email_algemeen: string | null }[]) ?? []) {
+    const lijst = (perOrg.get(o.id) ?? [])
+      .sort((a, b) => Number(Boolean(b.hoofdcontact)) - Number(Boolean(a.hoofdcontact)))
+      .map((c) => ({ email: c.email!.trim(), naam: c.naam?.trim() || '' }));
+    if (o.email_algemeen?.trim() && !lijst.some((c) => gelijkeTekst(c.email, o.email_algemeen))) {
+      lijst.push({ email: o.email_algemeen.trim(), naam: o.naam ?? 'Algemeen' });
+    }
+    ctx.adressen.set(o.id, lijst);
+  }
+  return ctx;
+}
+
+/** Totaal en nog openstaand (concept of bij de klant), voor de badge op de klantkaart. */
+export async function telDrukproevenVoorKlant(orgId: string): Promise<{ totaal: number; open: number }> {
+  const sb = kmsAdmin(); if (!sb || !orgId) return { totaal: 0, open: 0 };
+  const { data } = await sb.from('drukproeven').select('status').eq('organisatie_id', orgId).limit(5000);
+  const rijen = (data as { status: string }[]) ?? [];
+  return { totaal: rijen.length, open: rijen.filter((r) => r.status === 'concept' || r.status === 'verstuurd').length };
 }

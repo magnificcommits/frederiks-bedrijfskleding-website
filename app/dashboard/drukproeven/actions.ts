@@ -10,14 +10,17 @@ import {
   verwijderDrukproef,
   markeerVerstuurd,
   getDrukproef,
+  zetDrukproefStatus,
+  verwerkDrukproefGoedkeuring,
   zoekArtikelenVoorDrukproef,
   kleurenVoorDrukproef,
   type DrukproefArtikel,
   type DrukproefKleur,
 } from '@/lib/kms/drukproeven';
 import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
-import { env } from '@/lib/env';
+import { env, isEmailConfigured } from '@/lib/env';
 import { normaliseerOntwerp, veiligeAfbeeldingUrl, plaatsingTekst, type Ontwerp } from './ontwerp';
+import { veiligTerugPad } from './terug';
 
 /**
  * Server-acties voor de module Drukproeven. Alles achter dashAuthed(): zonder geldige
@@ -27,6 +30,28 @@ import { normaliseerOntwerp, veiligeAfbeeldingUrl, plaatsingTekst, type Ontwerp 
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TECHNIEKEN = ['borduren', 'bedrukken'];
+
+/**
+ * Terugadres na een actie, bijvoorbeeld de klantkaart. Alleen paden binnen het
+ * dashboard: een volledige URL of '//' zou een open redirect zijn.
+ */
+function veiligTerug(v: unknown): string | null {
+  return veiligTerugPad(typeof v === 'string' ? v : null);
+}
+
+/** Voeg een parameter toe aan een pad dat misschien al een querystring heeft. */
+function metParam(pad: string, sleutel: string, waarde: string): string {
+  const [basis, qs = ''] = pad.split('?');
+  const p = new URLSearchParams(qs);
+  p.set(sleutel, waarde);
+  return `${basis}?${p.toString()}`;
+}
+
+/** Waar Jessi na de actie terechtkomt: het terugadres, of het overzicht van die klant. */
+function bestemming(terug: string | null, orgId: string, sleutel: string, waarde: string): string {
+  if (terug) return metParam(terug, sleutel, waarde);
+  return `/dashboard/drukproeven?${orgId ? `org=${orgId}&` : ''}${sleutel}=${waarde}`;
+}
 
 /* ------------------------------------------------------------------------- */
 /* Opzoeken voor de editor (aangeroepen vanuit de browser).                   */
@@ -62,6 +87,8 @@ export type DrukproefInvoer = {
   /** Aantal drukkleuren (kolom drukproeven.kleur). */
   drukkleuren: number;
   omschrijving: string;
+  /** Terug naar waar Jessi vandaan kwam (bijv. de klantkaart). */
+  terug?: string | null;
 };
 
 export type BewaarUitkomst = { ok: false; melding: string };
@@ -92,6 +119,7 @@ export async function bewaarDrukproefActie(invoer: DrukproefInvoer): Promise<Bew
   const techniek = TECHNIEKEN.includes(invoer.techniek) ? invoer.techniek : 'borduren';
   const drukkleuren = Math.max(0, Math.min(20, Math.round(Number(invoer.drukkleuren) || 0)));
   const omschrijving = String(invoer.omschrijving ?? '').trim().slice(0, 2000) || null;
+  const terug = veiligTerug(invoer.terug);
 
   // Korte samenvatting van de plekken voor lijsten die het ontwerp (nog) niet tonen,
   // zoals de order. Het eerste logo vullen we in voor oudere weergaven.
@@ -164,7 +192,7 @@ export async function bewaarDrukproefActie(invoer: DrukproefInvoer): Promise<Bew
     if (wijziging) await logAudit('drukproef_bijgewerkt', { entiteit: 'drukproef', entiteitId: id, details: { voor, na } });
     revalidatePath('/dashboard/drukproeven');
     revalidatePath(`/dashboard/drukproeven/${id}`);
-    redirect(`/dashboard/drukproeven?org=${orgId}&ok=opgeslagen`);
+    redirect(bestemming(terug, orgId, 'ok', 'opgeslagen'));
   }
 
   const nieuwId = await maakDrukproef(orgId, { ...velden, order_id: orderId });
@@ -175,7 +203,8 @@ export async function bewaarDrukproefActie(invoer: DrukproefInvoer): Promise<Bew
     details: { naam, organisatie_id: orgId, product_kleur: productKleur, ontwerp: samenvatting(ontwerp), order_id: orderId },
   });
   revalidatePath('/dashboard/drukproeven');
-  redirect(`/dashboard/drukproeven?org=${orgId}&ok=aangemaakt`);
+  if (terug) revalidatePath(terug.split('?')[0]);
+  redirect(bestemming(terug, orgId, 'ok', 'aangemaakt'));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -218,39 +247,96 @@ export async function verstuurDrukproefActie(formData: FormData) {
   const id = String(formData.get('id') ?? '').trim();
   const orgId = String(formData.get('org_id') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim();
+  const terug = veiligTerug(formData.get('terug'));
   if (!id || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    redirect('/dashboard/drukproeven' + (orgId ? `?org=${orgId}&fout=mail` : '?fout=mail'));
+    redirect(bestemming(terug, orgId, 'fout', 'mail'));
   }
 
   const dp = await getDrukproef(id);
-  if (dp) {
-    const link = `${env.siteUrl}/drukproef/${dp.token}`;
-    const o = normaliseerOntwerp(dp.ontwerp);
-    const plekken = o ? [...o.voor, ...o.achter].map(plaatsingTekst).filter(Boolean) : [];
-    const plekkenHtml = plekken.length
-      ? `<ul style="margin:12px 0 0;padding-left:18px;">${plekken.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul>`
-      : '';
-    await markeerVerstuurd(id);
-    await sendEmail({
-      to: email,
-      subject: 'Je drukproef ter goedkeuring - Frederiks Bedrijfskleding',
-      html: emailLayout({
-        heading: 'Bekijk en keur je drukproef',
-        preheader: 'We hebben een drukproef voor je klaargezet.',
-        bodyHtml: `<p style="margin:0;">We hebben een drukproef voor <strong style="color:#1c1c1c;">${escapeHtml(dp.naam)}</strong> klaargezet. Bekijk hoe je logo op de kleding komt en keur de proef goed of geef je opmerkingen door.</p>${plekkenHtml}
+  if (!dp) redirect(bestemming(terug, orgId, 'dp', 'weg'));
+
+  // Zonder ingestelde mail (Resend) gaat er niets de deur uit. Dan zetten we de
+  // proef ook niet op 'ter goedkeuring': de klant weet nog van niets.
+  if (!isEmailConfigured) redirect(bestemming(terug, orgId, 'dp', 'mail_uit'));
+
+  const link = `${env.siteUrl}/drukproef/${dp.token}`;
+  const o = normaliseerOntwerp(dp.ontwerp);
+  const plekken = o ? [...o.voor, ...o.achter].map(plaatsingTekst).filter(Boolean) : [];
+  const plekkenHtml = plekken.length
+    ? `<ul style="margin:12px 0 0;padding-left:18px;">${plekken.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul>`
+    : '';
+  const uitkomst = await sendEmail({
+    to: email,
+    subject: 'Je drukproef ter goedkeuring - Frederiks Bedrijfskleding',
+    html: emailLayout({
+      heading: 'Bekijk en keur je drukproef',
+      preheader: 'We hebben een drukproef voor je klaargezet.',
+      bodyHtml: `<p style="margin:0;">We hebben een drukproef voor <strong style="color:#1c1c1c;">${escapeHtml(dp.naam)}</strong> klaargezet. Bekijk hoe je logo op de kleding komt en keur de proef goed of geef je opmerkingen door.</p>${plekkenHtml}
 <p style="margin:18px 0;"><a href="${link}" style="display:inline-block;background:#ec6726;color:#ffffff;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:8px;">Drukproef bekijken</a></p>
 <p style="margin:0;font-size:13px;color:#52504e;">Werkt de knop niet? Open dan deze link:<br/>${escapeHtml(link)}</p>`,
-      }),
-    }).catch(() => {});
-    await logAudit('drukproef_verstuurd', {
-      entiteit: 'drukproef',
-      entiteitId: id,
-      details: { voor: { status: dp.status }, na: { status: 'verstuurd' }, email },
-    });
-  }
+    }),
+  }).catch(() => ({ sent: false as const, error: 'onbekend' }));
+
+  if (!uitkomst.sent) redirect(bestemming(terug, orgId, 'dp', 'mail_fout'));
+
+  await markeerVerstuurd(id);
+  await logAudit('drukproef_verstuurd', {
+    entiteit: 'drukproef',
+    entiteitId: id,
+    details: { voor: { status: dp.status }, na: { status: 'verstuurd' }, email, opnieuw: dp.status === 'verstuurd' },
+  });
 
   revalidatePath('/dashboard/drukproeven');
-  redirect(`/dashboard/drukproeven?org=${orgId}&ok=gemaild`);
+  if (terug) revalidatePath(terug.split('?')[0]);
+  redirect(bestemming(terug, orgId, 'ok', 'gemaild'));
+}
+
+/**
+ * Zet een proef op 'ter goedkeuring' zonder mail, voor als Jessi de link zelf
+ * heeft gedeeld (WhatsApp, eigen mail) of zolang de mail nog niet is ingesteld.
+ */
+export async function markeerVerstuurdActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('id') ?? '').trim();
+  const orgId = String(formData.get('org_id') ?? '').trim();
+  const terug = veiligTerug(formData.get('terug'));
+  if (UUID.test(id)) {
+    const dp = await getDrukproef(id);
+    if (dp && (dp.status === 'concept' || dp.status === 'verstuurd') && (await markeerVerstuurd(id))) {
+      await logAudit('drukproef_verstuurd', { entiteit: 'drukproef', entiteitId: id, details: { voor: { status: dp.status }, na: { status: 'verstuurd' }, handmatig: true } });
+    }
+  }
+  revalidatePath('/dashboard/drukproeven');
+  if (terug) revalidatePath(terug.split('?')[0]);
+  redirect(bestemming(terug, orgId, 'dp', 'verstuurd_handmatig'));
+}
+
+/**
+ * Goedkeuren namens de klant, als die telefonisch of in de winkel akkoord gaf.
+ * Werkt precies als goedkeuren via de klantlink: hangt de proef aan een order,
+ * dan gaat die door naar bedrukken of borduren en de werkbon naar 'goedgekeurd'.
+ */
+export async function keurGoedNamensKlantActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('id') ?? '').trim();
+  const orgId = String(formData.get('org_id') ?? '').trim();
+  const terug = veiligTerug(formData.get('terug'));
+  const notitie = String(formData.get('opmerking') ?? '').trim().slice(0, 500);
+  if (!UUID.test(id)) redirect(bestemming(terug, orgId, 'dp', 'weg'));
+  const dp = await getDrukproef(id);
+  if (!dp || (dp.status !== 'concept' && dp.status !== 'verstuurd')) redirect(bestemming(terug, orgId, 'dp', 'weg'));
+
+  const opmerking = notitie ? `Akkoord doorgegeven aan Frederiks: ${notitie}` : 'Akkoord doorgegeven aan Frederiks (telefonisch of in de winkel).';
+  const ok = await zetDrukproefStatus(id, 'goedgekeurd', opmerking);
+  if (ok) {
+    await verwerkDrukproefGoedkeuring(id);
+    await logAudit('drukproef_goedgekeurd', { entiteit: 'drukproef', entiteitId: id, details: { voor: { status: dp.status }, na: { status: 'goedgekeurd' }, namens_klant: true } });
+  }
+  revalidatePath('/dashboard/drukproeven');
+  revalidatePath('/dashboard/logos');
+  if (dp.order_id) revalidatePath(`/dashboard/orders/${dp.order_id}`);
+  if (terug) revalidatePath(terug.split('?')[0]);
+  redirect(bestemming(terug, orgId, 'dp', ok ? 'goedgekeurd' : 'mislukt'));
 }
 
 export async function verwijderDrukproefActie(formData: FormData) {
@@ -265,6 +351,8 @@ export async function verwijderDrukproefActie(formData: FormData) {
     if (ok) await logAudit('drukproef_verwijderd', { entiteit: 'drukproef', entiteitId: id, details: (data as Record<string, unknown> | null) ?? {} });
   }
 
+  const terug = veiligTerug(formData.get('terug'));
   revalidatePath('/dashboard/drukproeven');
-  redirect('/dashboard/drukproeven' + (orgId ? `?org=${orgId}&ok=verwijderd` : ''));
+  if (terug) revalidatePath(terug.split('?')[0]);
+  redirect(bestemming(terug, orgId, 'ok', 'verwijderd'));
 }

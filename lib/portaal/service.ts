@@ -1,6 +1,17 @@
 import { getServerSupabase } from './supabaseServer';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { getMijnToegang } from './team';
+import { metIdTerugval } from '@/lib/kms/kolomTerugval';
+import {
+  berichtenVoorKlant,
+  getKlachtInstellingen,
+  getRetourbeleid,
+  slaDeadline,
+  termijnVoorKlant,
+  voegKlachtBerichtToe,
+  voorwaardenTekst,
+  type KlachtBericht,
+} from '@/lib/kms/service';
 
 export type RetourStatus = 'aangemeld' | 'goedgekeurd' | 'afgewezen' | 'verwerkt';
 export type KlachtSoort = 'vraag' | 'klacht';
@@ -32,26 +43,37 @@ export type RetourRegel = {
   maat: string | null;
   kleur: string | null;
   aantal: number;
+  /** Gekozen reden uit de vaste lijst (Instellingen > Service). */
+  reden?: string | null;
 };
 
 const RETOURTERMIJN_STANDAARD = 30;
 
 /**
- * Leest de ingestelde retourtermijn (dagen) via de service-role client, omdat de tabel
+ * Leest de retourtermijn (dagen) via de service-role client, omdat de tabel
  * `instellingen` RLS aan heeft zonder policies en dus niet via de portaal-client leesbaar is.
+ * Met een organisatie-id telt een afwijkende termijn voor die klant (Instellingen > Service).
  * Valt terug op 30 dagen.
  */
-export async function getRetourtermijn(): Promise<number> {
+export async function getRetourtermijn(organisatieId?: string | null): Promise<number> {
   const admin = kmsAdmin();
   if (!admin) return RETOURTERMIJN_STANDAARD;
-  const { data } = await admin
-    .from('instellingen')
-    .select('waarde')
-    .eq('sleutel', 'retourtermijn_dagen')
-    .maybeSingle();
-  const waarde = (data as { waarde: string | null } | null)?.waarde;
-  const n = waarde != null ? Number.parseInt(waarde, 10) : NaN;
-  return Number.isFinite(n) && n > 0 ? n : RETOURTERMIJN_STANDAARD;
+  const beleid = await getRetourbeleid();
+  return termijnVoorKlant(beleid, organisatieId);
+}
+
+/** Wat het portaal over het retourbeleid laat zien: termijn, voorwaarden en de vaste redenen. */
+export async function getRetourInfo(organisatieId?: string | null): Promise<{
+  termijn: number;
+  voorwaarden: string[];
+  redenen: string[];
+}> {
+  const beleid = await getRetourbeleid();
+  return {
+    termijn: termijnVoorKlant(beleid, organisatieId),
+    voorwaarden: voorwaardenTekst(beleid.voorwaarden),
+    redenen: beleid.redenen,
+  };
 }
 
 /**
@@ -107,6 +129,9 @@ export type Klacht = {
   antwoord: string | null;
   created_at: string;
   ordernummer: string | null;
+  categorie: string | null;
+  /** Antwoorden van Frederiks en reacties van de klant, oudste eerst. Leeg zonder migratie. */
+  berichten: KlachtBericht[];
 };
 
 /** Bestellingen van de eigen organisatie voor de keuzelijst bij een retour of klacht. RLS scoopt op org. */
@@ -201,6 +226,8 @@ export async function getMijnRetourneerbareOrders(termijnDagen: number): Promise
 export async function meldRetour(input: {
   orderId: string | null;
   reden: string;
+  /** Gekozen reden uit de vaste lijst; komt ook op elke regel, voor de analyse per artikel en maat. */
+  redenKeuze?: string | null;
   regels: RetourRegel[];
 }): Promise<{ ok: boolean; error?: string }> {
   const sb = await getServerSupabase();
@@ -213,7 +240,7 @@ export async function meldRetour(input: {
 
   // Controleer dat de order binnen de termijn valt en hoor bij de eigen organisatie (RLS),
   // en valideer de geselecteerde regels tegen de werkelijke orderregels.
-  const termijn = await getRetourtermijn();
+  const termijn = await getRetourtermijn(toegang.organisatieId);
   const orders = await getMijnRetourneerbareOrders(termijn);
   const order = orders.find((o) => o.id === input.orderId);
   if (!order) return { ok: false, error: 'Deze bestelling valt buiten de retourtermijn of is niet van jou' };
@@ -230,6 +257,7 @@ export async function meldRetour(input: {
       maat: bron.maat,
       kleur: bron.kleur,
       aantal,
+      reden: input.redenKeuze ?? null,
     });
   }
   if (schoneRegels.length === 0) return { ok: false, error: 'Kies minstens één geldig artikel om te retourneren' };
@@ -238,7 +266,9 @@ export async function meldRetour(input: {
     organisatie_id: toegang.organisatieId,
     medewerker_id: toegang.medewerkerId,
     order_id: input.orderId,
-    reden: input.reden,
+    reden: input.redenKeuze && !input.reden.startsWith(input.redenKeuze)
+      ? `${input.redenKeuze}. ${input.reden}`.trim()
+      : input.reden,
     status: 'aangemeld',
     regels: schoneRegels,
   });
@@ -250,31 +280,31 @@ export async function meldRetour(input: {
 export async function getMijnKlachten(): Promise<Klacht[]> {
   const sb = await getServerSupabase();
   if (!sb) return [];
+  // select('*'): nieuwe kolommen (categorie) verschijnen vanzelf zodra de migratie gedraaid is.
   const { data } = await sb
     .from('klachten')
-    .select('id, order_id, soort, omschrijving, status, antwoord, created_at, orders(ordernummer)')
+    .select('*, orders(ordernummer)')
     .order('created_at', { ascending: false });
-  const rijen =
-    (data as unknown as {
-      id: string;
-      order_id: string | null;
-      soort: KlachtSoort;
-      omschrijving: string;
-      status: KlachtStatus;
-      antwoord: string | null;
-      created_at: string;
-      orders: { ordernummer: string | null } | null;
-    }[]) ?? [];
+  const rijen = (data as unknown as (Record<string, unknown> & { orders: { ordernummer: string | number | null } | null })[]) ?? [];
+  // Berichten via de service role, maar alleen voor klachten die RLS hierboven al heeft doorgelaten.
+  const berichten = await berichtenVoorKlant(rijen.map((k) => String(k.id)));
   return rijen.map((k) => ({
-    id: k.id,
-    order_id: k.order_id,
-    soort: k.soort,
-    omschrijving: k.omschrijving,
-    status: k.status,
-    antwoord: k.antwoord,
-    created_at: k.created_at,
-    ordernummer: k.orders?.ordernummer ?? null,
+    id: String(k.id),
+    order_id: (k.order_id as string) ?? null,
+    soort: (k.soort === 'klacht' ? 'klacht' : 'vraag') as KlachtSoort,
+    omschrijving: String(k.omschrijving ?? ''),
+    status: (k.status as KlachtStatus) ?? 'open',
+    antwoord: (k.antwoord as string) ?? null,
+    created_at: String(k.created_at),
+    ordernummer: k.orders?.ordernummer != null ? String(k.orders.ordernummer) : null,
+    categorie: (k.categorie as string) ?? null,
+    berichten: berichten.get(String(k.id)) ?? [],
   }));
+}
+
+/** Categorieën die de klant kan kiezen (beheerd onder Instellingen > Service). */
+export async function getKlachtCategorieen(): Promise<string[]> {
+  return (await getKlachtInstellingen()).categorieen;
 }
 
 /** Meldt een vraag of klacht aan binnen de eigen organisatie. Zet organisatie_id en medewerker_id op de eigen waarden. */
@@ -282,19 +312,44 @@ export async function meldKlacht(input: {
   orderId: string | null;
   soort: KlachtSoort;
   omschrijving: string;
+  categorie?: string | null;
 }): Promise<{ ok: boolean; error?: string }> {
   const sb = await getServerSupabase();
   if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
   const toegang = await getMijnToegang();
   if (!toegang.organisatieId) return { ok: false, error: 'Geen organisatie gekoppeld' };
-  const { error } = await sb.from('klachten').insert({
+  const inst = await getKlachtInstellingen();
+  const categorie = input.categorie && inst.categorieen.includes(input.categorie) ? input.categorie : null;
+  const rij: Record<string, unknown> = {
     organisatie_id: toegang.organisatieId,
     medewerker_id: toegang.medewerkerId,
     order_id: input.orderId,
     soort: input.soort,
     omschrijving: input.omschrijving,
     status: 'open',
-  });
+    categorie,
+    bron: 'portaal',
+    prioriteit: 'normaal',
+    sla_reactie_voor: slaDeadline(new Date().toISOString(), 'normaal', inst.sla),
+  };
+  const { error } = await metIdTerugval(rij, ['categorie', 'bron', 'prioriteit', 'sla_reactie_voor'], (x) =>
+    sb.from('klachten').insert(x),
+  );
   if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/**
+ * Reactie van de klant op een eigen vraag of klacht. Eerst met RLS controleren dat de
+ * klacht van de eigen organisatie is; pas dan via de service role het bericht wegschrijven.
+ */
+export async function reageerOpKlacht(klachtId: string, tekstIn: string): Promise<{ ok: boolean; error?: string }> {
+  const sb = await getServerSupabase();
+  if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
+  const { data } = await sb.from('klachten').select('id').eq('id', klachtId).maybeSingle();
+  if (!data) return { ok: false, error: 'Niet gevonden' };
+  const { data: u } = await sb.auth.getUser();
+  const res = await voegKlachtBerichtToe(klachtId, 'klant', tekstIn, u.user?.email ?? 'Klant');
+  if (!res.ok) return { ok: false, error: res.zonderMigratie ? 'Reageren kan nog niet' : 'Opslaan mislukt' };
   return { ok: true };
 }

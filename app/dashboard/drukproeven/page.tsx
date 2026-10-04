@@ -1,29 +1,34 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
-import { listOrganisaties } from '@/lib/kms/pakketten';
-import { listDrukproevenVoorKlant, contactAdressenVoorDrukproef } from '@/lib/kms/drukproeven';
-import NavigateSelect from '@/components/dashboard/NavigateSelect';
+import { listOrganisaties } from '@/lib/kms/logos';
+import {
+  DRUKPROEF_PERIODES,
+  DRUKPROEF_STATUSSEN,
+  DRUKPROEF_STATUS_LABEL,
+  OVERZICHT_LIMIET,
+  drukproefContext,
+  drukproefKpis,
+  listDrukproevenOverzicht,
+  staatLangOpen,
+} from '@/lib/kms/drukproeven';
 import EmptyState from '@/components/dashboard/EmptyState';
-import ConfirmSubmit from '@/components/ConfirmSubmit';
-import DrukproefPreview from './DrukproefPreview';
-import { verwijderDrukproefActie, verstuurDrukproefActie, kopieerDrukproefActie } from './actions';
-import { env } from '@/lib/env';
+import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
+import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
+import KpiTegel from '@/components/dashboard/overzicht/KpiTegel';
+import DrukproefKaart from './DrukproefKaart';
+import ProefMelding from './ProefMelding';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Drukproeven', robots: { index: false, follow: false } };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const datum = (s: string) => new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(s));
+const selectCls = 'w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 
-const STATUS: Record<string, { label: string; klasse: string }> = {
-  concept: { label: 'Concept', klasse: 'bg-ink-100 text-ink-700' },
-  verstuurd: { label: 'Wacht op klant', klasse: 'bg-amber-100 text-amber-800' },
-  goedgekeurd: { label: 'Goedgekeurd', klasse: 'bg-green-100 text-green-800' },
-  afgekeurd: { label: 'Afgekeurd', klasse: 'bg-red-100 text-red-700' },
-};
+type Zoek = { org?: string; order?: string; status?: string; techniek?: string; periode?: string; q?: string; lang?: string };
 
-export default async function DrukproevenPage({ searchParams }: { searchParams: Promise<{ org?: string; ok?: string; order?: string }> }) {
+export default async function DrukproevenPage({ searchParams }: { searchParams: Promise<Zoek> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const sb = kmsAdmin();
 
@@ -39,172 +44,204 @@ export default async function DrukproevenPage({ searchParams }: { searchParams: 
     );
   }
 
-  const { org, order } = await searchParams;
+  const zp = await searchParams;
   const orgs = await listOrganisaties();
-  const gekozen = org && orgs.some((o) => o.id === org) ? org : '';
-  const orderId = order && UUID.test(order) ? order : '';
+  const org = zp.org && orgs.some((o) => o.id === zp.org) ? zp.org : '';
+  const orderId = zp.order && UUID.test(zp.order) ? zp.order : '';
+  const status = (DRUKPROEF_STATUSSEN as readonly string[]).includes(zp.status ?? '') ? zp.status! : '';
+  const techniek = zp.techniek === 'borduren' || zp.techniek === 'bedrukken' ? zp.techniek : '';
+  const periode = DRUKPROEF_PERIODES.some((p) => p.waarde === zp.periode) ? zp.periode ?? '' : '';
+  const q = (zp.q ?? '').slice(0, 60);
+  const lang = zp.lang === '1';
 
-  let klantNaam = '';
-  let drukproeven: Awaited<ReturnType<typeof listDrukproevenVoorKlant>> = [];
-  let adressen: { email: string; naam: string }[] = [];
-  let ordernummer: string | null = null;
-  if (gekozen) {
-    klantNaam = orgs.find((o) => o.id === gekozen)?.naam ?? '';
-    [drukproeven, adressen] = await Promise.all([listDrukproevenVoorKlant(gekozen), contactAdressenVoorDrukproef(gekozen)]);
-    if (orderId) {
-      const { data } = await sb.from('orders').select('ordernummer').eq('id', orderId).maybeSingle();
-      ordernummer = (data as { ordernummer: string | null } | null)?.ordernummer ?? null;
-    }
-  }
-  const nieuwHref = `/dashboard/drukproeven/nieuw?org=${gekozen}${orderId ? `&order=${orderId}` : ''}`;
+  const [{ proeven: alle, perStatus, totaal }, kpis, ordernummer] = await Promise.all([
+    listDrukproevenOverzicht({ org, status: lang ? 'verstuurd' : status, techniek, periode, q }),
+    drukproefKpis(org || undefined),
+    orderId
+      ? sb.from('orders').select('ordernummer').eq('id', orderId).maybeSingle().then((r) => (r.data as { ordernummer: number | null } | null)?.ordernummer ?? null)
+      : Promise.resolve(null),
+  ]);
+  const proeven = lang ? alle.filter(staatLangOpen) : alle;
+  const ctx = await drukproefContext(proeven);
+  const klantNaam = orgs.find((o) => o.id === org)?.naam ?? '';
+  const nieuwHref = `/dashboard/drukproeven/nieuw${org ? `?org=${org}${orderId ? `&order=${orderId}` : ''}` : ''}`;
+
+  // Filters die bij een andere keuze moeten blijven staan.
+  const bewaar: Record<string, string> = {};
+  if (org) bewaar.org = org;
+  if (orderId) bewaar.order = orderId;
+  if (techniek) bewaar.techniek = techniek;
+  if (periode) bewaar.periode = periode;
+  if (q) bewaar.q = q;
+  const url = (extra: Record<string, string>) => {
+    const p = new URLSearchParams({ ...bewaar, ...extra });
+    for (const [k, v] of [...p.entries()]) if (!v) p.delete(k);
+    const s = p.toString();
+    return s ? `/dashboard/drukproeven?${s}` : '/dashboard/drukproeven';
+  };
+  const basisKpi = org ? `org=${org}&` : '';
+  const filterActief = Boolean(status || techniek || periode || q || lang);
 
   return (
     <main className="container-app py-6">
       <div className="dash-kop flex flex-wrap items-center justify-between gap-4">
-        <h1 className="dash-h1">Drukproeven</h1>
-        {gekozen && (
-          <Link href={nieuwHref} className="knop-primair !px-4 !py-2 !text-sm">
-            Nieuwe drukproef
-          </Link>
-        )}
-      </div>
-      <p className="mt-2 max-w-3xl text-sm text-warm">
-        Zet het logo van de klant op de echte foto van het kledingstuk, op de voor- en achterkant. Daarna stuur je de proef ter goedkeuring naar de klant of print je hem voor de productie.
-      </p>
-
-      <section className="mt-6">
-        <div className="flex flex-wrap items-end gap-3 panel p-4">
-          <div className="min-w-[18rem]">
-            <label className="veld-label">Klant</label>
-            <div className="mt-1">
-              <NavigateSelect options={orgs.map((o) => ({ value: o.id, label: o.naam }))} value={gekozen} basePath="/dashboard/drukproeven" param="org" placeholder="Kies een klant" />
-            </div>
-          </div>
-          {orderId && gekozen && (
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Een nieuwe drukproef wordt gekoppeld aan order {ordernummer ?? ''}.{' '}
-              <Link href={`/dashboard/orders/${orderId}`} className="font-semibold underline">Terug naar de order</Link>
-            </p>
-          )}
+        <div>
+          <h1 className="dash-h1">Drukproeven{klantNaam ? ` van ${klantNaam}` : ''}</h1>
+          <p className="dash-sub max-w-3xl">
+            Zet het logo op de echte foto van het kledingstuk, stuur de proef ter goedkeuring en zie wat er nog bij klanten ligt.
+          </p>
         </div>
+        <Link href={nieuwHref} className="knop-primair !px-4 !py-2 !text-sm">Nieuwe drukproef</Link>
+      </div>
+
+      <Suspense fallback={null}>
+        <ProefMelding />
+      </Suspense>
+
+      <section aria-label="Kerncijfers" className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiTegel
+          label="Wachten op klant"
+          waarde={String(kpis.wachtOpKlant)}
+          href={`/dashboard/drukproeven?${basisKpi}status=verstuurd`}
+          sub={<span className="text-warm">Verstuurd, nog geen reactie.</span>}
+        />
+        <KpiTegel
+          label="Langer dan 3 dagen open"
+          waarde={String(kpis.langerDanDrieDagen)}
+          href={`/dashboard/drukproeven?${basisKpi}lang=1`}
+          sub={
+            <span className={kpis.langerDanDrieDagen > 0 ? 'font-semibold text-amber-800' : 'text-warm'}>
+              {kpis.langerDanDrieDagen > 0 ? 'Tijd om even na te bellen.' : 'Niets blijft liggen.'}
+              {!kpis.metVerstuurdOp && ' Gerekend vanaf aanmaken.'}
+            </span>
+          }
+        />
+        <KpiTegel
+          label="Goedgekeurd deze maand"
+          waarde={String(kpis.goedgekeurdDezeMaand)}
+          href={`/dashboard/drukproeven?${basisKpi}status=goedgekeurd&periode=maand`}
+          delta={{ nu: kpis.goedgekeurdDezeMaand, vorige: kpis.goedgekeurdVorigeMaand, richting: 'hoger-beter', vergelijk: 'vorige maand' }}
+        />
+        <KpiTegel
+          label="Concepten"
+          waarde={String(kpis.concepten)}
+          href={`/dashboard/drukproeven?${basisKpi}status=concept`}
+          sub={<span className="text-warm">Nog niet naar de klant.</span>}
+        />
       </section>
 
-      {!gekozen ? (
-        <div className="mt-8">
-          <EmptyState titel="Kies eerst een klant" tekst="Selecteer hierboven een klant om de drukproeven te zien of een nieuwe te maken." />
+      <section className="mt-6 panel p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <LiveZoekveld param="q" label="Zoeken" placeholder="Naam van de proef of klant" breedte="w-full sm:w-72" />
+          <form action="/dashboard/drukproeven" method="get" className="flex flex-wrap items-end gap-3">
+            {status && <input type="hidden" name="status" value={status} />}
+            {q && <input type="hidden" name="q" value={q} />}
+            {orderId && <input type="hidden" name="order" value={orderId} />}
+            <label className="block min-w-[14rem]">
+              <span className="veld-label">Klant</span>
+              <span className="mt-1 block">
+                <AutoSubmitSelect name="org" defaultValue={org} aria-label="Klant" className={selectCls} options={[{ value: '', label: 'Alle klanten' }, ...orgs.map((o) => ({ value: o.id, label: o.naam }))]} />
+              </span>
+            </label>
+            <label className="block">
+              <span className="veld-label">Techniek</span>
+              <span className="mt-1 block">
+                <AutoSubmitSelect
+                  name="techniek"
+                  defaultValue={techniek}
+                  aria-label="Techniek"
+                  className={selectCls}
+                  options={[{ value: '', label: 'Alle technieken' }, { value: 'borduren', label: 'Borduren' }, { value: 'bedrukken', label: 'Bedrukken' }]}
+                />
+              </span>
+            </label>
+            <label className="block">
+              <span className="veld-label">Periode</span>
+              <span className="mt-1 block">
+                <AutoSubmitSelect name="periode" defaultValue={periode} aria-label="Periode" className={selectCls} options={DRUKPROEF_PERIODES.map((p) => ({ value: p.waarde, label: p.label }))} />
+              </span>
+            </label>
+            <noscript>
+              <button type="submit" className="knop-stil">Filteren</button>
+            </noscript>
+          </form>
         </div>
-      ) : drukproeven.length === 0 ? (
+
+        <div className="dash-filter mt-4 flex flex-wrap items-center gap-1.5">
+          <Link href={url({})} className={`chip ${!status && !lang ? 'chip-aan' : ''}`}>
+            Alle
+            <span className="chip-tel">{Object.values(perStatus).reduce((n, a) => n + a, 0)}</span>
+          </Link>
+          {DRUKPROEF_STATUSSEN.map((s) => (
+            <Link key={s} href={url({ status: s })} className={`chip ${status === s && !lang ? 'chip-aan' : ''}`}>
+              {DRUKPROEF_STATUS_LABEL[s]}
+              <span className="chip-tel">{perStatus[s] ?? 0}</span>
+            </Link>
+          ))}
+          {lang && <span className="chip chip-aan">Langer dan 3 dagen open<span className="chip-tel">{proeven.length}</span></span>}
+          {filterActief && (
+            <Link href={org ? `/dashboard/drukproeven?org=${org}` : '/dashboard/drukproeven'} className="ml-1 text-xs font-semibold text-warm underline underline-offset-2 hover:text-ink-800">
+              Filters wissen
+            </Link>
+          )}
+        </div>
+
+        {orderId && org && (
+          <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            Een nieuwe drukproef wordt gekoppeld aan order {ordernummer != null ? `#${ordernummer}` : ''}.{' '}
+            <Link href={`/dashboard/orders/${orderId}`} className="font-semibold underline">Terug naar de order</Link>
+          </p>
+        )}
+      </section>
+
+      {proeven.length === 0 ? (
         <div className="mt-8">
-          <EmptyState titel={`Nog geen drukproeven voor ${klantNaam}`} tekst="Maak de eerste drukproef: kies een kledingstuk en zet het logo erop." actieHref={nieuwHref} actieLabel="Nieuwe drukproef" />
+          {filterActief ? (
+            <EmptyState titel="Geen drukproeven met deze filters" tekst="Pas de filters aan of wis ze om alles te zien." />
+          ) : (
+            <EmptyState
+              titel={klantNaam ? `Nog geen drukproeven voor ${klantNaam}` : 'Nog geen drukproeven'}
+              tekst="Maak de eerste drukproef: kies een kledingstuk en zet het logo erop."
+              actieHref={nieuwHref}
+              actieLabel="Nieuwe drukproef"
+            />
+          )}
         </div>
       ) : (
-        <section className="mt-8">
+        <section className="mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-display text-xl font-bold text-ink-900">Drukproeven van {klantNaam}</h2>
-            <form id="afdrukvel" action="/dashboard/drukproeven/afdrukken" method="get" className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="org" value={gekozen} />
-              <span className="text-xs text-warm">Vink proeven aan om ze samen op één vel te zetten.</span>
-              <button type="submit" className="knop-stil !px-4 !py-2 !text-sm">Afdrukvel maken</button>
-            </form>
+            <p className="text-sm text-warm">
+              {proeven.length < totaal && !lang
+                ? `De nieuwste ${proeven.length} van ${totaal} drukproeven. Verfijn met de filters om oudere te vinden.`
+                : `${proeven.length} drukproef${proeven.length === 1 ? '' : 'en'}`}
+            </p>
+            {org ? (
+              <form id="afdrukvel" action="/dashboard/drukproeven/afdrukken" method="get" className="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="org" value={org} />
+                <span className="text-xs text-warm">Vink proeven aan om ze samen op één vel te zetten.</span>
+                <button type="submit" className="knop-stil !px-4 !py-2 !text-sm">Afdrukvel maken</button>
+              </form>
+            ) : (
+              <p className="text-xs text-warm">Kies een klant om meerdere proeven op één afdrukvel te zetten.</p>
+            )}
           </div>
 
-          {adressen.length > 0 && (
-            <datalist id="drukproef-adressen">
-              {adressen.map((a) => (
-                <option key={a.email} value={a.email}>{a.naam}</option>
-              ))}
-            </datalist>
-          )}
-
           <ul className="mt-4 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {drukproeven.map((d) => {
-              const status = STATUS[d.status] ?? { label: d.status, klasse: 'bg-ink-100 text-ink-700' };
-              const nieuw = Boolean(d.ontwerp);
-              return (
-                <li key={d.id} className="flex flex-col panel p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <label className="flex cursor-pointer items-start gap-2">
-                      <input type="checkbox" name="id" value={d.id} form="afdrukvel" className="mt-1 h-4 w-4 accent-amber-500" aria-label={`${d.naam} op het afdrukvel`} />
-                      <span>
-                        <span className="block font-semibold text-ink-900">{d.naam}</span>
-                        <span className="block text-xs text-warm">
-                          {[d.product_kleur, d.techniek === 'bedrukken' ? 'Bedrukken' : 'Borduren', `aangemaakt ${datum(d.created_at)}`].filter(Boolean).join(' · ')}
-                        </span>
-                      </span>
-                    </label>
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${status.klasse}`}>{status.label}</span>
-                  </div>
-
-                  <Link href={`/dashboard/drukproeven/${d.id}`} className="mt-3 block rounded-lg border border-line bg-mist p-3 transition hover:border-amber-400" title="Bewerken">
-                    <div className={nieuw ? '' : 'mx-auto w-full max-w-[180px]'}>
-                      <DrukproefPreview
-                        afbeeldingUrl={d.afbeelding_url}
-                        achterAfbeeldingUrl={d.achter_afbeelding_url ?? null}
-                        ontwerp={d.ontwerp}
-                        formaat="mini"
-                        type={d.type}
-                        kleur={d.kleur}
-                        logoUrl={d.logo_url}
-                        positie={d.positie}
-                        techniek={d.techniek}
-                      />
-                    </div>
-                  </Link>
-
-                  {d.omschrijving && <p className="mt-2 line-clamp-3 text-xs text-warm">{d.omschrijving}</p>}
-
-                  {(d.status === 'goedgekeurd' || d.status === 'afgekeurd') && d.opmerking && (
-                    <p className="mt-2 rounded-lg bg-mist px-3 py-2 text-xs text-ink-700">
-                      <span className="font-semibold">Reactie klant:</span> {d.opmerking}
-                    </p>
-                  )}
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Link href={`/dashboard/drukproeven/${d.id}`} className="knop-donker">Bewerken</Link>
-                    <Link href={`/dashboard/drukproeven/afdrukken?org=${gekozen}&id=${d.id}`} className="knop-stil">Afdrukken</Link>
-                    <form action={kopieerDrukproefActie}>
-                      <input type="hidden" name="id" value={d.id} />
-                      <button type="submit" className="knop-stil" title="Kopie maken, bijvoorbeeld voor een ander kledingstuk met hetzelfde logo">Kopie maken</button>
-                    </form>
-                  </div>
-
-                  {(d.status === 'concept' || d.status === 'verstuurd') && (
-                    <form action={verstuurDrukproefActie} className="mt-3 border-t border-line pt-3">
-                      <input type="hidden" name="id" value={d.id} />
-                      <input type="hidden" name="org_id" value={gekozen} />
-                      <label className="veld-label" htmlFor={`mail-${d.id}`}>Ter goedkeuring mailen naar</label>
-                      <div className="mt-1 flex gap-2">
-                        <input
-                          id={`mail-${d.id}`}
-                          type="email"
-                          name="email"
-                          required
-                          list={adressen.length > 0 ? 'drukproef-adressen' : undefined}
-                          defaultValue={adressen[0]?.email ?? ''}
-                          placeholder="naam@bedrijf.nl"
-                          className="veld min-w-0 flex-1 !py-2 !text-sm"
-                        />
-                        <button type="submit" className="knop-primair shrink-0">
-                          {d.status === 'verstuurd' ? 'Opnieuw sturen' : 'Versturen'}
-                        </button>
-                      </div>
-                      <p className="mt-1.5 break-all text-[11px] text-warm">
-                        Of deel deze link: {env.siteUrl}/drukproef/{d.token}
-                      </p>
-                    </form>
-                  )}
-
-                  <form action={verwijderDrukproefActie} className="mt-3">
-                    <input type="hidden" name="id" value={d.id} />
-                    <input type="hidden" name="org_id" value={gekozen} />
-                    <ConfirmSubmit message={`Drukproef "${d.naam}" verwijderen? Dit kan niet ongedaan worden gemaakt.`} className="text-xs font-semibold text-red-600 hover:text-red-700">
-                      Verwijderen
-                    </ConfirmSubmit>
-                  </form>
-                </li>
-              );
-            })}
+            {proeven.map((d) => (
+              <DrukproefKaart
+                key={d.id}
+                d={d}
+                klantNaam={org ? null : d.organisatie_naam}
+                artikelNaam={d.product_id ? ctx.artikel.get(d.product_id) ?? null : null}
+                ordernummer={d.order_id ? ctx.ordernummer.get(d.order_id) ?? null : null}
+                adressen={ctx.adressen.get(d.organisatie_id) ?? []}
+                afdrukvelForm={org ? 'afdrukvel' : undefined}
+              />
+            ))}
           </ul>
+          {proeven.length >= OVERZICHT_LIMIET && (
+            <p className="mt-4 text-center text-xs text-warm">Er zijn meer drukproeven. Gebruik zoeken of een filter om ze te vinden.</p>
+          )}
         </section>
       )}
     </main>

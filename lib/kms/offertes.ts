@@ -1,5 +1,7 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { zoekWoorden, klantIdsVoorZoekterm } from '@/lib/kms/zoeken';
+import { offerteContactOrFilter } from '@/lib/kms/filterOpties';
+import { kolomOntbreekt as kolomMist } from '@/lib/kms/kolomTerugval';
 import { maakOrder, voegOrderregelToe, type OrderregelVelden } from '@/lib/kms/orders';
 
 /**
@@ -132,10 +134,56 @@ export async function listOffertes(statusFilter?: string): Promise<OfferteMetKla
   });
 }
 
+/** Extra filters op de offertelijst (FilterBalk). Alles optioneel. */
+export type OfferteLijstFilters = {
+  /** organisatie_id */
+  klant?: string | null;
+  /** Aangemaakt vanaf (inclusief), ISO-datum. */
+  van?: string | null;
+  /** Aangemaakt tot (exclusief), ISO-datum. */
+  totExclusief?: string | null;
+  /** Totaal incl. btw. Wordt uit de regels berekend, dus in geheugen gefilterd (max. 1000 offertes). */
+  bedragMin?: number | null;
+  bedragMax?: number | null;
+  /** '7' of '30': verloopt binnen zoveel dagen. 'verlopen': geldig_tot ligt achter ons. Alleen concept en verstuurd. */
+  verloopt?: '7' | '30' | 'verlopen' | null;
+  /** Contactpersoon: `c:<id>` of `t:<naam>` (zie zoekOfferteContactOpties). */
+  contact?: string | null;
+};
+
+/** Totaal incl. btw per offerte, uit de regels. In blokken, zodat de URL kort blijft. */
+async function totalenVoorOffertes(sb: NonNullable<ReturnType<typeof kmsAdmin>>, rows: Offerte[]): Promise<Map<string, number>> {
+  const totaalPerOfferte = new Map<string, number>();
+  if (rows.length === 0) return totaalPerOfferte;
+  const ids = rows.map((r) => r.id);
+  const subtotaalPer = new Map<string, number>();
+  for (let i = 0; i < ids.length; i += 150) {
+    const { data: regelData } = await sb
+      .from('offerteregels')
+      .select('offerte_id, aantal, stukprijs, korting_pct')
+      .in('offerte_id', ids.slice(i, i + 150))
+      .limit(5000);
+    const regels = (regelData as { offerte_id: string; aantal: number | null; stukprijs: number | null; korting_pct: number | null }[]) ?? [];
+    for (const r of regels) {
+      const kort = Number(r.korting_pct) || 0;
+      const sub = (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0) * (1 - kort / 100);
+      subtotaalPer.set(r.offerte_id, (subtotaalPer.get(r.offerte_id) ?? 0) + sub);
+    }
+  }
+  for (const o of rows) {
+    const subtotaal = subtotaalPer.get(o.id) ?? 0;
+    const pct = Number(o.btw_pct);
+    const btw = subtotaal * (Number.isFinite(pct) ? pct : 0) / 100;
+    totaalPerOfferte.set(o.id, Math.round((subtotaal + btw) * 100) / 100);
+  }
+  return totaalPerOfferte;
+}
+
 /**
  * Eén pagina offertes (nieuwste eerst) met optioneel statusfilter, plus het totaal aantal rijen
  * voor paginering. Het bedrag per offerte wordt zonder N+1 berekend: van alle offertes op de pagina
  * halen we de regels in één extra query op (`.in('offerte_id', ids)`) en sommeren we in geheugen.
+ * Met een bedragfilter gaat dat over alle passende offertes (max. 1000) en wordt daarna gepagineerd.
  */
 export async function listOffertesPaged(opts: {
   pagina: number;
@@ -144,6 +192,7 @@ export async function listOffertesPaged(opts: {
   zoek?: string;
   sort?: string;
   dir?: 'asc' | 'desc';
+  filters?: OfferteLijstFilters;
 }): Promise<{ rijen: OfferteMetTotaal[]; totaal: number }> {
   const sb = kmsAdmin(); if (!sb) return { rijen: [], totaal: 0 };
   const pagina = Math.max(1, opts.pagina);
@@ -153,15 +202,14 @@ export async function listOffertesPaged(opts: {
   const sorteerbaar = ['offertenummer', 'created_at', 'status', 'geldig_tot'];
   const kolom = opts.sort && sorteerbaar.includes(opts.sort) ? opts.sort : 'created_at';
   const oplopend = opts.dir === 'asc' ? true : false;
-  let q = sb
-    .from('offertes')
-    .select('*, organisaties(naam)', { count: 'exact' })
-    .order(kolom, { ascending: oplopend });
-  if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
+  const f = opts.filters ?? {};
+  const metBedrag = f.bedragMin != null || f.bedragMax != null;
+
   // Zoeken op klant (naam, plaats, klantnummer, contactpersoon; elk woord moet
   // passen), offertenummer of de contactpersoon op de offerte. De klant zit in een
   // join, en PostgREST kan daar niet zonder meer op filteren; daarom eerst de klant-ids.
   const woorden = zoekWoorden(opts.zoek);
+  let zoekOr: string | null = null;
   if (woorden.length) {
     const term = woorden.join(' ');
     const orgIds = await klantIdsVoorZoekterm(sb, woorden);
@@ -169,33 +217,46 @@ export async function listOffertesPaged(opts: {
     if (orgIds.length) delen.push(`organisatie_id.in.(${orgIds.join(',')})`);
     const nummer = term.replace(/^#/, '');
     if (/^\d{1,9}$/.test(nummer)) delen.push(`offertenummer.eq.${Number(nummer)}`);
-    q = q.or(delen.join(','));
+    zoekOr = delen.join(',');
   }
+  const contactOr = f.contact ? await offerteContactOrFilter(f.contact) : null;
+  if (f.contact && !contactOr) return { rijen: [], totaal: 0 };
 
-  const { data, count } = await q.range(from, to);
-  const rows = (data as unknown as (Offerte & { organisaties: { naam: string } | null })[]) ?? [];
+  const bouw = (contactFilter: string | null) => {
+    let q = sb
+      .from('offertes')
+      .select('*, organisaties(naam)', { count: 'exact' })
+      .order(kolom, { ascending: oplopend });
+    if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
+    if (f.klant) q = q.eq('organisatie_id', f.klant);
+    if (f.van) q = q.gte('created_at', f.van);
+    if (f.totExclusief) q = q.lt('created_at', f.totExclusief);
+    if (f.verloopt) {
+      const vandaag = new Date().toISOString().slice(0, 10);
+      q = q.in('status', ['concept', 'verstuurd']);
+      if (f.verloopt === 'verlopen') q = q.lt('geldig_tot', vandaag);
+      else q = q.gte('geldig_tot', vandaag).lte('geldig_tot', new Date(Date.now() + Number(f.verloopt) * 86_400_000).toISOString().slice(0, 10));
+    }
+    if (contactFilter) q = q.or(contactFilter);
+    if (zoekOr) q = q.or(zoekOr);
+    return metBedrag ? q.limit(1000) : q.range(from, to);
+  };
 
-  // Regels van alle offertes op deze pagina in één query; daarna per offerte in geheugen sommeren.
-  const ids = rows.map((r) => r.id);
-  const totaalPerOfferte = new Map<string, number>();
-  if (ids.length > 0) {
-    const { data: regelData } = await sb
-      .from('offerteregels')
-      .select('offerte_id, aantal, stukprijs, korting_pct')
-      .in('offerte_id', ids);
-    const regels = (regelData as { offerte_id: string; aantal: number | null; stukprijs: number | null; korting_pct: number | null }[]) ?? [];
-    const subtotaalPer = new Map<string, number>();
-    for (const r of regels) {
-      const kort = Number(r.korting_pct) || 0;
-      const sub = (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0) * (1 - kort / 100);
-      subtotaalPer.set(r.offerte_id, (subtotaalPer.get(r.offerte_id) ?? 0) + sub);
-    }
-    for (const o of rows) {
-      const subtotaal = subtotaalPer.get(o.id) ?? 0;
-      const pct = Number(o.btw_pct);
-      const btw = subtotaal * (Number.isFinite(pct) ? pct : 0) / 100;
-      totaalPerOfferte.set(o.id, Math.round((subtotaal + btw) * 100) / 100);
-    }
+  let res = await bouw(contactOr?.metId ?? null);
+  // Kolom contactpersoon_id bestaat nog niet (migratie niet gedraaid): alleen op naam.
+  if (contactOr && kolomMist(res.error)) res = await bouw(contactOr.zonderId);
+  const { data, count } = res;
+  let rows = (data as unknown as (Offerte & { organisaties: { naam: string } | null })[]) ?? [];
+
+  const totaalPerOfferte = await totalenVoorOffertes(sb, rows);
+  let totaal = count ?? 0;
+  if (metBedrag) {
+    rows = rows.filter((r) => {
+      const t = totaalPerOfferte.get(r.id) ?? 0;
+      return (f.bedragMin == null || t >= f.bedragMin) && (f.bedragMax == null || t <= f.bedragMax);
+    });
+    totaal = rows.length;
+    rows = rows.slice(from, to + 1);
   }
 
   const rijen = rows.map((r) => {
@@ -206,7 +267,7 @@ export async function listOffertesPaged(opts: {
       totaal: totaalPerOfferte.get(r.id) ?? 0,
     } as OfferteMetTotaal;
   });
-  return { rijen, totaal: count ?? 0 };
+  return { rijen, totaal };
 }
 
 /**

@@ -140,7 +140,11 @@ function samengevoegd(opgeslagen: OfferteDocumentData, concept: Partial<KopConce
   let afwijkend = false;
   if ('organisatie_naam' in concept) {
     data.organisatie_naam = concept.organisatie_naam ?? null;
-    if (!tekstGelijk(concept.organisatie_naam, opgeslagen.organisatie_naam)) afwijkend = true;
+    if (!tekstGelijk(concept.organisatie_naam, opgeslagen.organisatie_naam)) {
+      afwijkend = true;
+      // Het adres hoort bij de opgeslagen klant; bij een andere klant laten we het weg.
+      data.klant_adres = null;
+    }
   }
   if ('contactpersoon' in concept) {
     data.contactpersoon = concept.contactpersoon?.trim() || null;

@@ -2,22 +2,45 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { getProduct, listVarianten, listLeveranciers } from '@/lib/kms/producten';
-import { getKleurenVanProduct, listKleurAfbeeldingen } from '@/lib/kms/afbeeldingen';
+import { getKleurenVanProduct, listKleurAfbeeldingen, listFotoMetingenVanProduct, type OpgeslagenMeting } from '@/lib/kms/afbeeldingen';
+import { laadVariantLijsten } from '@/lib/kms/varianten';
+import { normaliseerKleur, normaliseerMaat } from '@/lib/kms/variantenStandaard';
 import { werkProduct, verwijderAfbeelding, schakelActief, voegVariantToe, werkVariant, verwijderVariant, zetKleurAfbeeldingActie, verwijderKleurAfbeeldingActie } from './actions';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import AiBeschrijving from './AiBeschrijving';
 import Tabs from '@/components/dashboard/Tabs';
+import VariantKiezer, { VariantLijstBron } from '../VariantKiezer';
+import FotoInvoer from './FotoInvoer';
+import { PROBLEEM_LABEL, kb, type FotoProbleem } from '../fotocontrole/meten';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Product', robots: { index: false, follow: false } };
 
 const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
 const inputCls = 'veld';
+/** Korte regel onder een foto: maat, grootte en eventuele afwijkingen uit de fotocontrole. */
+function MetingRegel({ m }: { m: OpgeslagenMeting | undefined }) {
+  if (!m) return null;
+  return (
+    <p className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] text-warm">
+      <span className="tabular-nums">{m.breedte ? `${m.breedte} × ${m.hoogte} px` : 'niet te laden'}{m.bytes ? `, ${kb(m.bytes)}` : ''}</span>
+      {m.problemen.length === 0 ? (
+        <span className="badge-klaar">in orde</span>
+      ) : (
+        m.problemen.map((p) => (
+          <span key={p} className="badge-actie">{PROBLEEM_LABEL[p as FotoProbleem] ?? p}</span>
+        ))
+      )}
+    </p>
+  );
+}
+
 const fileCls = 'mt-1 w-full rounded-md border border-line px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-mist file:px-3 file:py-1 file:text-xs file:font-semibold file:text-ink-700 hover:file:bg-line focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200';
 
-export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   const { id } = await params;
+  const { tab } = await searchParams;
   const sb = kmsAdmin();
 
   if (!sb) {
@@ -45,12 +68,18 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const [varianten, leveranciers, kleuren, kleurAfbeeldingen] = await Promise.all([
+  const [varianten, leveranciers, kleuren, kleurAfbeeldingen, variantLijst, fotoMetingen] = await Promise.all([
     listVarianten(id),
     listLeveranciers(),
     getKleurenVanProduct(id),
     listKleurAfbeeldingen(id),
+    laadVariantLijsten(),
+    listFotoMetingenVanProduct(id),
   ]);
+  // Hoeveel varianten wijken af van de vaste lijst? Dan een verwijzing naar de opschoontool.
+  const nietStandaard = varianten.filter(
+    (v) => (v.kleur && !normaliseerKleur(v.kleur, variantLijst).alStandaard) || (v.maat && !normaliseerMaat(v.maat, variantLijst).alStandaard),
+  ).length;
   const afbeeldingen = product.afbeeldingen ?? [];
   const afbVelden = afbeeldingen.length > 0 ? afbeeldingen : [''];
   // Prijsrange voor de rail: effectieve verkoopprijs = verkoopprijs + meerprijs.
@@ -102,6 +131,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
         <div className="min-w-0">
           <Tabs
+            initial={tab === 'kleuren' || tab === 'gegevens' ? tab : undefined}
             tabs={[
               {
                 id: 'varianten',
@@ -109,8 +139,16 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 badge: varianten.length,
                 content: (
                   <>
-      <section className="mt-12">
-        <p className="mt-1 text-sm text-warm">De effectieve verkoopprijs is verkoopprijs plus meerprijs.</p>
+      <VariantLijstBron lijst={variantLijst}>
+      <section className="mt-6">
+        <p className="mt-1 text-sm text-warm">De effectieve verkoopprijs is verkoopprijs plus meerprijs. Maat en kleur kies je uit de vaste lijst.</p>
+        {nietStandaard > 0 && (
+          <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+            {nietStandaard} van de {varianten.length} varianten {nietStandaard === 1 ? 'heeft' : 'hebben'} een maat of kleur die niet in de vaste lijst staat
+            (meestal de schrijfwijze van de leverancier). Die zet je in één keer om bij{' '}
+            <Link href="/dashboard/instellingen/varianten?tab=opschonen" className="font-semibold underline underline-offset-2">Instellingen &gt; Varianten</Link>.
+          </p>
+        )}
             {varianten.length === 0 ? (
               <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen varianten. Voeg er hieronder een toe.</p>
             ) : (
@@ -135,13 +173,15 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                           <form action={werkVariant} className="flex flex-wrap items-end gap-2">
                             <input type="hidden" name="productId" value={id} />
                             <input type="hidden" name="variantId" value={v.id} />
-                            <div className="w-16">
+                            <input type="hidden" name="maat_oud" value={v.maat ?? ''} />
+                            <input type="hidden" name="kleur_oud" value={v.kleur ?? ''} />
+                            <div className="w-24">
                               <label className="block text-[10px] font-semibold uppercase text-warm">Maat</label>
-                              <input name="maat" defaultValue={v.maat ?? ''} className={inputCls} />
+                              <VariantKiezer soort="maat" name="maat" defaultValue={v.maat ?? ''} ariaLabel="Maat" />
                             </div>
-                            <div className="w-20">
+                            <div className="w-44">
                               <label className="block text-[10px] font-semibold uppercase text-warm">Kleur</label>
-                              <input name="kleur" defaultValue={v.kleur ?? ''} className={inputCls} />
+                              <VariantKiezer soort="kleur" name="kleur" defaultValue={v.kleur ?? ''} ariaLabel="Kleur" />
                             </div>
                             <div className="w-20">
                               <label className="block text-[10px] font-semibold uppercase text-warm">Inkoop</label>
@@ -183,11 +223,12 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               <input type="hidden" name="productId" value={id} />
               <div>
                 <label className="veld-label">Maat</label>
-                <input name="maat" placeholder="Bijv. L" className={inputCls} />
+                <VariantKiezer soort="maat" name="maat" placeholder="Zoek een maat, bijv. L" ariaLabel="Maat" />
               </div>
               <div>
                 <label className="veld-label">Kleur</label>
-                <input name="kleur" placeholder="Bijv. zwart" className={inputCls} />
+                <VariantKiezer soort="kleur" name="kleur" placeholder="Zoek een kleur, bijv. marine" ariaLabel="Kleur" />
+                <p className="veld-hint">Staat de kleur er niet bij? Voeg hem toe bij <Link href="/dashboard/instellingen/varianten" className="underline underline-offset-2">Instellingen &gt; Varianten</Link>.</p>
               </div>
               <div>
                 <label className="veld-label">EAN</label>
@@ -213,6 +254,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             </form>
           </div>
       </section>
+      </VariantLijstBron>
                   </>
                 ),
               },
@@ -229,6 +271,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               <div key={url} className="flex w-40 flex-col gap-2 panel p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt="Productafbeelding" className="max-h-32 w-full rounded-md border border-line bg-white object-contain" />
+                <MetingRegel m={fotoMetingen[url]} />
                 <form action={verwijderAfbeelding}>
                   <input type="hidden" name="productId" value={id} />
                   <input type="hidden" name="url" value={url} />
@@ -241,7 +284,11 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       )}
       {kleuren.length > 0 && (
         <section className="mt-8">
-          <p className="mt-1 text-sm text-warm">Per kleur is een voorkant-afbeelding voldoende. Upload een bestand of plak een URL.</p>
+          <p className="mt-1 text-sm text-warm">
+            Per kleur is een voorkant-afbeelding voldoende. Upload een bestand of plak een URL; de foto wordt meteen gecontroleerd op
+            formaat en scherpte. Alle foto&apos;s naast elkaar zie je in de{' '}
+            <Link href="/dashboard/producten/fotocontrole" className="font-semibold underline underline-offset-2">fotocontrole</Link>.
+          </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {kleuren.map((kleur) => {
               const huidige = kleurAfbeeldingen[kleur];
@@ -258,22 +305,18 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                     )}
                   </div>
                   {huidige ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={huidige} alt={`Afbeelding kleur ${kleur}`} className="mt-3 max-h-40 w-full rounded-md border border-line bg-white object-contain" />
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={huidige} alt={`Afbeelding kleur ${kleur}`} className="mt-3 max-h-40 w-full rounded-md border border-line bg-white object-contain" />
+                      <MetingRegel m={fotoMetingen[huidige]} />
+                    </>
                   ) : (
                     <p className="mt-3 rounded-md border border-line bg-mist px-3 py-4 text-center text-xs text-warm">Nog geen afbeelding voor deze kleur.</p>
                   )}
                   <form action={zetKleurAfbeeldingActie} className="mt-4 flex flex-col gap-3">
                     <input type="hidden" name="productId" value={id} />
                     <input type="hidden" name="kleur" value={kleur} />
-                    <div>
-                      <label className="veld-label">Afbeelding uploaden</label>
-                      <input type="file" name="afbeelding_bestand" accept="image/*" className={fileCls} />
-                    </div>
-                    <div>
-                      <label className="veld-label">Of plak een URL</label>
-                      <input name="afbeelding_url" placeholder="https://..." className={inputCls} />
-                    </div>
+                    <FotoInvoer bestandNaam="afbeelding_bestand" urlNaam="afbeelding_url" bestandKlasse={fileCls} />
                     <button type="submit" className="self-start knop-donker">Opslaan</button>
                   </form>
                 </div>
@@ -366,10 +409,9 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               {leveranciers.map((l) => <option key={l.id} value={l.id}>{l.naam}</option>)}
             </select>
           </div>
-          <div className="sm:col-span-2">
-            <label className="veld-label">Afbeelding uploaden</label>
-            <p className="mt-1 text-xs text-warm">Kies een bestand. Bij opslaan wordt het aan de afbeeldingen toegevoegd.</p>
-            <input type="file" name="afbeelding_bestand" accept="image/*" className={fileCls} />
+          <div className="sm:col-span-2 flex flex-col gap-2">
+            <p className="text-xs text-warm">Kies een bestand. Bij opslaan wordt het aan de afbeeldingen toegevoegd.</p>
+            <FotoInvoer bestandNaam="afbeelding_bestand" bestandKlasse={fileCls} />
           </div>
           <div className="sm:col-span-2">
             <label className="veld-label">Afbeeldingen (URL per veld)</label>

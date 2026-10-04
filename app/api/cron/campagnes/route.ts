@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
-import { verwerkCampagneWachtrij } from '@/lib/kms/campagne-engine';
+import { verwerkCampagnes } from '@/lib/kms/campagne-engine';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+/** Hobby-plan staat tot 60 seconden toe; de motor stopt zelf rond 50 seconden. */
+export const maxDuration = 60;
 
 /**
- * Cron-endpoint dat de campagne-wachtrij verwerkt. Beveiligd met CRON_SECRET:
- * Vercel-cronjobs sturen automatisch `Authorization: Bearer <CRON_SECRET>` mee als
- * die env is gezet. Handmatig aanroepen kan met ?secret=<CRON_SECRET>.
+ * Cron-endpoint voor de campagnes (vercel.json: werkdagen 09:00 UTC, dus 10:00
+ * of 11:00 Nederlandse tijd). Doet triggers, doelen en de wachtrij in één run.
+ * Beveiligd met CRON_SECRET: Vercel stuurt `Authorization: Bearer <CRON_SECRET>`
+ * mee. Handmatig aanroepen kan met ?secret=<CRON_SECRET>.
  */
 export async function GET(req: Request) {
   const secret = env.cronSecret;
@@ -20,6 +23,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Niet toegestaan' }, { status: 401 });
   }
 
-  const res = await verwerkCampagneWachtrij();
-  return NextResponse.json({ ok: true, ...res });
+  const res = await verwerkCampagnes({ tijdMs: 50_000 });
+  return NextResponse.json(res);
 }

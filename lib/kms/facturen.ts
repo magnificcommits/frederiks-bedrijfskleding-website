@@ -3,6 +3,7 @@ import { kmsAdmin } from '@/lib/kms/adminClient';
 import { zoekWoorden, klantIdsVoorZoekterm } from '@/lib/kms/zoeken';
 import { isEmailConfigured, env } from '@/lib/env';
 import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
+import { factuurMailHtml } from '@/lib/documentMail';
 import { factuurEmailVoor, type FactuurEmailBron } from '@/lib/kms/factuurEmail';
 import { artikelOmschrijving } from '@/lib/kms/productZoeker';
 import { bedrijf } from '@/content/bedrijf';
@@ -235,8 +236,24 @@ export async function listFacturen(statusFilter?: string): Promise<FactuurMetKla
 /** Toegestane sorteerkolommen: echte DB-kolommen die deze query selecteert. */
 const FACTUUR_SORTKOLOMMEN = ['factuurnummer', 'factuurdatum', 'vervaldatum', 'bedrag_incl', 'status', 'created_at'] as const;
 
+/** Extra filters op de facturenlijst (FilterBalk). Alles optioneel. */
+export type FactuurLijstFilters = {
+  /** organisatie_id */
+  klant?: string | null;
+  /** Factuurdatum vanaf (inclusief), ISO-datum. */
+  van?: string | null;
+  /** Factuurdatum tot (exclusief), ISO-datum. */
+  totExclusief?: string | null;
+  /** Vervaldatum voorbij en nog niet betaald. */
+  vervallen?: boolean;
+  bedragMin?: number | null;
+  bedragMax?: number | null;
+  /** Wel of niet naar de boekhouder gemaild. */
+  gemaild?: 'ja' | 'nee' | null;
+};
+
 /** Eén pagina facturen (standaard nieuwste eerst) met optioneel statusfilter, plus het totaal aantal rijen voor paginering. */
-export async function listFacturenPaged(opts: { pagina: number; perPagina: number; status?: string; zoek?: string; sort?: string; dir?: 'asc' | 'desc' }): Promise<{ rijen: FactuurMetKlant[]; totaal: number }> {
+export async function listFacturenPaged(opts: { pagina: number; perPagina: number; status?: string; zoek?: string; sort?: string; dir?: 'asc' | 'desc'; filters?: FactuurLijstFilters }): Promise<{ rijen: FactuurMetKlant[]; totaal: number }> {
   const sb = kmsAdmin(); if (!sb) return { rijen: [], totaal: 0 };
   const pagina = Math.max(1, opts.pagina);
   const from = (pagina - 1) * opts.perPagina;
@@ -248,6 +265,15 @@ export async function listFacturenPaged(opts: { pagina: number; perPagina: numbe
     .select('*, organisaties(naam)', { count: 'exact' })
     .order(kolom, { ascending: oplopend });
   if (opts.status && opts.status.trim()) q = q.eq('status', opts.status.trim());
+  const f = opts.filters ?? {};
+  if (f.klant) q = q.eq('organisatie_id', f.klant);
+  if (f.van) q = q.gte('factuurdatum', f.van);
+  if (f.totExclusief) q = q.lt('factuurdatum', f.totExclusief);
+  if (f.vervallen) q = q.lt('vervaldatum', new Date().toISOString().slice(0, 10)).neq('status', 'betaald');
+  if (f.bedragMin != null) q = q.gte('bedrag_incl', f.bedragMin);
+  if (f.bedragMax != null) q = q.lte('bedrag_incl', f.bedragMax);
+  if (f.gemaild === 'ja') q = q.not('gemaild_op', 'is', null);
+  if (f.gemaild === 'nee') q = q.is('gemaild_op', null);
   // Zoeken op klant (naam, plaats, klantnummer, contactpersoon; elk woord moet
   // passen) of op factuurnummer. De klant zit in een join, en PostgREST kan daar
   // niet zonder meer op filteren; daarom eerst de klant-ids.
@@ -775,50 +801,26 @@ export async function mailFactuurNaarKlant(id: string, to: string): Promise<{ ok
   const f = await getFactuur(id);
   if (!f) return { ok: false, error: 'Factuur niet gevonden.' };
 
-  const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
-  const datum = (d: string | null) => {
-    if (!d) return '-';
-    try { return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric' }); }
-    catch { return d; }
-  };
   const vervaldatum = f.vervaldatum ?? vervaldatumVoor(f.factuurdatum);
   const nummer = f.factuurnummer || 'concept';
-  const totalen = factuurTotalen(f.regels);
-  const td = 'padding:6px 0;border-bottom:1px solid #eee;';
-  const getal = (n: number) => String(Number(n) || 0).replace('.', ',');
-  const rijen = f.regels
-    .map((r) => {
-      const kort = Number(r.korting_pct) || 0;
-      const stuk = `${euro(Number(r.stukprijs) || 0)}${kort ? `<br><span style="font-size:12px;">-${escapeHtml(getal(kort))}% korting</span>` : ''}`;
-      return `<tr><td style="${td}color:#1c1c1c;">${escapeHtml(r.omschrijving)}</td><td style="${td}text-align:right;color:#52504e;">${escapeHtml(getal(r.aantal))}</td><td style="${td}text-align:right;color:#52504e;">${stuk}</td><td style="${td}text-align:right;color:#52504e;">${escapeHtml(getal(r.btw_pct))}%</td><td style="${td}text-align:right;color:#1c1c1c;">${euro(regelBedrag(r))}</td></tr>`;
-    })
-    .join('');
-  const th = 'padding:6px 0;border-bottom:2px solid #1c1c1c;';
-  const btwRijen = totalen.perTarief
-    .map((t) => `<tr><td style="padding:2px 12px 2px 0;color:#52504e;">Btw ${escapeHtml(getal(t.pct))}% over ${euro(t.grondslag)}</td><td style="text-align:right;color:#1c1c1c;">${euro(t.btw)}</td></tr>`)
-    .join('');
-  const bodyHtml = `
-    <p style="margin:0;">Beste relatie,</p>
-    <p style="margin:14px 0 0;">Hierbij factuur <strong>${escapeHtml(nummer)}</strong> van ${escapeHtml(datum(f.factuurdatum))}${f.organisatie?.naam ? ` voor ${escapeHtml(f.organisatie.naam)}` : ''}.</p>
-    <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
-      <thead><tr><th style="text-align:left;${th}">Omschrijving</th><th style="text-align:right;${th}">Aantal</th><th style="text-align:right;${th}">Stukprijs</th><th style="text-align:right;${th}">Btw</th><th style="text-align:right;${th}">Bedrag</th></tr></thead>
-      <tbody>${rijen || '<tr><td colspan="5" style="padding:8px 0;color:#52504e;">Geen regels.</td></tr>'}</tbody>
-    </table>
-    <table style="margin-left:auto;font-size:14px;">
-      <tr><td style="padding:2px 12px 2px 0;color:#52504e;">Subtotaal excl. btw</td><td style="text-align:right;color:#1c1c1c;">${euro(totalen.excl)}</td></tr>
-      ${btwRijen || `<tr><td style="padding:2px 12px 2px 0;color:#52504e;">Btw</td><td style="text-align:right;color:#1c1c1c;">${euro(0)}</td></tr>`}
-      <tr><td style="padding:6px 12px 2px 0;font-weight:800;color:#1c1c1c;">Totaal incl. btw</td><td style="text-align:right;font-weight:800;color:#1c1c1c;">${euro(totalen.incl)}</td></tr>
-    </table>
-    <p style="margin:18px 0 0;">Wij verzoeken u het bedrag vóór <strong>${escapeHtml(datum(vervaldatum))}</strong> over te maken op <strong>${escapeHtml(bedrijf.iban)}</strong> t.n.v. ${escapeHtml(bedrijf.naam)}, onder vermelding van factuurnummer ${escapeHtml(nummer)}${f.organisatie?.klantnummer ? ` en debiteurnummer ${escapeHtml(f.organisatie.klantnummer)}` : ''}.</p>
-    <p style="margin:14px 0 0;">Vragen over deze factuur? Antwoord gerust op deze mail of bel ${escapeHtml(bedrijf.telefoon)}.</p>
-    <p style="margin:18px 0 0;font-size:12px;color:#52504e;">${escapeHtml(bedrijf.naam)} · ${escapeHtml(bedrijf.adres)}, ${escapeHtml(bedrijf.postcode)} ${escapeHtml(bedrijf.plaats)} · KvK ${escapeHtml(bedrijf.kvk)} · Btw ${escapeHtml(bedrijf.btw)}</p>
-  `;
+  // Zelfde opbouw als het factuurdocument: logo, "Te betalen" met IBAN en kenmerk, regels, btw.
+  const html = factuurMailHtml({
+    factuurnummer: f.factuurnummer,
+    factuurdatum: f.factuurdatum,
+    vervaldatum,
+    status: f.status,
+    betaaldatum: f.betaaldatum,
+    organisatie_naam: f.organisatie?.naam ?? null,
+    klantnummer: f.organisatie?.klantnummer ?? null,
+    regels: f.regels.map((r) => ({ ...r, bedrag: regelBedrag(r) })),
+    totalen: factuurTotalen(f.regels),
+  });
   try {
     const r = await sendEmail({
       to: adres,
       replyTo: bedrijf.email,
       subject: `Factuur ${nummer} van ${bedrijf.naam}`,
-      html: emailLayout({ heading: `Factuur ${nummer}`, preheader: `Factuur ${nummer} van ${bedrijf.naam}`, bodyHtml }),
+      html,
     });
     if (!r.sent) return { ok: false, error: `Versturen mislukt: ${r.error ?? 'onbekende fout'}` };
   } catch {

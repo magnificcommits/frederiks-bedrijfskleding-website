@@ -23,7 +23,7 @@ const SCHERMEN: Hit[] = [
   { type: 'Scherm', label: 'Orders', sub: 'Bestellingen', href: '/dashboard/orders', woorden: 'bestelling bestellingen' },
   { type: 'Scherm', label: 'Offertes', sub: '', href: '/dashboard/offertes', woorden: 'prijsopgave aanbieding' },
   { type: 'Scherm', label: 'Klanten', sub: 'Bedrijven, werknemers, assortiment', href: '/dashboard/klanten', woorden: 'bedrijven organisaties crm relaties' },
-  { type: 'Scherm', label: 'Passessies', sub: 'Passen op locatie', href: '/dashboard/passessie', woorden: 'pasdag passen maten' },
+  { type: 'Scherm', label: 'Passen en maten', sub: 'Passessies en maten noteren', href: '/dashboard/passessie', woorden: 'pasdag passen maten' },
   { type: 'Scherm', label: 'Producten', sub: 'Catalogus', href: '/dashboard/producten', woorden: 'artikelen catalogus kleding' },
   { type: 'Scherm', label: 'Leads', sub: 'Aanvragen via de website', href: '/dashboard/leads', woorden: 'aanvragen formulier' },
   { type: 'Scherm', label: 'Taken en afspraken', sub: 'Lijst, agenda, archief', href: '/dashboard/taken', woorden: 'todo agenda afspraak herinnering planning' },
@@ -42,7 +42,7 @@ const SCHERMEN: Hit[] = [
   { type: 'Scherm', label: 'Voorraad', sub: '', href: '/dashboard/voorraad', woorden: 'magazijn stock' },
   { type: 'Scherm', label: 'Leveranciers', sub: '', href: '/dashboard/leveranciers', woorden: 'groothandel merken' },
   { type: 'Scherm', label: 'Inkoop', sub: 'Bestellen bij leveranciers', href: '/dashboard/inkoop', woorden: 'inkooporder bestellen' },
-  { type: 'Scherm', label: 'Logo’s en werkbonnen', sub: 'Bedrukken en borduren', href: '/dashboard/logos', woorden: 'logo werkbon bedrukken borduren productie' },
+  { type: 'Scherm', label: 'Werkbonnen en logo’s', sub: 'Productieplanning, bedrukken en borduren', href: '/dashboard/logos', woorden: 'logo werkbon bedrukken borduren productie' },
   { type: 'Scherm', label: 'Drukproeven', sub: '', href: '/dashboard/drukproeven', woorden: 'drukproef proef mockup' },
   { type: 'Scherm', label: 'Retouren', sub: '', href: '/dashboard/retouren', woorden: 'retour ruilen terugsturen' },
   { type: 'Scherm', label: 'Klachten en vragen', sub: '', href: '/dashboard/klachten', woorden: 'klacht vraag service' },
@@ -56,6 +56,12 @@ const SCHERMEN: Hit[] = [
   { type: 'Scherm', label: 'Logboek', sub: 'Wie deed wat', href: '/dashboard/audit', woorden: 'audit log historie' },
   { type: 'Scherm', label: 'Instellingen', sub: '', href: '/dashboard/instellingen', woorden: 'configuratie bedrijfsgegevens' },
   { type: 'Scherm', label: 'Beveiliging (2FA)', sub: '', href: '/dashboard/beveiliging', woorden: '2fa tweestaps wachtwoord authenticator' },
+  { type: 'Scherm', label: 'Fotocontrole', sub: 'Productfoto’s op maat en scherpte', href: '/dashboard/producten/fotocontrole', woorden: 'foto afbeelding wazig klein' },
+  { type: 'Scherm', label: 'Maten en kleuren', sub: 'Vaste lijsten en opschonen', href: '/dashboard/instellingen/varianten', woorden: 'varianten maat kleur opschonen' },
+  { type: 'Scherm', label: 'Service-instellingen', sub: 'Retourbeleid en klachtcategorieën', href: '/dashboard/instellingen/service', woorden: 'retourtermijn retourbeleid klacht' },
+  { type: 'Scherm', label: 'Voorraadtelling', sub: 'Tellen per merk of locatie', href: '/dashboard/voorraad/telling', woorden: 'tellen inventarisatie' },
+  { type: 'Scherm', label: 'Btw-overzicht', sub: 'Rapport per periode', href: '/dashboard/rapportages/btw', woorden: 'btw aangifte boekhouding' },
+  { type: 'Scherm', label: 'Openstaande facturen', sub: 'Debiteuren en ouderdom', href: '/dashboard/rapportages/debiteuren', woorden: 'debiteuren openstaand ouderdom' },
   { type: 'Scherm', label: 'Functies', sub: 'Nu afdelingen bij de klant', href: '/dashboard/functies', woorden: 'afdelingen' },
 ];
 
@@ -71,7 +77,7 @@ const ACTIES: Hit[] = [
 
 /** Werklijsten die je vanuit het niets wilt kunnen openen. */
 const SNELFILTERS: Hit[] = [
-  { type: 'Werklijst', label: 'Orders die op goedkeuring wachten', sub: '', href: '/dashboard/orders?status=offerte_goedgekeurd', woorden: 'goedkeuren' },
+  { type: 'Werklijst', label: 'Orders die op goedkeuring wachten', sub: '', href: '/dashboard/orders?goedkeuring=wacht', woorden: 'goedkeuren' },
   { type: 'Werklijst', label: 'Verlopen taken', sub: '', href: '/dashboard/taken?wanneer=verlopen', woorden: 'te laat achterstand' },
   { type: 'Werklijst', label: 'Producten zonder foto', sub: '', href: '/dashboard/producten?zonderfoto=1', woorden: 'afbeelding' },
   { type: 'Werklijst', label: 'Klanten die mogelijk dubbel staan', sub: '', href: '/dashboard/klanten?dubbel=1', woorden: 'dubbel duplicaat' },

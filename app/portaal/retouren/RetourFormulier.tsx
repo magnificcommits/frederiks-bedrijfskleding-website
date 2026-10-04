@@ -8,7 +8,7 @@ const veld =
 
 type RegelKeuze = { geselecteerd: boolean; aantal: number };
 
-export default function RetourFormulier({ orders }: { orders: RetourneerbareOrder[] }) {
+export default function RetourFormulier({ orders, redenen = [] }: { orders: RetourneerbareOrder[]; redenen?: string[] }) {
   const [orderId, setOrderId] = useState('');
   const [keuzes, setKeuzes] = useState<Record<string, RegelKeuze>>({});
 
@@ -161,15 +161,37 @@ export default function RetourFormulier({ orders }: { orders: RetourneerbareOrde
         </fieldset>
       )}
 
+      {redenen.length > 0 && (
+        <>
+          <label htmlFor="reden_keuze" className="mt-4 block text-sm font-semibold text-ink-900">
+            Reden
+          </label>
+          <select id="reden_keuze" name="reden_keuze" className={veld} defaultValue="" required>
+            <option value="" disabled>
+              Kies een reden
+            </option>
+            {redenen.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
+
       <label htmlFor="reden" className="mt-4 block text-sm font-semibold text-ink-900">
-        Reden
+        {redenen.length > 0 ? 'Toelichting' : 'Reden'}
       </label>
       <textarea
         id="reden"
         name="reden"
         rows={4}
-        required
-        placeholder="Bijvoorbeeld een verkeerde maat of een beschadigd kledingstuk."
+        required={redenen.length === 0}
+        placeholder={
+          redenen.length > 0
+            ? 'Optioneel. Bijvoorbeeld: valt een maat kleiner dan de vorige keer.'
+            : 'Bijvoorbeeld een verkeerde maat of een beschadigd kledingstuk.'
+        }
         className={veld}
       />
 

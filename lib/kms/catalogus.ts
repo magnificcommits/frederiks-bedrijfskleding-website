@@ -1,4 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { normaliseerKleur, sorteerMaten as sorteerVolgensLijst } from '@/lib/kms/variantenStandaard';
 
 /**
  * Het publieke assortiment: de brug tussen de KMS-productdatabase en de website.
@@ -130,20 +131,12 @@ type Rij = {
   product_varianten?: { maat: string | null; kleur: string | null }[] | null;
 };
 
-/** Maten in een logische volgorde in plaats van alfabetisch (XS, S, M, L, XL…). */
-const MAATVOLGORDE = ['xxs', 'xs', 's', 'm', 'l', 'xl', 'xxl', '2xl', '3xl', 'xxxl', '4xl', '5xl'];
+/**
+ * Maten in een logische volgorde in plaats van alfabetisch (XS, S, M, L, XL…),
+ * volgens de vaste maatreeksen uit lib/kms/variantenStandaard.ts.
+ */
 function sorteerMaten(maten: string[]): string[] {
-  return [...maten].sort((a, b) => {
-    const ia = MAATVOLGORDE.indexOf(a.toLowerCase());
-    const ib = MAATVOLGORDE.indexOf(b.toLowerCase());
-    if (ia !== -1 && ib !== -1) return ia - ib;
-    if (ia !== -1) return -1;
-    if (ib !== -1) return 1;
-    const na = Number(a);
-    const nb = Number(b);
-    if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
-    return a.localeCompare(b, 'nl');
-  });
+  return sorteerVolgensLijst(maten);
 }
 
 /**
@@ -151,6 +144,9 @@ function sorteerMaten(maten: string[]): string[] {
  * en "marine/zwart 1620"; die willen bezoekers niet zien.
  */
 function schoneKleur(v: string): string {
+  // Eerst de vaste lijst: "0404 - Black\Black" wordt "Zwart", "9504 - Navy\Black" wordt "Marine/zwart".
+  const u = normaliseerKleur(v);
+  if (u.naam && (u.zeker || u.nieuw)) return u.naam;
   const zonderCode = v.replace(/^\s*\d+\s*-\s*/, '').replace(/\s+\d{3,}\s*$/, '');
   return zonderCode.replace(/\\/g, ' / ').trim();
 }

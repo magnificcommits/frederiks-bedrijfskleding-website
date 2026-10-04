@@ -1,72 +1,16 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { isLeadsDbConfigured } from '@/lib/env';
-import { listOrganisatiesPaged, type Organisatie } from '@/lib/portaalAdmin';
-import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
+import { kmsAdmin, dashAuthed, getHuidigeAdmin } from '@/lib/kms/adminClient';
 import { mogelijkDubbeleKlanten } from '@/lib/kms/tellingen';
-import { zoekWoorden, ilikeInKolommen, KLANT_ZOEKKOLOMMEN, klantIdsViaContactpersonen } from '@/lib/kms/zoeken';
+import { listKlantenGefilterd } from '@/lib/kms/klantenLijst';
 import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
+import FilterBalk from '@/components/dashboard/FilterBalk';
+import { lijstParam, lijstUrl, param, periodeParam, sleutelsVan, type FilterDef } from '@/lib/filterBalk';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Klanten', robots: { index: false, follow: false } };
 const PER_PAGINA = 25;
-
-/**
- * Eén pagina klanten met server-side filter op zoekterm en op branche. Elk
- * woord moet voorkomen in naam, plaats, klantnummer of contactpersoon, of in de
- * naam of het e-mailadres van een van de contactpersonen van de klant. Zonder filters valt de pagina terug op de
- * bestaande helper `listOrganisatiesPaged`, zodat het gedrag identiek blijft.
- * Filteren en pagineren gebeuren beide server-side in de query.
- */
-async function zoekOrganisatiesPaged(opts: {
-  pagina: number;
-  perPagina: number;
-  zoek?: string;
-  branche?: string;
-  ids?: string[];
-}): Promise<{ rijen: Organisatie[]; totaal: number }> {
-  const woorden = zoekWoorden(opts.zoek);
-  const branche = (opts.branche ?? '').trim();
-  if (!woorden.length && !branche && !opts.ids) return listOrganisatiesPaged({ pagina: opts.pagina, perPagina: opts.perPagina });
-  const sb = kmsAdmin();
-  if (!sb) return { rijen: [], totaal: 0 };
-  const pagina = Math.max(1, opts.pagina);
-  const from = (pagina - 1) * opts.perPagina;
-  const to = from + opts.perPagina - 1;
-  let q = sb.from('organisaties').select('*', { count: 'exact' });
-  if (woorden.length) {
-    // Per woord één or-filter; meerdere or-filters gelden samen (EN).
-    const viaContact = await klantIdsViaContactpersonen(sb, woorden);
-    woorden.forEach((w, i) => {
-      const ids = viaContact[i] ?? [];
-      const extra = ids.length ? `,id.in.(${ids.join(',')})` : '';
-      q = q.or(ilikeInKolommen(KLANT_ZOEKKOLOMMEN, w) + extra);
-    });
-  }
-  if (branche) q = q.eq('branche', branche);
-  if (opts.ids) q = q.in('id', opts.ids.length ? opts.ids : ['00000000-0000-0000-0000-000000000000']);
-  const { data, count } = await q.order('naam').range(from, to);
-  return { rijen: (data as Organisatie[]) ?? [], totaal: count ?? 0 };
-}
-
-/**
- * Aantal klanten per branche, voor de tellers op de filterchips.
- * Eén query over één kolom; bij 183 klanten verwaarloosbaar. Boven ~20.000
- * rijen is een database-functie met GROUP BY zuiniger.
- */
-async function klantenPerBranche(): Promise<{ branche: string; aantal: number }[]> {
-  const sb = kmsAdmin();
-  if (!sb) return [];
-  const { data } = await sb.from('organisaties').select('branche');
-  const map = new Map<string, number>();
-  ((data as { branche: string | null }[]) ?? []).forEach((r) => {
-    const b = r.branche?.trim();
-    if (b) map.set(b, (map.get(b) ?? 0) + 1);
-  });
-  return [...map.entries()]
-    .map(([branche, aantal]) => ({ branche, aantal }))
-    .sort((a, b) => b.aantal - a.aantal || a.branche.localeCompare(b.branche, 'nl'));
-}
 
 /** Aantal medewerkers per organisatie, in één query opgehaald en geteld. */
 async function medewerkersPerOrg(): Promise<Record<string, number>> {
@@ -88,10 +32,15 @@ function fmt(d: string) {
   }
 }
 
+/** 'ja'/'nee' of 'met'/'zonder' uit de URL; al het andere telt als "geen filter". */
+function keuze<T extends string>(waarde: string, toegestaan: readonly T[]): T | null {
+  return (toegestaan as readonly string[]).includes(waarde) ? (waarde as T) : null;
+}
+
 export default async function KlantenPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pagina?: string; zoek?: string; branche?: string; dubbel?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   if (!(await dashAuthed())) redirect('/dashboard');
 
@@ -107,44 +56,95 @@ export default async function KlantenPage({
     );
   }
 
-  const { pagina, zoek, branche, dubbel } = await searchParams;
-  const huidigePagina = Math.max(1, Number(pagina) || 1);
-  const zoekTerm = (zoek ?? '').trim();
-  const brancheFilter = (branche ?? '').trim();
-  const alleenDubbel = dubbel === '1';
+  const sp = await searchParams;
+  const huidigePagina = Math.max(1, Number(param(sp, 'pagina')) || 1);
+  const zoekTerm = param(sp, 'zoek');
+  const alleenDubbel = param(sp, 'dubbel') === '1';
+  const sinds = periodeParam(sp, 'sinds');
 
-  // Dubbelen worden altijd geteld (voor de chip), maar alleen als filter gebruikt
-  // wanneer je erop klikt.
-  const dubbelGroepen = await mogelijkDubbeleKlanten();
+  // Dubbelen worden altijd geteld (voor het filter), maar alleen gebruikt als je het aanzet.
+  const [dubbelGroepen, aantalPerOrg, admin] = await Promise.all([mogelijkDubbeleKlanten(), medewerkersPerOrg(), getHuidigeAdmin()]);
   const dubbelIds = [...new Set(dubbelGroepen.flatMap((g) => g.ids))];
 
-  const [{ rijen: orgs, totaal }, aantalPerOrg, branches] = await Promise.all([
-    zoekOrganisatiesPaged({
-      pagina: huidigePagina,
-      perPagina: PER_PAGINA,
-      zoek: zoekTerm,
-      branche: brancheFilter,
-      ids: alleenDubbel ? dubbelIds : undefined,
-    }),
-    medewerkersPerOrg(),
-    klantenPerBranche(),
-  ]);
+  const { rijen: orgs, totaal, opties } = await listKlantenGefilterd({
+    pagina: huidigePagina,
+    perPagina: PER_PAGINA,
+    zoek: zoekTerm,
+    branches: lijstParam(sp, 'branche'),
+    plaats: param(sp, 'plaats') || null,
+    actief: keuze(param(sp, 'actief'), ['ja', 'nee'] as const),
+    portaal: keuze(param(sp, 'portaal'), ['ja', 'nee'] as const),
+    openOrders: keuze(param(sp, 'open'), ['ja', 'nee'] as const),
+    sindsVan: sinds.van,
+    sindsTotExclusief: sinds.totExclusief,
+    accountmanager: param(sp, 'am') || null,
+    email: keuze(param(sp, 'email'), ['met', 'zonder'] as const),
+    contact: keuze(param(sp, 'contact'), ['met', 'zonder'] as const),
+    ids: alleenDubbel ? dubbelIds : null,
+  });
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
-  const alleKlanten = branches.reduce((n, b) => n + b.aantal, 0);
+  const alleKlanten = opties.totaal;
 
-  /** Bouwt een URL en laat de andere filters staan. Pagina gaat terug naar 1. */
-  function url(next: { zoek?: string; branche?: string; pagina?: number }) {
-    const p = new URLSearchParams();
-    const z = next.zoek !== undefined ? next.zoek : zoekTerm;
-    const b = next.branche !== undefined ? next.branche : brancheFilter;
-    if (z) p.set('zoek', z);
-    if (b) p.set('branche', b);
-    if (next.pagina && next.pagina > 1) p.set('pagina', String(next.pagina));
-    const qs = p.toString();
-    return qs ? `/dashboard/klanten?${qs}` : '/dashboard/klanten';
-  }
+  const filterDefs: FilterDef[] = [
+    { soort: 'multi', param: 'branche', label: 'Branche', weergave: 'chips', opties: opties.branches },
+    { soort: 'select', param: 'plaats', label: 'Plaats', hoofd: true, leegLabel: 'Alle plaatsen', opties: opties.plaatsen },
+    {
+      soort: 'select',
+      param: 'open',
+      label: 'Orders',
+      hoofd: true,
+      leegLabel: 'Alle',
+      opties: [
+        { waarde: 'ja', label: 'Met open orders' },
+        { waarde: 'nee', label: 'Zonder open orders' },
+      ],
+    },
+    {
+      soort: 'select',
+      param: 'portaal',
+      label: 'Portaal',
+      opties: [
+        { waarde: 'ja', label: 'Heeft portaalaccount' },
+        { waarde: 'nee', label: 'Nog geen portaal' },
+      ],
+    },
+    {
+      soort: 'select',
+      param: 'actief',
+      label: 'Status',
+      opties: [
+        { waarde: 'ja', label: 'Actief' },
+        { waarde: 'nee', label: 'Inactief' },
+      ],
+    },
+    { soort: 'datum', param: 'sinds', label: 'Klant sinds' },
+    { soort: 'select', param: 'am', label: 'Accountmanager', opties: opties.accountmanagers },
+    {
+      soort: 'select',
+      param: 'email',
+      label: 'E-mailadres',
+      opties: [
+        { waarde: 'met', label: 'Met e-mailadres' },
+        { waarde: 'zonder', label: 'Zonder e-mailadres' },
+      ],
+    },
+    {
+      soort: 'select',
+      param: 'contact',
+      label: 'Contactpersoon',
+      opties: [
+        { waarde: 'met', label: 'Met contactpersoon' },
+        { waarde: 'zonder', label: 'Zonder contactpersoon' },
+      ],
+    },
+    ...(dubbelGroepen.length > 0
+      ? [{ soort: 'aanuit' as const, param: 'dubbel', label: `Mogelijk dubbel (${dubbelGroepen.length})`, chipLabel: 'Mogelijk dubbel' }]
+      : []),
+  ];
 
-  const heeftFilter = Boolean(zoekTerm || brancheFilter || alleenDubbel);
+  const heeftFilter = Boolean(zoekTerm) || filterDefs.some((d) => sleutelsVan(d).some((k) => param(sp, k)));
+  const url = (wijzig: Record<string, string | number | null>) => lijstUrl('/dashboard/klanten', sp, wijzig);
+
   // Reden per klant, zodat de tabel kan tonen wáárom iets dubbel lijkt.
   const dubbelReden = new Map<string, string>();
   dubbelGroepen.forEach((g) => g.ids.forEach((i) => dubbelReden.set(i, g.reden)));
@@ -163,51 +163,19 @@ export default async function KlantenPage({
         <Link href="/dashboard/klanten/nieuw" className="knop-primair">Nieuwe klant</Link>
       </div>
 
-      <div className="dash-filter flex flex-wrap items-center gap-2">
+      <FilterBalk filters={filterDefs} opslag="klanten" gebruiker={admin?.email} wisOok={['zoek']}>
         <LiveZoekveld
           param="zoek"
           placeholder="Zoek op naam, plaats, klantnummer of contactpersoon"
           ariaLabel="Zoeken in klanten"
           breedte="w-80 max-w-full"
         />
-
-        {brancheFilter && (
-          <Link href={url({ branche: '' })} className="chip chip-aan" title="Filter op branche wissen">
-            {brancheFilter}
-            <span aria-hidden="true">×</span>
-            <span className="sr-only">wissen</span>
-          </Link>
-        )}
-        {dubbelGroepen.length > 0 && (
-          <Link
-            href={alleenDubbel ? '/dashboard/klanten' : '/dashboard/klanten?dubbel=1'}
-            className={`chip ${alleenDubbel ? 'chip-aan' : ''}`}
-            title="Klanten met hetzelfde e-mailadres, telefoonnummer of adres"
-          >
-            Mogelijk dubbel
-            <span className="chip-tel">{dubbelGroepen.length}</span>
-          </Link>
-        )}
-        {heeftFilter && (
-          <Link href="/dashboard/klanten" className="knop-tekst">Alles wissen</Link>
-        )}
-      </div>
-
-      {!brancheFilter && (
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          {branches.map((b) => (
-            <Link key={b.branche} href={url({ branche: b.branche })} className="chip">
-              {b.branche}
-              <span className="chip-tel">{b.aantal}</span>
-            </Link>
-          ))}
-        </div>
-      )}
+      </FilterBalk>
 
       <div className="panel mt-4">
         {orgs.length === 0 ? (
           <p className="px-4 py-8 text-center text-[13px] text-warm">
-            Geen klanten gevonden{heeftFilter ? ' met deze filters' : ''}.
+            {heeftFilter ? 'Geen klanten die aan deze filters voldoen. Haal een filter weg via het kruisje.' : 'Nog geen klanten.'}
           </p>
         ) : (
           <table className="tbl">
@@ -219,6 +187,7 @@ export default async function KlantenPage({
                 <th>Plaats</th>
                 <th>Contactpersoon</th>
                 <th className="num">Medew.</th>
+                <th className="num">Open orders</th>
                 <th>Klant sinds</th>
               </tr>
             </thead>
@@ -228,6 +197,8 @@ export default async function KlantenPage({
                   <td className="stil tabular-nums">{o.klantnummer || '—'}</td>
                   <td>
                     <Link href={`/dashboard/klanten/${o.id}`} className="rij-link">{o.naam}</Link>
+                    {o.actief === false && <span className="badge-rust ml-1.5">inactief</span>}
+                    {o.heeft_portaal && <span className="ml-1.5 text-[11px] text-warm" title="Heeft een account in het klantportaal">portaal</span>}
                     {alleenDubbel && dubbelReden.get(o.id) && (
                       <span className="mt-0.5 block text-[11px] text-amber-800">{dubbelReden.get(o.id)}</span>
                     )}
@@ -236,7 +207,16 @@ export default async function KlantenPage({
                   <td className="stil">{o.plaats || '—'}</td>
                   <td className="stil">{o.contactpersoon || '—'}</td>
                   <td className="num stil">{aantalPerOrg[o.id] ?? 0}</td>
-                  <td className="stil whitespace-nowrap">{fmt(o.created_at)}</td>
+                  <td className="num">
+                    {o.open_orders > 0 ? (
+                      <Link href={`/dashboard/orders?klant=${o.id}&fase=open`} className="font-semibold text-ink-900 hover:text-amber-700 hover:underline">
+                        {o.open_orders}
+                      </Link>
+                    ) : (
+                      <span className="text-warm">0</span>
+                    )}
+                  </td>
+                  <td className="stil whitespace-nowrap">{fmt(o.datum_klant || o.created_at)}</td>
                 </tr>
               ))}
             </tbody>

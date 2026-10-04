@@ -7,7 +7,8 @@ import PrintKnop from './PrintKnop';
 import FactuurRegelToevoegen from './FactuurRegelToevoegen';
 import TotaalKaart from '@/components/dashboard/TotaalKaart';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
-import DocumentVoet from '@/components/dashboard/DocumentVoet';
+import FactuurDocument from '@/components/dashboard/FactuurDocument';
+import { DOCUMENT_ID, DocumentAfdrukStijl } from '@/components/dashboard/DocumentOnderdelen';
 import { bedrijf } from '@/content/bedrijf';
 
 export const dynamic = 'force-dynamic';
@@ -48,14 +49,6 @@ const statusBadge: Record<string, string> = {
   concept: 'bg-ink-100 text-ink-600',
   verzonden: 'bg-amber-100 text-amber-800',
   betaald: 'bg-green-100 text-green-800',
-};
-
-// Adres, IBAN, KvK en btw-nummer staan in content/bedrijf.ts, zodat factuur,
-// offerte en pakbon dezelfde gegevens tonen en er maar één plek is om ze te wijzigen.
-const BEDRIJF = {
-  naam: bedrijf.naam,
-  adres: bedrijf.adres,
-  postcodePlaats: `${bedrijf.postcode} ${bedrijf.plaats}`,
 };
 
 export default async function FactuurDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ mailfout?: string; ok?: string; fout?: string }> }) {
@@ -109,7 +102,8 @@ export default async function FactuurDetailPage({ params, searchParams }: { para
 
   return (
     <main className="container-app py-6">
-      <style>{`@media print { body * { visibility: hidden; } #factuur-print, #factuur-print * { visibility: visible; } #factuur-print { position: absolute; left: 0; top: 0; width: 100%; } #factuur-print tr { break-inside: avoid; } body { background: #fff; } @page { margin: 14mm; } }`}</style>
+      {/* Alleen het factuurdocument onderaan gaat op papier; zie DocumentAfdrukStijl. */}
+      <DocumentAfdrukStijl voetLabel={`Factuur ${factuur.factuurnummer || 'concept'} · ${bedrijf.naam}`} />
 
       <div className="dash-kop justify-between gap-4 print:hidden">
         <div>
@@ -420,87 +414,30 @@ export default async function FactuurDetailPage({ params, searchParams }: { para
       </aside>
       </div>
 
-      <section id="factuur-print" className="mt-12 panel p-8 print:mt-0 print:border-0 print:p-0 print:shadow-none">
-        <div className="flex flex-wrap items-start justify-between gap-6">
-          <div>
-            <p className="font-display text-2xl font-extrabold text-ink-900">{BEDRIJF.naam}</p>
-            <p className="mt-1 text-sm text-warm">{BEDRIJF.adres}</p>
-            <p className="text-sm text-warm">{BEDRIJF.postcodePlaats}</p>
-          </div>
-          <div className="text-right">
-            <p className="font-display text-xl font-extrabold text-ink-900">Factuur</p>
-            <p className="mt-1 text-sm text-warm">Nummer: <span className="font-medium text-ink-900">{factuur.factuurnummer || 'concept'}</span></p>
-            <p className="text-sm text-warm">Datum: <span className="text-ink-900">{fmt(factuur.factuurdatum)}</span></p>
-            <p className="text-sm text-warm">Vervaldatum: <span className="text-ink-900">{fmt(vervaldatum)}</span></p>
-            {org?.klantnummer && <p className="text-sm text-warm">Debiteurnummer: <span className="text-ink-900">{org.klantnummer}</span></p>}
-          </div>
+      {/* De factuur zoals de klant hem krijgt. Dit vel gaat ook op papier bij Afdrukken / PDF. */}
+      <section aria-labelledby="factuur-voorbeeld-kop" className="mt-12 print:mt-0">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 print:hidden">
+          <h2 id="factuur-voorbeeld-kop" className="font-display text-xl font-bold text-ink-900">Zo krijgt de klant de factuur</h2>
+          <p className="text-[12px] text-warm">Afdrukken / PDF drukt alleen dit vel af. Zet &quot;Kop- en voetteksten&quot; uit in het afdrukvenster.</p>
         </div>
-
-        <div className="mt-8 rounded-xl border border-line p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-warm">Factuur aan</p>
-          <p className="mt-1 font-semibold text-ink-900">{org?.naam || '-'}</p>
-          {org?.adres && <p className="text-sm text-warm">{org.adres}</p>}
-          {(org?.postcode || org?.plaats) && <p className="text-sm text-warm">{[org?.postcode, org?.plaats].filter(Boolean).join(' ')}</p>}
-          {org?.btw_nummer && <p className="mt-1 text-sm text-warm">Btw-nummer: {org.btw_nummer}</p>}
+        <div className="mt-4 overflow-x-auto rounded-lg bg-ink-100 p-4 sm:p-6">
+          <article id={DOCUMENT_ID} className="mx-auto w-[210mm] min-w-[210mm] bg-white p-[14mm] shadow-card">
+            <FactuurDocument
+              factuur={{
+                factuurnummer: factuur.factuurnummer,
+                factuurdatum: factuur.factuurdatum,
+                vervaldatum,
+                status: factuur.status,
+                betaaldatum: factuur.betaaldatum,
+                toegepaste_prijsafspraken: factuur.toegepaste_prijsafspraken,
+                organisatie: org
+                  ? { naam: org.naam, adres: org.adres, postcode: org.postcode, plaats: org.plaats, btw_nummer: org.btw_nummer, klantnummer: org.klantnummer }
+                  : null,
+                regels: factuur.regels,
+              }}
+            />
+          </article>
         </div>
-
-        <table className="mt-6 w-full table-fixed text-left text-sm">
-          <colgroup>
-            <col />
-            <col className="w-16" />
-            <col className="w-24" />
-            {heeftKorting && <col className="w-20" />}
-            <col className="w-16" />
-            <col className="w-28" />
-          </colgroup>
-          <thead className="border-b border-line text-xs uppercase tracking-wide text-warm">
-            <tr>
-              <th className="py-2 pr-3">Omschrijving</th>
-              <th className="py-2 pl-3 text-right">Aantal</th>
-              <th className="py-2 pl-3 text-right">Stukprijs</th>
-              {heeftKorting && <th className="py-2 pl-3 text-right">Korting</th>}
-              <th className="py-2 pl-3 text-right">Btw</th>
-              <th className="py-2 pl-3 text-right">Bedrag</th>
-            </tr>
-          </thead>
-          <tbody>
-            {factuur.regels.length === 0 && (
-              <tr className="border-b border-line"><td colSpan={heeftKorting ? 6 : 5} className="py-3 text-warm">Geen regels.</td></tr>
-            )}
-            {factuur.regels.map((r) => (
-              <tr key={r.id} className="break-inside-avoid border-b border-line align-top">
-                <td className="break-words py-2 pr-3 text-ink-900">{r.omschrijving}</td>
-                <td className="py-2 pl-3 text-right tabular-nums text-warm">{getalTekst(r.aantal)}</td>
-                <td className="whitespace-nowrap py-2 pl-3 text-right tabular-nums text-warm">{euro(Number(r.stukprijs) || 0)}</td>
-                {heeftKorting && <td className="py-2 pl-3 text-right tabular-nums text-warm">{Number(r.korting_pct) ? `${getalTekst(r.korting_pct)}%` : ''}</td>}
-                <td className="py-2 pl-3 text-right tabular-nums text-warm">{getalTekst(r.btw_pct)}%</td>
-                <td className="whitespace-nowrap py-2 pl-3 text-right font-medium tabular-nums text-ink-900">{euro(regelBedrag(r))}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="mt-4 ml-auto w-full max-w-xs space-y-1 text-sm break-inside-avoid">
-          {heeftKorting && <div className="flex justify-between"><span className="text-warm">Waarvan korting</span><span className="tabular-nums text-warm">{euro(-totalen.korting)}</span></div>}
-          <div className="flex justify-between"><span className="text-warm">Subtotaal excl. btw</span><span className="tabular-nums text-ink-900">{euro(excl)}</span></div>
-          {totalen.perTarief.length === 0 && <div className="flex justify-between"><span className="text-warm">Btw</span><span className="tabular-nums text-ink-900">{euro(0)}</span></div>}
-          {totalen.perTarief.map((t) => (
-            <div key={t.pct} className="flex justify-between gap-3">
-              <span className="text-warm">Btw {getalTekst(t.pct)}%{totalen.perTarief.length > 1 ? ` over ${euro(t.grondslag)}` : ''}</span>
-              <span className="tabular-nums text-ink-900">{euro(t.btw)}</span>
-            </div>
-          ))}
-          <div className="flex justify-between border-t border-line pt-1 font-extrabold text-ink-900"><span>Totaal incl. btw</span><span className="tabular-nums">{euro(incl)}</span></div>
-        </div>
-
-        {factuur.toegepaste_prijsafspraken && (
-          <p className="mt-6 whitespace-pre-wrap rounded-md bg-mist px-3 py-2 text-xs text-warm">{factuur.toegepaste_prijsafspraken}</p>
-        )}
-        <p className="mt-6 text-xs text-warm">
-          Graag het bedrag vóór {fmt(vervaldatum)} overmaken op {bedrijf.iban} t.n.v. {bedrijf.naam}, onder vermelding van factuurnummer {factuur.factuurnummer || 'concept'}. Vragen over deze factuur? Mail naar {bedrijf.email} of bel {bedrijf.telefoon}.
-        </p>
-
-        <DocumentVoet />
       </section>
     </main>
   );

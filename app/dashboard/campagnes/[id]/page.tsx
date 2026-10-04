@@ -1,220 +1,190 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { kmsAdmin, dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
-import { getCampagne, CAMPAGNE_STATUSSEN } from '@/lib/kms/campagnes';
-import { PROSPECT_STATUSSEN } from '@/lib/kms/prospecten';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
-import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
-import {
-  wijzigCampagneStatusActie,
-  voegStapActie,
-  werkStapActie,
-  verwijderStapActie,
-  schrijfInActie,
-} from './actions';
+import { kmsAdmin, dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
+import { isEmailConfigured } from '@/lib/env';
+import { getCampagne, getRapport } from '@/lib/kms/campagnes';
+import { getCampagneInstellingen } from '@/lib/kms/campagneInstellingen';
+import { listNieuwsbrieven } from '@/lib/nieuwsbrief/opslag';
+import { listTaakPersonen } from '@/lib/kms/taakPersonen';
+import { PROSPECT_STATUSSEN } from '@/lib/kms/prospecten';
+import { LEAD_STATUSSEN } from '@/lib/kms/leadsModel';
+import { DOEL_LABEL, DOELGROEP_LABEL, triggerOmschrijving } from '@/lib/campagnes/flow';
+import FlowBouwer from './FlowBouwer';
+import TriggerFormulier from './TriggerFormulier';
+import OntvangersTab from './OntvangersTab';
+import RapportTab from './RapportTab';
+import { wijzigStatusActie } from './actions';
+import { dupliceerCampagneActie, verwijderCampagneActie } from '../actions';
+import { CampagneStatusBadge } from '../onderdelen';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Campagne', robots: { index: false, follow: false } };
 
-const inputCls = 'veld';
+const TABS = [
+  { id: 'flow', label: 'Flow' },
+  { id: 'instellingen', label: 'Trigger en doel' },
+  { id: 'ontvangers', label: 'Ontvangers' },
+  { id: 'rapport', label: 'Rapport' },
+] as const;
+type TabId = (typeof TABS)[number]['id'];
 
-const statusBadge: Record<string, string> = {
-  concept: 'bg-ink-100 text-ink-600',
-  actief: 'bg-green-100 text-green-800',
-  gepauzeerd: 'bg-amber-100 text-amber-800',
-  afgerond: 'bg-ink-100 text-ink-600',
-};
+type Zoek = { tab?: string; melding?: string; ostatus?: string; oq?: string; dg?: string; fs?: string; fb?: string; fp?: string; fbron?: string; fq?: string; kies?: string };
 
-const typeLabel: Record<string, string> = {
-  cold: 'Koude acquisitie',
-  nurture: 'Nurture',
-  reengage: 'Heractivatie',
-};
+function Melding({ tekst }: { tekst: string }) {
+  return <p className="mt-3 rounded-md border border-line bg-mist px-4 py-2 text-[13px] text-ink-800">{tekst}</p>;
+}
 
-export default async function CampagneDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; fout?: string; aantal?: string }> }) {
+export default async function CampagnePagina({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Zoek> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
   await eisEigenaar();
   const { id } = await params;
-  const { ok, aantal } = await searchParams;
-  const sb = kmsAdmin();
+  const zoek = await searchParams;
+  const tab: TabId = (TABS.map((t) => t.id) as string[]).includes(zoek.tab ?? '') ? (zoek.tab as TabId) : 'flow';
 
-  if (!sb) {
+  if (!kmsAdmin()) redirect('/dashboard/campagnes');
+  const c = await getCampagne(id);
+  if (!c) {
     return (
       <main className="container-smal py-20">
-        <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="dash-h1">Leaddatabase nog niet gekoppeld</h1>
-          <p className="mt-3 text-sm text-warm">Zet <code>SUPABASE_URL</code> en <code>SUPABASE_SERVICE_ROLE_KEY</code> in de omgevingsvariabelen en draai de migraties in <code>supabase/migrations</code>.</p>
-          <Link href="/dashboard/campagnes" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar campagnes</Link>
+        <div className="panel mx-auto max-w-xl p-8">
+          <h1 className="dash-h1">Campagne niet gevonden</h1>
+          <p className="mt-3 text-sm text-warm">Deze campagne bestaat niet (meer).</p>
+          <Link href="/dashboard/campagnes" className="mt-5 inline-block knop-stil">
+            Naar campagnes
+          </Link>
         </div>
       </main>
     );
   }
 
-  const campagne = await getCampagne(id);
-  if (!campagne) {
-    return (
-      <main className="container-smal py-20">
-        <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="dash-h1">Campagne niet gevonden</h1>
-          <p className="mt-3 text-sm text-warm">Deze campagne bestaat niet of is verwijderd.</p>
-          <Link href="/dashboard/campagnes" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar campagnes</Link>
-        </div>
-      </main>
+  const inst = await getCampagneInstellingen();
+  const doelTekst = c.doel.soorten.length ? c.doel.soorten.map((s) => DOEL_LABEL[s]).join(' of ') : 'Geen doel: iedereen loopt de hele flow door.';
+  const statusKnop = (status: string, label: string, klasse: string, bevestig?: string) => (
+    <form action={wijzigStatusActie}>
+      <input type="hidden" name="campagneId" value={c.id} />
+      <input type="hidden" name="status" value={status} />
+      <input type="hidden" name="tab" value={tab === 'flow' ? '' : tab} />
+      {bevestig ? (
+        <ConfirmSubmit message={bevestig} className={klasse}>
+          {label}
+        </ConfirmSubmit>
+      ) : (
+        <button type="submit" className={klasse}>
+          {label}
+        </button>
+      )}
+    </form>
+  );
+
+  let inhoud: React.ReactNode = null;
+  if (tab === 'flow') {
+    const [nieuwsbrieven, personen, rapport] = await Promise.all([listNieuwsbrieven(), listTaakPersonen(), getRapport(c.id)]);
+    inhoud = (
+      <FlowBouwer
+        campagneId={c.id}
+        beginFlow={c.flow}
+        kanOpslaan={c.v2}
+        status={c.status}
+        triggerTekst={triggerOmschrijving(c.trigger)}
+        doelTekst={doelTekst}
+        opStap={c.opStap}
+        perMail={c.perMail}
+        splitsingen={rapport.splitsingen}
+        nieuwsbrieven={nieuwsbrieven.map((n) => ({ id: n.id, naam: n.naam, isTemplate: n.is_template }))}
+        personen={personen.filter((p) => p.actief).map((p) => ({ id: p.id, naam: p.naam }))}
+        prospectStatussen={[...PROSPECT_STATUSSEN]}
+        leadStatussen={[...LEAD_STATUSSEN]}
+        mailIngesteld={isEmailConfigured}
+      />
     );
+  } else if (tab === 'instellingen') {
+    const sb = kmsAdmin();
+    const { data: bronData } = sb ? await sb.from('leads').select('bron').not('bron', 'is', null).limit(2000) : { data: [] };
+    const leadBronnen = Array.from(new Set(((bronData as { bron: string | null }[]) ?? []).map((r) => (r.bron ?? '').trim()).filter(Boolean))).sort();
+    inhoud = (
+      <TriggerFormulier
+        campagneId={c.id}
+        begin={{ naam: c.naam, omschrijving: c.omschrijving ?? '', van_naam: c.van_naam ?? '', van_email: c.van_email ?? '', doelgroep: c.doelgroep, trigger: c.trigger, doel: c.doel }}
+        prospectStatussen={PROSPECT_STATUSSEN.filter((s) => s !== 'afgemeld')}
+        leadBronnen={leadBronnen}
+        kanOpslaan={c.v2}
+        geactiveerdOp={c.geactiveerd_op}
+      />
+    );
+  } else if (tab === 'ontvangers') {
+    inhoud = <OntvangersTab campagne={c} zoek={zoek} />;
+  } else {
+    inhoud = <RapportTab campagne={c} />;
   }
 
   return (
-    <main className="container-app py-6">
-      <div className="dash-kop flex items-center justify-between gap-4">
-        <div>
-          <h1 className="dash-h1">{campagne.naam}</h1>
-          <p className="mt-1 text-sm text-warm">
-            {typeLabel[campagne.type] ?? campagne.type}
-            {' · '}
-            <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[campagne.status] ?? 'bg-ink-100 text-ink-600'}`}>{campagne.status}</span>
-          </p>
+    <main className="container-app pb-16">
+      <div className="dash-kop justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/dashboard/campagnes" className="knop-tekst px-1.5" aria-label="Terug naar campagnes">
+            ←
+          </Link>
+          <h1 className="dash-h1 truncate">{c.naam}</h1>
+          <CampagneStatusBadge status={c.status} />
         </div>
-        <Link href="/dashboard/campagnes" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar campagnes</Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {c.status === 'concept' && statusKnop('actief', 'Starten', 'knop-primair', 'Campagne starten? Bij de volgende dagelijkse run gaan de eerste stappen in.')}
+          {c.status === 'actief' && statusKnop('gepauzeerd', 'Pauzeren', 'knop-stil')}
+          {c.status === 'gepauzeerd' && statusKnop('actief', 'Hervatten', 'knop-primair')}
+          {c.status === 'afgerond' && statusKnop('concept', 'Terug naar concept', 'knop-stil')}
+          <details className="relative">
+            <summary className="knop-tekst cursor-pointer list-none">Meer</summary>
+            <div className="absolute right-0 z-40 mt-1 w-48 rounded-lg border border-line bg-white p-1 shadow-card">
+              <form action={dupliceerCampagneActie}>
+                <input type="hidden" name="campagneId" value={c.id} />
+                <button type="submit" className="w-full rounded px-3 py-1.5 text-left text-[13px] hover:bg-mist">
+                  Kopiëren
+                </button>
+              </form>
+              {c.status !== 'afgerond' && (
+                <form action={wijzigStatusActie}>
+                  <input type="hidden" name="campagneId" value={c.id} />
+                  <input type="hidden" name="status" value="afgerond" />
+                  <ConfirmSubmit message="Campagne afronden? Wie er nog in zit, krijgt niets meer." className="w-full rounded px-3 py-1.5 text-left text-[13px] hover:bg-mist">
+                    Afronden
+                  </ConfirmSubmit>
+                </form>
+              )}
+              <form action={verwijderCampagneActie}>
+                <input type="hidden" name="campagneId" value={c.id} />
+                <ConfirmSubmit message="Campagne verwijderen, met alle ontvangers en statistieken? Dit kan niet ongedaan worden gemaakt." className="w-full rounded px-3 py-1.5 text-left text-[13px] text-red-700 hover:bg-red-50">
+                  Verwijderen
+                </ConfirmSubmit>
+              </form>
+            </div>
+          </details>
+        </div>
       </div>
 
-      {ok === 'ingeschreven' && (
-        <p className="mt-4 rounded-md bg-green-50 px-4 py-2 text-sm font-semibold text-green-800">{Number(aantal) || 0} prospect(s) nieuw ingeschreven.</p>
-      )}
+      <p className="mt-3 text-[13px] text-warm">
+        {DOELGROEP_LABEL[c.doelgroep]} · {triggerOmschrijving(c.trigger)} · {c.totaal} ingeschreven, {c.perStatus.actief ?? 0} in de flow, {c.perStatus.doel ?? 0} doel bereikt
+        {c.omschrijving ? <span className="block text-ink-500">{c.omschrijving}</span> : null}
+      </p>
+      {zoek.melding && <Melding tekst={zoek.melding} />}
+      {inst.allesGepauzeerd && <Melding tekst="Alle campagnes staan op pauze (Campagnes, Pauzeer alles). Ook deze doet nu niets." />}
+      {!isEmailConfigured && c.status === 'actief' && <Melding tekst="Mail staat nog niet aan. Deze campagne voert wel wachtstappen, taken en tags uit, maar mails blijven staan tot Resend is ingesteld. Er wordt niets als verzonden geteld." />}
 
-      <section className="mt-8 grid gap-6 lg:grid-cols-3">
-        <div className="flex flex-col gap-6 lg:col-span-2">
-          <div className="panel p-4">
-            <h2 className="font-display text-base font-bold text-ink-900">Stappen</h2>
-            <p className="mt-1 text-xs text-warm">In het onderwerp en de body kun je <code>{'{{bedrijfsnaam}}'}</code>, <code>{'{{contactpersoon}}'}</code> en <code>{'{{ai}}'}</code> gebruiken. <code>{'{{ai}}'}</code> wordt per prospect vervangen door een gegenereerde openingszin als je AI-personalisatie voor die stap aanzet.</p>
+      <nav className="mt-4 flex flex-wrap gap-1 border-b border-line" aria-label="Onderdelen van de campagne">
+        {TABS.map((t) => (
+          <Link
+            key={t.id}
+            href={t.id === 'flow' ? `/dashboard/campagnes/${c.id}` : `/dashboard/campagnes/${c.id}?tab=${t.id}`}
+            aria-current={tab === t.id ? 'page' : undefined}
+            className={`-mb-px border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-colors ${tab === t.id ? 'border-amber-600 text-ink-900' : 'border-transparent text-warm hover:text-ink-800'}`}
+          >
+            {t.label}
+            {t.id === 'ontvangers' && c.totaal > 0 && <span className="chip-tel ml-1.5">{c.totaal}</span>}
+          </Link>
+        ))}
+      </nav>
 
-            {campagne.stappen.length === 0 ? (
-              <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen stappen. Voeg hieronder de eerste stap toe.</p>
-            ) : (
-              <div className="mt-4 flex flex-col gap-4">
-                {campagne.stappen.map((s) => (
-                  <div key={s.id} className="rounded-xl border border-line p-4">
-                    <form action={werkStapActie} className="grid gap-3 sm:grid-cols-2">
-                      <input type="hidden" name="campagneId" value={campagne.id} />
-                      <input type="hidden" name="stapId" value={s.id} />
-                      <div>
-                        <label className="veld-label">Volgorde</label>
-                        <input name="volgorde" inputMode="numeric" defaultValue={String(s.volgorde ?? 1)} className={inputCls} />
-                      </div>
-                      <div>
-                        <label className="veld-label">Wachttijd (dagen)</label>
-                        <input name="wacht_dagen" inputMode="numeric" defaultValue={String(s.wacht_dagen ?? 0)} className={inputCls} />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="veld-label">Onderwerp</label>
-                        <input name="onderwerp" required defaultValue={s.onderwerp ?? ''} className={inputCls} />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="veld-label">Bericht</label>
-                        <textarea name="body" required rows={5} defaultValue={s.body ?? ''} className={inputCls} />
-                      </div>
-                      <label className="flex items-start gap-2 text-xs text-ink-700 sm:col-span-2">
-                        <input type="checkbox" name="ai_personaliseer" defaultChecked={s.ai_personaliseer} className="mt-0.5 h-4 w-4 rounded border-line text-amber-500 focus:ring-amber-300" />
-                        <span>AI-personalisatie: vervang <code>{'{{ai}}'}</code> door een unieke openingszin per prospect</span>
-                      </label>
-                      <div className="flex items-center justify-between gap-3 sm:col-span-2">
-                        <button type="submit" className="knop-donker">Stap opslaan</button>
-                        <span className="text-xs text-warm">{campagne.verzondenPerStap[s.id] ?? 0} verzonden</span>
-                      </div>
-                    </form>
-                    <form action={verwijderStapActie} className="mt-2">
-                      <input type="hidden" name="campagneId" value={campagne.id} />
-                      <input type="hidden" name="stapId" value={s.id} />
-                      <ConfirmSubmit message="Deze stap verwijderen?" className="text-xs font-semibold text-warm hover:text-ink-800">Verwijderen</ConfirmSubmit>
-                    </form>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="panel p-4">
-            <h2 className="font-display text-base font-bold text-ink-900">Stap toevoegen</h2>
-            <form action={voegStapActie} className="mt-4 grid gap-3 sm:grid-cols-2">
-              <input type="hidden" name="campagneId" value={campagne.id} />
-              <div>
-                <label className="veld-label">Volgorde</label>
-                <input name="volgorde" inputMode="numeric" defaultValue={String(campagne.stappen.length + 1)} className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Wachttijd (dagen)</label>
-                <input name="wacht_dagen" inputMode="numeric" defaultValue="0" className={inputCls} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="veld-label">Onderwerp</label>
-                <input name="onderwerp" required placeholder="Bijv. Werkkleding voor {{bedrijfsnaam}}" className={inputCls} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="veld-label">Bericht</label>
-                <textarea name="body" required rows={5} placeholder={'Beste {{contactpersoon}},\n\n{{ai}}\n\n...'} className={inputCls} />
-              </div>
-              <label className="flex items-start gap-2 text-xs text-ink-700 sm:col-span-2">
-                <input type="checkbox" name="ai_personaliseer" className="mt-0.5 h-4 w-4 rounded border-line text-amber-500 focus:ring-amber-300" />
-                <span>AI-personalisatie: vervang <code>{'{{ai}}'}</code> door een unieke openingszin per prospect</span>
-              </label>
-              <div className="sm:col-span-2">
-                <button type="submit" className="knop-donker">Stap toevoegen</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <div className="panel p-4">
-            <h2 className="font-display text-base font-bold text-ink-900">Status</h2>
-            <p className="mt-2"><span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge[campagne.status] ?? 'bg-ink-100 text-ink-600'}`}>{campagne.status}</span></p>
-            <form action={wijzigCampagneStatusActie} className="mt-4">
-              <input type="hidden" name="campagneId" value={campagne.id} />
-              <label className="veld-label">Wijzig status</label>
-              <AutoSubmitSelect
-                name="status"
-                defaultValue={campagne.status}
-                aria-label="Campagnestatus"
-                className={inputCls}
-                options={CAMPAGNE_STATUSSEN.map((s) => ({ value: s, label: s }))}
-              />
-            </form>
-          </div>
-
-          <div className="panel p-4">
-            <h2 className="font-display text-base font-bold text-ink-900">Inschrijvingen</h2>
-            <dl className="mt-3 space-y-1.5 text-sm">
-              <div className="flex justify-between gap-3"><dt className="text-warm">Totaal ingeschreven</dt><dd className="text-ink-900">{campagne.aantalInschrijvingen}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-warm">Actief</dt><dd className="text-ink-900">{campagne.aantalActief}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-warm">Verzonden mails</dt><dd className="text-ink-900">{campagne.aantalVerzonden}</dd></div>
-              {campagne.aantalGefaald > 0 && <div className="flex justify-between gap-3"><dt className="text-warm">Mislukt</dt><dd className="font-semibold text-amber-700">{campagne.aantalGefaald}</dd></div>}
-            </dl>
-            {Object.keys(campagne.statusVerdeling).length > 0 && (
-              <div className="mt-3 border-t border-line pt-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-warm">Inschrijvingen per status</p>
-                <ul className="mt-1.5 space-y-1 text-sm">
-                  {Object.entries(campagne.statusVerdeling).map(([s, n]) => (
-                    <li key={s} className="flex justify-between gap-3"><span className="text-warm">{s}</span><span className="text-ink-900">{n}</span></li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          <div className="panel p-4">
-            <h2 className="font-display text-base font-bold text-ink-900">Prospects inschrijven</h2>
-            <p className="mt-1 text-xs text-warm">Schrijft prospecten met de gekozen status in. Afgemelde prospecten en klanten worden overgeslagen.</p>
-            <form action={schrijfInActie} className="mt-3">
-              <input type="hidden" name="campagneId" value={campagne.id} />
-              <label className="veld-label">Prospect-status</label>
-              <select name="prospectStatus" className={inputCls} defaultValue="">
-                <option value="">Alle prospecten</option>
-                {PROSPECT_STATUSSEN.filter((s) => s !== 'afgemeld' && s !== 'klant').map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <button type="submit" className="mt-3 w-full knop-donker">Inschrijven</button>
-            </form>
-          </div>
-        </div>
-      </section>
+      {inhoud}
     </main>
   );
 }

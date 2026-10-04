@@ -2,13 +2,24 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
 import { getBoekhouderEmail } from '@/lib/kms/facturen';
-import { getRetourtermijn } from '@/lib/portaal/service';
-import { zetBoekhouderActie, zetRetourActie } from './actions';
+import { zetBoekhouderActie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Instellingen', robots: { index: false, follow: false } };
 
 const inputCls = 'veld';
+
+/** Elk onderdeel met eigen instellingen heeft een eigen pagina; hier staan ze bij elkaar. */
+const INSTELLING_KAARTEN = [
+  { titel: 'Maten en kleuren', tekst: 'De vaste lijst met kleuren (met kleurcode en aliassen) en maatreeksen, plus de tool om afwijkende waarden op te schonen.', href: '/dashboard/instellingen/varianten', knop: 'Naar maten en kleuren' },
+  { titel: 'Service: retouren en klachten', tekst: 'Retourtermijn (ook per klant), voorwaarden, retouradres, retourredenen, klachtcategorieën en streefreactietijden.', href: '/dashboard/instellingen/service', knop: 'Naar service' },
+  { titel: 'Taken en afspraken', tekst: 'Statussen, personen en de dag- en weekoverzichten per mail.', href: '/dashboard/taken/instellingen', knop: 'Naar taken' },
+  { titel: 'Campagnes', tekst: 'Daglimiet voor mails, testadres, reviewlink en alles pauzeren.', href: '/dashboard/campagnes/instellingen', knop: 'Naar campagnes' },
+  { titel: 'Sparen', tekst: 'Puntwaarde, vervaltermijn en de standaardinstellingen van het spaarprogramma.', href: '/dashboard/sparen/instellingen', knop: 'Naar sparen' },
+  { titel: 'Beheerders', tekst: 'Wie mag inloggen in het dashboard, met welke rol.', href: '/dashboard/admins', knop: 'Naar beheerders' },
+  { titel: 'Beveiliging', tekst: 'Tweestapsverificatie met een app op je telefoon en hoe lang je nog ingelogd bent.', href: '/dashboard/beveiliging', knop: 'Naar beveiliging' },
+  { titel: 'Logboek', tekst: 'Wie wat heeft gewijzigd, met de oude en de nieuwe waarde.', href: '/dashboard/audit', knop: 'Naar het logboek' },
+];
 
 export default async function InstellingenPage({
   searchParams,
@@ -19,10 +30,7 @@ export default async function InstellingenPage({
   await eisEigenaar();
 
   const { ok } = await searchParams;
-  const [boekhouderEmail, termijn] = await Promise.all([
-    getBoekhouderEmail(),
-    getRetourtermijn(),
-  ]);
+  const boekhouderEmail = await getBoekhouderEmail();
 
   return (
     <main className="container-app py-6">
@@ -34,9 +42,6 @@ export default async function InstellingenPage({
 
       {ok === 'boekhouder' && (
         <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">E-mailadres van de boekhouder opgeslagen.</p>
-      )}
-      {ok === 'retour' && (
-        <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">Retourbeleid opgeslagen.</p>
       )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -60,46 +65,17 @@ export default async function InstellingenPage({
           </form>
         </div>
 
-        {/* Retourbeleid */}
-        <div className="panel p-4">
-          <h2 className="font-display text-lg font-bold text-ink-900">Retourbeleid</h2>
-          <p className="mt-1 text-xs text-warm">Tot zoveel dagen na de besteldatum kunnen klanten retourneren.</p>
-          <form action={zetRetourActie} className="mt-4 flex flex-wrap items-end gap-3">
-            <div>
-              <label htmlFor="retourtermijn" className="block text-xs font-semibold text-warm">Retourtermijn (dagen)</label>
-              <input
-                id="retourtermijn"
-                name="dagen"
-                type="number"
-                min={1}
-                defaultValue={termijn}
-                className={`${inputCls} w-32`}
-              />
-            </div>
-            <button type="submit" className="knop-donker">Opslaan</button>
-          </form>
+        <div className="lg:col-span-2">
+          <h2 className="mt-2 font-display text-lg font-bold text-ink-900">Vaste lijsten en onderdelen</h2>
+          <p className="mt-1 text-xs text-warm">Instellingen die het hele systeem gebruikt. Zo blijft de data overal hetzelfde.</p>
         </div>
-
-        {/* Beveiliging: tweestapsverificatie en sessie */}
-        <div className="panel p-4">
-          <h2 className="font-display text-lg font-bold text-ink-900">Beveiliging</h2>
-          <p className="mt-1 text-xs text-warm">Tweestapsverificatie met een app op je telefoon instellen en zien hoe lang je nog ingelogd bent.</p>
-          <Link href="/dashboard/beveiliging" className="mt-4 inline-block knop-donker">Naar Beveiliging</Link>
-        </div>
-
-        {/* Logboek: wie wijzigde wat */}
-        <div className="panel p-4">
-          <h2 className="font-display text-lg font-bold text-ink-900">Logboek</h2>
-          <p className="mt-1 text-xs text-warm">Zie wie wat heeft gewijzigd, met de oude en de nieuwe waarde.</p>
-          <Link href="/dashboard/audit" className="mt-4 inline-block knop-donker">Naar het logboek</Link>
-        </div>
-
-        {/* Spaarsysteem, beheer staat op de eigen Sparen-pagina */}
-        <div className="panel p-4 lg:col-span-2">
-          <h2 className="font-display text-lg font-bold text-ink-900">Spaarsysteem</h2>
-          <p className="mt-1 text-xs text-warm">Het spaarsysteem beheer je onder Sparen: punten per euro, kortingswaarde en de saldi per bedrijf.</p>
-          <Link href="/dashboard/sparen" className="mt-4 inline-block knop-donker">Naar Sparen</Link>
-        </div>
+        {INSTELLING_KAARTEN.map((k) => (
+          <div key={k.href} className="panel flex flex-col p-4">
+            <h3 className="font-display text-base font-bold text-ink-900">{k.titel}</h3>
+            <p className="mt-1 flex-1 text-xs text-warm">{k.tekst}</p>
+            <Link href={k.href} className="mt-4 inline-block self-start knop-donker">{k.knop}</Link>
+          </div>
+        ))}
       </div>
     </main>
   );

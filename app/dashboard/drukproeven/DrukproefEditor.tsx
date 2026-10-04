@@ -201,6 +201,7 @@ export default function DrukproefEditor({
   assortiment,
   logos: beginLogos,
   bestaand,
+  terug,
 }: {
   orgId: string;
   klantNaam: string;
@@ -208,6 +209,8 @@ export default function DrukproefEditor({
   assortiment: DrukproefArtikel[];
   logos: DrukproefLogo[];
   bestaand?: BestaandeDrukproef | null;
+  /** Na opslaan hierheen terug (bijv. de klantkaart); anders het overzicht. */
+  terug?: string | null;
 }) {
   // --- Kledingstuk ---
   const [artikel, setArtikel] = useState<DrukproefArtikel | null>(bestaand?.artikel ?? null);
@@ -585,6 +588,7 @@ export default function DrukproefEditor({
         techniek,
         drukkleuren: Number(drukkleuren) || 0,
         omschrijving,
+        terug: terug ?? null,
       });
       if (r && !r.ok) {
         gewijzigd.current = true;

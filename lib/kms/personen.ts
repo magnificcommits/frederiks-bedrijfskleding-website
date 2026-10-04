@@ -140,47 +140,92 @@ export async function bevestigPersoon(keuze: PersoonKeuze, orgId: string | null)
 /* Orders: filter "Aangevraagd door"                                   */
 /* ------------------------------------------------------------------ */
 
-export type AanvragerOptie = { waarde: string; label: string };
+export type AanvragerOptie = {
+  waarde: string;
+  label: string;
+  /** Klant, en of de naam aan een persoon gekoppeld is. */
+  sub?: string | null;
+  /** Aantal orders van deze aanvrager (binnen de begrenzing van 1000 orders). */
+  aantal?: number;
+};
 
 /**
- * Iedereen die ooit een order aanvroeg, voor het filter op de orderlijst.
+ * Aanvragers voor het filter "Aangevraagd door" op de orderlijst, met het
+ * aantal orders per persoon. Bewust geen lijst van iedereen: bij 500 orders
+ * leest niemand meer een keuzelijst van 300 namen.
+ *
+ * - Met `klantId`: alle aanvragers van die klant, ook zonder zoektekst.
+ * - Zonder klant: pas vanaf 2 letters, en dan alleen orders waarvan de
+ *   aanvrager (tekst, contactpersoon of werknemer) op de tekst past.
+ *
  * Waarde: `c:<id>` (contactpersoon), `m:<id>` (werknemer) of `t:<naam>` (losse
  * tekst die niet aan een persoon te koppelen is). Oude tekst wordt waar mogelijk
  * op naam of e-mail binnen de klant gekoppeld, zodat één persoon één regel is.
+ * Alleen wat echt niet te koppelen is, komt als "niet gekoppeld" terug.
  */
-export async function aanvragersVoorOrderFilter(): Promise<AanvragerOptie[]> {
+export async function aanvragersVoorOrderFilter(opts: { klantId?: string | null; zoek?: string; limiet?: number } = {}): Promise<AanvragerOptie[]> {
   const sb = kmsAdmin();
   if (!sb) return [];
+  const klantId = opts.klantId && UUID.test(opts.klantId) ? opts.klantId : null;
+  const zoek = String(opts.zoek ?? '').replace(/[%*,()"'\\:]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!klantId && zoek.length < 2) return [];
+  const woorden = zoek ? zoek.split(' ').slice(0, 4) : [];
 
+  type P = { id: string; naam: string | null; email: string | null; organisatie_id: string };
   type OrderRij = {
     organisatie_id: string;
     aangevraagd_door: string | null;
     aangevraagd_door_contact_id?: string | null;
     aangevraagd_door_medewerker_id?: string | null;
   };
-  let res = await sb
+
+  // Zonder klant: eerst de personen die op de tekst passen, dan hun orders.
+  let gezochtC: P[] = [];
+  let gezochtM: P[] = [];
+  if (!klantId) {
+    const persQ = (tabel: 'contactpersonen' | 'medewerkers') => {
+      let q = sb.from(tabel).select('id, naam, email, organisatie_id');
+      for (const w of woorden) q = q.or(`naam.ilike.%${w}%,email.ilike.%${w}%`);
+      return q.limit(100);
+    };
+    const [c, m] = await Promise.all([persQ('contactpersonen'), persQ('medewerkers')]);
+    gezochtC = (c.data as P[] | null) ?? [];
+    gezochtM = (m.data as P[] | null) ?? [];
+  }
+
+  const tekstFilter = woorden.map((w) => `aangevraagd_door.ilike.%${w}%`);
+  const metIdDelen = [
+    // Alle woorden in de tekst: één and() binnen de or().
+    tekstFilter.length > 1 ? `and(${tekstFilter.join(',')})` : tekstFilter[0] ?? '',
+    gezochtC.length ? `aangevraagd_door_contact_id.in.(${gezochtC.map((p) => p.id).join(',')})` : '',
+    gezochtM.length ? `aangevraagd_door_medewerker_id.in.(${gezochtM.map((p) => p.id).join(',')})` : '',
+  ].filter(Boolean);
+
+  let q = sb
     .from('orders')
-    .select('organisatie_id, aangevraagd_door, aangevraagd_door_contact_id, aangevraagd_door_medewerker_id')
-    .or('aangevraagd_door.not.is.null,aangevraagd_door_contact_id.not.is.null,aangevraagd_door_medewerker_id.not.is.null')
-    .limit(5000);
+    .select('organisatie_id, aangevraagd_door, aangevraagd_door_contact_id, aangevraagd_door_medewerker_id');
+  if (klantId) {
+    q = q.eq('organisatie_id', klantId).or('aangevraagd_door.not.is.null,aangevraagd_door_contact_id.not.is.null,aangevraagd_door_medewerker_id.not.is.null');
+  } else {
+    q = q.or(metIdDelen.join(','));
+  }
+  let res = await q.order('besteldatum', { ascending: false }).limit(1000);
   if (kolomOntbreekt(res.error)) {
-    res = (await sb
-      .from('orders')
-      .select('organisatie_id, aangevraagd_door')
-      .not('aangevraagd_door', 'is', null)
-      .limit(5000)) as typeof res;
+    let terug = sb.from('orders').select('organisatie_id, aangevraagd_door').not('aangevraagd_door', 'is', null);
+    if (klantId) terug = terug.eq('organisatie_id', klantId);
+    for (const w of woorden) if (!klantId) terug = terug.ilike('aangevraagd_door', `%${w}%`);
+    res = (await terug.order('besteldatum', { ascending: false }).limit(1000)) as typeof res;
   }
   const orders = ((res.data as OrderRij[] | null) ?? []).filter((o) => o.organisatie_id);
   if (orders.length === 0) return [];
 
-  const orgIds = [...new Set(orders.map((o) => o.organisatie_id))];
+  const orgIds = [...new Set(orders.map((o) => o.organisatie_id))].slice(0, 300);
   const [orgRes, contactRes, medewRes] = await Promise.all([
     sb.from('organisaties').select('id, naam').in('id', orgIds),
-    sb.from('contactpersonen').select('id, naam, email, organisatie_id').in('organisatie_id', orgIds).limit(10000),
-    sb.from('medewerkers').select('id, naam, email, organisatie_id').in('organisatie_id', orgIds).limit(10000),
+    sb.from('contactpersonen').select('id, naam, email, organisatie_id').in('organisatie_id', orgIds).limit(5000),
+    sb.from('medewerkers').select('id, naam, email, organisatie_id').in('organisatie_id', orgIds).limit(5000),
   ]);
   const orgNaam = new Map(((orgRes.data as { id: string; naam: string | null }[]) ?? []).map((o) => [o.id, o.naam ?? 'Onbekende klant']));
-  type P = { id: string; naam: string | null; email: string | null; organisatie_id: string };
   const contacten = (contactRes.data as P[]) ?? [];
   const medewerkers = (medewRes.data as P[]) ?? [];
   const contactVan = new Map(contacten.map((c) => [c.id, c]));
@@ -199,30 +244,59 @@ export async function aanvragersVoorOrderFilter(): Promise<AanvragerOptie[]> {
   }
 
   const opties = new Map<string, AanvragerOptie>();
+  const tel = (w: string, maak: () => AanvragerOptie) => {
+    const huidig = opties.get(w);
+    if (huidig) huidig.aantal = (huidig.aantal ?? 0) + 1;
+    else opties.set(w, { ...maak(), aantal: 1 });
+  };
   for (const o of orders) {
     const klant = orgNaam.get(o.organisatie_id) ?? 'Onbekende klant';
     const c = o.aangevraagd_door_contact_id ? contactVan.get(o.aangevraagd_door_contact_id) : undefined;
     const m = o.aangevraagd_door_medewerker_id ? medewerkerVan.get(o.aangevraagd_door_medewerker_id) : undefined;
-    if (c) {
-      opties.set(`c:${c.id}`, { waarde: `c:${c.id}`, label: `${c.naam ?? 'Contactpersoon'} (${klant})` });
-      continue;
-    }
-    if (m) {
-      opties.set(`m:${m.id}`, { waarde: `m:${m.id}`, label: `${m.naam ?? 'Werknemer'} (${klant})` });
-      continue;
-    }
     const tekst = (o.aangevraagd_door ?? '').trim();
-    if (!tekst) continue;
-    const gekoppeld = koppel(o.organisatie_id, tekst);
+    const gekoppeld = c ? { soort: 'c' as const, p: c } : m ? { soort: 'm' as const, p: m } : tekst ? koppel(o.organisatie_id, tekst) : null;
     if (gekoppeld) {
       const w = `${gekoppeld.soort}:${gekoppeld.p.id}`;
-      opties.set(w, { waarde: w, label: `${gekoppeld.p.naam ?? tekst} (${klant})` });
-    } else {
+      tel(w, () => ({
+        waarde: w,
+        label: gekoppeld.p.naam?.trim() || gekoppeld.p.email || tekst || (gekoppeld.soort === 'c' ? 'Contactpersoon' : 'Werknemer'),
+        sub: `${klant} · ${gekoppeld.soort === 'c' ? 'contactpersoon' : 'werknemer'}`,
+      }));
+    } else if (tekst) {
       const w = `t:${tekst}`;
-      if (!opties.has(w)) opties.set(w, { waarde: w, label: `${tekst} (niet gekoppeld)` });
+      tel(w, () => ({ waarde: w, label: tekst, sub: `${klant} · niet gekoppeld aan een persoon` }));
     }
   }
-  return [...opties.values()].sort((a, b) => a.label.localeCompare(b.label, 'nl'));
+
+  let lijst = [...opties.values()];
+  // Met klant én tekst: alleen wie op de tekst past (naam of klant).
+  if (klantId && woorden.length) {
+    lijst = lijst.filter((o) => woorden.every((w) => `${o.label} ${o.sub ?? ''}`.toLowerCase().includes(w.toLowerCase())));
+  }
+  // Zonder klant kan een order via de klantnaam meekomen; toon alleen namen die passen.
+  if (!klantId) {
+    const gezochteIds = new Set([...gezochtC.map((p) => `c:${p.id}`), ...gezochtM.map((p) => `m:${p.id}`)]);
+    lijst = lijst.filter((o) => gezochteIds.has(o.waarde) || woorden.every((w) => o.label.toLowerCase().includes(w.toLowerCase())));
+  }
+  return lijst
+    .sort((a, b) => (b.aantal ?? 0) - (a.aantal ?? 0) || a.label.localeCompare(b.label, 'nl'))
+    .slice(0, opts.limiet ?? 30);
+}
+
+/** Leesbaar label bij een aanvragerwaarde (c:, m: of t:), voor de filterchip. */
+export async function aanvragerLabel(waarde: string): Promise<string | null> {
+  const w = String(waarde ?? '').trim();
+  if (!w) return null;
+  if (w.startsWith('t:')) return `${w.slice(2)} (niet gekoppeld)`;
+  const sb = kmsAdmin();
+  const id = w.slice(2);
+  if (!sb || !UUID.test(id) || (!w.startsWith('c:') && !w.startsWith('m:'))) return null;
+  const tabel = w.startsWith('c:') ? 'contactpersonen' : 'medewerkers';
+  const { data } = await sb.from(tabel).select('naam, email, organisaties(naam)').eq('id', id).maybeSingle();
+  const p = data as { naam: string | null; email: string | null; organisaties: { naam: string | null } | null } | null;
+  if (!p) return null;
+  const naam = p.naam?.trim() || p.email || 'Onbekend';
+  return p.organisaties?.naam ? `${naam} (${p.organisaties.naam})` : naam;
 }
 
 /** Waarde in een PostgREST or()-filter veilig quoten; ilike-jokers letterlijk nemen. */

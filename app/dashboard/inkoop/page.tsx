@@ -2,16 +2,25 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import {
-  listInkoopregels,
+  inkoopKpis,
+  listInkooporders,
+  losseOpenRegels,
   teBestellenPerInkooppartij,
   portaalLink,
+  INKOOPORDER_BADGE,
+  INKOOPORDER_LABEL,
   type BestelPartijGroep,
   type BestelMerkGroep,
   type InkoopregelMetLeverancier,
+  type InkooporderOverzicht,
 } from '@/lib/kms/inkoop';
+import KpiTegel from '@/components/dashboard/overzicht/KpiTegel';
+import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
+import EmptyState from '@/components/dashboard/EmptyState';
+import { UrlSegment, UrlSelect } from '../voorraad/UrlKeuze';
 import AllesAanvinken from './AllesAanvinken';
 import BestelmailKnop from './BestelmailKnop';
-import { markeerInkoop, markeerRegelsBesteldActie } from './actions';
+import { maakInkooporderActie, markeerInkoop, markeerRegelsBesteldActie } from './actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Inkoop', robots: { index: false, follow: false } };
@@ -88,6 +97,12 @@ function melding(ok?: string, aantal?: string, gemaild?: string): Melding | null
   if (ok === 'terug') return { tekst: 'De regel staat weer bij te bestellen.', waarschuwing: false };
   if (ok === 'bijgewerkt') return { tekst: 'De regel is bijgewerkt.', waarschuwing: false };
   if (ok === 'mislukt') return { tekst: 'Dat is niet gelukt. Probeer het nog een keer.', waarschuwing: true };
+  if (ok === 'bijbesteld') return { tekst: `${meervoud(n, 'regel', 'regels')} voor bijbestellen klaargezet. Ze staan hieronder bij hun inkooppartij.`, waarschuwing: false };
+  if (ok === 'po_concept') return { tekst: `${meervoud(n, 'concept-inkooporder', 'concept-inkooporders')} gemaakt, één per inkooppartij.`, waarschuwing: false };
+  if (ok === 'po_weg') return { tekst: `Concept weggegooid. ${meervoud(n, 'regel staat', 'regels staan')} weer bij te bestellen.`, waarschuwing: false };
+  if (ok === 'migratie') {
+    return { tekst: 'Inkooporders kunnen pas als de databasemigratie van 4 oktober gedraaid is. Afvinken als besteld werkt wel.', waarschuwing: true };
+  }
   return null;
 }
 
@@ -263,12 +278,15 @@ function MerkBlok({ merk, partij, toonMailKnop }: { merk: BestelMerkGroep; parti
   );
 }
 
-function PartijKaart({ partij }: { partij: BestelPartijGroep }) {
+function PartijKaart({ partij, inkoopordersKlaar }: { partij: BestelPartijGroep; inkoopordersKlaar: boolean }) {
   const heeftPortaal = portaalLink(partij.bestelportaal_url) !== null;
 
   return (
     <form action={markeerRegelsBesteldActie} className="panel overflow-hidden">
       <input type="hidden" name="partij" value={partij.inkoopPartij} />
+      {partij.merken.flatMap((m) => m.regels).map((r) => (
+        <input key={r.id} type="hidden" name="alleRegelId" value={r.id} />
+      ))}
 
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line bg-mist px-4 py-3">
         <div className="min-w-0">
@@ -298,9 +316,16 @@ function PartijKaart({ partij }: { partij: BestelPartijGroep }) {
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-mist px-4 py-3">
         <AllesAanvinken />
-        <button type="submit" className="knop-donker">
-          Aangevinkte regels op besteld zetten
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {inkoopordersKlaar && (
+            <button type="submit" formAction={maakInkooporderActie} className="knop-stil" title="Niets aangevinkt? Dan gaan alle regels van deze partij erin.">
+              Maak inkooporder
+            </button>
+          )}
+          <button type="submit" className="knop-donker">
+            Aangevinkte regels op besteld zetten
+          </button>
+        </div>
       </div>
     </form>
   );
@@ -331,6 +356,7 @@ function Tabel({ groepen }: { groepen: [string, InkoopregelMetLeverancier[]][] }
             <thead>
               <tr>
                 <th scope="col">Item</th>
+                <th scope="col">Voor</th>
                 <th scope="col">Maat / kleur</th>
                 <th scope="col">Aantal</th>
                 <th scope="col" className="hidden sm:table-cell">Besteld op</th>
@@ -342,6 +368,9 @@ function Tabel({ groepen }: { groepen: [string, InkoopregelMetLeverancier[]][] }
               {regels.map((r) => (
                 <tr key={r.id} className="align-top">
                   <td className="font-semibold text-ink-900">{r.item_naam || '-'}</td>
+                  <td className="stil">
+                    {r.order_id ? <Link href={`/dashboard/orders/${r.order_id}`} className="rij-link">klantorder</Link> : 'voorraad'}
+                  </td>
                   <td className="stil">{[r.maat, r.kleur].filter(Boolean).join(' · ') || '-'}</td>
                   <td className="stil">{r.aantal}x{r.geleverd_aantal ? ` (${r.geleverd_aantal} geleverd)` : ''}</td>
                   <td className="hidden whitespace-nowrap stil sm:table-cell">{fmt(r.besteld_op)}</td>
@@ -355,9 +384,9 @@ function Tabel({ groepen }: { groepen: [string, InkoopregelMetLeverancier[]][] }
                           <form action={markeerInkoop} className="flex items-center gap-1">
                             <input type="hidden" name="inkoopId" value={r.id} />
                             <input type="hidden" name="status" value="geleverd" />
-                            <label className="sr-only" htmlFor={`geleverd-${r.id}`}>Aantal dat in totaal geleverd is</label>
-                            <input id={`geleverd-${r.id}`} name="geleverd_aantal" type="number" min="0" step="1" defaultValue={r.aantal} className="w-16 rounded-md border border-line px-2 py-1 text-xs" />
-                            <button type="submit" className="rounded-md bg-ink-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-ink-800">Levering vastleggen</button>
+                            <label className="sr-only" htmlFor={`geleverd-${r.id}`}>Aantal dat nu binnen is</label>
+                            <input id={`geleverd-${r.id}`} name="ontvangen_nu" type="number" min="0" step="1" defaultValue={Math.max(0, r.aantal - (r.geleverd_aantal || 0))} className="w-16 rounded-md border border-line px-2 py-1 text-xs" />
+                            <button type="submit" className="rounded-md bg-ink-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-ink-800">Ontvangst boeken</button>
                           </form>
                           <form action={markeerInkoop}>
                             <input type="hidden" name="inkoopId" value={r.id} />
@@ -379,18 +408,128 @@ function Tabel({ groepen }: { groepen: [string, InkoopregelMetLeverancier[]][] }
   );
 }
 
+/* ------------------------------------------------------------ inkooporders */
+
+const datumKort = (d: string | null) =>
+  d ? new Date(d).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }) : '-';
+
+function Voortgang({ ontvangen, totaal }: { ontvangen: number; totaal: number }) {
+  const pct = totaal > 0 ? Math.min(100, Math.round((ontvangen / totaal) * 100)) : 0;
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-ink-100" aria-hidden>
+        <div className={`h-full rounded-full ${pct === 100 ? 'bg-green-600' : 'bg-amber-500'}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="tabular-nums text-[12px] text-warm">
+        {ontvangen}/{totaal}
+      </span>
+    </div>
+  );
+}
+
+function OrdersTabel({ orders }: { orders: InkooporderOverzicht[] }) {
+  return (
+    <div className="panel overflow-x-auto">
+      <table className="tbl">
+        <thead>
+          <tr>
+            <th>Nr.</th>
+            <th>Inkooppartij</th>
+            <th>Status</th>
+            <th>Besteld</th>
+            <th>Verwacht</th>
+            <th>Ontvangen</th>
+            <th className="text-right">Waarde</th>
+            <th>Voor klantorder</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((o) => (
+            <tr key={o.id}>
+              <td>
+                <Link href={`/dashboard/inkoop/${o.id}`} className="rij-link tabular-nums">
+                  {o.nummer ?? '-'}
+                </Link>
+              </td>
+              <td className="min-w-[160px]">
+                <Link href={`/dashboard/inkoop/${o.id}`} className="font-semibold text-ink-900 hover:text-amber-700">
+                  {o.inkoop_partij ?? 'Onbekend'}
+                </Link>
+                <span className="block truncate text-[11px] text-warm">
+                  {o.merken.join(', ') || '-'} · {meervoud(o.aantalRegels, 'regel', 'regels')}
+                </span>
+              </td>
+              <td>
+                <span className={INKOOPORDER_BADGE[o.status] ?? 'badge-rust'}>{INKOOPORDER_LABEL[o.status] ?? o.status}</span>
+              </td>
+              <td className="whitespace-nowrap stil">{datumKort(o.besteld_op)}</td>
+              <td className={`whitespace-nowrap ${o.teLaat ? 'font-semibold text-red-700' : 'stil'}`}>
+                {datumKort(o.verwacht_op)}
+                {o.teLaat && o.dagenTeLaat !== null && <span className="ml-1 text-[11px]">({o.dagenTeLaat} d te laat)</span>}
+              </td>
+              <td>
+                <Voortgang ontvangen={o.ontvangenStuks} totaal={o.stuks} />
+              </td>
+              <td className="num">{euro(o.waarde)}</td>
+              <td className="stil">
+                {o.klantorders.length === 0
+                  ? 'voorraad'
+                  : o.klantorders.slice(0, 3).map((k, i) => (
+                      <span key={k.id}>
+                        {i > 0 && ', '}
+                        <Link href={`/dashboard/orders/${k.id}`} className="rij-link" title={k.klant_naam ?? undefined}>
+                          {k.ordernummer ?? 'order'}
+                        </Link>
+                      </span>
+                    ))}
+                {o.klantorders.length > 3 && ` +${o.klantorders.length - 3}`}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ pagina */
 
-export default async function InkoopPage({ searchParams }: { searchParams: Promise<{ ok?: string; aantal?: string; gemaild?: string }> }) {
+type Zoek = {
+  ok?: string;
+  aantal?: string;
+  gemaild?: string;
+  tab?: string;
+  status?: string;
+  partij?: string;
+  periode?: string;
+  order?: string;
+};
+
+const PO_CHIPS: { code: string; label: string }[] = [
+  { code: 'open', label: 'onderweg' },
+  { code: 'te_laat', label: 'te laat' },
+  { code: 'concept', label: 'concept' },
+  { code: 'verstuurd', label: 'verstuurd' },
+  { code: 'deels_ontvangen', label: 'deels ontvangen' },
+  { code: 'ontvangen', label: 'ontvangen' },
+  { code: 'geannuleerd', label: 'geannuleerd' },
+];
+
+function tabUrl(tab: string) {
+  return tab === 'werk' ? '/dashboard/inkoop' : `/dashboard/inkoop?tab=${tab}`;
+}
+
+export default async function InkoopPage({ searchParams }: { searchParams: Promise<Zoek> }) {
   if (!(await dashAuthed())) redirect('/dashboard');
-  const { ok, aantal, gemaild } = await searchParams;
+  const sp = await searchParams;
+  const { ok, aantal, gemaild } = sp;
   const sb = kmsAdmin();
 
   if (!sb) {
     return (
       <main className="container-smal py-20">
         <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h1 className="dash-h1">Leaddatabase nog niet gekoppeld</h1>
+          <h1 className="dash-h1">Database nog niet gekoppeld</h1>
           <p className="mt-3 text-sm text-warm">Zet <code>SUPABASE_URL</code> en <code>SUPABASE_SERVICE_ROLE_KEY</code> in de omgevingsvariabelen en draai de migraties in <code>supabase/migrations</code>.</p>
           <Link href="/dashboard" className="mt-5 inline-block text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
         </div>
@@ -398,77 +537,235 @@ export default async function InkoopPage({ searchParams }: { searchParams: Promi
     );
   }
 
-  const [partijen, alle] = await Promise.all([teBestellenPerInkooppartij(), listInkoopregels()]);
-  const rest = alle.filter((r) => r.status !== 'te_bestellen');
+  const [partijen, kpi, alleOrders, losse] = await Promise.all([
+    teBestellenPerInkooppartij(),
+    inkoopKpis(),
+    listInkooporders({}),
+    losseOpenRegels(),
+  ]);
+  const inkoopordersKlaar = alleOrders.klaar;
+  const tab = sp.tab === 'orders' || sp.tab === 'regels' ? sp.tab : 'werk';
+
+  // Inkooporders met filters (alleen als we die tab tonen). Eerst alles behalve
+  // de status, voor de aantallen op de chips; daarna de status erover.
+  const basisVoorChips =
+    tab === 'orders' && (sp.partij || sp.periode || sp.order)
+      ? (await listInkooporders({ partij: sp.partij, periode: sp.periode, ordernummer: sp.order })).orders
+      : alleOrders.orders;
+  const gefilterdeOrders = basisVoorChips.filter((o) => {
+    if (!sp.status) return true;
+    if (sp.status === 'open') return o.status === 'verstuurd' || o.status === 'deels_ontvangen';
+    if (sp.status === 'te_laat') return o.teLaat;
+    return o.status === sp.status;
+  });
+  const telPerStatus: Record<string, number> = {};
+  for (const c of PO_CHIPS) telPerStatus[c.code] = 0;
+  for (const o of basisVoorChips) {
+    telPerStatus[o.status] = (telPerStatus[o.status] ?? 0) + 1;
+    if (o.status === 'verstuurd' || o.status === 'deels_ontvangen') telPerStatus.open += 1;
+    if (o.teLaat) telPerStatus.te_laat += 1;
+  }
+  const chipUrl = (code: string) => {
+    const p = new URLSearchParams({ tab: 'orders' });
+    if (code) p.set('status', code);
+    if (sp.partij) p.set('partij', sp.partij);
+    if (sp.periode) p.set('periode', sp.periode);
+    if (sp.order) p.set('order', sp.order);
+    return `/dashboard/inkoop?${p.toString()}`;
+  };
 
   const totaalStuks = partijen.reduce((t, p) => t + p.aantalStuks, 0);
   const totaalWaarde = Math.round(partijen.reduce((t, p) => t + p.inkoopwaarde, 0) * 100) / 100;
   const totaalZonderPrijs = partijen.reduce((t, p) => t + p.regelsZonderPrijs, 0);
   const boodschap = melding(ok, aantal, gemaild);
+  const openLosse = losse.filter((r) => r.status !== 'geleverd').length;
+
+  const tabs = [
+    { id: 'werk', label: 'Nog te bestellen', badge: kpi.teBestellenRegels },
+    { id: 'orders', label: 'Inkooporders', badge: inkoopordersKlaar ? alleOrders.orders.filter((o) => o.status !== 'ontvangen' && o.status !== 'geannuleerd').length : null },
+    { id: 'regels', label: inkoopordersKlaar ? 'Losse regels' : 'Besteld en geleverd', badge: openLosse || null },
+  ];
 
   return (
-    <main className="container-app py-6">
+    <main className="container-app pb-12">
       <div className="dash-kop flex items-center justify-between gap-4">
         <h1 className="dash-h1">Inkoop</h1>
-        <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
+        <Link href="/dashboard/voorraad?status=onder_minimum" className="knop-tekst">Voorraad onder minimum</Link>
       </div>
-      <p className="mt-2 dash-sub">
-        Alles wat besteld moet worden, gegroepeerd per inkooppartij en daarbinnen per merk. Zo bestel je bij Houweling
-        alle merken in één sessie in plaats van tien keer apart in te loggen.
-      </p>
 
       {boodschap && (
         <p
           className={`mt-4 rounded-lg border px-4 py-2.5 text-[13px] font-semibold ${
-            boodschap.waarschuwing
-              ? 'border-red-200 bg-red-50 text-red-700'
-              : 'border-green-200 bg-green-50 text-green-800'
+            boodschap.waarschuwing ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-800'
           }`}
         >
           {boodschap.tekst}
         </p>
       )}
 
-      <section className="mt-8">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="font-display text-xl font-bold text-ink-900">Te bestellen</h2>
-          {partijen.length > 0 && (
-            <p className="text-[13px] text-warm">
-              {meervoud(partijen.length, 'inkooppartij', 'inkooppartijen')} · {meervoud(totaalStuks, 'stuk', 'stuks')} ·{' '}
-              {euro(totaalWaarde)} in totaal
-              {totaalZonderPrijs > 0 &&
-                ` (${meervoud(totaalZonderPrijs, 'regel', 'regels')} zonder inkoopprijs ${
-                  totaalZonderPrijs === 1 ? 'telt' : 'tellen'
-                } niet mee)`}
+      <section aria-label="Kerncijfers" className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiTegel
+          label="Nog te bestellen"
+          waarde={euro(kpi.teBestellenWaarde)}
+          href="/dashboard/inkoop"
+          sub={<span className="text-warm">{meervoud(kpi.teBestellenRegels, 'regel', 'regels')} nog niet besteld{kpi.concepten ? ', deels al in een concept' : ''}</span>}
+        />
+        <KpiTegel
+          label="Open inkoopwaarde"
+          waarde={euro(kpi.openWaarde)}
+          href="/dashboard/inkoop?tab=orders&status=open"
+          sub={<span className="text-warm">besteld, nog niet binnen · {meervoud(kpi.openRegels, 'regel', 'regels')}</span>}
+        />
+        <KpiTegel
+          label="Te laat"
+          waarde={kpi.teLaat === null ? '-' : String(kpi.teLaat)}
+          href="/dashboard/inkoop?tab=orders&status=te_laat"
+          sub={
+            kpi.teLaat === null ? (
+              <span className="text-warm">komt na de databasemigratie</span>
+            ) : kpi.teLaat > 0 ? (
+              <span className="font-semibold text-red-700">{euro(kpi.teLaatWaarde ?? 0)} over de verwachte datum</span>
+            ) : (
+              <span className="text-warm">alles binnen de verwachte datum</span>
+            )
+          }
+        />
+        <KpiTegel
+          label="Deze week verwacht"
+          waarde={kpi.dezeWeek === null ? '-' : String(kpi.dezeWeek)}
+          href="/dashboard/inkoop?tab=orders&status=open&periode=week"
+          sub={<span className="text-warm">{kpi.concepten ? `${meervoud(kpi.concepten, 'concept wacht', 'concepten wachten')} op versturen` : 'inkooporders met leverdatum deze week'}</span>}
+        />
+      </section>
+
+      <nav aria-label="Onderdelen" className="mt-6 flex flex-wrap gap-1 border-b border-line">
+        {tabs.map((t) => {
+          const aan = t.id === tab;
+          return (
+            <Link
+              key={t.id}
+              href={tabUrl(t.id)}
+              aria-current={aan ? 'page' : undefined}
+              className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+                aan ? 'border-amber-600 text-ink-900' : 'border-transparent text-warm hover:text-ink-800'
+              }`}
+            >
+              {t.label}
+              {t.badge != null && t.badge !== 0 && (
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${aan ? 'bg-amber-100 text-amber-800' : 'bg-mist text-warm'}`}>{t.badge}</span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {tab === 'werk' && (
+        <section className="mt-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <p className="max-w-3xl dash-sub">
+              Gegroepeerd per inkooppartij en daarbinnen per merk, zodat je bij Houweling alle merken in één sessie bestelt.
+              {inkoopordersKlaar
+                ? ' Maak er een inkooporder van om hem te kunnen volgen tot hij binnen is, of vink af als je al besteld hebt.'
+                : ''}
             </p>
-          )}
-        </div>
-
-        {partijen.length === 0 ? (
-          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">
-            Er staat niets open om te bestellen. Inkoopregels ontstaan zodra je een order goedkeurt of ze op de
-            orderpagina genereert.
-          </p>
-        ) : (
-          <div className="mt-4 flex flex-col gap-8">
-            {partijen.map((p) => (
-              <PartijKaart key={p.sleutel} partij={p} />
-            ))}
+            {partijen.length > 0 && (
+              <p className="text-[13px] text-warm">
+                {meervoud(partijen.length, 'inkooppartij', 'inkooppartijen')} · {meervoud(totaalStuks, 'stuk', 'stuks')} · {euro(totaalWaarde)}
+                {totaalZonderPrijs > 0 && ` (${meervoud(totaalZonderPrijs, 'regel', 'regels')} zonder inkoopprijs niet meegeteld)`}
+              </p>
+            )}
           </div>
-        )}
-      </section>
 
-      <section className="mt-12">
-        <h2 className="font-display text-xl font-bold text-ink-900">Al besteld of geleverd</h2>
-        {rest.length === 0 ? (
-          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">
-            Nog niets besteld. Zodra je hierboven regels afvinkt als besteld, komen ze hier te staan en kun je de
-            levering vastleggen.
+          {partijen.length === 0 ? (
+            <div className="mt-4">
+              <EmptyState
+                titel="Niets te bestellen"
+                tekst="Inkoopregels ontstaan als je een order goedkeurt of ze op de orderpagina genereert, en via Bijbestellen op de voorraadpagina."
+                actieHref="/dashboard/voorraad?status=onder_minimum"
+                actieLabel="Voorraad onder minimum bekijken"
+              />
+            </div>
+          ) : (
+            <div className="mt-4 flex flex-col gap-8">
+              {partijen.map((p) => (
+                <PartijKaart key={p.sleutel} partij={p} inkoopordersKlaar={inkoopordersKlaar} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {tab === 'orders' && (
+        <section className="mt-5">
+          {!inkoopordersKlaar ? (
+            <EmptyState
+              titel="Inkooporders komen na de databasemigratie"
+              tekst="Tot die gedraaid is, zie je bestelde regels onder Besteld en geleverd en kun je daar de ontvangst boeken."
+              actieHref="/dashboard/inkoop?tab=regels"
+              actieLabel="Naar besteld en geleverd"
+            />
+          ) : (
+            <>
+              <div className="flex flex-wrap items-end gap-3">
+                <UrlSelect param="partij" label="Leverancier" leegLabel="Alle inkooppartijen" opties={alleOrders.partijen.map((p) => ({ value: p, label: p }))} />
+                <UrlSegment
+                  param="periode"
+                  label="Besteld in"
+                  standaard=""
+                  opties={[
+                    { value: '', label: 'Altijd' },
+                    { value: 'week', label: '7 dagen' },
+                    { value: '30', label: '30 dagen' },
+                    { value: '90', label: '90 dagen' },
+                    { value: '365', label: 'Jaar' },
+                  ]}
+                />
+                <LiveZoekveld param="order" placeholder="Bijv. 1042" label="Klantorder" breedte="w-40" vast={{ tab: 'orders' }} />
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <Link href={chipUrl('')} className={`chip ${sp.status ? '' : 'chip-aan'}`}>
+                  Alle
+                  <span className="chip-tel">{basisVoorChips.length}</span>
+                </Link>
+                {PO_CHIPS.filter((c) => telPerStatus[c.code] > 0 || sp.status === c.code).map((c) => (
+                  <Link key={c.code} href={chipUrl(c.code)} className={`chip ${sp.status === c.code ? 'chip-aan' : ''}`}>
+                    {c.label}
+                    <span className="chip-tel">{telPerStatus[c.code]}</span>
+                  </Link>
+                ))}
+              </div>
+              <div className="mt-4">
+                {gefilterdeOrders.length === 0 ? (
+                  <EmptyState
+                    tekst={alleOrders.orders.length === 0 ? 'Nog geen inkooporders. Maak er een vanuit Nog te bestellen.' : 'Geen inkooporders met deze filters.'}
+                    actieHref={alleOrders.orders.length === 0 ? '/dashboard/inkoop' : '/dashboard/inkoop?tab=orders'}
+                    actieLabel={alleOrders.orders.length === 0 ? 'Naar nog te bestellen' : 'Filters wissen'}
+                  />
+                ) : (
+                  <OrdersTabel orders={gefilterdeOrders} />
+                )}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {tab === 'regels' && (
+        <section className="mt-5">
+          <p className="max-w-3xl dash-sub">
+            {inkoopordersKlaar
+              ? 'Regels die besteld zijn zonder inkooporder, van voor de inkooporders bestonden. Boek hier de ontvangst: voor een klantorder schuift de order op, anders gaat het de voorraad in.'
+              : 'Bestelde regels. Boek de ontvangst per regel: voor een klantorder schuift de order op, anders gaat het de voorraad in.'}
           </p>
-        ) : (
-          <Tabel groepen={groepeer(rest)} />
-        )}
-      </section>
+          {losse.length === 0 ? (
+            <div className="mt-4">
+              <EmptyState tekst="Geen losse bestelde regels." />
+            </div>
+          ) : (
+            <Tabel groepen={groepeer(losse)} />
+          )}
+        </section>
+      )}
     </main>
   );
 }

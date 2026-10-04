@@ -65,6 +65,7 @@ export default function PortaalNav({ rol, actief }: { rol: PortaalRol | null; ac
         { href: '/portaal/facturen', label: 'Facturen' },
       ],
     },
+    { kind: 'link', href: '/portaal/sparen', label: 'Sparen', toon: true },
     { kind: 'link', href: '/portaal/klachten', label: 'Vragen en klachten', toon: true },
   ];
 

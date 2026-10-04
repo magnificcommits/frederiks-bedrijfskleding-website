@@ -258,7 +258,7 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
       ),
     sb.from('leads')
       .select('id, name, company, status, created_at, opvolgdatum')
-      .or(`created_at.gte.${startVenster},status.in.(nieuw,offerte)`)
+      .or(`created_at.gte.${startVenster},status.in.(nieuw,contact,afspraak,offerte)`)
       .order('created_at', { ascending: false })
       .limit(1000),
     sb.from('portaal_bestellingen')
@@ -389,7 +389,7 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
     if (inVorigeTotNu(d)) leadsVorige += 1;
   }
   const wachtend = leads.filter((l) => l.status === 'nieuw');
-  const opvolgen = leads.filter((l) => (l.status === 'nieuw' || l.status === 'offerte') && l.opvolgdatum && l.opvolgdatum <= vandaag).length;
+  const opvolgen = leads.filter((l) => ['nieuw', 'contact', 'afspraak', 'offerte'].includes(l.status ?? '') && l.opvolgdatum && l.opvolgdatum <= vandaag).length;
   const oudsteWachtend = wachtend.reduce<LeadRij | null>((oud, l) => (!oud || l.created_at < oud.created_at ? l : oud), null);
 
   /* ---- Agenda: taken, afspraken en passessies van vandaag t/m +6 --- */

@@ -1,6 +1,12 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { laadFacturen, laadOrders, laadRegels, verrijkRegels, NIET_VERKOCHT as NIET_VERKOCHT_STATUSSEN } from '@/lib/kms/analyseData';
 
 /**
+ * Oudere functies voor de analysepagina. De pagina zelf gebruikt nu
+ * lib/kms/analyse.ts (periodes, vergelijking, tabbladen). Deze blijven voor
+ * bestaande aanroepen, met dezelfde definities als de startpagina:
+ * omzet = gefactureerd excl. btw op factuurdatum, merk via product of variant.
+ *
  * Data-access voor het management-/analytics-dashboard.
  * Alle queries via kmsAdmin() (service-role, omzeilt RLS). Alleen server-side gebruiken,
  * altijd achter dashAuthed(). Aggregatie gebeurt in-memory met Map, net als rapportages.ts.
@@ -132,16 +138,13 @@ export async function omzetPerMaand(maanden = 12): Promise<MaandOmzet[]> {
   const leeg = (): MaandOmzet[] => reeks.map((m) => ({ maand: m, label: maandLabel(m), omzet: 0 }));
   if (!sb) return leeg();
 
-  // Omzet = som van betaalde facturen, gedateerd op betaaldatum (zelfde aanpak als rapportages.ts).
-  const { data } = await sb.from('facturen').select('status, bedrag_incl, betaaldatum');
-  const facturen = (data as { status: string; bedrag_incl: number | null; betaaldatum: string | null }[]) ?? [];
-
+  // Omzet = gefactureerd excl. btw op factuurdatum, zonder concepten (gelijk aan de startpagina).
+  const facturen = await laadFacturen();
   const perMaand = new Map<string, number>();
   for (const f of facturen) {
-    if (f.status !== 'betaald' || !f.betaaldatum) continue;
-    const key = maandKey(f.betaaldatum);
+    const key = f.factuurdatum ? f.factuurdatum.slice(0, 7) : '';
     if (!key) continue;
-    perMaand.set(key, (perMaand.get(key) ?? 0) + (Number(f.bedrag_incl) || 0));
+    perMaand.set(key, (perMaand.get(key) ?? 0) + (Number(f.bedrag_excl) || 0));
   }
 
   return reeks.map((m) => ({ maand: m, label: maandLabel(m), omzet: perMaand.get(m) ?? 0 }));
@@ -259,40 +262,18 @@ export type TopMerk = { merk: string; stuks: number; omzet: number };
 
 /** Best verkochte merken op stuks, gegroepeerd via het merk van het product (geen concept/offerte/geannuleerd). */
 export async function topMerken(limit = 8): Promise<TopMerk[]> {
-  const sb = kmsAdmin();
-  if (!sb) return [];
-  const { data: ordersData } = await sb.from('orders').select('id, status');
-  const geldig = new Set(
-    ((ordersData as { id: string; status: string }[]) ?? [])
-      .filter((o) => !['concept', 'geannuleerd', 'offerte_verstuurd'].includes(o.status))
-      .map((o) => o.id),
-  );
-  if (geldig.size === 0) return [];
-  const { data: productenData } = await sb.from('producten').select('id, merk');
-  const merkPerProduct = new Map<string, string>();
-  ((productenData as { id: string; merk: string | null }[]) ?? []).forEach((p) => {
-    const merk = p.merk && p.merk.trim() !== '' ? p.merk : 'Onbekend';
-    merkPerProduct.set(p.id, merk);
-  });
-  const { data: regels } = await sb
-    .from('orderregels')
-    .select('order_id, product_id, aantal, stukprijs');
+  if (!kmsAdmin()) return [];
+  const orders = (await laadOrders()).filter((o) => !NIET_VERKOCHT_STATUSSEN.has(o.status));
+  if (orders.length === 0) return [];
+  // Merk via het product, anders via de variant; zonder beide is het een vrije regel.
+  const regels = await verrijkRegels(await laadRegels(orders.map((o) => o.id)));
   const perMerk = new Map<string, TopMerk>();
-  (
-    (regels as {
-      order_id: string;
-      product_id: string | null;
-      aantal: number | null;
-      stukprijs: number | null;
-    }[]) ?? []
-  ).forEach((r) => {
-    if (!geldig.has(r.order_id)) return;
-    const merk = (r.product_id ? merkPerProduct.get(r.product_id) : undefined) ?? 'Onbekend';
-    const huidig = perMerk.get(merk) ?? { merk, stuks: 0, omzet: 0 };
-    huidig.stuks += Number(r.aantal) || 0;
-    huidig.omzet += (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0);
-    perMerk.set(merk, huidig);
-  });
+  for (const r of regels) {
+    const huidig = perMerk.get(r.merk) ?? { merk: r.merk, stuks: 0, omzet: 0 };
+    huidig.stuks += r.stuks;
+    huidig.omzet += r.omzet;
+    perMerk.set(r.merk, huidig);
+  }
   return [...perMerk.values()].sort((a, b) => b.stuks - a.stuks).slice(0, limit);
 }
 

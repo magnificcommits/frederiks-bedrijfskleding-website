@@ -17,6 +17,7 @@ import RegelToevoegen from './RegelToevoegen';
 import TotaalKaart from '@/components/dashboard/TotaalKaart';
 import { listPakketten } from '@/lib/kms/pakketten';
 import { naarDocumentData } from '@/components/dashboard/OfferteDocument';
+import { klantAdresVoorDocument } from '@/lib/kms/documentKlant';
 import { OfferteVoorbeeldProvider, VoorbeeldKnop, VoorbeeldIndeling, MailNaarVeld } from './OfferteVoorbeeld';
 import KopgegevensForm from './KopgegevensForm';
 
@@ -76,11 +77,14 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
   }
 
   const { subtotaal, korting, btw, totaal, marge } = offerteTotalen(offerte.regels, offerte.btw_pct);
-  const pakketten = offerte.organisatie_id ? await listPakketten(offerte.organisatie_id) : [];
+  const [pakketten, klantAdres] = await Promise.all([
+    offerte.organisatie_id ? listPakketten(offerte.organisatie_id) : Promise.resolve([]),
+    klantAdresVoorDocument(offerte.organisatie_id),
+  ]);
   const verlopen = !!offerte.geldig_tot && offerte.status !== 'geaccepteerd' && offerte.status !== 'afgewezen' && new Date(offerte.geldig_tot) < new Date(new Date().toDateString());
 
   return (
-    <OfferteVoorbeeldProvider opgeslagen={naarDocumentData(offerte)} afdrukHref={`/dashboard/offertes/${id}/afdruk`}>
+    <OfferteVoorbeeldProvider opgeslagen={{ ...naarDocumentData(offerte), klant_adres: klantAdres }} afdrukHref={`/dashboard/offertes/${id}/afdruk`}>
     <main className="container-app py-6">
       <div className="dash-kop justify-between gap-4">
         <div>

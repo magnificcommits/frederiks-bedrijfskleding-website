@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { aiOpvolgmailActie } from './actions';
 
 type Props = {
@@ -9,19 +9,31 @@ type Props = {
   branche: string;
   bericht: string;
   status: string;
+  /** Laatste tijdlijnregels, zodat de mail aansluit op wat er al besproken is. */
+  context?: string;
+  /** E-mailadres van de lead: dan kan het concept direct in een nieuwe mail. */
+  email?: string | null;
+  /** Meteen uitgeklapt tonen (detailpagina). */
+  open?: boolean;
 };
 
 const beginstand: { tekst?: string; error?: string } = {};
 
-export default function AiOpvolg({ naam, bedrijf, branche, bericht, status }: Props) {
+export default function AiOpvolg({ naam, bedrijf, branche, bericht, status, context = '', email = null, open: beginOpen = false }: Props) {
   const [state, actie, bezig] = useActionState(aiOpvolgmailActie, beginstand);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(beginOpen);
+  const [tekst, setTekst] = useState('');
   const [gekopieerd, setGekopieerd] = useState(false);
 
+  // Nieuw concept binnen: in het bewerkbare veld zetten.
+  useEffect(() => {
+    if (state?.tekst) setTekst(state.tekst);
+  }, [state?.tekst]);
+
   async function kopieer() {
-    if (!state?.tekst) return;
+    if (!tekst) return;
     try {
-      await navigator.clipboard.writeText(state.tekst);
+      await navigator.clipboard.writeText(tekst);
       setGekopieerd(true);
       setTimeout(() => setGekopieerd(false), 2000);
     } catch {
@@ -29,55 +41,48 @@ export default function AiOpvolg({ naam, bedrijf, branche, bericht, status }: Pr
     }
   }
 
+  const onderwerp = `Je aanvraag bij Frederiks Bedrijfskleding${bedrijf ? ` (${bedrijf})` : ''}`;
+  const mailHref = email && tekst ? `mailto:${email}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}` : null;
+
   return (
-    <div className="mt-3 border-t border-line pt-3">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="text-xs font-semibold text-amber-700 hover:text-amber-800"
-        aria-expanded={open}
-      >
-        {open ? 'Verberg AI-opvolgmail' : 'AI-opvolgmail'}
-      </button>
+    <div>
+      {!beginOpen && (
+        <button type="button" onClick={() => setOpen((v) => !v)} className="knop-tekst -ml-2" aria-expanded={open}>
+          {open ? 'Verberg AI-opvolgmail' : 'AI-opvolgmail'}
+        </button>
+      )}
 
       {open && (
-        <div className="mt-2">
+        <div className={beginOpen ? '' : 'mt-2'}>
           <form action={actie}>
             <input type="hidden" name="naam" value={naam} />
             <input type="hidden" name="bedrijf" value={bedrijf} />
             <input type="hidden" name="branche" value={branche} />
             <input type="hidden" name="bericht" value={bericht} />
             <input type="hidden" name="status" value={status} />
-            <button
-              type="submit"
-              disabled={bezig}
-              className="w-full rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-ink-700 ring-1 ring-line hover:bg-mist disabled:opacity-60"
-            >
-              {bezig ? 'Bezig…' : 'Genereer concept-mail'}
+            <input type="hidden" name="context" value={context} />
+            <button type="submit" disabled={bezig} className="knop-stil w-full disabled:cursor-wait disabled:opacity-70">
+              {bezig ? 'Concept schrijven…' : tekst ? 'Nieuw concept' : 'Schrijf concept-mail'}
             </button>
           </form>
 
           {state?.error && (
-            <p className="mt-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800">
-              {state.error}
-            </p>
+            <p className="mt-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-[12px] font-medium text-amber-800">{state.error}</p>
           )}
 
-          {state?.tekst && (
+          {tekst && (
             <div className="mt-2">
-              <textarea
-                readOnly
-                value={state.tekst}
-                rows={8}
-                className="w-full rounded-md border border-line bg-white px-2.5 py-2 text-xs focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
-              />
-              <button
-                type="button"
-                onClick={kopieer}
-                className="mt-1.5 rounded-md border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink-700 hover:bg-mist"
-              >
-                {gekopieerd ? 'Gekopieerd' : 'Kopieer'}
-              </button>
+              <label className="sr-only" htmlFor="ai-concept">Concept-mail</label>
+              <textarea id="ai-concept" value={tekst} onChange={(e) => setTekst(e.target.value)} rows={9} className="veld leading-relaxed" />
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                <button type="button" onClick={kopieer} className="knop-stil">
+                  {gekopieerd ? 'Gekopieerd' : 'Kopieer'}
+                </button>
+                {mailHref && (
+                  <a href={mailHref} className="knop-stil">Open in mail</a>
+                )}
+              </div>
+              <p className="veld-hint">Lees het na voor je het verstuurt. Leg daarna op de tijdlijn vast dat je gemaild hebt.</p>
             </div>
           )}
         </div>

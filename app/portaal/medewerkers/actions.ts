@@ -124,8 +124,8 @@ export async function wijzigRolAction(formData: FormData) {
   await guardBeheerder();
   const email = String(formData.get('email') ?? '').trim();
   const rol = leesRol(String(formData.get('rol') ?? 'medewerker'));
-  if (email) await wijzigRol(email, rol);
-  redirect('/portaal/medewerkers?ok=rol');
+  const res = email ? await wijzigRol(email, rol) : { ok: false };
+  redirect(res.ok ? '/portaal/medewerkers?ok=rol' : '/portaal/medewerkers?fout=opslaan');
 }
 
 /** Trekt de login van een persoon in. Alleen beheerder. */

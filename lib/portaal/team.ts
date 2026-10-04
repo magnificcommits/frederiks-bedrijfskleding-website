@@ -158,8 +158,11 @@ export async function maakMedewerkerMetToegang(input: {
 export async function wijzigRol(email: string, rol: PortaalRol): Promise<{ ok: boolean; error?: string }> {
   const sb = await getServerSupabase();
   if (!sb) return { ok: false, error: 'Portaal niet geconfigureerd' };
-  const { error } = await sb.from('portaal_gebruikers').update({ rol }).ilike('email', email);
+  // .select() laat zien of er echt een rij is aangepast: RLS weigert stil (0 rijen)
+  // bij een ander bedrijf, zonder beheerdersrol of bij je eigen account.
+  const { data, error } = await sb.from('portaal_gebruikers').update({ rol }).ilike('email', email).select('email');
   if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: 'Geen rij aangepast' };
   return { ok: true };
 }
 

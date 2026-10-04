@@ -61,8 +61,8 @@ export async function wijzigRolAction(formData: FormData) {
   await guardBeheerder();
   const email = String(formData.get('email') ?? '').trim();
   const rol = leesRol(String(formData.get('rol') ?? 'medewerker'));
-  if (email) await wijzigRol(email, rol);
-  redirect('/portaal/team?ok=rol');
+  const res = email ? await wijzigRol(email, rol) : { ok: false };
+  redirect(res.ok ? '/portaal/team?ok=rol' : '/portaal/team?fout=opslaan');
 }
 
 export async function trekToegangInAction(formData: FormData) {

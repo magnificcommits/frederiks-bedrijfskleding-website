@@ -66,6 +66,22 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   const [mailError, setMailError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Voorproefje van de homepage overnemen: kledingstuk, kleur en logo staan dan al klaar.
+  useEffect(() => {
+    try {
+      const ruw = sessionStorage.getItem('fb-pakket-proef');
+      if (!ruw) return;
+      sessionStorage.removeItem('fb-pakket-proef');
+      const p = JSON.parse(ruw) as { type?: string; kleur?: number; positie?: string; logo?: string | null };
+      if (typeof p.type === 'string' && typeof p.kleur === 'number' && kleuren[p.kleur]) {
+        setDraft((d) => ({ ...d, type: p.type as string, kleur: p.kleur as number, positie: typeof p.positie === 'string' ? p.positie : d.positie }));
+      }
+      if (typeof p.logo === 'string' && p.logo.startsWith('data:image/')) setLogo(p.logo);
+    } catch {
+      // Geen of kapotte opslag: gewoon leeg beginnen.
+    }
+  }, []);
+
   // Echte artikelen uit het assortiment ophalen bij het gekozen type en de kleur.
   // Faalt dit (of staat de database uit), dan blijft de configurator gewoon werken
   // met de generieke kledingtypes — de suggestie is een plus, geen voorwaarde.

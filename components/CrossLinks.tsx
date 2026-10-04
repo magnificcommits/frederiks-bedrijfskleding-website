@@ -13,7 +13,7 @@ const all: Tile[] = [
 export function CrossLinks({ exclude = '', title = 'Bekijk ook' }: { exclude?: string; title?: string }) {
   const tiles = all.filter((t) => t.href !== exclude).slice(0, 3);
   return (
-    <section className="container-x py-14">
+    <section className="container-x sec-md">
       <h2 className="kop-2">{title}</h2>
       <div className="mt-6 grid gap-5 sm:grid-cols-3">
         {tiles.map((t) => (

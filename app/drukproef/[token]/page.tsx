@@ -34,7 +34,7 @@ export default async function DrukproefTokenPage({
 
   if (!proef) {
     return (
-      <main className="container-x py-16">
+      <main className="container-x sec-md">
         <div className="mx-auto max-w-md rounded-2xl border border-line bg-white p-8 text-center shadow-soft">
           <Kop />
           <h1 className="mt-6 font-display text-xl font-bold text-ink-900">Drukproef niet gevonden</h1>
@@ -54,7 +54,7 @@ export default async function DrukproefTokenPage({
     .join(' · ');
 
   return (
-    <main className="container-x py-16">
+    <main className="container-x sec-md">
       <AfdrukStijl doelId="drukproef-pagina" />
       <div id="drukproef-pagina" className={`mx-auto rounded-2xl border border-line bg-white p-8 shadow-soft ${ontwerp ? 'max-w-4xl' : 'max-w-md'}`}>
         <Kop />

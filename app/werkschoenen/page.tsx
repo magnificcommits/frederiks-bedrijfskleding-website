@@ -40,7 +40,7 @@ export default function WerkschoenenPage() {
         intro="Veilige, comfortabele schoenen die een hele werkdag goed blijven zitten. Met persoonlijk pasadvies en de juiste klasse voor jouw werk, of je nu in de bouw, de logistiek, de agrarische sector of de industrie werkt." />
       <BrandStrip />
 
-      <section className="container-x py-16">
+      <section className="container-x sec-md">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <div className="prose-nl text-lg">
             <p>In de Achterhoek hechten we waarde aan hard werken, betrouwbaarheid en duurzaamheid. Die waarden zie je terug in onze collectie. We leveren uitsluitend merken die bekendstaan om hun lange levensduur, stevige constructie en goede bescherming: denk aan verstevigde of stalen neuzen, antislipzolen en modellen die tegen extreme temperaturen en ruwe ondergronden kunnen.</p>
@@ -65,9 +65,8 @@ export default function WerkschoenenPage() {
       </section>
 
       <section className="border-y border-line bg-mist">
-        <div className="container-x py-16">
-          <p className="eyebrow">In 3 stappen</p>
-          <h2 className="mt-3 kop-2">Zo kies je samen met ons de juiste schoen</h2>
+        <div className="container-x sec-md">
+          <h2 className="kop-2">Zo kies je samen met ons de juiste schoen</h2>
           <ol className="mt-8 grid gap-6 sm:grid-cols-3">
             <li className="rounded-xl border-l-2 border-amber-500 bg-white p-6 shadow-soft">
               <span className="font-display text-2xl font-extrabold text-amber-500">1</span>

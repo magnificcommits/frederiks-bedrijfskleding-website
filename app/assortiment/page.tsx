@@ -38,7 +38,7 @@ export default async function AssortimentPage() {
         beeld={<ProductMozaiek producten={dwarsdoorsnede} />}
       />
 
-      <section className="container-x py-14">
+      <section className="container-x sec-md">
         <h2 className="kop-2">Per categorie</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categorieen.map((c) => (
@@ -56,7 +56,7 @@ export default async function AssortimentPage() {
       </section>
 
       <section className="border-t border-line bg-mist">
-        <div className="container-x py-14">
+        <div className="container-x sec-md">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="kop-2">Per merk</h2>
             <Link href="/merk" className="text-sm font-bold text-amber-700 hover:underline">

@@ -45,7 +45,7 @@ export default async function ArtikelPage({ params }: { params: Promise<{ slug: 
       ])} />
 
       <section className="border-b border-line bg-mist">
-        <div className="container-x py-12 sm:py-16">
+        <div className="container-x sec-md">
           <nav className="text-xs text-warm" aria-label="Kruimelpad">
             <Link href="/" className="hover:text-amber-800">Home</Link>
             <span className="px-1.5">/</span>

@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { branches, branchesBySlug } from '@/content/branches';
-import { werkwijze } from '@/content/werkwijze';
+import { Werkwijze } from '@/components/Werkwijze';
 import { site } from '@/content/site';
 import { Faq } from '@/components/Faq';
 import { ContactSectie } from '@/components/ContactSectie';
@@ -190,22 +190,7 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
         intro="Een greep uit de catalogus. Bij het passen kijken we wat bij jouw werk past; dit is een startpunt, geen vaste lijst."
       />
 
-      {/* Werkwijze */}
-      <section className="border-y border-line bg-mist">
-        <div className="container-x sec-md">
-          <h2 className="kop-2">Van eerste gesprek tot nabestelling</h2>
-          <ol className="mt-6 grid gap-x-6 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
-            {werkwijze.map((s, i) => (
-              <li key={s.nr} className="relative">
-                {i < werkwijze.length - 1 && <span className="absolute left-12 right-0 top-4 hidden border-t-2 border-dashed border-amber-400 lg:block" aria-hidden="true" />}
-                <span className="stap-nr relative" data-stand="nu" aria-hidden="true">{i + 1}</span>
-                <h3 className="mt-3 font-display text-[1.0625rem] font-extrabold text-ink-900">{s.title}</h3>
-                <p className="mt-1 text-sm leading-snug text-warm">{s.text}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
+      <Werkwijze />
 
       <Faq items={b.faq} title={`Veelgestelde vragen over ${b.navLabel.toLowerCase()}`} />
 

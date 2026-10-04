@@ -5,10 +5,9 @@ import { branches } from '@/content/branches';
 export function BrancheGrid() {
   return (
     <section id="branches" className="scroll-mt-20 border-y border-line bg-mist">
-      <div className="container-x py-16 sm:py-24">
+      <div className="container-x sec-md">
         <div className="max-w-2xl">
-          <p className="eyebrow">Voor elke branche</p>
-          <h2 className="mt-3 kop-2">Kleding afgestemd op jouw sector</h2>
+          <h2 className="kop-2">Kleding afgestemd op jouw sector</h2>
           <p className="mt-3 max-w-[52ch] text-lg text-warm">We kleden elke sector. Samen kiezen we een pakket dat past bij het werk en bij je uitstraling.</p>
         </div>
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">

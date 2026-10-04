@@ -4,10 +4,9 @@ import Link from 'next/link';
 import { plaatsen, plaatsenBySlug } from '@/content/plaatsen';
 import { branchesBySlug } from '@/content/branches';
 import { artikelen } from '@/content/kennisbank';
-import { werkwijze } from '@/content/werkwijze';
+import { Werkwijze } from '@/components/Werkwijze';
 import { site } from '@/content/site';
 import { ContactSectie } from '@/components/ContactSectie';
-import { AfspraakSectie } from '@/components/AfspraakSectie';
 import { Reviews } from '@/components/Reviews';
 import { PageHero } from '@/components/PageHero';
 import { Faq } from '@/components/Faq';
@@ -79,7 +78,7 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
         </div>
       </section>
 
-      <section className="container-x py-16">
+      <section className="container-x sec-md">
         <div className="grid gap-12 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <div className="prose-nl text-lg">
@@ -138,22 +137,7 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
         />
       )}
 
-      {/* Werkwijze */}
-      <section className="border-y border-line bg-mist">
-        <div className="container-x py-16">
-          <p className="eyebrow">Zo werken we</p>
-          <h2 className="mt-3 kop-2">Van eerste gesprek tot nabestelling</h2>
-          <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {werkwijze.map((s) => (
-              <li key={s.nr} className="rounded-xl border border-line bg-white p-5">
-                <span className="font-display text-2xl font-extrabold text-amber-500">{s.nr}</span>
-                <h3 className="mt-2 text-base font-bold text-ink-900">{s.title}</h3>
-                <p className="mt-2 text-sm text-warm">{s.text}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
+      <Werkwijze />
 
       <Faq items={p.faq} title={`Veelgestelde vragen over bedrijfskleding in ${p.name}`} />
 
@@ -168,13 +152,6 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
           ))}
         </p>
       </section>
-
-      <AfspraakSectie
-        titel={`Passen in ${p.name}? Plan het zelf`}
-        intro={`Jessi komt met pasmaten naar je bedrijf in ${p.name}, of je komt langs in de showroom in Hengelo. Liever eerst even bellen kan ook.`}
-        bron={`Regiopagina ${p.name}`}
-        standaardSoort="pasdag"
-      />
 
       <ContactSectie title={`Bedrijfskleding nodig in ${p.name}?`} />
     </>

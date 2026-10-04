@@ -128,7 +128,7 @@ export default async function RetournerenPage({
       />
 
       {/* Vijf stappen, als doorlopende reeks in plaats van losse kaartjes. */}
-      <section className="container-x py-14 sm:py-16">
+      <section className="container-x sec-md">
         <h2 className="text-balance kop-2">Zo gaat het</h2>
         <ol className="mt-8 grid gap-px border-y border-line sm:grid-cols-2 lg:grid-cols-5 lg:gap-8 lg:border-0">
           {STAPPEN.map((s, i) => (
@@ -175,7 +175,7 @@ export default async function RetournerenPage({
       </section>
 
       {/* Drie manieren, met de kosten er meteen bij. */}
-      <section className="container-x py-14 sm:py-16">
+      <section className="container-x sec-md">
         <h2 className="text-balance kop-2">Drie manieren om het terug te krijgen</h2>
         <div className="mt-8 grid gap-5 lg:grid-cols-3">
           {RETOUR_METHODES.map((m) => (

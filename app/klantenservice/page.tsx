@@ -33,9 +33,8 @@ export default async function KlantenservicePage() {
         intro="Heb je een vraag over een bestelling, een maat, het bedrukken of het klantportaal? Hieronder vind je de antwoorden, plus ons retourbeleid en garantie. Kom je er niet uit, dan helpt je vaste aanspreekpunt je persoonlijk verder."
       />
 
-      <section className="container-x py-12 sm:py-16">
-        <p className="eyebrow">Direct contact</p>
-        <h2 className="mt-3 kop-2">Even iemand spreken?</h2>
+      <section className="container-x sec-md">
+        <h2 className="kop-2">Even iemand spreken?</h2>
         <p className="mt-4 max-w-2xl text-warm">
           Liever meteen contact dan zelf zoeken? Bel of app ons gerust. Je krijgt antwoord van iemand die je bedrijf kent.
         </p>
@@ -71,8 +70,7 @@ export default async function KlantenservicePage() {
 
       <section className="border-y border-line bg-mist">
         <div className="container-x py-12">
-          <p className="eyebrow">Zelf snel regelen</p>
-          <h2 className="mt-3 kop-2">Veelgevraagde onderwerpen</h2>
+          <h2 className="kop-2">Veelgevraagde onderwerpen</h2>
           <ul className="mt-6 flex flex-wrap gap-3">
             {serviceOnderwerpen.map((o) => (
               <li key={o.href}>
@@ -93,9 +91,8 @@ export default async function KlantenservicePage() {
       </div>
 
       <section id="retourbeleid" className="scroll-mt-24 border-t border-line bg-mist">
-        <div className="container-x py-16">
-          <p className="eyebrow">Service</p>
-          <h2 className="mt-3 kop-2">Retourbeleid</h2>
+        <div className="container-x sec-md">
+          <h2 className="kop-2">Retourbeleid</h2>
           <div className="mt-6 grid gap-10 lg:grid-cols-2">
             <div>
               <p className="rounded-2xl border-l-2 border-amber-500 bg-white p-5 text-lg font-semibold text-ink-900 shadow-soft">
@@ -125,9 +122,8 @@ export default async function KlantenservicePage() {
         </div>
       </section>
 
-      <section id="garantie" className="scroll-mt-24 container-x py-16">
-        <p className="eyebrow">Service</p>
-        <h2 className="mt-3 kop-2">Garantie</h2>
+      <section id="garantie" className="scroll-mt-24 container-x sec-md">
+        <h2 className="kop-2">Garantie</h2>
         <div className="mt-6 max-w-3xl">
           <p className="text-lg text-warm">{garantie.intro}</p>
           <p className="mt-4 text-warm">{garantie.tekst}</p>
@@ -148,9 +144,8 @@ export default async function KlantenservicePage() {
       </section>
 
       <section id="levertijd-en-bezorging" className="scroll-mt-24 border-t border-line bg-mist">
-        <div className="container-x py-16">
-          <p className="eyebrow">Service</p>
-          <h2 className="mt-3 kop-2">Levertijd en bezorging</h2>
+        <div className="container-x sec-md">
+          <h2 className="kop-2">Levertijd en bezorging</h2>
           <div className="mt-6 max-w-3xl">
             <p className="text-warm">{levering.intro}</p>
             <ul className="mt-6 space-y-3">

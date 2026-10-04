@@ -25,95 +25,59 @@ export default function MaattabellenPage() {
         intro="Bepaal zelf de juiste maat met onderstaande richtlijnen voor bovenkleding, broeken en schoenen. De getallen zijn richtwaarden; maten verschillen per merk en model."
       />
 
-      <section className="container-x py-16">
-        <div className="prose-nl max-w-2xl text-lg">
-          <p>
-            Pak een meetlint en meet over je gewone kleding heen, niet over je
-            werkkleding. Twijfel je tussen twee maten, kies dan meestal de grootste,
-            zodat je vrij kunt bewegen. Per tabel hieronder lees je precies hoe je meet.
-          </p>
-          <p>
-            Twijfel je over de maat? Wij komen langs om te passen, ook in grote maten. Zo
-            zit elke collega in de juiste maat zonder gedoe.{' '}
-            <Link href="/kledingadvies" className="font-semibold text-amber-700 hover:underline">
-              Vraag advies aan
-            </Link>
-            .
-          </p>
-        </div>
-      </section>
-
-      {maattabellen.map((tabel, index) => (
-        <section
-          key={tabel.id}
-          id={tabel.id}
-          className={index % 2 === 1 ? 'border-y border-line bg-mist' : ''}
-        >
-          <div className="container-x py-16">
-            <p className="eyebrow">Maattabel</p>
-            <h2 className="mt-3 kop-2">{tabel.titel}</h2>
-            <p className="mt-3 max-w-2xl text-warm">{tabel.intro}</p>
-
-            <div className="mt-8 overflow-x-auto rounded-2xl border border-line bg-white shadow-soft">
-              <table className="w-full min-w-[32rem] border-collapse text-left text-sm">
-                <thead className="bg-mist">
-                  <tr>
-                    {tabel.kolommen.map((kop) => (
-                      <th
-                        key={kop}
-                        scope="col"
-                        className="border-b border-line px-4 py-3 font-bold text-ink-900"
-                      >
-                        {kop}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tabel.rijen.map((rij, rijIndex) => (
-                    <tr
-                      key={rij[0]}
-                      className={rijIndex % 2 === 1 ? 'bg-mist/50' : 'bg-white'}
-                    >
-                      {rij.map((cel, celIndex) => (
-                        <td
-                          key={`${tabel.id}-${rijIndex}-${celIndex}`}
-                          className={
-                            celIndex === 0
-                              ? 'border-b border-line px-4 py-3 font-semibold text-ink-900'
-                              : 'border-b border-line px-4 py-3 text-warm'
-                          }
-                        >
-                          {cel}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-4 rounded-xl border-l-2 border-amber-500 bg-white p-5 shadow-soft">
-              <h3 className="text-sm font-bold text-ink-900">Hoe meet je?</h3>
-              <p className="mt-2 text-sm text-warm">{tabel.hoeMeten}</p>
+      <section className="bg-mist">
+        <div className="container-x sec-md">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:items-center lg:gap-10">
+            <p className="max-w-[68ch] text-lg text-warm">
+              Pak een meetlint en meet over je gewone kleding heen, niet over je werkkleding. Twijfel je tussen twee
+              maten, kies dan meestal de grootste, zodat je vrij kunt bewegen. Bij elke tabel staat hoe je meet.
+            </p>
+            <div className="paneel-donker p-5 sm:p-6">
+              <p className="font-display text-lg font-extrabold text-white">Liever zeker weten dat het past?</p>
+              <p className="mt-1 text-sm text-ink-200">We komen langs met pasmodellen, ook in grote maten.</p>
+              <Link href="/afspraak?soort=pasdag" className="btn-primary mt-4 w-full" data-cta="afspraak">Plan een pasdag</Link>
             </div>
           </div>
-        </section>
-      ))}
 
-      <section className="container-x py-16">
-        <div className="rounded-2xl border border-line bg-white p-8 shadow-soft">
-          <h2 className="text-2xl font-extrabold text-ink-900 sm:text-3xl">
-            Liever zeker weten dat het past?
-          </h2>
-          <p className="mt-3 max-w-2xl text-warm">
-            Een maattabel is een goede start, maar passen geeft de meeste zekerheid. Wij
-            komen bij je langs met pasmodellen, ook in grote maten, zodat iedereen in het
-            team in de juiste maat zit.
-          </p>
-          <Link href="/kledingadvies" className="btn-primary mt-6 inline-flex">
-            Vraag advies aan
-          </Link>
+          <div className="mt-8 grid gap-5 xl:grid-cols-3">
+            {maattabellen.map((tabel) => (
+              <article key={tabel.id} id={tabel.id} className="flex scroll-mt-28 flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-card">
+                <div className="p-5 pb-4">
+                  <h2 className="font-display text-xl font-extrabold text-ink-900">{tabel.titel}</h2>
+                  <p className="mt-1 text-sm leading-snug text-warm">{tabel.intro}</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-sm tabular-nums">
+                    <thead>
+                      <tr className="bg-ink-900 text-white">
+                        {tabel.kolommen.map((kop) => (
+                          <th key={kop} scope="col" className="px-4 py-2.5 font-semibold">{kop}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tabel.rijen.map((rij, rijIndex) => (
+                        <tr key={rij[0]} className={rijIndex % 2 === 1 ? 'bg-mist' : 'bg-white'}>
+                          {rij.map((cel, celIndex) => (
+                            <td
+                              key={`${tabel.id}-${rijIndex}-${celIndex}`}
+                              className={celIndex === 0 ? 'px-4 py-2 font-bold text-ink-900' : 'px-4 py-2 text-ink-800'}
+                            >
+                              {cel}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-auto border-t-2 border-dashed border-amber-400 bg-amber-50 p-5">
+                  <h3 className="text-sm font-bold text-ink-900">Hoe meet je?</h3>
+                  <p className="mt-1 text-sm leading-snug text-ink-800">{tabel.hoeMeten}</p>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 

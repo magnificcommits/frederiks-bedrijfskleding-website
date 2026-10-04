@@ -37,7 +37,7 @@ export async function PortaalUsp() {
 
   return (
     <section className="bg-ink-900 text-white">
-      <div className="container-x py-16 sm:py-24">
+      <div className="container-x sec-md">
         <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-500">Inbegrepen bij je bedrijfskleding</p>

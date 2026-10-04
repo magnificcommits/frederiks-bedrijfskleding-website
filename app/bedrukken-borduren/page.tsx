@@ -94,9 +94,8 @@ export default function BedrukkenBordurenPage() {
       </section>
 
       <section className="border-y border-line bg-mist">
-        <div className="container-x py-16">
-          <p className="eyebrow">Vier technieken</p>
-          <h2 className="mt-3 kop-2">Wat past bij jouw kleding?</h2>
+        <div className="container-x sec-md">
+          <h2 className="kop-2">Wat past bij jouw kleding?</h2>
 
           <div className="mt-10">
             <MethodeKaarten />
@@ -112,9 +111,8 @@ export default function BedrukkenBordurenPage() {
         </div>
       </section>
 
-      <section className="container-x py-16">
-        <p className="eyebrow">Hoe het gaat</p>
-        <h2 className="mt-3 kop-2">Van kledingstuk naar goedgekeurd logo</h2>
+      <section className="container-x sec-md">
+        <h2 className="kop-2">Van kledingstuk naar goedgekeurd logo</h2>
         <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {stappen.map((s) => (
             <li key={s.nr} className="seam-card h-full">
@@ -127,9 +125,8 @@ export default function BedrukkenBordurenPage() {
       </section>
 
       <section className="border-y border-line bg-mist">
-        <div className="container-x py-16">
-          <p className="eyebrow">Logoposities</p>
-          <h2 className="mt-3 kop-2">Waar komt je logo te zitten?</h2>
+        <div className="container-x sec-md">
+          <h2 className="kop-2">Waar komt je logo te zitten?</h2>
           <p className="mt-3 max-w-2xl text-warm">Meestal borst links plus een ruglogo. Combineren kan.</p>
 
           <div className="mt-8">
@@ -151,11 +148,10 @@ export default function BedrukkenBordurenPage() {
         </div>
       </section>
 
-      <section className="container-x py-16">
+      <section className="container-x sec-md">
         <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
           <div>
-            <p className="eyebrow">Meer weten</p>
-            <h2 className="mt-3 kop-2">Aanleveren en veelgestelde vragen</h2>
+            <h2 className="kop-2">Aanleveren en veelgestelde vragen</h2>
             <p className="mt-4 text-warm">
               Mail je logo naar{' '}
               <a href={`mailto:${site.email}`} className="font-semibold text-amber-700 hover:underline">
@@ -189,11 +185,10 @@ export default function BedrukkenBordurenPage() {
       </section>
 
       <section className="border-y border-line bg-mist">
-        <div className="container-x py-14">
+        <div className="container-x sec-md">
           <div className="grid items-center gap-6 lg:grid-cols-[1.4fr_1fr]">
             <div>
-              <p className="eyebrow">Zelf zien</p>
-              <h2 className="mt-3 kop-2">Zet je logo live op de kleding</h2>
+              <h2 className="kop-2">Zet je logo live op de kleding</h2>
               <p className="mt-3 max-w-2xl text-warm">
 Upload je logo in de pakketsamensteller en zie het meteen op het kledingstuk staan.
               </p>

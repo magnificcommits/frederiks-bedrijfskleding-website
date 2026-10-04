@@ -82,7 +82,7 @@ export default async function OverOnsPage() {
       </section>
 
       {/* Het verhaal, in blokken naast een meelopende foto. */}
-      <section className="container-x py-16 sm:py-20">
+      <section className="container-x sec-md">
         <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,38rem)_minmax(0,34rem)] lg:justify-between">
           <div>
             <h2 className="text-balance kop-2">
@@ -159,7 +159,7 @@ export default async function OverOnsPage() {
 
       {/* Waar je op mag rekenen. */}
       <section className="border-t border-line bg-mist">
-        <div className="container-x py-14 sm:py-16">
+        <div className="container-x sec-md">
           <h2 className="text-balance kop-2">Waar je op mag rekenen</h2>
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {site.usps.map((u) => (

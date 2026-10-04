@@ -22,7 +22,7 @@ export function PageHero({
   intro,
   kruimels,
   beeld,
-  donker = false,
+  donker = true,
   acties,
   punten,
 }: {
@@ -33,6 +33,7 @@ export function PageHero({
   kruimels?: { label: string; href: string }[];
   /** Loopt vanaf lg door tot de rechter schermrand. Laat leeg voor een compacte kop. */
   beeld?: React.ReactNode;
+  /** Standaard donker: één herkenbare kop op elke subpagina. Zet op false voor een lichte kop. */
   donker?: boolean;
   /**
    * Knoppen direct onder de intro, boven de vouw. Meestal <CtaKnoppen plek="..." />.

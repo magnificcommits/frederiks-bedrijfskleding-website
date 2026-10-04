@@ -102,7 +102,7 @@ export async function Reviews({ limit }: { limit?: number }) {
   return (
     <section className="bg-ink-900 text-white">
       {jsonLd && <JsonLd data={jsonLd} />}
-      <div className="container-x py-16 sm:py-24">
+      <div className="container-x sec-md">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="eyebrow text-amber-400">Referenties</p>

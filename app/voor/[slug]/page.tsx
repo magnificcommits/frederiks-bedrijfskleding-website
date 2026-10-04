@@ -192,7 +192,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
       />
 
       {/* 2. Het werk zelf */}
-      <section className="container-x py-14">
+      <section className="container-x sec-md">
         <div className="grid gap-10 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <p className="eyebrow">Het werk</p>
@@ -224,7 +224,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
 
       {/* 4. Werkgebied: de kaart doet het werk dat de lijst plaatsnamen deed */}
       {/* 5. Wat dit vak meestal bestelt */}
-      <section className="container-x py-14">
+      <section className="container-x sec-md">
         <h2 className="kop-2">Wat dit vak meestal bestelt</h2>
         <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {v.meestBesteld.map((m, i) => (
@@ -243,7 +243,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
 
       {/* 6. Normen */}
       <section className="border-y border-line bg-mist">
-        <div className="container-x py-14">
+        <div className="container-x sec-md">
           <h2 className="kop-2">Welke normen hier spelen</h2>
           {v.normen.length > 0 ? (
             <>
@@ -283,7 +283,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
 
       {/* 7. Uit het assortiment */}
       {producten.length > 0 && (
-        <section className="container-x py-14">
+        <section className="container-x sec-md">
           <h2 className="kop-2">Artikelen die hierbij passen</h2>
           <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {producten.map((p) => (
@@ -306,7 +306,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
 
       {/* 8. Veelgestelde vragen: uitgeklapt voor wie het nodig heeft, ingeklapt voor de rest */}
       <section className="border-t border-line">
-        <div className="container-x py-14">
+        <div className="container-x sec-md">
           <h2 className="kop-2">Vragen die we vaak krijgen</h2>
           <div className="mt-6 max-w-3xl border-t border-line">
             {v.veelgesteld.map((f) => (
@@ -320,7 +320,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
 
       {/* 9. Afsluitend blok */}
       <section className="bg-ink-900">
-        <div className="container-x py-16 sm:py-20">
+        <div className="container-x sec-md">
           <h2 className="max-w-2xl text-2xl font-extrabold text-white text-balance sm:text-3xl">
             Zullen we een keer langskomen om te passen?
           </h2>

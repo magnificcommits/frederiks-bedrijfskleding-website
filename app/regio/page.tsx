@@ -20,7 +20,7 @@ export default function RegioIndex() {
       <JsonLd data={breadcrumbJsonLd([{ name: 'Home', url: site.url }, { name: 'Regio', url: `${site.url}/regio` }])} />
       <PageHero eyebrow="Werkgebied" title="Bedrijfskleding in de hele Achterhoek"
         intro="We zitten in Hengelo (Gld) en werken door de hele Achterhoek, de Liemers en de Oude IJsselstreek. Overal met dezelfde persoonlijke aanpak: we komen langs om te passen en brengen het logo in eigen huis aan." />
-      <section className="container-x py-16">
+      <section className="container-x sec-md">
         <h2 className="kop-2">Plaatsen waar we werken</h2>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {plaatsen.map((p) => (

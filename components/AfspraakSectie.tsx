@@ -22,16 +22,15 @@ export function AfspraakSectie({
   return (
     <section className="border-t border-line bg-white" id="afspraak">
       <div className="container-x sec-md">
-        <div className="mx-auto max-w-[72rem]">
-          <p className="eyebrow">Afspraak maken</p>
-          <h2 className="mt-3 kop-2">{titel}</h2>
+        <div>
+          <h2 className="kop-2">{titel}</h2>
           <p className="mt-3 max-w-[60ch] text-warm">
             {intro}{' '}
             <Link href="/afspraak" className="text-amber-700 underline underline-offset-2 hover:text-amber-800">
               Meer over de afspraken
             </Link>
           </p>
-          <div className="mt-8">
+          <div className="mt-6">
             <AfspraakKiezer bron={bron} defaultBranche={defaultBranche} standaardSoort={standaardSoort} />
           </div>
         </div>

@@ -5,7 +5,7 @@ import { PageHero } from '@/components/PageHero';
 import { BrandStrip } from '@/components/BrandStrip';
 import { CrossLinks } from '@/components/CrossLinks';
 import { ContactSectie } from '@/components/ContactSectie';
-import { werkwijze } from '@/content/werkwijze';
+import { Werkwijze } from '@/components/Werkwijze';
 import { branches } from '@/content/branches';
 import { site } from '@/content/site';
 
@@ -33,7 +33,7 @@ export default function WerkkledingPage() {
         intro="Hoogwaardige werkkleding die voldoet aan de eisen op het gebied van kwaliteit, comfort en veiligheid. Of je nu zzp’er bent of een groot team aanstuurt, we helpen je de juiste keuze te maken." />
       <BrandStrip />
 
-      <section className="container-x py-16">
+      <section className="container-x sec-md">
         <div className="grid items-start gap-12 lg:grid-cols-2">
           <div>
             <h2 className="kop-2">Een compleet assortiment A-merken</h2>
@@ -60,9 +60,8 @@ export default function WerkkledingPage() {
       </section>
 
       <section className="border-y border-line bg-mist">
-        <div className="container-x py-16">
-          <p className="eyebrow">Kies je branche</p>
-          <h2 className="mt-3 kop-2">Bekijk wat we per sector leveren</h2>
+        <div className="container-x sec-md">
+          <h2 className="kop-2">Bekijk wat we per sector leveren</h2>
           <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {branches.map((b) => (
               <Link key={b.slug} href={`/branches/${b.slug}`} className="group flex items-center justify-between rounded-lg border border-line bg-white px-5 py-4 transition hover:border-amber-400">
@@ -74,18 +73,7 @@ export default function WerkkledingPage() {
         </div>
       </section>
 
-      <section className="container-x py-16">
-        <p className="eyebrow">Zo werken we</p>
-        <h2 className="mt-3 kop-2">Van eerste gesprek tot nabestelling</h2>
-        <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {werkwijze.map((s) => (
-            <li key={s.nr} className="rounded-xl border border-line bg-white p-5 shadow-soft">
-              <span className="font-display text-2xl font-extrabold text-amber-500">{s.nr}</span>
-              <h3 className="mt-2 text-base font-bold text-ink-900">{s.title}</h3>
-              <p className="mt-2 text-sm text-warm">{s.text}</p>
-            </li>
-          ))}
-        </ol>
+      <Werkwijze vlak="wit">
         <p className="mt-8 max-w-[60ch] text-warm">
           Je offerte is vrijblijvend en op maat: we kijken naar wat past bij het werk en denken mee over het budget.
           Geen kleine lettertjes, gewoon een eerlijk voorstel.
@@ -97,7 +85,7 @@ export default function WerkkledingPage() {
             <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-700 underline underline-offset-2">{site.phone}</a>
           </span>
         </div>
-      </section>
+      </Werkwijze>
 
       <CrossLinks exclude="/werkkleding" />
       <ContactSectie />

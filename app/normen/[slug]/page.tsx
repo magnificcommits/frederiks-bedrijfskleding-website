@@ -147,18 +147,19 @@ export default async function NormPagina({ params }: { params: Promise<{ slug: s
       />
 
       {/* Kop met het pictogram groot naast de normcode: in één blik herkenbaar. */}
-      <section className="border-b border-line bg-mist">
-        <div className="container-x py-12 sm:py-16">
+      <section className="border-b border-line bg-ink-900 text-white">
+        <div className="border-t-2 border-dashed border-amber-500" aria-hidden="true" />
+        <div className="container-x py-9 sm:py-12">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-8">
-            <span className="inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl border border-line bg-white text-amber-700 shadow-soft sm:h-28 sm:w-28">
+            <span className="inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-white text-amber-700 sm:h-28 sm:w-28">
               <NormIcoon soort={n.categorie} className="h-14 w-14 sm:h-16 sm:w-16" />
             </span>
             <div className="min-w-0">
-              <p className="eyebrow">{n.code}</p>
-              <h1 className="mt-2 max-w-3xl text-3xl font-bold text-balance sm:text-4xl">{n.titel}</h1>
+              <p className="eyebrow text-amber-400">{n.code}</p>
+              <h1 className="kop-1 mt-2 max-w-3xl text-balance text-white">{n.titel}</h1>
             </div>
           </div>
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-warm">{n.intro}</p>
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink-100">{n.intro}</p>
         </div>
       </section>
 
@@ -271,9 +272,8 @@ export default async function NormPagina({ params }: { params: Promise<{ slug: s
       {/* Artikelen uit het echte assortiment. */}
       {lijst.length > 0 && (
         <section className="border-y border-line bg-mist">
-          <div className="container-x py-14">
-            <p className="eyebrow">Uit ons assortiment</p>
-            <h2 className="mt-3 kop-2">
+          <div className="container-x sec-md">
+            <h2 className="kop-2">
               {n.categorie === 'schoenen' ? 'Schoenen' : 'Kleding'} die bij {n.code} hoort
             </h2>
             <p className="mt-3 max-w-2xl text-warm">
@@ -312,7 +312,7 @@ export default async function NormPagina({ params }: { params: Promise<{ slug: s
       )}
 
       {anderen.length > 0 && (
-        <section className="container-x py-14">
+        <section className="container-x sec-md">
           <h2 className="kop-2">Normen die hier vaak bij horen</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
             {anderen.map((x) => (

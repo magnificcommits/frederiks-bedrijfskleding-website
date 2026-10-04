@@ -8,6 +8,7 @@ import { ContactSectie } from '@/components/ContactSectie';
 import { Werkwijze } from '@/components/Werkwijze';
 import { branches } from '@/content/branches';
 import { site } from '@/content/site';
+import { Pijl } from '@/components/Pijl';
 
 export const revalidate = 3600;
 
@@ -64,9 +65,9 @@ export default function WerkkledingPage() {
           <h2 className="kop-2">Bekijk wat we per sector leveren</h2>
           <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {branches.map((b) => (
-              <Link key={b.slug} href={`/branches/${b.slug}`} className="group flex items-center justify-between rounded-lg border border-line bg-white px-5 py-4 transition hover:border-amber-400">
-                <span className="font-semibold text-ink-900 group-hover:text-amber-800">{b.navLabel}</span>
-                <span className="text-amber-700" aria-hidden="true">&rarr;</span>
+              <Link key={b.slug} href={`/branches/${b.slug}`} className="group flex items-center justify-between gap-3 rounded-xl border-2 border-ink-200 bg-white px-5 py-4 transition hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card">
+                <span className="font-display text-[1.0625rem] font-extrabold text-ink-900">{b.navLabel}</span>
+                <Pijl />
               </Link>
             ))}
           </div>

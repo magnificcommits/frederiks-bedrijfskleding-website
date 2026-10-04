@@ -14,6 +14,8 @@ import { JsonLd } from '@/components/JsonLd';
 import { breadcrumbJsonLd, faqJsonLd, serviceJsonLd } from '@/lib/jsonld';
 import { CtaKnoppen } from '@/components/CtaKnoppen';
 import { BrancheArtikelen } from '@/components/BrancheArtikelen';
+import { Pijl } from '@/components/Pijl';
+import { Uitklap } from '@/components/Uitklap';
 
 // De artikelenrij komt uit de catalogus; met ISR is dat één query per uur.
 export const revalidate = 3600;
@@ -81,11 +83,16 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
       <section className="container-x sec-md">
         <div className="grid gap-12 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <div className="prose-nl text-lg">
-              {p.body.map((par, i) => <p key={i}>{par}</p>)}
-            </div>
+            <p className="max-w-[68ch] text-lg text-warm">{p.body[0]}</p>
+            {p.body.length > 1 && (
+              <div className="mt-4 rounded-xl border border-line px-5">
+                <Uitklap titel={`Meer over bedrijfskleding in ${p.name}`} samenvatting="Hoe we werken in de buurt en wat we leveren">
+                  {p.body.slice(1).map((par, i) => <p key={i}>{par}</p>)}
+                </Uitklap>
+              </div>
+            )}
 
-            <h2 className="mt-10 text-2xl font-extrabold">Waar we werken in en rond {p.name}</h2>
+            <h2 className="mt-10 font-display text-xl font-extrabold text-ink-900">Waar we werken in en rond {p.name}</h2>
             <p className="mt-3 text-warm">We komen door de hele omgeving langs, onder andere:</p>
             <div className="mt-4 flex flex-wrap gap-2">
               {p.gebieden.map((g) => (
@@ -93,29 +100,29 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
               ))}
             </div>
 
-            <h2 className="mt-10 text-2xl font-extrabold">Branches die we in {p.name} kleden</h2>
+            <h2 className="mt-10 font-display text-xl font-extrabold text-ink-900">Branches die we in {p.name} kleden</h2>
             <div className="mt-5 grid gap-4 sm:grid-cols-3">
               {populair.map((b) => (
-                <Link key={b.slug} href={`/branches/${b.slug}`} className="group rounded-lg border border-line bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-amber-400">
-                  <h3 className="text-base font-bold text-ink-900 group-hover:text-amber-800">{b.navLabel}</h3>
-                  <p className="mt-2 text-sm text-warm line-clamp-2">{b.heroIntro}</p>
+                <Link key={b.slug} href={`/branches/${b.slug}`} className="group flex items-center justify-between gap-3 rounded-xl border-2 border-ink-200 bg-white px-5 py-4 transition hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card">
+                  <h3 className="font-display text-[1.0625rem] font-extrabold text-ink-900">{b.navLabel}</h3>
+                  <Pijl />
                 </Link>
               ))}
             </div>
 
             <div className="mt-10 rounded-xl bg-mist p-6">
-              <p className="text-sm font-bold uppercase tracking-wide text-amber-700">Handig om te weten</p>
+              <h2 className="font-display text-lg font-extrabold text-ink-900">Handig om te weten</h2>
               <ul className="mt-3 space-y-2">
                 {tips.map((a) => (
-                  <li key={a.slug}><Link href={`/kennisbank/${a.slug}`} className="font-semibold text-ink-800 hover:text-amber-800">{a.title}</Link></li>
+                  <li key={a.slug}><Link href={`/kennisbank/${a.slug}`} className="font-semibold text-ink-900 underline decoration-amber-500 decoration-2 underline-offset-4 hover:text-amber-800">{a.title}</Link></li>
                 ))}
               </ul>
             </div>
           </div>
 
           <aside className="lg:col-span-1">
-            <div className="sticky top-24 space-y-4">
-              <div className="rounded-xl border-2 border-amber-500 bg-white p-6 shadow-card">
+            <div className="sticky top-28 space-y-4">
+              <div className="rounded-2xl border-2 border-amber-500 bg-white p-6 shadow-card">
                 <h2 className="text-lg font-extrabold text-ink-900">Bedrijfskleding nodig in {p.name}?</h2>
                 <p className="mt-1 text-sm text-warm">{p.afstand}.</p>
                 <p className="mt-2 text-sm text-warm">Vrijblijvend. We reageren binnen 24 uur (werkdagen) en komen in {p.name} langs om te passen.</p>

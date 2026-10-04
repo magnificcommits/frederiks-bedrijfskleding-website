@@ -7,6 +7,7 @@ import { PageHero } from '@/components/PageHero';
 import { ContactSectie } from '@/components/ContactSectie';
 import { JsonLd } from '@/components/JsonLd';
 import { breadcrumbJsonLd } from '@/lib/jsonld';
+import { Pijl } from '@/components/Pijl';
 
 export const metadata: Metadata = {
   title: 'Werkgebied in de Achterhoek',
@@ -24,12 +25,12 @@ export default function RegioIndex() {
         <h2 className="kop-2">Plaatsen waar we werken</h2>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {plaatsen.map((p) => (
-            <Link key={p.slug} href={`/regio/${p.slug}`} className="group flex items-center justify-between rounded-lg border border-line bg-white px-5 py-4 shadow-soft transition hover:border-amber-400">
+            <Link key={p.slug} href={`/regio/${p.slug}`} className="group flex items-center justify-between gap-3 rounded-xl border-2 border-ink-200 bg-white px-5 py-4 transition hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card">
               <span>
-                <span className="block font-bold text-ink-900 group-hover:text-amber-800">{p.name}</span>
+                <span className="block font-display text-[1.0625rem] font-extrabold text-ink-900">{p.name}</span>
                 <span className="text-xs text-warm">{p.afstand}</span>
               </span>
-              <span className="text-amber-700" aria-hidden="true">&rarr;</span>
+              <Pijl />
             </Link>
           ))}
         </div>

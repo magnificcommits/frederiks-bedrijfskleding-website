@@ -7,6 +7,7 @@ import { site } from '@/content/site';
 import { CtaBand } from '@/components/CtaBand';
 import { JsonLd } from '@/components/JsonLd';
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
+import { Pijl } from '@/components/Pijl';
 
 const MND = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
 function fmtDate(d: string) { const t = d.split('-'); return parseInt(t[2],10) + ' ' + MND[parseInt(t[1],10)-1] + ' ' + t[0]; }
@@ -44,16 +45,17 @@ export default async function ArtikelPage({ params }: { params: Promise<{ slug: 
         { name: a.title, url },
       ])} />
 
-      <section className="border-b border-line bg-mist">
-        <div className="container-x sec-md">
-          <nav className="text-xs text-warm" aria-label="Kruimelpad">
-            <Link href="/" className="hover:text-amber-800">Home</Link>
+      <section className="border-b border-line bg-ink-900 text-white">
+        <div className="border-t-2 border-dashed border-amber-500" aria-hidden="true" />
+        <div className="container-x py-9 sm:py-12">
+          <nav className="text-xs text-ink-300" aria-label="Kruimelpad">
+            <Link href="/" className="hover:text-white">Home</Link>
             <span className="px-1.5">/</span>
-            <Link href="/kennisbank" className="hover:text-amber-800">Kennisbank</Link>
+            <Link href="/kennisbank" className="hover:text-white">Kennisbank</Link>
           </nav>
-          <p className="eyebrow mt-4">{a.category}</p>
-          <h1 className="mt-3 max-w-3xl text-3xl font-extrabold text-balance sm:text-4xl">{a.title}</h1>
-          <p className="mt-4 text-sm text-warm">Door {site.owner}, eigenaar van Frederiks Bedrijfskleding · {fmtDate(a.date)}</p>
+          <p className="eyebrow mt-4 text-amber-400">{a.category}</p>
+          <h1 className="kop-1 mt-3 max-w-3xl text-balance text-white">{a.title}</h1>
+          <p className="mt-4 text-sm text-ink-200">Door {site.owner}, eigenaar van Frederiks Bedrijfskleding · {fmtDate(a.date)}</p>
         </div>
       </section>
 
@@ -89,13 +91,13 @@ export default async function ArtikelPage({ params }: { params: Promise<{ slug: 
 
       {meer.length > 0 && (
         <section className="border-t border-line bg-mist">
-          <div className="container-x py-12">
+          <div className="container-x sec-md">
             <h2 className="kop-2">Meer over {a.category.toLowerCase()}</h2>
             <div className="mt-5 grid gap-4 sm:grid-cols-3">
               {meer.map((x) => (
-                <Link key={x.slug} href={`/kennisbank/${x.slug}`} className="group rounded-lg border border-line bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-amber-400">
-                  <h3 className="text-base font-bold text-ink-900 group-hover:text-amber-800">{x.title}</h3>
-                  <span className="mt-3 inline-block text-sm font-bold uppercase tracking-wide text-amber-700">Lees meer &rarr;</span>
+                <Link key={x.slug} href={`/kennisbank/${x.slug}`} className="group flex items-center justify-between gap-3 rounded-xl border-2 border-ink-200 bg-white px-5 py-4 transition hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card h-full">
+                  <h3 className="font-display text-[1.0625rem] font-extrabold leading-snug text-ink-900">{x.title}</h3>
+                  <Pijl />
                 </Link>
               ))}
             </div>

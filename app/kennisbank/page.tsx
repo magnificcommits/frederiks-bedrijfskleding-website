@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PageHero } from '@/components/PageHero';
 import { CtaBand } from '@/components/CtaBand';
 import { artikelen, categorieen } from '@/content/kennisbank';
+import { Pijl } from '@/components/Pijl';
 
 export const metadata: Metadata = {
   title: 'Kennisbank',
@@ -15,26 +16,34 @@ export default function KennisbankPage() {
     <>
       <PageHero eyebrow="Kennisbank" title="Alles over werkkleding, helder uitgelegd"
         intro="Antwoorden op de vragen die we het vaakst krijgen: van veiligheidsklassen en hi-vis tot bedrukken, wassen en de fiscale regels. Praktisch en zonder verkooppraat." />
-      {categorieen.map((cat) => {
-        const items = artikelen.filter((a) => a.category === cat);
-        if (!items.length) return null;
-        return (
-          <section key={cat} className="container-x py-10">
-            <h2 className="kop-2">{cat}</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map((a) => (
-                <Link key={a.slug} href={`/kennisbank/${a.slug}`}
-                  className="group flex flex-col rounded-lg border border-line bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:border-amber-400">
-                  <h3 className="text-base font-bold text-ink-900 group-hover:text-amber-800">{a.title}</h3>
-                  <p className="mt-2 grow text-sm text-warm line-clamp-3">{a.intro}</p>
-                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wide text-amber-700">Lees meer <span aria-hidden="true">&rarr;</span></span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        );
-      })}
-      <div className="py-6" />
+      <section className="bg-mist">
+        <div className="container-x sec-md gap-5 lg:columns-2">
+          {categorieen.map((cat) => {
+            const items = artikelen.filter((a) => a.category === cat);
+            if (!items.length) return null;
+            return (
+              <section key={cat} className="mb-5 break-inside-avoid overflow-hidden rounded-2xl border border-line bg-white shadow-card">
+                <h2 className="bg-ink-900 px-5 py-4 font-display text-xl font-extrabold text-white">
+                  {cat} <span className="ml-1 text-sm font-semibold text-ink-300">{items.length}</span>
+                </h2>
+                <ul className="divide-y divide-line">
+                  {items.map((a) => (
+                    <li key={a.slug}>
+                      <Link href={`/kennisbank/${a.slug}`} className="group flex items-center gap-4 px-5 py-4 transition hover:bg-mist">
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-display text-[1.0625rem] font-extrabold leading-snug text-ink-900">{a.title}</span>
+                          <span className="mt-1 block text-sm leading-snug text-warm line-clamp-2">{a.intro}</span>
+                        </span>
+                        <Pijl />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
+      </section>
       <CtaBand title="Vraag het ons gewoon" text="Staat je vraag er niet bij? Bel of vraag gratis advies aan, we denken met je mee." />
     </>
   );

@@ -7,6 +7,7 @@ import { NormIcoon } from '@/components/NormIcoon';
 import { breadcrumbJsonLd } from '@/lib/jsonld';
 import { site } from '@/content/site';
 import { normen, normenPerCategorie } from '@/content/normen';
+import { Pijl } from '@/components/Pijl';
 
 export const revalidate = 3600;
 
@@ -63,51 +64,40 @@ export default function NormenPagina() {
           ))}
         </div>
 
-        <p className="mt-10 text-sm font-semibold uppercase tracking-wide text-warm">
-          {normen.length} normen, gegroepeerd naar risico
-        </p>
+        <h2 className="kop-2 mt-10">{normen.length} normen, gegroepeerd naar risico</h2>
 
-        <div className="mt-6 space-y-10">
+        {/* Elke risicogroep is een paneel; de panelen staan in twee kolommen, zodat een groep met één norm geen halflege rij oplevert. */}
+        <div className="mt-6 gap-5 lg:columns-2">
           {normenPerCategorie.map((groep) => (
-            <div key={groep.key}>
-              <div className="flex items-center gap-4 border-b border-line pb-4">
-                <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-line bg-mist text-amber-700">
-                  <NormIcoon soort={groep.key} className="h-9 w-9" />
+            <section key={groep.key} className="mb-5 break-inside-avoid overflow-hidden rounded-2xl border border-line bg-white shadow-card">
+              <div className="flex items-center gap-4 bg-ink-900 px-5 py-4 text-white">
+                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white text-amber-700">
+                  <NormIcoon soort={groep.key} className="h-8 w-8" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="kop-2">{groep.titel}</h2>
-                  <p className="mt-1 text-sm text-warm">{groep.intro}</p>
+                  <h3 className="font-display text-xl font-extrabold text-white">{groep.titel}</h3>
+                  <p className="text-sm text-ink-200">{groep.intro}</p>
                 </div>
               </div>
-
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <ul className="divide-y divide-line">
                 {groep.items.map((n) => (
-                  <Link
-                    key={n.slug}
-                    href={`/normen/${n.slug}`}
-                    className="group flex flex-col rounded-xl border border-line bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-amber-400"
-                  >
-                    <span className="flex items-center gap-3">
-                      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700 transition group-hover:bg-amber-500 group-hover:text-white">
-                        <NormIcoon soort={n.categorie} className="h-7 w-7" />
+                  <li key={n.slug}>
+                    <Link href={`/normen/${n.slug}`} className="group flex items-center gap-4 px-5 py-4 transition hover:bg-mist">
+                      <span className="min-w-0 flex-1">
+                        <span className="inline-block rounded bg-ink-100 px-1.5 py-0.5 text-[11px] font-semibold text-ink-700">{n.code}</span>
+                        <span className="mt-1 block font-display text-[1.0625rem] font-extrabold text-ink-900">{n.korteTitel}</span>
+                        <span className="mt-0.5 block text-sm leading-snug text-warm">{n.eenRegel}</span>
                       </span>
-                      <span className="eyebrow">{n.code}</span>
-                    </span>
-                    <span className="mt-3 font-display text-lg font-extrabold text-ink-900 group-hover:text-amber-800">
-                      {n.korteTitel}
-                    </span>
-                    <span className="mt-2 text-sm text-warm">{n.eenRegel}</span>
-                    <span className="mt-auto pt-4 text-sm font-bold uppercase tracking-wide text-amber-700">
-                      Klassen bekijken &rarr;
-                    </span>
-                  </Link>
+                      <Pijl />
+                    </Link>
+                  </li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </section>
           ))}
         </div>
 
-        <p className="mt-12 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">
+        <p className="mt-2 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">
           Prijzen staan niet online. Klanten zien hun eigen prijzen in het{' '}
           <Link href="/portaal" className="font-semibold text-amber-700 underline underline-offset-2">
             klantportaal

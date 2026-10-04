@@ -63,7 +63,7 @@ export default async function KlantenservicePage() {
           >
             <h3 className="text-base font-bold text-ink-900">WhatsApp</h3>
             <p className="mt-2 text-sm text-warm">Snel een korte vraag stellen? Stuur ons een bericht.</p>
-            <span className="mt-3 inline-block font-semibold text-amber-700">Open WhatsApp &rarr;</span>
+            <span className="mt-3 inline-block font-semibold text-amber-700">Open WhatsApp</span>
           </a>
         </div>
       </section>

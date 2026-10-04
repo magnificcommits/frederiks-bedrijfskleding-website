@@ -19,7 +19,7 @@ export default function NieuwsbriefPage() {
         intro="Geen wekelijkse reclame. Alleen als er echt iets te melden is: een nieuwe collectie, een actie of een tip die je geld of gedoe scheelt."
       />
       <section className="container-x sec-md">
-        <div className="mx-auto grid max-w-[64rem] gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-12">
           <div className="prose-nl">
             <h2 className="kop-3 text-ink-900">Wat er zoal in staat</h2>
             <ul>
@@ -33,7 +33,7 @@ export default function NieuwsbriefPage() {
               nieuwsbrief, met één klik. Lees ook ons <Link href="/privacy">privacybeleid</Link>.
             </p>
           </div>
-          <div className="card self-start">
+          <div className="self-start rounded-2xl border-2 border-amber-500 bg-white p-6 shadow-card">
             <h2 className="font-semibold text-ink-900">Aanmelden</h2>
             <p className="mt-1 text-sm text-warm">Alleen je e-mailadres, meer hebben we niet nodig.</p>
             <NieuwsbriefForm licht bron="nieuwsbriefpagina" />

@@ -172,15 +172,39 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
 
+      {/* Eén foto: naast een donker vlak met de pakketsamensteller, zodat er geen halve witte rij overblijft.
+          Twee of meer: naast elkaar over de volle breedte. */}
       {b.gallery && b.gallery.length > 0 && (
         <section className="container-x pt-10 sm:pt-14">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {b.gallery.map((src) => (
-              <div key={src} className="relative aspect-[16/9] overflow-hidden rounded-2xl">
-                <Image src={src} alt={`${b.name} bij Frederiks Bedrijfskleding`} fill sizes="(max-width: 1024px) 90vw, 45vw" className="object-cover" />
+          {b.gallery.length === 1 ? (
+            <div className="grid overflow-hidden rounded-2xl bg-ink-900 shadow-card lg:grid-cols-2">
+              <div className="relative min-h-[16rem] lg:min-h-[22rem]">
+                <Image src={b.gallery[0]} alt={`${b.name} bij Frederiks Bedrijfskleding`} fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
               </div>
-            ))}
-          </div>
+              <div className="flex flex-col justify-center p-6 sm:p-10" data-plek="branche-foto">
+                <h2 className="font-display text-2xl font-extrabold text-white">Zie je logo meteen op de kleding</h2>
+                <p className="mt-3 max-w-[48ch] text-ink-200">
+                  Kies een kledingstuk en een kleur, zet je logo erop en vraag het pakket in één klik als offerte aan.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link href={`/pakket-samenstellen?branche=${encodeURIComponent(b.navLabel)}`} className="btn-primary" data-cta="pakket">
+                    Stel je pakket samen
+                  </Link>
+                  <a href={`tel:${site.phoneIntl}`} className="btn border-2 border-white/60 text-white hover:border-white hover:bg-white hover:text-ink-900" data-cta="telefoon">
+                    Bel {site.phone}
+                  </a>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {b.gallery.map((src) => (
+                <div key={src} className="relative aspect-[16/9] overflow-hidden rounded-2xl">
+                  <Image src={src} alt={`${b.name} bij Frederiks Bedrijfskleding`} fill sizes="(max-width: 1024px) 90vw, 45vw" className="object-cover" />
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
 

@@ -26,12 +26,11 @@ export async function BrancheArtikelen({
     <section className="container-x sec-md" aria-labelledby={`artikelen-${brancheSlug}`}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="max-w-2xl">
-          <p className="eyebrow">Uit het assortiment</p>
-          <h2 id={`artikelen-${brancheSlug}`} className="kop-2 mt-3">{titel}</h2>
+          <h2 id={`artikelen-${brancheSlug}`} className="kop-2">{titel}</h2>
           {intro && <p className="mt-3 text-warm">{intro}</p>}
         </div>
         <Link href="/assortiment" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-amber-700 hover:underline">
-          Hele assortiment bekijken <span aria-hidden="true" className="ml-1">&rarr;</span>
+          Hele assortiment bekijken
         </Link>
       </div>
       <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">

@@ -63,7 +63,10 @@ export default function TaalKiezer({
   }
 
   return (
-    <label className={`inline-flex items-center gap-2 text-xs font-medium text-warm ${className}`}>
+    <label className={`relative inline-flex items-center gap-2 text-xs font-medium text-warm max-md:min-h-[40px] max-md:rounded-md max-md:border max-md:border-line max-md:bg-white max-md:px-2 ${className}`}>
+      {/* Telefoon: alleen de taalcode, de echte select ligt er onzichtbaar overheen.
+          "Nederlands" in 16 px duwde de bedrijfsnaam weg. */}
+      <span className="font-semibold text-ink-800 md:hidden" aria-hidden="true">{taal.toUpperCase()}</span>
       <span className="sr-only">{t('taal.label')}</span>
       <svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" className="shrink-0">
         <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="1.5" />
@@ -74,7 +77,7 @@ export default function TaalKiezer({
         onChange={(e) => kies(e.target.value as Taal)}
         disabled={bezig}
         aria-busy={bezig || undefined}
-        className="min-h-[36px] rounded-md border border-line bg-white py-1 pl-2 pr-7 text-xs font-semibold text-ink-800 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:opacity-60"
+        className="min-h-[36px] rounded-md border border-line bg-white py-1 pl-2 pr-7 text-xs font-semibold text-ink-800 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:opacity-60 max-md:absolute max-md:inset-0 max-md:h-full max-md:w-full max-md:opacity-0"
       >
         {TALEN.map((code) => (
           <option key={code} value={code} lang={code}>

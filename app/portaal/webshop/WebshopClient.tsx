@@ -340,7 +340,7 @@ export default function WebshopClient({
                       );
                     return null;
                   })()}
-                  {p.omschrijving && <p className="mt-2 text-sm text-warm">{p.omschrijving}</p>}
+                  {p.omschrijving && <p className="mt-2 text-sm text-warm max-md:line-clamp-3">{p.omschrijving}</p>}
                   {opties.length === 0 ? (
                     <p className="mt-4 text-sm text-warm">{t('webshop.geenVarianten')}</p>
                   ) : (

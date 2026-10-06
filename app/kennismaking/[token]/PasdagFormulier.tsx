@@ -33,7 +33,7 @@ export default function PasdagFormulier({ token, bedrijf, voornaamJessi }: { tok
         <label htmlFor="pd-naam" className={label}>Je naam</label>
         <input id="pd-naam" name="naam" required minLength={2} maxLength={120} autoComplete="name" className={veld} />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="pd-tel" className={label}>Telefoon</label>
           <input id="pd-tel" name="telefoon" type="tel" inputMode="tel" maxLength={40} autoComplete="tel" className={veld} />

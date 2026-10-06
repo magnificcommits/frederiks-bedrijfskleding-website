@@ -35,7 +35,7 @@ export default function TeamRekenhulp({
   const zet = (id: string, n: number) => setAantallen((oud) => ({ ...oud, [id]: Math.max(0, Math.min(5, n)) }));
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="rounded-xl border border-line bg-white p-5 sm:p-6">
         <label htmlFor="team" className="flex items-baseline justify-between gap-3">
           <span className="text-sm font-semibold text-ink-900">Hoeveel mensen lopen erin?</span>

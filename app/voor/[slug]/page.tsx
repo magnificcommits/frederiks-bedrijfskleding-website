@@ -193,7 +193,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
 
       {/* 2. Het werk zelf */}
       <section className="container-x sec-md">
-        <div className="grid gap-10 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <p className="eyebrow">Het werk</p>
             <div className="prose-nl mt-4 text-lg">
@@ -209,7 +209,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
 
         {/* 3. Waarom kleding het hier zwaar heeft */}
         <h2 className="mt-14 kop-2">Waarom kleding het hier zwaar heeft</h2>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {v.waaromAnders.map((w) => (
             <div key={w.title} className="seam-card">
               <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
@@ -226,7 +226,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
       {/* 5. Wat dit vak meestal bestelt */}
       <section className="container-x sec-md">
         <h2 className="kop-2">Wat dit vak meestal bestelt</h2>
-        <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ol className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {v.meestBesteld.map((m, i) => (
             <li key={m} className="flex items-start gap-3 rounded-lg border border-line bg-white px-4 py-4 shadow-soft">
               <span
@@ -247,7 +247,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
           <h2 className="kop-2">Welke normen hier spelen</h2>
           {v.normen.length > 0 ? (
             <>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {v.normen.map((n) => (
                   <Link
                     key={n.slug}

@@ -68,7 +68,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
         </p>
       )}
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Tegel waarde={jaar.nps === null ? '-' : String(jaar.nps)} label="NPS afgelopen 12 maanden" sub={totaal.nps === null ? undefined : `Sinds de start: ${totaal.nps}`} />
         <Tegel waarde={jaar.gemiddelde === null ? '-' : jaar.gemiddelde.toFixed(1).replace('.', ',')} label="Gemiddeld cijfer" sub={`${jaar.aantal} antwoorden`} />
         <Tegel waarde={String(jaar.promotors)} label="Promotors (9-10)" />
@@ -172,7 +172,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
       {eigenaar && (
         <section className="panel mt-6 max-w-3xl p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Instellingen</h2>
-          <form action={zetReviewInstellingenActie} className="mt-3 grid gap-4 sm:grid-cols-[auto_8rem_minmax(0,1fr)] sm:items-end">
+          <form action={zetReviewInstellingenActie} className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-[auto_8rem_minmax(0,1fr)] sm:items-end">
             <input type="hidden" name="filter" value={filter} />
             <label className="flex items-center gap-2 text-sm font-semibold text-ink-900">
               <input type="checkbox" name="actief" defaultChecked={inst.actief} /> Mails automatisch versturen

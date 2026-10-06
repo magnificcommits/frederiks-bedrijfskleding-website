@@ -16,6 +16,9 @@ type Status = 'idle' | 'sending' | 'ok' | 'error';
 export function LeadForm({ defaultBranche = '', kaal = false }: { defaultBranche?: string; /** Zonder eigen kaart en inleiding: de sectie eromheen levert die al. */ kaal?: boolean }) {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
+  // Telefoon: optionele velden pas op verzoek. Negen velden onder elkaar schrikt af.
+  const [meer, setMeer] = useState(false);
+  const opt = meer ? '' : 'max-sm:hidden';
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -71,12 +74,12 @@ export function LeadForm({ defaultBranche = '', kaal = false }: { defaultBranche
       {/* Honeypot, verborgen voor mensen */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={label} htmlFor="name">Naam *</label>
           <input id="name" name="name" required minLength={2} className={field} autoComplete="name" />
         </div>
-        <div>
+        <div className={opt}>
           <label className={label} htmlFor="company">Bedrijf</label>
           <input id="company" name="company" className={field} autoComplete="organization" />
         </div>
@@ -96,7 +99,7 @@ export function LeadForm({ defaultBranche = '', kaal = false }: { defaultBranche
             <option value="Anders">Anders</option>
           </select>
         </div>
-        <div>
+        <div className={opt}>
           <label className={label} htmlFor="aantal">Aantal medewerkers</label>
           <select id="aantal" name="aantal" className={field}>
             <option value="">Kies…</option>
@@ -108,7 +111,12 @@ export function LeadForm({ defaultBranche = '', kaal = false }: { defaultBranche
         <label className={label} htmlFor="bericht">Waar kunnen we mee helpen?</label>
         <textarea id="bericht" name="bericht" rows={3} className={field} placeholder="Bijv. werkkleding + bedrukken voor 8 monteurs" />
       </div>
-      <div>
+      {!meer && (
+        <button type="button" onClick={() => setMeer(true)} className="-mt-1 self-start text-[15px] font-semibold text-amber-700 underline underline-offset-2 sm:hidden">
+          Bedrijf en aantal medewerkers toevoegen (optioneel)
+        </button>
+      )}
+      <div className={opt}>
         <label className={label} htmlFor="herkomst_self">Hoe heb je ons gevonden? <span className="font-normal text-warm">(optioneel)</span></label>
         <select id="herkomst_self" name="herkomst_self" className={field}>
           <option value="">Kies...</option>

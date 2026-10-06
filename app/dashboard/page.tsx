@@ -336,7 +336,7 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
       <NieuweWebleads begin={ongezien} />
 
       {/* Eerst wat er vandaag moet gebeuren, dan hoe het gaat. */}
-      <div className="mt-5 grid gap-4 lg:grid-cols-12">
+      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-12">
         <div className="lg:col-span-7"><Vandaag items={stats.agenda} vandaag={stats.vandaag} nuTijd={stats.nuTijd} /></div>
         <div className="lg:col-span-5"><Aandacht items={aandacht} /></div>
       </div>
@@ -349,13 +349,13 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
       </div>
 
       {eigenaar && (
-        <div className="mt-4 grid gap-4 xl:grid-cols-12">
+        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-12">
           <div className="min-w-0 xl:col-span-8"><OmzetGrafiek maanden={maanden} /></div>
           <div className="xl:col-span-4"><TopKlanten klanten={stats.topKlanten} /></div>
         </div>
       )}
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-12">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
         <div className="min-w-0 lg:col-span-7 xl:col-span-8">
           <Pijplijn fases={orders.pijplijn} open={orders.open} openWaarde={orders.openWaarde} langst={orders.langst} />
         </div>

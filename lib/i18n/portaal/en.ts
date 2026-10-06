@@ -61,6 +61,11 @@ export const en: Woordenboek = {
   },
 
   nav: {
+    sluiten: 'Close',
+    bestellenKort: 'Order',
+    meer: 'More',
+    appOpTelefoon: 'App on your phone',
+    naarWebsite: 'To the website',
     overzicht: 'Overview',
     kledingBestellen: 'Order clothing',
     bestellingen: 'Orders',

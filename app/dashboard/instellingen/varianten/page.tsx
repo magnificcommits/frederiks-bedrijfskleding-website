@@ -314,7 +314,7 @@ export default async function VariantenPage({ searchParams }: { searchParams: Pr
         )}
 
         {tab === 'overig' && (
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {(['lengte', 'pasvorm'] as const).map((soort) => (
               <section key={soort} className="panel p-4">
                 <h2 className="font-display text-base font-bold text-ink-900">{soort === 'lengte' ? 'Lengte' : 'Pasvorm'}</h2>

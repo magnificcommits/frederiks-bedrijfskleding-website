@@ -9,8 +9,8 @@ import { plaatsen } from '@/content/plaatsen';
 export function Footer() {
   return (
     <footer className="border-t-2 border-dashed border-amber-500 bg-ink-900 text-ink-100">
-      <div className="container-x grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
-        <div>
+      <div className="container-x grid grid-cols-2 gap-x-6 gap-y-8 py-10 sm:gap-10 sm:py-14 lg:grid-cols-5">
+        <div className="col-span-2 sm:col-span-1">
           <Logo light />
           <p className="mt-4 max-w-xs text-sm text-ink-200">{site.tagline}.</p>
           <p className="mt-4 text-sm text-ink-200">
@@ -35,7 +35,7 @@ export function Footer() {
         </div>
         <div>
           <h3 className="text-sm font-semibold text-white">Branches</h3>
-          <ul className="mt-4 space-y-2 text-sm">
+          <ul className="mt-3 space-y-1 text-sm sm:mt-4 sm:space-y-2">
             {branches.map((b) => (
               <li key={b.slug}><Link href={`/branches/${b.slug}`} className="text-ink-200 hover:text-white">{b.navLabel}</Link></li>
             ))}
@@ -43,16 +43,16 @@ export function Footer() {
         </div>
         <div>
           <h3 className="text-sm font-semibold text-white">Regio</h3>
-          <ul className="mt-4 space-y-2 text-sm">
+          <ul className="mt-3 space-y-1 text-sm sm:mt-4 sm:space-y-2">
             {plaatsen.slice(0, 7).map((p) => (
               <li key={p.slug}><Link href={`/regio/${p.slug}`} className="text-ink-200 hover:text-white">{p.name}</Link></li>
             ))}
             <li><Link href="/regio" className="font-semibold text-amber-400 hover:text-amber-300">Alle regio&rsquo;s</Link></li>
           </ul>
         </div>
-        <div>
+        <div className="col-span-2 sm:col-span-1">
           <h3 className="text-sm font-semibold text-white">Snel naar</h3>
-          <ul className="mt-4 space-y-2 text-sm">
+          <ul className="mt-3 columns-2 gap-6 text-sm sm:mt-4 sm:columns-1 [&>li]:mb-1 sm:[&>li]:mb-2">
             <li><Link href="/pakket-samenstellen" className="text-ink-200 hover:text-white">Pakket samenstellen</Link></li>
             <li><Link href="/werkkleding" className="text-ink-200 hover:text-white">Werkkleding</Link></li>
             <li><Link href="/werkschoenen" className="text-ink-200 hover:text-white">Werkschoenen</Link></li>
@@ -67,7 +67,7 @@ export function Footer() {
             <li><Link href="/disclaimer" className="text-ink-200 hover:text-white">Disclaimer</Link></li>
           </ul>
         </div>
-        <div className="sm:col-span-2 lg:col-span-1">
+        <div className="col-span-2 lg:col-span-1">
           <h3 className="text-sm font-semibold text-white">Nieuwsbrief</h3>
           <p className="mt-4 max-w-xs text-sm text-ink-200">Blijf op de hoogte van werkkleding-tips en nieuws.</p>
           <NieuwsbriefForm />

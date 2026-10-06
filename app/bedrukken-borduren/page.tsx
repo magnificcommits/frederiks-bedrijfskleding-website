@@ -83,7 +83,7 @@ export default function BedrukkenBordurenPage() {
       />
 
       <section className="container-x py-10">
-        <ul className="grid gap-4 sm:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {eigenHuis.map((e) => (
             <li key={e.t} className="seam-card">
               <p className="text-base font-bold text-ink-900">{e.t}</p>
@@ -113,7 +113,7 @@ export default function BedrukkenBordurenPage() {
 
       <section className="container-x sec-md">
         <h2 className="kop-2">Van kledingstuk naar goedgekeurd logo</h2>
-        <ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {stappen.map((s) => (
             <li key={s.nr} className="seam-card h-full">
               <span className="font-display text-2xl font-extrabold text-amber-500">{s.nr}</span>
@@ -149,7 +149,7 @@ export default function BedrukkenBordurenPage() {
       </section>
 
       <section className="container-x sec-md">
-        <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.2fr]">
           <div>
             <h2 className="kop-2">Aanleveren en veelgestelde vragen</h2>
             <p className="mt-4 text-warm">
@@ -186,7 +186,7 @@ export default function BedrukkenBordurenPage() {
 
       <section className="border-y border-line bg-mist">
         <div className="container-x sec-md">
-          <div className="grid items-center gap-6 lg:grid-cols-[1.4fr_1fr]">
+          <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-[1.4fr_1fr]">
             <div>
               <h2 className="kop-2">Zet je logo live op de kleding</h2>
               <p className="mt-3 max-w-2xl text-warm">

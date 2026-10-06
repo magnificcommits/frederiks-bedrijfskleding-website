@@ -121,7 +121,7 @@ export default async function PassessiesPage({ searchParams }: { searchParams: P
           Wat kom je doen?
         </h2>
 
-        <div className="mt-2 grid gap-3 md:grid-cols-2">
+        <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
           <article className={`panel flex flex-col p-4 ${klant ? '' : 'opacity-60'}`}>
             <div className="flex items-start justify-between gap-3">
               <h3 className="font-display text-base font-bold text-ink-900">Alleen maten vastleggen</h3>
@@ -178,7 +178,7 @@ export default async function PassessiesPage({ searchParams }: { searchParams: P
 
             <div className="mt-auto pt-4">
               {klant ? (
-                <form action={startPassessie} className="grid gap-2 sm:grid-cols-2">
+                <form action={startPassessie} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <input type="hidden" name="organisatie_id" value={klant.id} />
                   <label className="block">
                     <span className="veld-label">Locatie (optioneel)</span>

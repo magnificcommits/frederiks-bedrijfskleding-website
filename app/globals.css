@@ -7,8 +7,11 @@
     --font-display: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
     --font-body: 'Inter', system-ui, sans-serif;
   }
-  html { scroll-behavior: smooth; }
+  /* Nooit zijwaarts te schuiven. clip (geen hidden): maakt geen scrollcontainer,
+     dus position: sticky blijft werken. Brede tabellen scrollen in hun eigen vlak. */
+  html { scroll-behavior: smooth; overflow-x: clip; }
   body {
+    overflow-x: clip;
     @apply bg-white text-ink antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
@@ -115,6 +118,9 @@
      overflow, zodat de vaste tabelkop (thead-sticky) daar werkt. */
   @media (max-width: 1023.98px) {
     :where(div, section, form, details):has(> table.tbl) {
+      /* relative: een sr-only label (position: absolute) in een cel bleef anders
+         aan het hele scherm hangen en maakte de pagina zijwaarts schuifbaar. */
+      position: relative;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-x: contain;
@@ -214,8 +220,12 @@
   }
   /* Telefoon: 16 px in velden, anders zoomt iOS bij elke tik in en blijft de pagina vergroot staan. */
   @media (max-width: 767.98px) {
-    .veld { font-size: 16px !important; }
+    .veld, input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea { font-size: 16px !important; }
   }
+  /* sr-only op een tabel: een tabel negeert width: 1px en bleef zo breed als zijn inhoud. */
+  table.sr-only { display: block; }
+  /* Paginakop in het KMS: kinderen nooit breder dan het scherm. */
+  .dash-kop > * { min-width: 0; max-width: 100%; }
 
   /* Tabel als kaartenlijst op een telefoon. Zet .tbl-kaart naast .tbl en geef
      elke cel een data-label. De cel met .kaart-kop wordt de titel van de kaart,

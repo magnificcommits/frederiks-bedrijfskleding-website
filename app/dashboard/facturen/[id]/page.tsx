@@ -135,7 +135,7 @@ export default async function FactuurDetailPage({ params, searchParams }: { para
       )}
 
       {/* Werkblad links, totalen en gegevens in een meelopend spoor rechts. */}
-      <div className="mt-4 grid items-start gap-6 print:hidden lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="mt-4 grid grid-cols-1 items-start gap-6 print:hidden lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="min-w-0 space-y-6">
       <section className="space-y-4 print:hidden">
         <h2 className="font-display text-xl font-bold text-ink-900">Factuurregels</h2>

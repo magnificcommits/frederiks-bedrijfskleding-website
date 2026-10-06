@@ -9,7 +9,7 @@ export function Faq({ items, title = 'Veelgestelde vragen' }: { items: { q: stri
   if (!items.length) return null;
   return (
     <section className="border-t border-line bg-white">
-      <div className="container-x sec-md grid gap-8 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-16">
+      <div className="container-x sec-md grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-16">
         <div>
           <h2 className="kop-2">{title}</h2>
           <div className="mt-6 rounded-xl bg-mist p-5" data-plek="faq">

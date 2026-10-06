@@ -18,7 +18,7 @@ function NiveauVelden({ n, basis }: { n?: SpaarNiveau; basis: 'omzet' | 'punten'
     <div className="space-y-4">
       <input type="hidden" name="terug" value={PAD} />
       {n && <input type="hidden" name="id" value={n.id} />}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="veld-label">Naam</label>
           <input name="naam" required maxLength={60} defaultValue={n?.naam ?? ''} className="veld" placeholder="Bijv. Platina" />
@@ -95,7 +95,7 @@ export default async function SparenNiveaus({ searchParams }: { searchParams: Pr
           Er zijn nog geen niveaus. Zonder niveaus sparen alle klanten gelijk; voeg er een paar toe om grote klanten extra te belonen.
         </p>
       ) : (
-        <ol className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <ol className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {niveaus.map((n, i) => {
             const klanten = standen.filter((s) => s.niveau.huidig?.id === n.id);
             const volgende = niveaus[i + 1];

@@ -26,7 +26,7 @@ export function Hero() {
       {/* Gestikte naad als merkaccent (kleding), geen hazard-streep of gradient-blob */}
       <div className="border-t-2 border-dashed border-amber-500" aria-hidden="true" />
 
-      <div className="mx-auto grid w-full max-w-[110rem] lg:grid-cols-[1.05fr_1fr]">
+      <div className="mx-auto grid grid-cols-1 w-full max-w-[110rem] lg:grid-cols-[1.05fr_1fr]">
         {/* TEKST */}
         <div className="px-5 py-14 sm:px-6 sm:py-20 lg:py-24 lg:pl-[clamp(2rem,5.5vw,6rem)] lg:pr-16">
           <div className="max-w-[36rem]">

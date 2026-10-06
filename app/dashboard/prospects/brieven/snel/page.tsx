@@ -162,7 +162,7 @@ export default async function SnelPagina({ searchParams }: { searchParams: Promi
           <Link href={BASIS} className="knop-tekst">Wissen</Link>
         </form>
 
-        <form method="get" className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,28rem)]">
+        <form method="get" className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,28rem)]">
           {filterVelden}
           <div className="panel">
             <div className="flex items-center justify-between border-b border-line px-3 py-2">

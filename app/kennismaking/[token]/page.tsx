@@ -102,7 +102,7 @@ export default async function KennismakingPagina({ params }: Props) {
     <div className="bg-white">
       {/* Kop */}
       <section className="relative overflow-hidden bg-ink-900 text-white">
-        <div className="container-x grid items-center gap-8 py-10 sm:py-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:py-20">
+        <div className="container-x grid grid-cols-1 items-center gap-8 py-10 sm:py-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:py-20">
           <div>
             <p className="eyebrow text-amber-400">Persoonlijk voor {bedrijf}</p>
             <h1 className="kop-1 mt-3 text-balance text-white">Werkkleding voor {bedrijf}</h1>
@@ -139,7 +139,7 @@ export default async function KennismakingPagina({ params }: Props) {
 
       {/* Persoonlijke tekst */}
       <section className="container-x sec-md">
-        <div className="grid gap-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-8">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-8">
           <div className="flex items-center gap-4 sm:block">
             {JESSI_FOTO ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -225,7 +225,7 @@ export default async function KennismakingPagina({ params }: Props) {
         <div className="container-x sec-md">
           <p className="eyebrow">Zo werkt het</p>
           <h2 className="kop-2 mt-3">Van pasdag tot nabestellen</h2>
-          <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <ol className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {stappen.map((s, i) => (
               <li key={s.t} className="seam-card">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 font-display text-lg font-extrabold text-ink-900" aria-hidden="true">{i + 1}</span>
@@ -252,7 +252,7 @@ export default async function KennismakingPagina({ params }: Props) {
 
       {/* Pasdag */}
       <section id="pasdag" className="scroll-mt-20 border-t border-line bg-mist">
-        <div className="container-x sec-md grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        <div className="container-x sec-md grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
           <div>
             <p className="eyebrow">Gratis en vrijblijvend</p>
             <h2 className="kop-2 mt-3">Plan een gratis pasdag</h2>
@@ -271,7 +271,7 @@ export default async function KennismakingPagina({ params }: Props) {
 
       {/* Contact */}
       <section className="container-x sec-md">
-        <div className="grid gap-6 rounded-2xl bg-ink-900 p-6 text-white sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-8">
+        <div className="grid grid-cols-1 gap-6 rounded-2xl bg-ink-900 p-6 text-white sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-8">
           <div>
             <h2 className="kop-3 text-white">Liever even bellen?</h2>
             <p className="mt-2 text-white/80">Bel of app Jessi rechtstreeks. Geen callcenter, gewoon mij.</p>

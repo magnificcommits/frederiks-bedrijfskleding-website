@@ -26,7 +26,7 @@ function BeloningVelden({ x, niveaus }: { x?: SpaarBeloning; niveaus: SpaarNivea
     <div className="space-y-4">
       <input type="hidden" name="terug" value={PAD} />
       {x && <input type="hidden" name="id" value={x.id} />}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="veld-label">Naam</label>
           <input name="naam" required maxLength={120} defaultValue={x?.naam ?? ''} className="veld" placeholder="Bijv. Gratis softshell met logo" />
@@ -110,7 +110,7 @@ export default async function SparenBeloningen({ searchParams }: { searchParams:
           {loyaliteit ? 'Nog geen beloningen. Begin met twee kortingen en een gratis logo.' : 'Beloningen zijn er na de migratie. Inwisselen voor korting kan wel al.'}
         </p>
       ) : (
-        <ul className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {beloningen.map((x) => {
             const perPunt = x.puntenPrijs > 0 ? x.waardeEuro / x.puntenPrijs : 0;
             const verhouding = inst.euroPerPunt > 0 ? perPunt / inst.euroPerPunt : 1;

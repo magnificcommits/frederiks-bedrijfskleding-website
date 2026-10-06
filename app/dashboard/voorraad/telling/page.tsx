@@ -163,7 +163,7 @@ export default async function TellingPage({ searchParams }: { searchParams: Prom
               <EmptyState tekst="Hier staat niets om te tellen." actieHref="/dashboard/voorraad/telling" actieLabel="Terug naar de keuze" />
             </div>
           ) : (
-            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
               {producten.map((p) => (
                 <section key={p.id} className="panel overflow-hidden">
                   <div className="flex items-center gap-3 border-b border-line bg-mist px-4 py-2.5">

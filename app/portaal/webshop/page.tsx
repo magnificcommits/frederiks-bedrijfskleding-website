@@ -248,7 +248,7 @@ export default async function Webshop({
           <p className="mt-2 max-w-2xl text-sm text-warm">
             {t('webshop.startpakketUitleg')}
           </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {startpakketten.map((p) => (
               <div key={p.id} className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-6 shadow-soft">
                 <div className="flex items-center justify-between gap-3">
@@ -308,7 +308,7 @@ export default async function Webshop({
           <p className="mt-2 max-w-2xl text-sm text-warm">
             {t('webshop.pakkettenUitleg')}
           </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {regulierePakketten.map((p) => (
               <div key={p.id} className="rounded-2xl border border-line bg-white p-6 shadow-soft">
                 <div className="flex items-center justify-between gap-3">

@@ -32,7 +32,7 @@ function Laden() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[0, 1, 2, 3].map((i) => <div key={i} className="panel h-[118px] animate-pulse bg-mist/60 motion-reduce:animate-none" />)}
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {[0, 1].map((i) => <div key={i} className="panel h-[280px] animate-pulse bg-mist/60 motion-reduce:animate-none" />)}
       </div>
     </div>

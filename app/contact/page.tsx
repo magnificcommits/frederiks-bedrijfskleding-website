@@ -19,7 +19,7 @@ export default function ContactPage() {
       <PageHero eyebrow="Contact" title="Kom gerust langs of neem contact op"
         intro={`${site.address.locationNote} Showroombezoek op afspraak. We komen ook graag bij je langs.`} />
       <section className="bg-mist">
-        <div className="container-x sec-md grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-8">
+        <div className="container-x sec-md grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-8">
           <div className="space-y-4">
             <JessiPaneel plek="contact" kop="Bel, app of kom langs" tekst={`${site.owner.split(' ')[0]} neemt zelf op. Op werkdagen reageren we binnen 24 uur.`} punten={[]} />
             <div className="rounded-2xl border border-line bg-white p-6">

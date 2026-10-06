@@ -54,7 +54,7 @@ export default function NormenPagina() {
         </nav>
 
         {/* Zo lees je een label: vier blokjes in plaats van een alinea. */}
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {labelRegels.map((r, i) => (
             <div key={r.kop} className="seam-card">
               <span className="font-display text-2xl font-extrabold text-amber-500">{i + 1}</span>

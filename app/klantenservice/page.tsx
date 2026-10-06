@@ -38,7 +38,7 @@ export default async function KlantenservicePage() {
         <p className="mt-4 max-w-2xl text-warm">
           Liever meteen contact dan zelf zoeken? Bel of app ons gerust. Je krijgt antwoord van iemand die je bedrijf kent.
         </p>
-        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
           <a
             href={`tel:${site.phoneIntl}`}
             className="rounded-2xl border border-line bg-white p-6 shadow-soft transition hover:border-amber-500"
@@ -93,7 +93,7 @@ export default async function KlantenservicePage() {
       <section id="retourbeleid" className="scroll-mt-24 border-t border-line bg-mist">
         <div className="container-x sec-md">
           <h2 className="kop-2">Retourbeleid</h2>
-          <div className="mt-6 grid gap-10 lg:grid-cols-2">
+          <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-2">
             <div>
               <p className="rounded-2xl border-l-2 border-amber-500 bg-white p-5 text-lg font-semibold text-ink-900 shadow-soft">
                 Je kunt tot {retourtermijn} dagen na ontvangst retourneren.

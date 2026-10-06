@@ -125,9 +125,10 @@ export async function Reviews({ limit }: { limit?: number }) {
             )
           )}
         </div>
-        <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Telefoon: veegbare rij in plaats van zes kaarten onder elkaar. */}
+        <div className="-mx-5 sm:-mx-6 sm:px-6 mt-8 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 [scrollbar-width:none] md:mx-0 md:mt-10 md:grid md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0 lg:grid-cols-3">
           {lijst.map((r) => (
-            <figure key={r.key} className="flex flex-col rounded-xl border border-white/10 bg-white/5 p-6">
+            <figure key={r.key} className="flex w-[82%] shrink-0 snap-start flex-col rounded-xl border border-white/10 bg-white/5 p-5 md:w-auto md:p-6">
               <div className="flex items-center gap-2">
                 <Stars value={r.sterren} />
                 {r.cijfer !== null && <span className="text-xs font-semibold text-ink-200">{r.cijfer}/10</span>}

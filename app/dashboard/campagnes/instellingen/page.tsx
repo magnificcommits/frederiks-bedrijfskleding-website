@@ -26,7 +26,7 @@ export default async function CampagneInstellingenPagina({ searchParams }: { sea
       </div>
       {melding && <p className="mt-3 rounded-md border border-line bg-mist px-4 py-2 text-[13px]">{melding}</p>}
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <form action={bewaarCampagneInstellingenActie} className="panel flex flex-col gap-4 p-5">
           <div>
             <label className="veld-label" htmlFor="ci-limiet">Maximaal aantal mails per dag</label>

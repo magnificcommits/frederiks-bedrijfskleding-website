@@ -49,7 +49,7 @@ export default async function InstellingenPage({
         <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">E-mailadres van de boekhouder opgeslagen.</p>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Boekhouder */}
         <div className="panel p-4">
           <h2 className="font-display text-lg font-bold text-ink-900">Boekhouder</h2>

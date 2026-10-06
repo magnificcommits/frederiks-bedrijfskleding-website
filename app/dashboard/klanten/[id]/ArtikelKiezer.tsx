@@ -374,7 +374,7 @@ export default function ArtikelKiezer({
                 </p>
               ) : (
                 voorWie === 'afdelingen' && (
-                  <div className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                     {afdelingen.map((a) => (
                       <label
                         key={a.id}
@@ -394,7 +394,7 @@ export default function ArtikelKiezer({
               )}
             </fieldset>
 
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="veld-label" htmlFor="kiezer-verstrekking">
                   Hoe krijgt de klant dit
@@ -543,7 +543,7 @@ export default function ArtikelKiezer({
                       ? `${gevonden.length} artikelen gevonden, de eerste ${MAX_RESULTATEN} staan hieronder. Typ er een woord bij om te verfijnen.`
                       : `${gevonden.length} ${gevonden.length === 1 ? 'artikel' : 'artikelen'} gevonden.`}
                   </p>
-                  <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                     {zichtbaar.map((a) => (
                       <li key={a.id}>
                         <button

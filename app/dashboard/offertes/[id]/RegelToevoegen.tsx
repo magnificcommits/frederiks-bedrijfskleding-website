@@ -183,7 +183,7 @@ export default function RegelToevoegen({ offerteId, organisatieId }: { offerteId
             )}
             {catalogus === 'klaar' && (
               <>
-                <div className="mt-3 grid max-h-80 gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-3 grid grid-cols-1 max-h-80 gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
                   {zichtbaar.map((p) => (
                     <button
                       key={p.id}

@@ -435,14 +435,14 @@ async function StapVolgen({ batchId, verrijkt, sp, vandaag, nogTeVersturen, aant
         </form>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiTegel label="Verstuurd" waarde={String(verstuurd.aantal)} href={href('volgen', '&status=verstuurd')} sub={<span className="text-warm">{dagenSinds != null ? `${dagenSinds} ${dagenSinds === 1 ? 'dag' : 'dagen'} geleden op de post` : 'nog niet op de post'}</span>} />
         <KpiTegel label="QR gescand" waarde={String(gescand.aantal)} href={href('volgen', '&status=gescand')} sub={<span className="text-warm">{procent(gescand.vanVorige)} van verstuurd</span>} />
         <KpiTegel label="Contact" waarde={String(contact.aantal)} href={href('volgen', '&status=gereageerd')} sub={<span className="text-warm">{procent(contact.vanStart)} van verstuurd</span>} />
         <KpiTegel label="Klant geworden" waarde={String(klant.aantal)} href={href('volgen', '&status=klant')} sub={<span className="text-warm">{procent(klant.vanStart)} van verstuurd</span>} />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
         <div className="panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Funnel</h2>
           <div className="mt-3">

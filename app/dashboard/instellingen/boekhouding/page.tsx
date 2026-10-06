@@ -65,7 +65,7 @@ export default async function BoekhoudingInstellingenPage({
       {sp.test && <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">De verbinding werkt. Gekoppeld aan administratie: {sp.test}</p>}
       {sp.testfout && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-semibold text-red-800" role="alert">{sp.testfout}</p>}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="panel p-4">
           <h2 className="font-display text-lg font-bold text-ink-900">Koppeling met Moneybird</h2>
           <dl className="mt-3 space-y-2 text-sm">

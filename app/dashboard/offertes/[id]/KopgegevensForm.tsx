@@ -73,7 +73,7 @@ export default function KopgegevensForm({
         stelVoor={false}
         onWijzig={opKiezer}
       />
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
           <label className="veld-label" htmlFor="kop-geldig">Geldig tot</label>
           <input id="kop-geldig" type="date" name="geldig_tot" defaultValue={geldigTot} className={groot} />

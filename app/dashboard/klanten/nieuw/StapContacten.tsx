@@ -141,7 +141,7 @@ export default function StapContacten({
                 </button>
               )}
             </div>
-            <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <label className="veld-label" htmlFor={`cp-naam-${r.sleutel}`}>Naam</label>
                 <input

@@ -144,7 +144,7 @@ export function DemoPoort() {
 
   if (fase === 'poort') {
     return (
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:gap-8">
         {/* Voorproef: wazig portaalbeeld met een afspeelknop, zodat je ziet wat je krijgt. */}
         <div className="relative overflow-hidden rounded-2xl bg-ink-900" aria-hidden="true">
           <div className="pointer-events-none select-none p-4 opacity-60 blur-[2px] sm:p-6">
@@ -219,7 +219,7 @@ export function DemoPoort() {
         <div className="rounded-2xl border border-line bg-white p-6 shadow-card sm:p-8">
           <h2 className="kop-2">Past dit bij jullie?</h2>
           <p className="mt-2 max-w-[60ch] text-warm">Drie vragen, dan weet {voornaam} waar ze op moet letten als ze je belt.</p>
-          <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
             {VRAGEN.map((v) => (
               <fieldset key={v.id}>
                 <legend className="font-display text-lg font-extrabold text-ink-900">{v.vraag}</legend>

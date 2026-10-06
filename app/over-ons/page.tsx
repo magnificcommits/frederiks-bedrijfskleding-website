@@ -83,7 +83,7 @@ export default async function OverOnsPage() {
 
       {/* Het verhaal, in blokken naast een meelopende foto. */}
       <section className="container-x sec-md">
-        <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,38rem)_minmax(0,34rem)] lg:justify-between">
+        <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-[minmax(0,38rem)_minmax(0,34rem)] lg:justify-between">
           <div>
             <h2 className="text-balance kop-2">
               Hoe dit bedrijf is ontstaan
@@ -91,7 +91,7 @@ export default async function OverOnsPage() {
 
             <div className="mt-8 space-y-px border-y border-line">
               {VERHAAL.map((v) => (
-                <article key={v.label} className="grid gap-x-6 gap-y-2 border-b border-line py-6 last:border-b-0 sm:grid-cols-[6rem_minmax(0,1fr)]">
+                <article key={v.label} className="grid grid-cols-1 gap-x-6 gap-y-2 border-b border-line py-6 last:border-b-0 sm:grid-cols-[6rem_minmax(0,1fr)]">
                   <p className="pt-1 text-[13px] font-bold uppercase tracking-[0.14em] text-amber-700">
                     {v.label}
                   </p>
@@ -161,7 +161,7 @@ export default async function OverOnsPage() {
       <section className="border-t border-line bg-mist">
         <div className="container-x sec-md">
           <h2 className="text-balance kop-2">Waar je op mag rekenen</h2>
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {site.usps.map((u) => (
               <div key={u.title} className="rounded-lg border border-line bg-white p-5">
                 <h3 className="text-base font-semibold text-ink-900">{u.title}</h3>

@@ -66,7 +66,7 @@ export default async function Funnel({ periode }: { periode: Periode }) {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Blok titel="Van aanvraag tot order" uitleg="Alles wat in deze periode is binnengekomen of aangemaakt. Klik op een stap voor de lijst.">
           {niets ? (
             <LegeStaat titel="Nog geen leads, offertes of orders in deze periode" tekst="Kies een langere periode. Leads komen binnen via het adviesformulier op de site of voer je zelf in." actieHref="/dashboard/leads" actieLabel="Naar leads" />

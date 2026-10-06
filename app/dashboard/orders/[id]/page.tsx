@@ -192,12 +192,12 @@ export default async function OrderDetailPage({
       )}
 
       {/* Werkblad links, financiën en acties in een meelopend spoor rechts. */}
-      <div className="mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="mt-4 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="min-w-0 space-y-6">
       <section>
         <div className="panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Ordergegevens</h2>
-          <dl className="mt-3 grid gap-x-6 gap-y-3 text-[13px] sm:grid-cols-2 xl:grid-cols-4">
+          <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 text-[13px] sm:grid-cols-2 xl:grid-cols-4">
             <div>
               <dt className="veld-label">Klant</dt>
               <dd className="text-ink-900">{order.organisatie_naam || 'Onbekende klant'}</dd>
@@ -218,7 +218,7 @@ export default async function OrderDetailPage({
 
           {/* Referentie en notities vult Jessi bij het aanmaken in. Zonder dit
               formulier zou ze ze daarna nergens meer terugzien of verbeteren. */}
-          <form action={zetOrderGegevens} className="mt-4 grid gap-4 border-t border-line pt-4 md:grid-cols-2">
+          <form action={zetOrderGegevens} className="mt-4 grid grid-cols-1 gap-4 border-t border-line pt-4 md:grid-cols-2">
             <input type="hidden" name="orderId" value={order.id} />
             <div>
               <label className="veld-label" htmlFor="og-referentie">Referentie van de klant</label>
@@ -421,7 +421,7 @@ export default async function OrderDetailPage({
         {drukproeven.length === 0 ? (
           <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen drukproeven aan deze order gekoppeld.</p>
         ) : (
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {drukproeven.map((d) => (
               <li key={d.id} className="flex items-center justify-between gap-3 panel p-4">
                 <div>

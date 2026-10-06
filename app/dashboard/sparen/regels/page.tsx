@@ -45,7 +45,7 @@ function RegelVelden({ soort, regel }: { soort: RegelSoort; regel?: SpaarRegel }
       <input type="hidden" name="soort" value={soort} />
       <input type="hidden" name="terug" value={PAD} />
       {regel && <input type="hidden" name="id" value={regel.id} />}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="veld-label">Naam</label>
           <input name="naam" required maxLength={120} defaultValue={regel?.naam ?? REGEL_SOORT_INFO[soort].label} className="veld" />
@@ -135,7 +135,7 @@ export default async function SparenRegels({ searchParams }: { searchParams: Pro
         </p>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
         {regels.map((r) => {
           const info = REGEL_SOORT_INFO[r.soort];
           const actieLoopt = r.soort === 'periode_actie' && r.startDatum && r.eindDatum && r.startDatum <= vandaag && r.eindDatum >= vandaag;
@@ -189,7 +189,7 @@ export default async function SparenRegels({ searchParams }: { searchParams: Pro
         <section className="mt-8">
           <h2 className="font-display text-base font-bold text-ink-900">Regel toevoegen</h2>
           <p className="mt-0.5 text-[12px] text-warm">Bijvoorbeeld een tweede actieperiode, of een hogere bonus voor heel grote orders.</p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {REGEL_SOORTEN.map((s) => (
               <div key={s} className="panel flex flex-col p-3">
                 <p className="text-[13px] font-semibold text-ink-900">{REGEL_SOORT_INFO[s].label}</p>

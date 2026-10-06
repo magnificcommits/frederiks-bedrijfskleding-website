@@ -12,7 +12,7 @@ import { bedrijf } from '@/content/bedrijf';
 export default function DocumentVoet({ toonVoorwaarde = true }: { toonVoorwaarde?: boolean }) {
   return (
     <footer className="mt-12 break-inside-avoid print:mt-8">
-      <div className="grid gap-6 border-t border-line pt-6 text-sm sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 border-t border-line pt-6 text-sm sm:grid-cols-3">
         <div>
           <p className="font-semibold text-ink-900">{bedrijf.naam}</p>
           <p className="text-warm">{bedrijf.adres}</p>

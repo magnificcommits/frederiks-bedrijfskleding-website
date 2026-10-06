@@ -113,7 +113,7 @@ export default async function BrievenOverzicht({ searchParams }: { searchParams:
         </p>
       )}
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiTegel
           label="Brieven verstuurd"
           waarde={String(verstuurd.aantal + losVerstuurd)}

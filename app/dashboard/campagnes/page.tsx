@@ -27,7 +27,7 @@ function NieuweCampagneFormulier() {
       </div>
       <fieldset>
         <legend className="veld-label">Waar begin je mee?</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <label className="group relative cursor-pointer rounded-lg border border-line bg-white p-3 hover:border-ink-300 has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50">
             <input type="radio" name="voorbeeld" value="" defaultChecked className="sr-only" />
             <span className="block text-[13px] font-semibold text-ink-900">Leeg beginnen</span>
@@ -171,7 +171,7 @@ export default async function CampagnesPage({ searchParams }: { searchParams: Pr
           <EmptyState tekst={`Geen campagnes ${status ? `met status ${CAMPAGNE_STATUS_LABEL[status]?.toLowerCase() ?? status}` : ''}${woorden ? ` die passen bij "${q}"` : ''}.`} />
         </div>
       ) : (
-        <section className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <section className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {zichtbaar.map((c) => (
             <article key={c.id} className="panel flex flex-col p-4 transition-colors hover:border-ink-300">
               <div className="flex items-start justify-between gap-3">
@@ -228,7 +228,7 @@ export default async function CampagnesPage({ searchParams }: { searchParams: Pr
           <span className="underline-offset-2 group-hover:underline">Voorbeeldcampagnes</span>
           <span className="ml-2 font-normal text-warm">kant-en-klaar, met teksten in jouw toon</span>
         </summary>
-        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {VOORBEELDEN.map((v) => (
             <div key={v.sleutel} className="panel flex flex-col p-4">
               <div className="flex items-baseline justify-between gap-2">

@@ -117,7 +117,7 @@ export default async function MedewerkerInstellingen({
         </div>
       )}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Budgetinstellingen */}
         <section className="rounded-2xl border border-line bg-white p-6 shadow-soft">
           <h2 className="font-display text-lg font-extrabold text-ink-900">{t('medewerker.budgetInstellingen')}</h2>
@@ -138,7 +138,7 @@ export default async function MedewerkerInstellingen({
               </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={label}>{t('medewerker.startbudget', { eenheid })}</label>
                 <input
@@ -187,7 +187,7 @@ export default async function MedewerkerInstellingen({
             <div className="border-t border-line pt-4">
               <p className="text-sm font-semibold text-ink-900">{t('medewerker.periodiek')}</p>
               <p className="mt-0.5 text-xs text-warm">{t('medewerker.periodiekUitleg')}</p>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className={label}>{t('medewerker.aanvulling', { eenheid })}</label>
                   <input

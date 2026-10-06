@@ -86,7 +86,7 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
       </div>
 
       <section className="container-x py-8">
-        <div className="grid gap-10 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
           <div>
             <div className="relative aspect-square overflow-hidden rounded-xl border border-line bg-mist">
               {p.foto && (
@@ -176,7 +176,7 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
         <section className="border-t border-line bg-mist">
           <div className="container-x py-12">
             <h2 className="text-xl font-extrabold">Ook uit deze categorie</h2>
-            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {verwant.map((v) => <ProductKaart key={v.id} p={naarKaart(v)} />)}
             </div>
           </div>

@@ -28,24 +28,24 @@ export default function RegioIndex() {
         intro={`Onze showroom en bedrukkerij zitten in de Brouwersmolen in Hengelo (Gld). Binnen ${KERNSTRAAL_KM} kilometer zijn we het vaakst te vinden, van Zutphen tot Doetinchem en van Dieren tot Groenlo. Overal met dezelfde aanpak: we komen langs om te passen en brengen het logo in eigen huis aan.`} />
       <section className="container-x sec-md">
         <h2 className="kop-2">{`Binnen ${KERNSTRAAL_KM} km: ons kernwerkgebied`}</h2>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
           {kern.map((p) => (
-            <Link key={p.slug} href={`/regio/${p.slug}`} className="group flex items-center justify-between gap-3 rounded-xl border-2 border-ink-200 bg-white px-5 py-4 transition hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card">
+            <Link key={p.slug} href={`/regio/${p.slug}`} className="group flex min-w-0 items-center justify-between gap-2 rounded-xl border-2 border-ink-200 bg-white px-3 py-3 transition sm:gap-3 sm:px-5 sm:py-4 hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card">
               <span>
-                <span className="block font-display text-[1.0625rem] font-extrabold text-ink-900">{p.name}</span>
-                <span className="text-xs text-warm">{km(p.km)} · {p.afstand.replace(' vanaf Hengelo', '')}</span>
+                <span className="block font-display text-[15px] font-extrabold leading-tight text-ink-900 sm:text-[1.0625rem]">{p.name}</span>
+                <span className="text-xs text-warm"><span className="sm:hidden">{km(p.km)}</span><span className="max-sm:hidden">{km(p.km)} · {p.afstand.replace(' vanaf Hengelo', '')}</span></span>
               </span>
               <Pijl />
             </Link>
           ))}
         </div>
         <h2 className="mt-12 kop-2">Verder in de Achterhoek</h2>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
           {verder.map((p) => (
-            <Link key={p.slug} href={`/regio/${p.slug}`} className="group flex items-center justify-between gap-3 rounded-xl border-2 border-ink-200 bg-white px-5 py-4 transition hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card">
+            <Link key={p.slug} href={`/regio/${p.slug}`} className="group flex min-w-0 items-center justify-between gap-2 rounded-xl border-2 border-ink-200 bg-white px-3 py-3 transition sm:gap-3 sm:px-5 sm:py-4 hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card">
               <span>
-                <span className="block font-display text-[1.0625rem] font-extrabold text-ink-900">{p.name}</span>
-                <span className="text-xs text-warm">{km(p.km)} · {p.afstand.replace(' vanaf Hengelo', '')}</span>
+                <span className="block font-display text-[15px] font-extrabold leading-tight text-ink-900 sm:text-[1.0625rem]">{p.name}</span>
+                <span className="text-xs text-warm"><span className="sm:hidden">{km(p.km)}</span><span className="max-sm:hidden">{km(p.km)} · {p.afstand.replace(' vanaf Hengelo', '')}</span></span>
               </span>
               <Pijl />
             </Link>
@@ -55,9 +55,9 @@ export default function RegioIndex() {
         <p className="mt-6 max-w-[60ch] text-warm">Staat jouw plaats er niet bij? We werken in de hele regio. <Link href="/kledingadvies" className="font-semibold text-amber-700 hover:underline">Vraag gerust advies aan</Link>.</p>
 
         <h2 className="mt-14 kop-2">Of kies je branche</h2>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           {branches.map((b) => (
-            <Link key={b.slug} href={`/branches/${b.slug}`} className="rounded-lg border border-line bg-white px-5 py-4 font-semibold text-ink-900 shadow-soft transition hover:border-amber-400 hover:text-amber-800">{b.navLabel}</Link>
+            <Link key={b.slug} href={`/branches/${b.slug}`} className="rounded-lg border border-line bg-white px-3 py-3 font-semibold sm:px-5 sm:py-4 text-ink-900 shadow-soft transition hover:border-amber-400 hover:text-amber-800">{b.navLabel}</Link>
           ))}
         </div>
       </section>

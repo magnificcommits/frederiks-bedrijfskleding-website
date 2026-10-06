@@ -104,7 +104,7 @@ export default async function Portaal() {
 
       <section className="mt-8 rounded-2xl border border-line bg-white p-5 shadow-soft sm:p-6">
         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-700">{t('home.zoBestelJe')}</p>
-        <ol className="mt-4 grid gap-4 sm:grid-cols-3">
+        <ol className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <li className="flex items-start gap-3">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 font-display text-sm font-extrabold text-amber-700" aria-hidden="true">1</span>
             <div>
@@ -159,7 +159,7 @@ export default async function Portaal() {
         </section>
       )}
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Link href="/portaal/webshop" className="rounded-2xl border border-line bg-white p-6 shadow-soft transition hover:border-amber-300">
           <p className="font-display text-lg font-extrabold text-ink-900">{t('nav.kledingBestellen')}</p>
           <p className="mt-1 text-sm text-warm">{t('home.kaartBestellenTekst')}</p>
@@ -196,7 +196,7 @@ export default async function Portaal() {
       {items.length === 0 ? (
         <p className="mt-3 text-sm text-warm">{t('home.geenKledinglijn')}</p>
       ) : (
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((i) => (
             <Link
               key={i.id}

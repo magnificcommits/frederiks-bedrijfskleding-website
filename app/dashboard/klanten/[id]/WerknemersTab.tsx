@@ -91,7 +91,7 @@ export default function WerknemersTab({
             className="veld"
           />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="veld-label" htmlFor={`wn-afd-${w?.id ?? 'nieuw'}`}>Afdeling</label>
             <select id={`wn-afd-${w?.id ?? 'nieuw'}`} name="afdeling_id" defaultValue={w?.afdeling_id ?? ''} className="veld">
@@ -116,7 +116,7 @@ export default function WerknemersTab({
             </div>
           )}
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="veld-label" htmlFor={`wn-mail-${w?.id ?? 'nieuw'}`}>E-mail</label>
             <input id={`wn-mail-${w?.id ?? 'nieuw'}`} name="email" type="email" defaultValue={w?.email ?? ''} placeholder="naam@bedrijf.nl" className="veld" />
@@ -259,7 +259,7 @@ export default function WerknemersTab({
         <form
           key={openWerknemerId ?? 'leeg'}
           action={nieuweWerknemerActie}
-          className="panel mt-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1.2fr_1.5fr_auto] lg:items-end"
+          className="panel mt-4 grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1.2fr_1.5fr_auto] lg:items-end"
         >
           <input type="hidden" name="orgId" value={orgId} />
           <div>

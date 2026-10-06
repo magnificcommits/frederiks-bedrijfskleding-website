@@ -118,7 +118,7 @@ export default async function WerkbonPage({
         <Melding code={zp.melding} />
       </div>
 
-      <div className="print:hidden mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="print:hidden mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         {/* ---------------- Decoraties ---------------- */}
         <section>
           <h2 className="font-display text-xl font-bold text-ink-900">Wat komt waar</h2>
@@ -185,7 +185,7 @@ export default async function WerkbonPage({
 
                   <details className="mt-3 border-t border-line pt-3" open={r.decoraties.length === 0}>
                     <summary className="cursor-pointer text-sm font-semibold text-amber-700 hover:text-amber-800">Logo op dit artikel zetten</summary>
-                    <form action={voegDecoratieToe} className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <form action={voegDecoratieToe} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <input type="hidden" name="orderId" value={id} />
                       <input type="hidden" name="orderregelId" value={r.id} />
                       <div>
@@ -371,7 +371,7 @@ export default async function WerkbonPage({
             <p className="text-xs font-semibold uppercase tracking-wide text-warm">
               {goedeProeven.length ? 'Goedgekeurde drukproef' : 'Drukproef (nog niet goedgekeurd)'}
             </p>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {getoondeProeven.map((p) => (
                 <div key={p.id}>
                   <p className="text-sm font-semibold text-ink-900">{p.naam}</p>

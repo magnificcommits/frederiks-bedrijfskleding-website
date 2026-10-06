@@ -60,7 +60,7 @@ export default async function Operatie({ periode, norm }: { periode: Periode; no
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Blok titel="Open orders per status" uitleg="Hoe lang staan orders nu al open, gerekend vanaf de besteldatum. Klik voor de orders met die status.">
           {d.open.length === 0 ? (
             <LegeStaat titel="Geen open orders" tekst="Alles is afgerond. Nieuwe orders verschijnen hier per status." />
@@ -141,7 +141,7 @@ export default async function Operatie({ periode, norm }: { periode: Periode; no
         ) : d.tijdPerStatus.length === 0 ? (
           <LegeStaat titel="Nog geen statuswijzigingen in deze periode" tekst="Zodra orders van status wisselen, zie je hier per status hoe lang ze bleven staan." />
         ) : (
-          <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <Balken
               opmaak="aantal"
               rijen={d.tijdPerStatus.map((s) => ({
@@ -167,7 +167,7 @@ export default async function Operatie({ periode, norm }: { periode: Periode; no
         )}
       </Blok>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Blok titel="Retouren" uitleg="Aangemeld in deze periode, per reden en status." link={{ href: '/dashboard/retouren', label: 'Alle retouren' }}>
           {d.retouren.aantal.nu === 0 ? (
             <LegeStaat titel="Geen retouren in deze periode" tekst="Retouren komen binnen via het retourportaal of zet je zelf klaar. Hier zie je dan de redenen, zodat je ziet of het om maat, kwaliteit of iets anders gaat." />

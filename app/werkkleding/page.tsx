@@ -35,7 +35,7 @@ export default function WerkkledingPage() {
       <BrandStrip />
 
       <section className="container-x sec-md">
-        <div className="grid items-start gap-12 lg:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2">
           <div>
             <h2 className="kop-2">Een compleet assortiment A-merken</h2>
             <div className="prose-nl mt-4 text-lg">
@@ -50,7 +50,7 @@ export default function WerkkledingPage() {
         </div>
 
         <h2 className="mt-16 kop-2">Wat we leveren</h2>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {categorieen.map((c) => (
             <div key={c.t} className="rounded-lg border-l-2 border-amber-500 bg-white p-5 shadow-soft">
               <h3 className="text-base font-bold text-ink-900">{c.t}</h3>
@@ -63,7 +63,7 @@ export default function WerkkledingPage() {
       <section className="border-y border-line bg-mist">
         <div className="container-x sec-md">
           <h2 className="kop-2">Bekijk wat we per sector leveren</h2>
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {branches.map((b) => (
               <Link key={b.slug} href={`/branches/${b.slug}`} className="group flex items-center justify-between gap-3 rounded-xl border-2 border-ink-200 bg-white px-5 py-4 transition hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card">
                 <span className="font-display text-[1.0625rem] font-extrabold text-ink-900">{b.navLabel}</span>

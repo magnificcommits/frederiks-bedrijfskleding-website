@@ -202,7 +202,7 @@ export default async function LeveranciersPage({ searchParams }: { searchParams:
                     </table>
                   </div>
                 ) : (
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                     {lijst.map((l) => <Kaart key={l.id} l={l} klaar={inkoopordersKlaar} />)}
                   </div>
                 )}

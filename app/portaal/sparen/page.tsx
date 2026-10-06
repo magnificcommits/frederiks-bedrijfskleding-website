@@ -156,7 +156,7 @@ export default async function PortaalSparen({ searchParams }: { searchParams: Pr
       )}
       {fout && <p role="alert" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-800">{fout}</p>}
 
-      <section className="mt-8 grid gap-4 lg:grid-cols-5">
+      <section className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-5">
         <div className="rounded-2xl border border-ink-800 bg-ink-900 p-6 text-white shadow-soft sm:p-7 lg:col-span-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-400">{t('sparen.saldo')}</p>
@@ -223,7 +223,7 @@ export default async function PortaalSparen({ searchParams }: { searchParams: Pr
                 ? t('sparen.beloningenViaOns')
                 : t('sparen.beloningenBeheerder')}
           </p>
-          <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {zichtbareBeloningen.map((x) => {
               const minNiveau = x.minNiveauId ? niveaus.find((n) => n.id === x.minNiveauId) ?? null : null;
               const niveauOk = !minNiveau || (niveau?.huidig && niveau.huidig.drempel >= minNiveau.drempel);
@@ -291,7 +291,7 @@ export default async function PortaalSparen({ searchParams }: { searchParams: Pr
         </section>
       )}
 
-      <section className="mt-12 grid gap-6 lg:grid-cols-2">
+      <section className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div>
           <h2 className="font-display text-xl font-extrabold text-ink-900">{t('sparen.zoSpaarJe')}</h2>
           <ul className="mt-4 space-y-3">

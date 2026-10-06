@@ -50,7 +50,7 @@ export default function NieuweKlachtFormulier({
 
   return (
     <form action={nieuweKlacht} className="mt-4 flex flex-col gap-4">
-      <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
         <KlantZoeker klanten={klanten} verplicht onKies={kiesKlant} hint="Verplicht. Typ een paar letters van de naam of plaats." />
         <div>
           <span className="veld-label">Soort</span>
@@ -67,7 +67,7 @@ export default function NieuweKlachtFormulier({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <PersoonKiezer
           key={klant?.id ?? 'geen'}
           naam="contact"
@@ -99,7 +99,7 @@ export default function NieuweKlachtFormulier({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
           <label htmlFor="nk-cat" className="veld-label">Categorie</label>
           <select id="nk-cat" name="categorie" className="veld" defaultValue="">
@@ -128,7 +128,7 @@ export default function NieuweKlachtFormulier({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ProductZoeker key={orderId || 'los'} suggesties={suggesties} label="Artikel (optioneel)" />
         <div>
           <label htmlFor="nk-wie" className="veld-label">Toegewezen aan</label>

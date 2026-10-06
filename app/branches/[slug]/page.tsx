@@ -55,7 +55,7 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
 
       {/* Split-hero */}
       <section className="border-b border-line bg-ink-900 text-white">
-        <div className="mx-auto grid w-full max-w-[110rem] lg:grid-cols-[1.05fr_1fr]">
+        <div className="mx-auto grid grid-cols-1 w-full max-w-[110rem] lg:grid-cols-[1.05fr_1fr]">
           <div className="flex flex-col justify-center px-5 py-10 sm:px-6 lg:py-14 lg:pl-[clamp(2rem,5.5vw,6rem)] lg:pr-14">
             <nav className="text-xs text-ink-300" aria-label="Kruimelpad">
               <Link href="/" className="hover:text-white">Home</Link>
@@ -83,19 +83,19 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
 
       {/* In het kort: wat je krijgt, in vier tegels. De lange tekst staat eronder, ingeklapt. */}
       <section className="container-x sec-md">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10">
           <div>
             <h2 className="kop-2">Wat we voor je verzorgen</h2>
             <p className="mt-3 max-w-[68ch] text-lg text-warm">{b.body[0]}</p>
-            <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+            <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {b.levering.map((l) => (
-                <li key={l.title} className="flex gap-4 rounded-xl border border-line bg-white p-5">
+                <li key={l.title} className="flex items-center gap-3 rounded-xl border border-line bg-white p-3.5 sm:items-start sm:gap-4 sm:p-5">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-ink-900" aria-hidden="true">
                     <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.5l3.2 3.2L13 5" /></svg>
                   </span>
                   <span>
                     <span className="block font-display text-[1.0625rem] font-extrabold text-ink-900">{l.title}</span>
-                    <span className="mt-1 block text-sm leading-snug text-warm">{l.text}</span>
+                    <span className="mt-1 hidden text-sm leading-snug text-warm sm:block">{l.text}</span>
                   </span>
                 </li>
               ))}
@@ -183,7 +183,7 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
       {b.gallery && b.gallery.length > 0 && (
         <section className="container-x pt-10 sm:pt-14">
           {b.gallery.length === 1 ? (
-            <div className="grid overflow-hidden rounded-2xl bg-ink-900 shadow-card lg:grid-cols-2">
+            <div className="grid grid-cols-1 overflow-hidden rounded-2xl bg-ink-900 shadow-card lg:grid-cols-2">
               <div className="relative min-h-[16rem] lg:min-h-[22rem]">
                 <Image src={b.gallery[0]} alt={`${b.name} bij Frederiks Bedrijfskleding`} fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
               </div>
@@ -203,7 +203,7 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
               </div>
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {b.gallery.map((src) => (
                 <div key={src} className="relative aspect-[16/9] overflow-hidden rounded-2xl">
                   <Image src={src} alt={`${b.name} bij Frederiks Bedrijfskleding`} fill sizes="(max-width: 1024px) 90vw, 45vw" className="object-cover" />

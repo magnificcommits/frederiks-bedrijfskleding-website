@@ -282,7 +282,7 @@ export default async function NormPagina({ params }: { params: Promise<{ slug: s
                 : `Dit zijn de categorieën waarin ${n.code} voorkomt. Wat er op een artikel getest is, staat bij de normering op de productpagina.`}
             </p>
 
-            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {lijst.map((p) => (
                 <ProductKaart key={p.id} p={naarKaart(p)} />
               ))}
@@ -314,7 +314,7 @@ export default async function NormPagina({ params }: { params: Promise<{ slug: s
       {anderen.length > 0 && (
         <section className="container-x sec-md">
           <h2 className="kop-2">Normen die hier vaak bij horen</h2>
-          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
             {anderen.map((x) => (
               <Link
                 key={x.slug}

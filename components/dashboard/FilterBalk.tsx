@@ -144,7 +144,7 @@ export default function FilterBalk({
       ))}
 
       {meerOpen && overig.length > 0 && (
-        <div className="panel mt-3 grid gap-x-4 gap-y-3 p-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="panel mt-3 grid grid-cols-1 gap-x-4 gap-y-3 p-3 sm:grid-cols-2 lg:grid-cols-4">
           {overig.map((f) => (
             <FilterVeld key={f.param} def={f} sp={sp} zet={zet} context={context} />
           ))}

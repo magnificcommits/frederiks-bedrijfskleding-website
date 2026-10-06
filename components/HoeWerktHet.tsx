@@ -25,7 +25,7 @@ export function HoeWerktHet() {
     <section className="bg-white">
       <div className="container-x sec-md">
         <h2 className="kop-2 max-w-[24ch]">Van eerste telefoontje tot kleding op de werkvloer</h2>
-        <ol className="mt-7 grid gap-x-8 gap-y-7 md:grid-cols-3">
+        <ol className="mt-7 grid grid-cols-1 gap-x-8 gap-y-7 md:grid-cols-3">
           {stappen.map((s, i) => (
             <li key={s.nr} className="relative">
               {i < stappen.length - 1 && <span className="absolute left-14 right-0 top-5 hidden border-t-2 border-dashed border-amber-400 md:block" aria-hidden="true" />}

@@ -69,7 +69,7 @@ export default async function OntvangerPagina({ params, searchParams }: { params
 
       {melding && <p className="mt-3 rounded-md border border-line bg-mist px-4 py-2 text-[13px]">{melding}</p>}
 
-      <div className="mt-5 grid gap-5 md:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,1fr)_18rem]">
         <section className="panel p-5">
           <h2 className="text-[14px] font-bold text-ink-900">Tijdlijn in &ldquo;{t.campagneNaam}&rdquo;</h2>
           {t.regels.length === 0 ? (

@@ -63,12 +63,15 @@ export default async function HomePage() {
       <WieJeKrijgt />
       <BrandStrip />
       <PortaalUsp />
-      <SpaarTeaser />
+      {/* Sparen is voor vaste klanten; op de telefoon niet op de homepage. */}
+      <div className="hidden md:block"><SpaarTeaser /></div>
 
       {/* Vakgebied x streek: hier win je van landelijke webshops, die alleen
           op plaatsnaam schalen en niets met beroepen doen. */}
-      <section className="bg-white">
-        <div className="container-x sec-md grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:gap-10">
+      {/* Op de telefoon weg: de branches staan al hierboven en het menu heeft alle
+          kledingsoorten. Deze sectie was op een telefoon twee schermen lang. */}
+      <section className="hidden bg-white md:block">
+        <div className="container-x sec-md grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:gap-10">
           <div>
             <h2 className="kop-2">We weten wat jouw werk met kleding doet</h2>
             <p className="mt-3 max-w-[62ch] text-lg text-warm">
@@ -95,7 +98,7 @@ export default async function HomePage() {
 
       {/* Pakketsamensteller */}
       <section className="bg-ink-900 text-white">
-        <div className="container-x sec grid items-center gap-10 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-14">
+        <div className="container-x sec grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-14">
           <div>
             <h2 className="kop-2">Stel je pakket samen en zie je logo meteen op de kleding</h2>
             <p className="mt-4 max-w-[54ch] text-lg text-white/80">Probeer het zelf: kies een kledingstuk en een kleur, zet je logo erop en zie meteen hoe het staat. Tevreden? Vraag het pakket in één klik als offerte aan.</p>
@@ -106,17 +109,18 @@ export default async function HomePage() {
               <Link href="/bedrukken-borduren" className="btn border-2 border-white/40 text-white hover:border-white">Over ons logowerk</Link>
             </div>
           </div>
-          <PakketProef />
+          {/* Proefje pas vanaf tablet; op de telefoon gaat de knop direct naar de samensteller. */}
+          <div className="hidden md:block"><PakketProef /></div>
         </div>
       </section>
 
       {/* Leadtool */}
       <section className="border-y border-line bg-mist" id="kledingadvies">
-        <div className="container-x sec grid items-start gap-8 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-12">
+        <div className="container-x sec grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-12">
           <div className="lg:sticky lg:top-28">
             <h2 className="kop-2">Niet zeker wat je nodig hebt?</h2>
             <p className="mt-3 max-w-[48ch] text-lg text-warm">Vier korte vragen, een minuut werk. Jessi belt je binnen 24 uur terug met advies dat bij je werk past.</p>
-            <ul className="mt-5 space-y-2 text-[15px] font-semibold text-ink-900">
+            <ul className="mt-5 hidden space-y-2 text-[15px] font-semibold text-ink-900 sm:block">
               {['Geen verplichtingen', 'Advies van iemand die de kleding kent', 'Passen bij jou op de zaak'].map((p) => (
                 <li key={p} className="flex items-center gap-2.5">
                   <svg className="h-4 w-4 shrink-0 text-amber-600" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" /></svg>
@@ -124,7 +128,7 @@ export default async function HomePage() {
                 </li>
               ))}
             </ul>
-            <p className="mt-6 text-sm text-warm" data-plek="kledingadvies-sectie">
+            <p className="mt-6 hidden text-sm text-warm sm:block" data-plek="kledingadvies-sectie">
               Liever eerst praten?{' '}
               <Link href="/afspraak" className="font-semibold text-amber-700 underline underline-offset-2" data-cta="afspraak">Plan een adviesgesprek</Link>
               {' '}of bel <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-700 hover:underline">{site.phone}</a>.
@@ -136,7 +140,8 @@ export default async function HomePage() {
 
       <JsonLd data={faqJsonLd(homeFaq)} />
       <Faq items={homeFaq} />
-      <CtaBand />
+      {/* Telefoon: de actiebalk onderin en het adviesformulier hierboven doen dit al. */}
+      <div className="hidden md:block"><CtaBand /></div>
     </>
   );
 }

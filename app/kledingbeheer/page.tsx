@@ -216,7 +216,7 @@ export default function KledingbeheerPage() {
           </div>
           <ul>
             {vergelijking.map((v) => (
-              <li key={v.straks} className="grid border-t border-line sm:grid-cols-2">
+              <li key={v.straks} className="grid grid-cols-1 border-t border-line sm:grid-cols-2">
                 <p className="flex gap-3 px-5 py-4 text-sm leading-snug text-warm">
                   <svg className="mt-0.5 h-4 w-4 shrink-0 text-ink-300" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>
                   <span><span className="font-semibold sm:sr-only">Nu: </span>{v.nu}</span>
@@ -234,10 +234,10 @@ export default function KledingbeheerPage() {
       </section>
 
       <section className="border-y border-line bg-mist">
-        <div className="container-x sec-md grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-10">
+        <div className="container-x sec-md grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-10">
           <div>
             <h2 className="kop-2">In drie stappen geregeld</h2>
-            <ol className="mt-6 grid gap-6 sm:grid-cols-3">
+            <ol className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
               {stappen.map((s, i) => (
                 <li key={s.t} className="relative">
                   {i < stappen.length - 1 && <span className="absolute left-12 right-0 top-4 hidden border-t-2 border-dashed border-amber-400 sm:block" aria-hidden="true" />}
@@ -259,6 +259,56 @@ export default function KledingbeheerPage() {
             </blockquote>
             <figcaption className="mt-4 text-sm text-ink-200">Klant uit Hengelo Gld, Google-recensie</figcaption>
           </figure>
+        </div>
+      </section>
+
+      {/* De webapp: klanten moeten weten dat het portaal als app op de telefoon kan. */}
+      <section className="container-x sec-md" id="app" data-plek="kledingbeheer-app">
+        <div className="grid grid-cols-1 items-center gap-8 rounded-2xl bg-ink-900 p-6 text-white sm:p-10 lg:grid-cols-[minmax(0,1fr)_16rem] lg:gap-12">
+          <div>
+            <p className="eyebrow text-amber-400">Werkt als app</p>
+            <h2 className="mt-2 font-display text-2xl font-extrabold text-white sm:text-3xl">Het portaal staat met één tik op je telefoon</h2>
+            <p className="mt-3 max-w-[56ch] text-ink-100">
+              Geen app store, geen downloads. Je zet het portaal op je beginscherm en het opent als een gewone app.
+              Je medewerkers bestellen hun kleding zo vanaf de bouwplaats of uit de bus.
+            </p>
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-xl bg-white/10 p-4">
+                <p className="font-display font-extrabold text-white">iPhone</p>
+                <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-ink-100">
+                  <li>Open het portaal in Safari.</li>
+                  <li>Tik op Deel <span aria-hidden="true">(vierkantje met pijl omhoog)</span>.</li>
+                  <li>Kies <span className="font-semibold text-white">Zet op beginscherm</span>.</li>
+                </ol>
+              </div>
+              <div className="rounded-xl bg-white/10 p-4">
+                <p className="font-display font-extrabold text-white">Android</p>
+                <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-ink-100">
+                  <li>Open het portaal in Chrome.</li>
+                  <li>Tik op de drie puntjes rechtsboven.</li>
+                  <li>Kies <span className="font-semibold text-white">App installeren</span>.</li>
+                </ol>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/kledingbeheer/demo" className="btn-primary">Bekijk de demo</Link>
+              <Link href="/portaal/app" className="btn border-2 border-white/40 text-white hover:border-white">Uitleg per toestel</Link>
+            </div>
+          </div>
+          {/* Telefoon met app-icoon op het beginscherm */}
+          <div className="mx-auto hidden w-48 sm:block lg:w-full" aria-hidden="true">
+            <svg viewBox="0 0 200 380" className="w-full">
+              <rect x="6" y="6" width="188" height="368" rx="30" fill="#1f1c19" stroke="#4a4540" strokeWidth="3" />
+              <rect x="18" y="20" width="164" height="340" rx="20" fill="#f4f1ec" />
+              <rect x="78" y="28" width="44" height="10" rx="5" fill="#1f1c19" />
+              {[0, 1, 2, 3].map((r) => [0, 1, 2, 3].map((c) => (
+                <rect key={`${r}${c}`} x={34 + c * 36} y={64 + r * 46} width="26" height="26" rx="7" fill={r === 2 && c === 1 ? '#f06a20' : '#d9d3ca'} />
+              )))}
+              <text x="83" y="174" fontSize="11" fontWeight="800" fill="#111" textAnchor="middle" fontFamily="Archivo, Arial">FB</text>
+              <text x="83" y="196" fontSize="8" fill="#5b5550" textAnchor="middle" fontFamily="Inter, Arial">Portaal</text>
+              <circle cx="83" cy="169" r="20" fill="none" stroke="#f06a20" strokeWidth="2.5" strokeDasharray="4 4" />
+            </svg>
+          </div>
         </div>
       </section>
 

@@ -48,7 +48,7 @@ export default async function OntvangersTab({ campagne: c, zoek }: { campagne: C
           <span className="text-[12px] text-warm group-open:hidden">Prospects, leads of klanten met filters</span>
         </summary>
         <div className="border-t border-line px-4 py-4">
-          <form method="get" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <form method="get" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <input type="hidden" name="tab" value="ontvangers" />
             <input type="hidden" name="kies" value="1" />
             <div>

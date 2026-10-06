@@ -113,7 +113,7 @@ export default function BezigBalk() {
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-none fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white shadow-soft"
+          className="pointer-events-none fixed bottom-5 max-md:bottom-20 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white shadow-soft"
         >
           <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true" />
           Bezig met opslaan…

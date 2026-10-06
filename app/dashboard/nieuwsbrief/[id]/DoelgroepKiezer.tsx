@@ -51,7 +51,7 @@ export default function DoelgroepKiezer({
   return (
     <fieldset disabled={uit} className="disabled:opacity-60">
       <legend className="veld-label">Wie krijgt deze nieuwsbrief?</legend>
-      <div className="mt-1 grid gap-2 sm:grid-cols-2">
+      <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {SOORTEN.map((s) => (
           <label
             key={s.soort}

@@ -208,7 +208,7 @@ export default function InstellingenBeheer({
               <div key={p.id} className={`rounded-lg border border-line bg-white p-4 ${p.actief ? '' : 'opacity-70'}`}>
                 <div className="flex flex-wrap items-start gap-4">
                   <Avatar persoon={p} />
-                  <div className="grid min-w-[16rem] flex-1 gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 min-w-[16rem] flex-1 gap-3 sm:grid-cols-2">
                     <label className="flex flex-col">
                       <span className="veld-label">Naam</span>
                       <BewaarVeld waarde={p.naam} label="Naam" disabled={!bewerkbaar || bezig} onBewaar={(v) => voer(() => werkPersoonBijActie(p.id, { naam: v }), 'Naam opgeslagen.')} />
@@ -325,7 +325,7 @@ export default function InstellingenBeheer({
           className="mt-4 rounded-lg border border-dashed border-ink-300 bg-mist p-4"
         >
           <p className="font-semibold text-ink-900">Persoon toevoegen</p>
-          <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
             <label className="flex flex-col">
               <span className="veld-label">Naam</span>
               <input value={nieuwP.naam} onChange={(e) => setNieuwP({ ...nieuwP, naam: e.target.value })} className="veld py-1.5 text-[14px]" disabled={!bewerkbaar} />
@@ -470,7 +470,7 @@ export default function InstellingenBeheer({
           className="mt-4 rounded-lg border border-dashed border-ink-300 bg-mist p-4"
         >
           <p className="font-semibold text-ink-900">Status toevoegen</p>
-          <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_14rem_auto] sm:items-end">
+          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_14rem_auto] sm:items-end">
             <label className="flex flex-col">
               <span className="veld-label">Naam</span>
               <input value={nieuwS.naam} onChange={(e) => setNieuwS({ ...nieuwS, naam: e.target.value })} placeholder="Bijv. Wacht op klant" className="veld py-1.5 text-[14px]" disabled={!bewerkbaar} />

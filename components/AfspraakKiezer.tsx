@@ -233,7 +233,7 @@ export function AfspraakKiezer({ standaardSoort, defaultBranche = '', bron, verz
           {soorten && actieveSoorten.length === 0 ? (
             <p className="mt-3 text-sm text-warm">Online plannen staat even uit. Bel of app ons, dan prikken we samen een moment.</p>
           ) : (
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
               {actieveSoorten.map((s) => {
                 const info = SOORT_INFO[s];
                 const aan = soort === s;
@@ -399,7 +399,7 @@ export function AfspraakKiezer({ standaardSoort, defaultBranche = '', bron, verz
             <>
               <p className="font-display text-xl font-extrabold text-ink-900">Waar bereiken we je?</p>
               <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className={label} htmlFor="afs-naam">Naam *</label>
                   <input id="afs-naam" name="naam" required minLength={2} className={veld} autoComplete="name" />

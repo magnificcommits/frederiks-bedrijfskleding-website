@@ -43,7 +43,7 @@ export default function NieuweSleutel({ orgId, magBeheren }: { orgId: string; ma
       {staat?.fout && (
         <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] font-semibold text-ink-800" role="alert">{staat.fout}</p>
       )}
-      <form action={actie} className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+      <form action={actie} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <input type="hidden" name="organisatie_id" value={orgId} />
         <div>
           <label htmlFor="api-naam" className="veld-label">Naam van de sleutel</label>

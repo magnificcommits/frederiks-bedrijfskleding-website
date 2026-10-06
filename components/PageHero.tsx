@@ -84,7 +84,7 @@ export function PageHero({
       <div className="border-t-2 border-dashed border-amber-500" aria-hidden="true" />
 
       {beeld ? (
-        <div className="mx-auto grid w-full max-w-[110rem] lg:grid-cols-[1.05fr_1fr]">
+        <div className="mx-auto grid grid-cols-1 w-full max-w-[110rem] lg:grid-cols-[1.05fr_1fr]">
           <div className="flex flex-col justify-center px-5 py-12 sm:px-6 sm:py-16 lg:min-h-[26rem] lg:py-16 lg:pl-[clamp(2rem,5.5vw,6rem)] lg:pr-16">
             <div className="max-w-[36rem]">{tekstblok}</div>
           </div>

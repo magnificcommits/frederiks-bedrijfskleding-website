@@ -115,7 +115,7 @@ export default async function AssortimentPage({ params }: { params: Promise<{ id
                   </form>
                 </div>
 
-                <form action={bewaarVerstrekking} className="mt-4 grid gap-4 border-t border-line pt-4 sm:grid-cols-3">
+                <form action={bewaarVerstrekking} className="mt-4 grid grid-cols-1 gap-4 border-t border-line pt-4 sm:grid-cols-3">
                   <input type="hidden" name="orgId" value={id} />
                   <input type="hidden" name="productId" value={p.product_id} />
                   <div>

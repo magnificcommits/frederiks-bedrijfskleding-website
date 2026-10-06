@@ -37,7 +37,7 @@ export default async function PortaalgebruikPage() {
         acties={<Link href="/dashboard/klanten" className="knop-stil">Naar klanten</Link>}
       />
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Tegel waarde={rijen.length} label="Klanten met portaaltoegang" />
         <Tegel waarde={logins} label="Accounts in totaal" sub="werkgevers, leidinggevenden en werknemers" />
         <Tegel waarde={actief} label="Actief in de laatste 30 dagen" sub="minimaal één inlog" />

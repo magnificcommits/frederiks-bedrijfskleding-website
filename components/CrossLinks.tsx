@@ -16,10 +16,10 @@ export function CrossLinks({ exclude = '', title = 'Bekijk ook' }: { exclude?: s
   return (
     <section className="container-x sec-md">
       <h2 className="kop-2">{title}</h2>
-      <div className="mt-6 grid gap-5 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-5">
         {tiles.map((t) => (
           <Link key={t.label} href={t.href} className="group relative overflow-hidden rounded-2xl shadow-card transition hover:-translate-y-0.5">
-            <div className="relative aspect-[4/3]">
+            <div className="relative aspect-[5/2] sm:aspect-[4/3]">
               <Image src={t.img} alt={t.label} fill sizes="(max-width:1024px) 90vw, 30vw" className="object-cover transition duration-500 group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-ink-900/80 to-transparent" aria-hidden="true" />
             </div>

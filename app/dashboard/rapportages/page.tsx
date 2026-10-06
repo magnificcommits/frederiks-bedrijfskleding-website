@@ -86,7 +86,7 @@ export default async function RapportagesPage({ searchParams }: { searchParams: 
         </p>
       )}
 
-      <section className="panel mt-5 grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+      <section className="panel mt-5 grid grid-cols-1 gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
         <div>
           <h2 className="font-display text-base font-bold text-ink-900">Rapport per klant</h2>
           <p className="mt-1 max-w-2xl text-[13px] leading-snug text-warm">
@@ -104,7 +104,7 @@ export default async function RapportagesPage({ searchParams }: { searchParams: 
           <section key={groep} className="mt-8">
             <h2 className="font-display text-lg font-bold text-ink-900">{groep}</h2>
             <p className="mt-0.5 text-[13px] text-warm">{GROEP_UITLEG[groep]}</p>
-            <ul className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {lijst.map((def) => <RapportKaart key={def.key} def={def} pp={pp} />)}
             </ul>
           </section>

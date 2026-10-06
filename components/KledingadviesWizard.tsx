@@ -108,7 +108,7 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
       {step === 0 && (
         <div>
           <h3 className={kopKlas}>In welke branche werk je?</h3>
-          <div className="mt-4 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
             {[...branches.map((b) => b.navLabel), 'Anders'].map((naam) => (
               <button
                 key={naam}
@@ -134,7 +134,7 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
         <div>
           <h3 className={kopKlas}>Waar zoek je naar?</h3>
           <p className="mt-1 text-sm text-warm">Meerdere antwoorden mogen.</p>
-          <div className="mt-4 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {wensenOpties.map((w) => (
               <button key={w} type="button" onClick={() => toggleWens(w)} aria-pressed={wensen.includes(w)} className="keuze keuze-rij">
                 <span className="keuze-rond !rounded-md" aria-hidden="true">✓</span>
@@ -167,7 +167,7 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
       {step === 3 && (
         <div>
           <h3 className={kopKlas}>Hoe bereiken we je met het advies?</h3>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div><label htmlFor="wiz-naam" className="invoer-label">Naam *</label>
               <input id="wiz-naam" required aria-required="true" className="invoer" value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} autoComplete="name" /></div>
             <div><label htmlFor="wiz-bedrijf" className="invoer-label">Bedrijf</label>

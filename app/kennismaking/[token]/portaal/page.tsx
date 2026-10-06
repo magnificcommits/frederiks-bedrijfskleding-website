@@ -30,7 +30,7 @@ export default async function VoorbeeldOverzicht({ params }: { params: Promise<{
 
       <section className="mt-10 rounded-2xl border border-line bg-white p-5 shadow-soft sm:p-6">
         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-700">Zo bestel je</p>
-        <ol className="mt-4 grid gap-4 sm:grid-cols-3">
+        <ol className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[
             ['Kies voor wie', 'Kies een collega. Zijn of haar maten staan al klaar.'],
             ['Kies de kleding', `Alleen artikelen uit de lijn van ${demo.bedrijfsnaam}, met jullie logo.`],

@@ -195,7 +195,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
         </div>
       ) : null}
 
-      <div className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_23rem]">
+      <div className="mt-5 grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_23rem]">
         {/* Linkerkolom */}
         <div className="grid gap-5">
           {dubbelen.length > 0 && (
@@ -224,7 +224,7 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
             rechts={<span className="text-[12px] text-warm" title={lead.bron ?? undefined}>{lead.bron && lead.bron !== lead.kanaal ? lead.bron : null}</span>}
           >
             {aanvraag.velden.length > 0 && (
-              <dl className="grid gap-x-6 gap-y-2 text-[13px] sm:grid-cols-2">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-[13px] sm:grid-cols-2">
                 {aanvraag.velden.map((v) => (
                   <div key={v.label} className="flex justify-between gap-3 border-b border-line pb-1.5 sm:block sm:border-0 sm:pb-0">
                     <dt className="text-[11px] font-semibold uppercase tracking-wide text-warm">{v.label}</dt>

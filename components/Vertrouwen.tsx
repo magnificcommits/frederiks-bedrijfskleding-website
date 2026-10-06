@@ -48,10 +48,10 @@ export function WieJeKrijgt() {
   return (
     <section className="border-y border-line bg-mist" aria-labelledby="wie-je-krijgt">
       <div className="container-x sec">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-8">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:gap-8">
           {/* Portretkaart */}
           <div className="paneel-donker flex flex-col">
-            <div className="relative min-h-[18rem] flex-1">
+            <div className="relative min-h-[14rem] flex-1 sm:min-h-[18rem]">
               {contactpersoon.foto ? (
                 <Image
                   src={contactpersoon.foto}
@@ -69,7 +69,7 @@ export function WieJeKrijgt() {
               <p className="font-display text-xl font-extrabold text-white">{contactpersoon.naam}</p>
               <p className="text-sm text-ink-200">{contactpersoon.rol}</p>
               <p className="mt-3 border-l-2 border-amber-500 pl-3 text-[15px] leading-relaxed text-white">{contactpersoon.tekst}</p>
-              <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-white/15 pt-4 text-sm">
+              <dl className="mt-5 hidden grid-cols-2 gap-x-4 sm:grid gap-y-3 border-t border-white/15 pt-4 text-sm">
                 <div>
                   <dt className="text-ink-300">Actief sinds</dt>
                   <dd className="font-semibold text-white">{site.foundedYear}{jaren >= 2 ? ` (${jaren} jaar)` : ''}</dd>
@@ -101,11 +101,12 @@ export function WieJeKrijgt() {
                 {verschilMetWebshop.map((r, i) => (
                   <li key={r.onderwerp} className={`grid md:grid-cols-[7.5rem_minmax(0,1fr)_minmax(0,1.15fr)] ${i > 0 ? 'border-t border-line' : 'md:border-t md:border-line'}`}>
                     <p className="px-5 pt-4 font-display font-extrabold text-ink-900 md:py-4">{r.onderwerp}</p>
-                    <p className="flex gap-2.5 px-5 pt-2 text-sm text-warm md:py-4">
+                    {/* Telefoon: alleen wat je bij ons krijgt; de webshopkant maakte de lijst twee keer zo lang. */}
+                    <p className="hidden gap-2.5 px-5 pt-2 text-sm text-warm md:flex md:py-4">
                       <svg className="mt-0.5 h-4 w-4 shrink-0 text-ink-300" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>
                       <span><span className="font-semibold md:sr-only">Webshop: </span>{r.webshop}</span>
                     </p>
-                    <p className="mt-3 flex gap-2.5 bg-ink-900 px-5 py-3 text-sm font-medium text-white md:mt-0 md:py-4">
+                    <p className="mt-2 flex gap-2.5 bg-ink-900 px-5 py-3 text-sm font-medium text-white md:mt-0 md:py-4">
                       <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" /></svg>
                       <span><span className="sr-only">{site.name}: </span>{r.wij}</span>
                     </p>
@@ -114,13 +115,13 @@ export function WieJeKrijgt() {
               </ul>
             </div>
 
-            <ul className="mt-4 grid overflow-hidden rounded-2xl border border-line bg-white sm:grid-cols-3">
+            <ul className="mt-4 grid grid-cols-1 overflow-hidden rounded-2xl border border-line bg-white sm:grid-cols-3">
               {zekerheden.map((z, i) => (
-                <li key={z.titel} className={`p-5 ${i > 0 ? 'border-t border-line sm:border-l sm:border-t-0' : ''}`}>
+                <li key={z.titel} className={`p-4 sm:p-5 ${i > 0 ? 'border-t border-line sm:border-l sm:border-t-0' : ''}`}>
                   <p className="font-display font-extrabold text-ink-900">{z.titel}</p>
                   <p className="mt-1 text-sm leading-snug text-warm">{z.tekst}</p>
                   {z.href && (
-                    <Link href={z.href} className="mt-1 inline-flex min-h-[44px] items-center text-sm font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-800">
+                    <Link href={z.href} className="mt-1 hidden min-h-[44px] sm:inline-flex items-center text-sm font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-800">
                       Lees hoe dat werkt
                     </Link>
                   )}
@@ -140,7 +141,7 @@ export function SpaarTeaser() {
   return (
     <section className="bg-white" aria-labelledby="spaar-teaser">
       <div className="container-x pt-10 sm:pt-14">
-        <div className="grid items-center gap-5 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-5 sm:p-6 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-8">
+        <div className="grid grid-cols-1 items-center gap-5 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-5 sm:p-6 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-8">
           <span className="hidden h-14 w-14 items-center justify-center rounded-full bg-amber-500 text-ink-900 lg:flex" aria-hidden="true">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l2.6 5.6 6 .7-4.5 4.2 1.2 6L12 16.6 6.700 19.500l1.200-6L3.400 9.300l6-.7z" /></svg>
           </span>

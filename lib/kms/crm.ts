@@ -356,7 +356,12 @@ export async function portaalUitnodigingMail(email: string, naam: string | null,
           <li>Je krijgt direct een mail met een inloglink en een code.</li>
           <li>Klik op de link, of typ de code over. Een wachtwoord is niet nodig.</li>
         </ol>
-        <p style="margin:14px 0 0;">Tip: zet het portaal op je telefoon als app, dan staat het met één tik op je beginscherm.</p>
+        <div style="margin:18px 0 0;padding:14px 16px;border:1px solid #e5e2dc;border-radius:10px;background:#faf8f5;">
+          <p style="margin:0;"><strong>Zet het portaal als app op je telefoon</strong></p>
+          <p style="margin:6px 0 0;"><strong>iPhone:</strong> open het portaal in Safari, tik op het Deel-icoon (vierkantje met pijl omhoog) en kies <em>Zet op beginscherm</em>.</p>
+          <p style="margin:4px 0 0;"><strong>Android:</strong> open het portaal in Chrome, tik op de drie puntjes en kies <em>App installeren</em>.</p>
+          <p style="margin:6px 0 0;">Daarna open je het met één tik, net als een gewone app. <a href="${escapeHtml(`${appUrl()}/portaal/app`)}" style="color:#b4520f;">Stap voor stap uitgelegd</a></p>
+        </div>
         <p style="margin:14px 0 0;">Vragen? Bel of app gerust: <strong>${escapeHtml(site.phone)}</strong>.</p>
       `,
     }),

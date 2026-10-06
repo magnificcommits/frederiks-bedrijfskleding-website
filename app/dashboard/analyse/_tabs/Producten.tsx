@@ -141,7 +141,7 @@ export default async function Producten({ periode }: { periode: Periode }) {
         )}
       </Blok>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Blok titel="Per categorie" uitleg="Stuks, met omzet rechts." link={{ href: urlMet('/dashboard/rapportages/omzet-categorie', pp), label: 'Rapport' }}>
           <Balken opmaak="aantal" maxRijen={10} rijen={rijen(d.perCategorie)} />
         </Blok>

@@ -94,7 +94,7 @@ export default async function Klachten({ searchParams }: { searchParams: Promise
         </div>
       )}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-3">
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div>
           <div className="rounded-xl border border-line bg-white p-5 shadow-soft">
             <h2 className="font-display text-lg font-extrabold text-ink-900">{t('klachten.nieuwBericht')}</h2>

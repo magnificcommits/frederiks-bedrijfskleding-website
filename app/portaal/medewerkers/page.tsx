@@ -174,7 +174,7 @@ export default async function Medewerkers({
         {items.length > 0 && (
           <div className="mt-4 border-t border-line pt-4">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-warm">{t('medewerkers.maten')}</p>
-            <dl className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
               {items.map((it) => (
                 <div key={it.id} className="flex justify-between gap-3 border-b border-line/60 py-1">
                   <dt className="text-warm">{it.naam}</dt>
@@ -283,7 +283,7 @@ export default async function Medewerkers({
         </div>
       )}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-3">
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <MedewerkersLijst rijen={rijen} />
         </div>

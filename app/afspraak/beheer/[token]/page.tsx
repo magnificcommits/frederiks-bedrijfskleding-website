@@ -42,7 +42,7 @@ export default async function AfspraakBeheerPage({ params }: { params: Promise<{
       <section className="container-x sec-md">
         <div className="mx-auto max-w-[56rem] space-y-6">
           <div className="card">
-            <dl className="grid gap-3 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]">
+            <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]">
               <dt className="font-semibold text-ink-900">Status</dt>
               <dd className="text-warm">{STATUS_LABEL[a.status]}</dd>
               <dt className="font-semibold text-ink-900">Wanneer</dt>

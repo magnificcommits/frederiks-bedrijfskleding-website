@@ -36,7 +36,7 @@ export function PortaalPreview() {
       <h2 className="mt-3 kop-2">Een rondje door het portaal</h2>
       <p className="mt-3 max-w-2xl text-warm">Links bestelt een medewerker binnen het eigen budget. Rechts houdt de beheerder grip met cijfers per afdeling.</p>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <BrowserFrame url="portaal.frederiksbedrijfskleding.nl/webshop">
           <div className="flex items-center justify-between">
             <p className="font-display text-base font-extrabold text-ink-900">Jouw werkkleding</p>
@@ -51,7 +51,7 @@ export function PortaalPreview() {
               <div className="h-full rounded-full bg-amber-500" style={{ width: '60%' }} aria-hidden="true" />
             </div>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {producten.map((p) => (
               <div key={p.naam} className="rounded-lg border border-line p-3">
                 <div className="h-14 rounded-md bg-mist" aria-hidden="true" />

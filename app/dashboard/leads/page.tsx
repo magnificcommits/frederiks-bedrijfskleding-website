@@ -391,7 +391,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 
       {/* Analyse */}
       {alle.length > 0 && (
-        <div className="mt-8 grid gap-4 lg:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <section className="panel p-4 lg:col-span-2" aria-labelledby="herkomst-kop">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 id="herkomst-kop" className="font-display text-base font-bold text-ink-900">Waar komen leads vandaan</h2>

@@ -169,7 +169,7 @@ export function OfferteAanvraag({
       {/* Honeypot, verborgen voor mensen */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={label} htmlFor={`${uid}-name`}>Naam *</label>
           <input
@@ -260,7 +260,7 @@ export function OfferteAanvraag({
       <fieldset className="border-0 p-0">
         <legend className={legend}>Wat heb je nodig?</legend>
         <p className="mt-0.5 text-sm text-warm">Meerdere antwoorden mogen.</p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {BEHOEFTEN.map((b) => (
             <label
               key={b.id}

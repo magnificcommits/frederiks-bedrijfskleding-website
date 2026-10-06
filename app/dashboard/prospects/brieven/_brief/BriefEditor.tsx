@@ -663,7 +663,7 @@ export default function BriefEditor({
       </div>
       {opslag.soort === 'fout' && <p role="alert" className="border-b border-red-200 bg-red-50 px-4 py-2 text-[13px] font-semibold text-red-700">{opslag.melding}</p>}
 
-      <div className="grid lg:grid-cols-[400px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 lg:grid-cols-[400px_minmax(0,1fr)]">
         {/* Paneel */}
         <div className="min-w-0 border-b border-line lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:border-b-0 lg:border-r">
           <div role="tablist" className="sticky top-0 z-10 flex gap-1 border-b border-line bg-white px-2">

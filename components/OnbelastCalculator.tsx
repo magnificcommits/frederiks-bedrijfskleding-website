@@ -21,7 +21,7 @@ export function OnbelastCalculator({ compact = false }: { compact?: boolean }) {
       <div className="bg-white p-6 sm:p-8">
         <h2 className="kop-3">Reken het uit voor je eigen team</h2>
         <p className="mt-2 text-sm text-warm">Drie getallen, geen gegevens nodig. We rekenen met de werkkostenregeling {WKR.jaar}.</p>
-        <div className="mt-6 grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-1">
           <label className="block">
             <span className="invoer-label">Aantal medewerkers</span>
             <input inputMode="numeric" className="invoer" value={medewerkers} onChange={(e) => setMedewerkers(e.target.value)} />
@@ -38,7 +38,7 @@ export function OnbelastCalculator({ compact = false }: { compact?: boolean }) {
       </div>
 
       <div className="paneel-donker flex flex-col rounded-none p-6 sm:p-8">
-        <dl className="grid gap-5 sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <dt className="text-sm text-white/70">Je vrije ruimte</dt>
             <dd className="font-display text-3xl font-extrabold text-white">{euro(r.vrijeRuimte)}</dd>

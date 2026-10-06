@@ -115,6 +115,16 @@ export function Header() {
     };
   }, [openId]);
 
+  // Mobiel menu open: pagina erachter staat stil, Escape sluit.
+  useEffect(() => {
+    if (!open) return;
+    const oud = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const opEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', opEscape);
+    return () => { document.body.style.overflow = oud; document.removeEventListener('keydown', opEscape); };
+  }, [open]);
+
   // Fragment, geen <div>: met een wrapper-div eromheen bleef de sticky header
   // binnen die div gevangen en scrolde hij na 116 px gewoon mee weg.
   return (
@@ -179,42 +189,106 @@ export function Header() {
             </a>
             <button
               type="button"
-              className="inline-flex min-h-[44px] shrink-0 items-center rounded-md border border-line px-3 text-[15px] font-bold text-ink-900 hover:bg-mist"
+              className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-md border border-line px-3 text-[15px] font-bold text-ink-900 hover:bg-mist"
               onClick={() => setOpen(!open)}
               aria-expanded={open}
               aria-controls="mobiel-menu"
             >
+              <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                {open ? <path d="M5 5l10 10M15 5L5 15" /> : <path d="M3 6h14M3 10h14M3 14h14" />}
+              </svg>
               {open ? 'Sluiten' : 'Menu'}
             </button>
           </div>
         </div>
-        {open && (
-          <div id="mobiel-menu" className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-line bg-white lg:hidden">
-            <nav className="container-x flex flex-col gap-1 py-4" aria-label="Mobiele navigatie">
-              <div className="mb-3 grid gap-2" data-plek="mobiel-menu">
-                <Link href="/offerte" className="btn-primary w-full" onClick={() => setOpen(false)} data-cta="offerte">Vraag een offerte aan</Link>
-                <Link href="/afspraak" className="btn-outline w-full" onClick={() => setOpen(false)} data-cta="afspraak">Plan een adviesgesprek</Link>
-              </div>
-              <p className="px-3 pt-1 text-xs font-bold uppercase tracking-wide text-warm">Kleding</p>
-              {kledingNav.map((i) => (
-                <Link key={i.href} href={i.href} className="rounded-md px-3 py-3 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{i.label}</Link>
-              ))}
-              {hoofdNav.map((i) => (
-                <Link key={i.href} href={i.href} className="rounded-md px-3 py-3 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{i.label}</Link>
-              ))}
-              {topNav.map((i) => (
-                <Link key={i.href} href={i.href} className="rounded-md px-3 py-3 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{i.label}</Link>
-              ))}
-              <p className="px-3 pt-3 text-xs font-bold uppercase tracking-wide text-warm">Branches</p>
-              {branches.map((b) => (
-                <Link key={b.slug} href={`/branches/${b.slug}`} className="rounded-md px-3 py-3 text-[15px] text-ink-800 hover:bg-mist" onClick={() => setOpen(false)}>{b.navLabel}</Link>
-              ))}
-              <a href={`tel:${site.phoneIntl}`} className="mt-2 rounded-md px-3 py-2.5 text-[15px] font-bold text-ink-900 hover:bg-mist">{site.phone}</a>
-              <PortaalKnop className="mt-2 rounded-md border border-line px-3 py-2.5 text-center text-[15px] font-semibold text-ink-800 hover:bg-mist" />
-            </nav>
-          </div>
-        )}
+        {open && <MobielMenu sluit={() => setOpen(false)} />}
       </header>
     </>
+  );
+}
+
+/** Klapgroep in het mobiele menu. Eén groep tegelijk open houdt het menu kort. */
+function MenuGroep({ id, titel, sub, open, zet, children }: {
+  id: string; titel: string; sub: string; open: boolean; zet: (id: string | null) => void; children: React.ReactNode;
+}) {
+  return (
+    <div className="border-b border-line">
+      <button
+        type="button"
+        className="flex min-h-[60px] w-full items-center justify-between gap-3 py-2 text-left"
+        aria-expanded={open}
+        aria-controls={`mm-${id}`}
+        onClick={() => zet(open ? null : id)}
+      >
+        <span className="min-w-0">
+          <span className="block text-[17px] font-bold text-ink-900">{titel}</span>
+          <span className="block text-[13px] text-warm">{sub}</span>
+        </span>
+        <svg viewBox="0 0 20 20" className={`h-5 w-5 shrink-0 text-ink-500 transition ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 8l5 5 5-5" /></svg>
+      </button>
+      {open && <div id={`mm-${id}`} className="pb-4">{children}</div>}
+    </div>
+  );
+}
+
+const tegel = 'flex min-h-[48px] items-center rounded-lg border border-line bg-mist/50 px-3 py-2 text-[15px] font-semibold leading-tight text-ink-900 active:bg-mist';
+const rijLink = 'flex min-h-[52px] items-center justify-between gap-3 border-b border-line text-[17px] font-bold text-ink-900';
+const pijl = <svg viewBox="0 0 20 20" className="h-5 w-5 shrink-0 text-ink-400" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5" /></svg>;
+
+/**
+ * Mobiel menu. Eerder één lange lijst van 25 links met kleine tussenkopjes, waar
+ * je niet zag wat bij elkaar hoorde. Nu: de twee acties bovenaan, daaronder vier
+ * duidelijke ingangen (branche, kleding, kledingbeheer, service) waarvan er één
+ * tegelijk openklapt, en onderaan inloggen en bellen. Past op één scherm.
+ */
+function MobielMenu({ sluit }: { sluit: () => void }) {
+  const [groep, setGroep] = useState<string | null>(null);
+  return (
+    <div id="mobiel-menu" className="fixed inset-x-0 top-16 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 overflow-y-auto overscroll-contain border-t border-line bg-white lg:hidden">
+      <nav className="container-x flex min-h-full flex-col pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4" aria-label="Mobiele navigatie">
+        <div className="grid grid-cols-2 gap-2" data-plek="mobiel-menu">
+          <Link href="/offerte" className="btn-primary w-full px-3 text-[15px]" onClick={sluit} data-cta="offerte">Offerte aanvragen</Link>
+          <Link href="/afspraak" className="btn-outline w-full px-3 text-[15px]" onClick={sluit} data-cta="afspraak">Adviesgesprek</Link>
+        </div>
+
+        <div className="mt-4 border-t border-line">
+          <MenuGroep id="branche" titel="Kleding voor jouw branche" sub="Bouw, installatie, zorg, horeca en meer" open={groep === 'branche'} zet={setGroep}>
+            <div className="grid grid-cols-2 gap-2">
+              {branches.map((b) => (
+                <Link key={b.slug} href={`/branches/${b.slug}`} className={tegel} onClick={sluit}>{b.navLabel}</Link>
+              ))}
+              <Link href="/voor" className={`${tegel} col-span-2 justify-between bg-white`} onClick={sluit}>Zoek op beroep {pijl}</Link>
+            </div>
+          </MenuGroep>
+          <MenuGroep id="kleding" titel="Kleding en logo" sub="Assortiment, schoenen, bedrukken, maten" open={groep === 'kleding'} zet={setGroep}>
+            <div className="grid grid-cols-2 gap-2">
+              {kledingNav.map((i) => (
+                <Link key={i.href} href={i.href} className={tegel} onClick={sluit}>{i.label}</Link>
+              ))}
+            </div>
+          </MenuGroep>
+          <Link href="/kledingbeheer" className={rijLink} onClick={sluit}>
+            <span className="min-w-0">
+              <span className="block text-amber-700">Kledingbeheer</span>
+              <span className="block text-[13px] font-normal text-warm">Je team bestelt zelf, jij houdt overzicht</span>
+            </span>
+            {pijl}
+          </Link>
+          <MenuGroep id="info" titel="Over Frederiks" sub="Referenties, kennisbank, service, contact" open={groep === 'info'} zet={setGroep}>
+            <div className="grid grid-cols-2 gap-2">
+              {[{ href: '/referenties', label: 'Referenties' }, { href: '/kennisbank', label: 'Kennisbank' }, ...topNav].map((i) => (
+                <Link key={i.href} href={i.href} className={tegel} onClick={sluit}>{i.label}</Link>
+              ))}
+            </div>
+          </MenuGroep>
+        </div>
+
+        <div className="mt-auto grid grid-cols-2 gap-2 pt-6">
+          <PortaalKnop className="flex min-h-[48px] items-center justify-center rounded-lg border border-line px-3 text-[15px] font-semibold text-ink-900" />
+          <a href={`tel:${site.phoneIntl}`} className="flex min-h-[48px] items-center justify-center rounded-lg border border-line px-3 text-[15px] font-semibold text-ink-900">{site.phone}</a>
+        </div>
+        <p className="mt-3 text-center text-[13px] text-warm">Jessi reageert {site.beloftKort}. Ook via WhatsApp.</p>
+      </nav>
+    </div>
   );
 }

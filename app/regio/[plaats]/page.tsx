@@ -72,7 +72,7 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
 
       {/* Statstrook */}
       <section className="border-b border-line bg-white">
-        <div className="container-x grid gap-4 py-8 sm:grid-cols-3">
+        <div className="container-x grid grid-cols-1 gap-4 py-8 sm:grid-cols-3">
           {stats.map((s) => (
             <div key={s.l} className="rounded-lg border-l-2 border-amber-500 bg-mist px-5 py-4">
               <p className="font-display text-lg font-extrabold text-ink-900">{s.v}</p>
@@ -83,7 +83,7 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
       </section>
 
       <section className="container-x sec-md">
-        <div className="grid gap-12 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <p className="max-w-[68ch] text-lg text-warm">{p.body[0]}</p>
             {p.body.length > 1 && (
@@ -103,7 +103,7 @@ export default async function RegioPage({ params }: { params: Promise<{ plaats: 
             </div>
 
             <h2 className="mt-10 font-display text-xl font-extrabold text-ink-900">Branches die we in {p.name} kleden</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
               {populair.map((b) => (
                 <Link key={b.slug} href={`/branches/${b.slug}`} className="group flex items-center justify-between gap-3 rounded-xl border-2 border-ink-200 bg-white px-5 py-4 transition hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card">
                   <h3 className="font-display text-[1.0625rem] font-extrabold text-ink-900">{b.navLabel}</h3>

@@ -69,7 +69,7 @@ export function PortaalTab({ orgId, orgNaam, gebruikers, logins, activiteit, mai
         </div>
       )}
 
-      <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display text-xl font-bold text-ink-900">Wie kan inloggen bij {orgNaam}</h2>

@@ -110,7 +110,7 @@ export default async function LogoDetailPage({
         </div>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         {/* ---------------- Bestanden ---------------- */}
         <section className="panel p-5">
           <h2 className="font-display text-lg font-bold text-ink-900">Bestanden</h2>
@@ -152,7 +152,7 @@ export default async function LogoDetailPage({
             </ul>
           )}
 
-          <form action={voegBestandToeActie} className="mt-6 grid gap-3 border-t border-line pt-5 sm:grid-cols-[1fr_auto]">
+          <form action={voegBestandToeActie} className="mt-6 grid grid-cols-1 gap-3 border-t border-line pt-5 sm:grid-cols-[1fr_auto]">
             <input type="hidden" name="logoId" value={logo.id} />
             {verborgenTerug}
             <div>
@@ -249,7 +249,7 @@ export default async function LogoDetailPage({
       </div>
 
       {/* ---------------- Gebruik ---------------- */}
-      <section className="mt-6 grid gap-6 lg:grid-cols-2">
+      <section className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="panel p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-display text-lg font-bold text-ink-900">Drukproeven met dit logo</h2>

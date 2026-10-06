@@ -83,7 +83,7 @@ export default async function InrichtingPage({ params }: { params: Promise<{ id:
       {/* Instellingen */}
       <section className="mt-8">
         <h2 className="font-display text-xl font-bold text-ink-900">Portaalinstellingen</h2>
-        <form action={bewaarInstellingen} className="mt-4 grid gap-4 panel p-4 sm:grid-cols-2">
+        <form action={bewaarInstellingen} className="mt-4 grid grid-cols-1 gap-4 panel p-4 sm:grid-cols-2">
           <input type="hidden" name="orgId" value={id} />
 
           <div>
@@ -124,7 +124,7 @@ export default async function InrichtingPage({ params }: { params: Promise<{ id:
 
           <div className="sm:col-span-2">
             <p className="block text-xs font-semibold text-warm">Weergaveopties</p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="flex items-center gap-2 text-sm text-warm">
                 <input name="toon_kortingen" type="checkbox" defaultChecked={!!inst.toon_kortingen} className="h-4 w-4 rounded border-line text-ink-900 focus:ring-amber-200" />
                 Kortingen tonen

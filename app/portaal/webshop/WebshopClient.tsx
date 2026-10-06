@@ -258,7 +258,7 @@ export default function WebshopClient({
   const geblokkeerd = leeg || overBudget || overProductbudget || onderMin || bovenMax;
 
   return (
-    <div className="mt-8 grid gap-8 pb-24 lg:grid-cols-3 lg:pb-0">
+    <div className="mt-8 grid grid-cols-1 gap-8 pb-24 lg:grid-cols-3 lg:pb-0">
       <div className="lg:col-span-2">
         {herhaalRegels && herhaalRegels.length > 0 && (
           <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink-800">
@@ -288,7 +288,7 @@ export default function WebshopClient({
                 {t('webshop.geenGevonden', { zoek: zoek.trim() })}
               </p>
             ) : (
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {zichtbareProducten.map((p) => {
               const voorkeur = voorkeursmaten[p.id];
               const opties = toegestaneVarianten(p, voorkeur);
@@ -707,7 +707,7 @@ export default function WebshopClient({
       </div>
 
       {!leeg && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white px-4 py-3 shadow-soft lg:hidden">
+        <div className="fixed inset-x-0 bottom-[calc(59px+env(safe-area-inset-bottom))] z-40 border-t border-line bg-white px-4 py-3 shadow-soft md:bottom-0 lg:hidden">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs text-warm">

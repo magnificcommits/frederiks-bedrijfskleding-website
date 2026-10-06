@@ -515,7 +515,7 @@ export default function PersoonKiezer({
           <p className="text-[13px] font-semibold text-ink-900">
             Nieuwe {nieuwForm.soort === 'contact' ? 'contactpersoon' : 'werknemer'} bij deze klant
           </p>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {/* Geen name-attributen: deze velden horen niet bij het formulier eromheen. */}
             <div>
               <label className="veld-label" htmlFor={`${id}-nieuw-naam`}>Naam</label>

@@ -55,7 +55,7 @@ export default async function DrukproevenTab({ orgId, orgNaam }: { orgId: string
           <Link href={nieuwHref} className="mt-3 inline-block knop-donker">Eerste drukproef maken</Link>
         </div>
       ) : (
-        <ul className="mt-4 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {proeven.map((d) => (
             <DrukproefKaart
               key={d.id}

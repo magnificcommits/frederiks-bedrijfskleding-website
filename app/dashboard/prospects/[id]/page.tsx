@@ -109,12 +109,12 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
         </div>
       </div>
 
-      <div className="mt-8 grid items-start gap-6 xl:grid-cols-[minmax(0,48rem)_minmax(0,1fr)]">
+      <div className="mt-8 grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,48rem)_minmax(0,1fr)]">
         <form action={werkProspectActie} className="panel p-4">
           <input type="hidden" name="id" value={p.id} />
 
           <h2 className="font-display text-base font-bold text-ink-900">Bedrijf</h2>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className={labelCls}>Bedrijfsnaam</label>
               <input name="bedrijfsnaam" required defaultValue={p.bedrijfsnaam} className={inputCls} />
@@ -147,7 +147,7 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
           </div>
 
           <h2 className="mt-7 font-display text-base font-bold text-ink-900">Contact</h2>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelCls}>Eigenaar</label>
               <input name="eigenaar" defaultValue={p.eigenaar ?? ''} placeholder="Naam van de eigenaar" className={inputCls} />
@@ -167,7 +167,7 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
           </div>
 
           <h2 className="mt-7 font-display text-base font-bold text-ink-900">Opvolging</h2>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelCls}>Status</label>
               <select name="status" defaultValue={p.status} className={inputCls}>
@@ -331,7 +331,7 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
                 </div>
               )}
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <form action={haalLogoVanWebsiteActie} className="flex flex-col gap-1">
                   <input type="hidden" name="id" value={p.id} />
                   <VerzendKnop className="knop-donker self-start" disabled={!p.website} bezigTekst="Logo zoeken… (max. 15 sec)">Logo ophalen van website</VerzendKnop>
@@ -417,7 +417,7 @@ export default async function ProspectDetailPage({ params, searchParams }: { par
                 zoekResultaten.length === 0 ? (
                   <p className="mt-3 text-[13px] text-warm">Niets gevonden met een foto voor &quot;{sp.artikelzoek}&quot;.</p>
                 ) : (
-                  <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {zoekResultaten.map((z) => {
                       const kleuren = z.kleurenMetFoto.length ? z.kleurenMetFoto : z.kleuren;
                       return (

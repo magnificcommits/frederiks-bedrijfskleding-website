@@ -694,7 +694,7 @@ async function AnalyseRetouren({ retouren, periodeDagen, periode }: { retouren: 
         </section>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Redenen</h2>
           <p className="mb-3 text-[12px] text-warm">In stuks. Klik om de retouren te zien.</p>
@@ -735,7 +735,7 @@ async function AnalyseRetouren({ retouren, periodeDagen, periode }: { retouren: 
         </table>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="panel overflow-x-auto">
           <div className="p-4 pb-2">
             <h2 className="font-display text-base font-bold text-ink-900">Per merk</h2>

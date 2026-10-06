@@ -213,7 +213,7 @@ export default async function SparenKlant({
       <Meldingen fout={fout} melding={melding} />
       <MigratieBanner toon={!b.loyaliteit} />
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <section className="panel p-4">
           <p className="text-[12px] font-medium text-warm">Saldo</p>
           <p className="mt-1 font-display text-[28px] font-bold leading-none tabular-nums text-ink-900">

@@ -66,7 +66,7 @@ export default async function ApiInstellingenPage() {
 
       <section className="panel mt-6 p-5">
         <h2 className="font-display text-lg font-bold text-ink-900">Voor de ontwikkelaar</h2>
-        <dl className="mt-3 grid gap-x-6 gap-y-2 text-[13px] sm:grid-cols-[10rem_1fr]">
+        <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-[13px] sm:grid-cols-[10rem_1fr]">
           <dt className="font-semibold text-ink-900">Basis-URL</dt>
           <dd><code className="break-all font-mono text-[12px]">{BASIS}</code></dd>
           <dt className="font-semibold text-ink-900">Inloggen</dt>

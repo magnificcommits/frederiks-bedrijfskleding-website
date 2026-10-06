@@ -73,7 +73,7 @@ export default async function SparenOverzicht({ searchParams }: { searchParams: 
         </Link>
       )}
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiTegel
           label="Actieve spaarders"
           waarde={getal(stat.actieveSpaarders)}
@@ -109,7 +109,7 @@ export default async function SparenOverzicht({ searchParams }: { searchParams: 
         />
       </div>
 
-      <div className="mt-3 grid gap-3 xl:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3">
         <div className="xl:col-span-2">
           <SpaarGrafiek maanden={stat.maanden} euroPerPunt={b.instellingen.euroPerPunt} />
         </div>
@@ -153,7 +153,7 @@ export default async function SparenOverzicht({ searchParams }: { searchParams: 
 
       <h2 className="mt-8 font-display text-base font-bold text-ink-900">Kansen om te bellen</h2>
       <p className="mt-0.5 text-[12px] text-warm">Een telefoontje op het juiste moment doet meer dan een mailing.</p>
-      <div className="mt-3 grid gap-3 lg:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <KansBlok
           titel="Bijna een niveau hoger"
           uitleg="Met één bestelling zijn ze er. Goed moment om te vragen of er nog iemand nieuwe kleding nodig heeft."

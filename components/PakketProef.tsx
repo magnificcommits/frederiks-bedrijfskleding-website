@@ -65,7 +65,7 @@ export function PakketProef() {
   }
 
   return (
-    <div className="grid overflow-hidden rounded-2xl bg-white text-ink-900 shadow-card sm:grid-cols-[minmax(0,1fr)_minmax(0,17rem)]">
+    <div className="grid grid-cols-1 overflow-hidden rounded-2xl bg-white text-ink-900 shadow-card sm:grid-cols-[minmax(0,1fr)_minmax(0,17rem)]">
       <div className="relative flex items-center justify-center bg-mist p-6">
         <div className="aspect-square w-full max-w-[19rem]">
           <Garment type={type} color={k.hex} light={k.licht} logo={logo ?? voorbeeldLogo(k.licht || k.name.startsWith('Hi-vis') || k.name === 'Grijs' ? '#1c1c1c' : '#ffffff')} pos={positie} techniek="borduren" />

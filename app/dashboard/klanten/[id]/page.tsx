@@ -160,7 +160,7 @@ export default async function KlantPage({
     <>
       <section>
         <h2 className="font-display text-xl font-bold text-ink-900">Gegevens</h2>
-        <form action={werkOrganisatie} className="mt-4 grid gap-4 panel p-4 sm:grid-cols-2">
+        <form action={werkOrganisatie} className="mt-4 grid grid-cols-1 gap-4 panel p-4 sm:grid-cols-2">
           <input type="hidden" name="orgId" value={id} />
           <div>
             <label className="veld-label" htmlFor="org-naam">Bedrijfsnaam</label>
@@ -280,7 +280,7 @@ export default async function KlantPage({
     <>
       <section>
         <h2 className="font-display text-xl font-bold text-ink-900">Verkoopoverzicht</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="panel p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-warm">Orders</p>
             <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">{verkoop.orders.length}</p>
@@ -299,7 +299,7 @@ export default async function KlantPage({
             Aangebracht via: <span className="font-semibold text-ink-900">{verkoop.herkomstLead.bron || 'onbekende bron'}</span>
           </p>
         )}
-        <div className="mt-4 grid gap-6 lg:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div>
             <h3 className="font-display text-base font-bold text-ink-900">Laatste orders</h3>
             {verkoop.orders.length === 0 ? (
@@ -348,7 +348,7 @@ export default async function KlantPage({
       <form action={c ? werkContactActie : nieuwContact} className="flex flex-col gap-4">
         <input type="hidden" name="orgId" value={id} />
         {c && <input type="hidden" name="contactId" value={c.id} />}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="veld-label" htmlFor={`cp-naam-${sleutel}`}>Naam</label>
             <input id={`cp-naam-${sleutel}`} name="naam" required defaultValue={c?.naam ?? ''} placeholder="Naam" className={inputCls} />
@@ -362,7 +362,7 @@ export default async function KlantPage({
           <label className="veld-label" htmlFor={`cp-mail-${sleutel}`}>E-mail</label>
           <input id={`cp-mail-${sleutel}`} name="email" type="email" defaultValue={c?.email ?? ''} placeholder="naam@bedrijf.nl" className={inputCls} />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="veld-label" htmlFor={`cp-tel-${sleutel}`}>Telefoon</label>
             <input id={`cp-tel-${sleutel}`} name="telefoon" defaultValue={c?.telefoon ?? ''} placeholder="0314 12 34 56" className={inputCls} />
@@ -406,7 +406,7 @@ export default async function KlantPage({
           </Drawer>
         </div>
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="panel px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-warm">Hoofdcontact</p>
             <p className="mt-0.5 text-[15px] font-semibold text-ink-900">{hoofdcontact ? hoofdcontact.naam : 'Nog niet gekozen'}</p>

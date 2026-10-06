@@ -388,7 +388,7 @@ async function KlachtDetail({
       </div>
 
       {/* Ticketvelden */}
-      <form action={werkKlachtBijActie} className="grid gap-3 border-b border-line p-4 sm:grid-cols-2">
+      <form action={werkKlachtBijActie} className="grid grid-cols-1 gap-3 border-b border-line p-4 sm:grid-cols-2">
         <input type="hidden" name="klachtId" value={k.id} />
         <input type="hidden" name="terug" value={terug} />
         <div>
@@ -575,7 +575,7 @@ function Analyse({ klachten, periode }: { klachten: KlachtMetLabels[]; periode: 
         <Kengetal label="Afgehandeld zonder oorzaak" waarde={String(a.zonderOorzaak)} sub={a.zonderOorzaak ? 'vul de oorzaak in voor een betere top 5' : undefined} />
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Per maand</h2>
           <p className="mb-3 text-[12px] text-warm">Laatste 12 maanden, deze maand in oranje.</p>

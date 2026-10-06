@@ -74,7 +74,7 @@ export default async function OffertePage({
       />
 
       <section className="bg-mist">
-        <div className="container-x sec-md grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-8">
+        <div className="container-x sec-md grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-8">
           <OfferteAanvraag defaultBranche={branche ?? ''} defaultProduct={product ?? ''} />
 
           <aside className="space-y-4 self-start lg:sticky lg:top-28">

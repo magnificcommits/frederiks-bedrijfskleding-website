@@ -13,7 +13,7 @@ export function CtaBand({
 }: { title?: string; text?: string; plek?: string }) {
   return (
     <section className="border-t-4 border-amber-500 bg-ink-900">
-      <div className="container-x grid items-center gap-8 py-12 sm:py-14 lg:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="container-x grid grid-cols-1 items-center gap-8 py-12 sm:py-14 lg:grid-cols-[minmax(0,1fr)_auto]">
         <div>
           <h2 className="kop-2 text-balance text-white">{title}</h2>
           <p className="mt-3 max-w-xl text-ink-200">{text}</p>

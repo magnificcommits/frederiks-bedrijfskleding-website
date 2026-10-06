@@ -36,7 +36,7 @@ const MELDINGEN: Record<string, string> = {
 
 function ContactVelden({ c }: { c?: Contact }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div>
         <label className="veld-label" htmlFor={`c-naam-${c?.id ?? 'nieuw'}`}>Naam</label>
         <input id={`c-naam-${c?.id ?? 'nieuw'}`} name="naam" required defaultValue={c?.naam ?? ''} className="veld" />
@@ -164,7 +164,7 @@ export default async function LeverancierDetailPage({
         <KpiTegel label="Producten" waarde={String(d.aantalProducten)} href="#producten" sub={<span className="text-warm">{(l.merken ?? []).join(', ') || 'geen merk ingevuld'}</span>} />
       </section>
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_380px]">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[1fr_380px]">
         <div className="flex min-w-0 flex-col gap-5">
           <InkoopGrafiek maanden={d.maanden} />
 

@@ -111,7 +111,7 @@ const DATAPUNTEN: { label: string; waarde: (m: Methode) => string }[] = [
 /** Vier technieken als kaarten: 1 kolom mobiel, 2 op tablet, 4 op desktop. */
 export function MethodeKaarten() {
   return (
-    <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
       {methodes.map((m) => (
         <li key={m.slug} className="card flex h-full flex-col">
           <div className="flex items-center gap-3">
@@ -279,7 +279,7 @@ export function LogoPositieTekening() {
 
   return (
     <figure className="rounded-lg border border-line bg-white p-6 shadow-card">
-      <div className="grid gap-6 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         {panelen.map((p) => (
           <div key={p.kop}>
             {p.svg}

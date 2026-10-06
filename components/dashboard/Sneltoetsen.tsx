@@ -146,7 +146,7 @@ export default function Sneltoetsen({
           </div>
           <button type="button" onClick={onSluit} className="knop-stil">Sluiten</button>
         </div>
-        <div className="mt-4 grid gap-5 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
           {groepen.map((g) => (
             <section key={g.titel} className={g.titel === 'Algemeen' ? 'sm:col-span-2' : ''}>
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-warm">{g.titel}</h3>

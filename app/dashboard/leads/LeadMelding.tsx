@@ -83,7 +83,7 @@ export default function LeadMelding({ webleads }: { webleads?: { aantal: number 
         ? 'border-amber-300 bg-amber-50 text-ink-900'
         : 'border-green-200 bg-green-50 text-green-800';
   return (
-    <div className="fixed bottom-5 left-1/2 z-50 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 md:left-auto md:right-6 md:translate-x-0">
+    <div className="fixed bottom-5 max-md:bottom-20 left-1/2 z-50 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 md:left-auto md:right-6 md:translate-x-0">
       <div
         role={bericht.soort === 'fout' ? 'alert' : 'status'}
         className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm font-semibold shadow-card ${kleur}`}

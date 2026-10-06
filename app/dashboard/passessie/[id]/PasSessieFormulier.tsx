@@ -295,7 +295,7 @@ export default function PasSessieFormulier({
                     />
                   </label>
                 )}
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {uitAssortiment.map((p) => (
                     <div key={p.id} className="rounded-xl border border-line bg-mist p-3">
                       <button
@@ -393,7 +393,7 @@ export default function PasSessieFormulier({
                       </p>
                     )
                   )}
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {gevonden.map((p) => (
                       <button
                         key={p.id}

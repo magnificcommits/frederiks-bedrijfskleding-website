@@ -58,7 +58,7 @@ export default async function MedewerkerVerzoekenPage({ searchParams }: { search
             <EmptyState tekst="Geen verzoeken die op goedkeuring wachten." />
           </div>
         ) : (
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
             {wachtend.map((v) => (
               <article key={v.id} className="panel p-4">
                 <div className="flex items-center justify-between gap-3">

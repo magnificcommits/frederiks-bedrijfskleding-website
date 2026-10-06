@@ -130,7 +130,7 @@ export default async function RetournerenPage({
       {/* Vijf stappen, als doorlopende reeks in plaats van losse kaartjes. */}
       <section className="container-x sec-md">
         <h2 className="text-balance kop-2">Zo gaat het</h2>
-        <ol className="mt-8 grid gap-px border-y border-line sm:grid-cols-2 lg:grid-cols-5 lg:gap-8 lg:border-0">
+        <ol className="mt-8 grid grid-cols-1 gap-px border-y border-line sm:grid-cols-2 lg:grid-cols-5 lg:gap-8 lg:border-0">
           {STAPPEN.map((s, i) => (
             <li key={s.t} className="border-b border-line py-5 last:border-b-0 lg:border-b-0 lg:border-t-2 lg:border-line lg:pt-5">
               <p className="font-display text-2xl font-extrabold leading-none text-amber-700">
@@ -145,7 +145,7 @@ export default async function RetournerenPage({
 
       {/* Wel en niet, naast elkaar: dit is de vraag die mensen echt hebben. */}
       <section className="border-y border-line bg-mist">
-        <div className="container-x grid gap-10 py-14 sm:py-16 lg:grid-cols-2">
+        <div className="container-x grid grid-cols-1 gap-10 py-14 sm:py-16 lg:grid-cols-2">
           <div>
             <h2 className="text-xl font-extrabold text-ink-900 sm:text-2xl">Dit kun je terugsturen</h2>
             <ul className="mt-5 space-y-3">
@@ -177,7 +177,7 @@ export default async function RetournerenPage({
       {/* Drie manieren, met de kosten er meteen bij. */}
       <section className="container-x sec-md">
         <h2 className="text-balance kop-2">Drie manieren om het terug te krijgen</h2>
-        <div className="mt-8 grid gap-5 lg:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
           {RETOUR_METHODES.map((m) => (
             <div key={m.code} className="rounded-xl border border-line bg-white p-6">
               <p className="font-display text-lg font-semibold text-ink-900">{m.label}</p>

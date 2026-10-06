@@ -100,7 +100,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
       </div>
 
       {/* Kerngegevens links in een meelopende rail, de rest op tabbladen. */}
-      <div className="mt-4 grid items-start gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
+      <div className="mt-4 grid grid-cols-1 items-start gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="space-y-4 lg:sticky lg:top-16">
           <div className="panel overflow-hidden">
             {afbeeldingen.length > 0 ? (
@@ -292,7 +292,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
             formaat en scherpte. Alle foto&apos;s naast elkaar zie je in de{' '}
             <Link href="/dashboard/producten/fotocontrole" className="font-semibold underline underline-offset-2">fotocontrole</Link>.
           </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {kleuren.map((kleur) => {
               const huidige = kleurAfbeeldingen[kleur];
               return (
@@ -340,7 +340,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
                 content: (
                   <>
       <section className="mt-8">
-        <form action={werkProduct} className="mt-4 grid gap-4 panel p-4 sm:grid-cols-2">
+        <form action={werkProduct} className="mt-4 grid grid-cols-1 gap-4 panel p-4 sm:grid-cols-2">
           <input type="hidden" name="productId" value={id} />
           <div className="sm:col-span-2">
             <label className="veld-label">Naam</label>

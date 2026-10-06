@@ -127,7 +127,7 @@ export default async function Drukproeven({ searchParams }: { searchParams: Prom
       {proeven.length === 0 ? (
         <p className="mt-8 text-sm text-warm">{t('drukproeven.geenProeven')}</p>
       ) : (
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
           {proeven.map((p) => {
             const behandeld = p.status === 'goedgekeurd' || p.status === 'afgekeurd';
             return (

@@ -200,7 +200,7 @@ export default function RegelToevoegen({ orderId }: { orderId: string }) {
 
           {catalogus === 'klaar' && (
             <>
-              <div className="mt-3 grid max-h-64 gap-1.5 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-3 grid grid-cols-1 max-h-64 gap-1.5 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
                 {zichtbaar.map((p) => (
                   <button
                     key={p.id}
@@ -274,7 +274,7 @@ export default function RegelToevoegen({ orderId }: { orderId: string }) {
       )}
 
       {artikel && variantStand === 'klaar' && varianten.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="veld-label" htmlFor="regel-kleur">Kleur</label>
             <select
@@ -316,7 +316,7 @@ export default function RegelToevoegen({ orderId }: { orderId: string }) {
         </p>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className={handmatig ? '' : 'xl:col-span-2'}>
           <label className="veld-label" htmlFor="regel-item">Itemnaam</label>
           <input

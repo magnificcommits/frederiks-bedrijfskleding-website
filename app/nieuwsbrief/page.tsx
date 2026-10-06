@@ -19,7 +19,7 @@ export default function NieuwsbriefPage() {
         intro="Geen wekelijkse reclame. Alleen als er echt iets te melden is: een nieuwe collectie, een actie of een tip die je geld of gedoe scheelt."
       />
       <section className="container-x sec-md">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-12">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-12">
           <div className="prose-nl">
             <h2 className="kop-3 text-ink-900">Wat er zoal in staat</h2>
             <ul>

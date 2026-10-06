@@ -70,7 +70,7 @@ export default async function Verkoop({ periode }: { periode: Periode }) {
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <OmzetGrafiek maanden={d.maanden} />
         <Blok
           titel="Per maand"
@@ -113,7 +113,7 @@ export default async function Verkoop({ periode }: { periode: Periode }) {
         </Blok>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Blok
           titel="Omzet per klant"
           uitleg={

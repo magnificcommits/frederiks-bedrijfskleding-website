@@ -53,7 +53,7 @@ export default function TellingVoet({ totaal }: { totaal: number }) {
   }, []);
 
   return (
-    <div ref={anker} className="sticky bottom-0 z-20 -mx-5 mt-6 flex flex-wrap items-center gap-3 border-t border-line bg-white/95 px-5 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+    <div ref={anker} className="sticky bottom-0 max-md:bottom-[calc(58px+env(safe-area-inset-bottom))] z-20 -mx-5 mt-6 flex flex-wrap items-center gap-3 border-t border-line bg-white/95 px-5 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
       <p className="text-[14px] text-ink-800">
         <span className="font-display text-lg font-bold tabular-nums">{ingevuld}</span> van {totaal} geteld
         {afwijkend > 0 && <span className="ml-2 badge-actie">{afwijkend} wijkt af</span>}

@@ -169,7 +169,7 @@ export default function NieuweOrderFormulier({
               <p className="veld-hint">Er staan nog geen klanten in het systeem. Maak eerst een klant aan.</p>
             ) : (
               <>
-                <div className="mt-3 grid max-h-72 gap-1.5 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-3 grid grid-cols-1 max-h-72 gap-1.5 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
                   {zichtbaar.map((k) => (
                     <button
                       key={k.id}
@@ -204,7 +204,7 @@ export default function NieuweOrderFormulier({
         <p className="veld-hint mb-3">
           Alles hier is optioneel. Je kunt het later op de orderpagina nog aanvullen.
         </p>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div>
             <label className="veld-label" htmlFor="o-medewerker">Werknemer</label>
             <select
@@ -298,7 +298,7 @@ export default function NieuweOrderFormulier({
 
       <section className="panel p-5">
         <h2 className="font-display text-base font-bold text-ink-900">3. Gegevens van de aanvraag</h2>
-        <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div>
             <label className="veld-label" htmlFor="o-besteldatum">Besteldatum</label>
             <input id="o-besteldatum" name="besteldatum" type="date" defaultValue={vandaag} className="veld" />
@@ -320,7 +320,7 @@ export default function NieuweOrderFormulier({
             />
           </div>
         </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="veld-label" htmlFor="o-notitie">Notitie bij de order</label>
             <textarea

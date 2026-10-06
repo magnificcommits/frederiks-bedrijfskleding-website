@@ -67,7 +67,7 @@ export default async function AfsprakenInstellingenPage({ searchParams }: { sear
         de agenda staat van {huidige?.naam ?? 'de gekozen persoon'} (inclusief de buffer ervoor en erna). Taken zonder tijd houden je niet bezet.
       </p>
 
-      <form action={zetBeschikbaarheidActie} className="mt-5 grid gap-5 lg:grid-cols-2">
+      <form action={zetBeschikbaarheidActie} className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">Wanneer kan er geboekt worden</h2>
           <fieldset className="mt-3">

@@ -57,7 +57,7 @@ export default async function BeveiligingPagina({
         <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-800">Log in met je eigen account (e-maillink) om dit te doen.</p>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="panel p-5 lg:col-span-2">
           <h2 className="font-display text-lg font-bold text-ink-900">Tweestapsverificatie</h2>
           <p className="mt-1 text-sm text-warm">

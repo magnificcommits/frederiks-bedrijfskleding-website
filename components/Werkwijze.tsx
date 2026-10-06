@@ -18,7 +18,7 @@ export function Werkwijze({
     <section className={vlak === 'mist' ? 'border-y border-line bg-mist' : 'bg-white'}>
       <div className="container-x sec-md">
         <h2 className="kop-2">{titel}</h2>
-        <ol className="mt-6 grid gap-x-6 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-6 grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
           {werkwijze.map((s, i) => (
             <li key={s.nr} className="relative">
               {i < werkwijze.length - 1 && <span className="absolute left-12 right-0 top-4 hidden border-t-2 border-dashed border-amber-400 lg:block" aria-hidden="true" />}

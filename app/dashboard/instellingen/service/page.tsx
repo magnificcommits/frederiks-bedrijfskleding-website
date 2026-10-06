@@ -77,7 +77,7 @@ export default async function ServiceInstellingenPage({ searchParams }: { search
       <section id="retourbeleid" className="panel mt-6 scroll-mt-24 p-5">
         <h2 className="font-display text-lg font-bold text-ink-900">Retourbeleid</h2>
         <p className="mt-1 text-[13px] text-warm">Standaard voor alle klanten. Een afwijkende termijn per klant stel je verderop in.</p>
-        <form action={zetRetourbeleidActie} className="mt-4 grid gap-5 md:grid-cols-2">
+        <form action={zetRetourbeleidActie} className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="space-y-4">
             <div>
               <label htmlFor="sv-dagen" className="veld-label">Retourtermijn</label>
@@ -119,7 +119,7 @@ export default async function ServiceInstellingenPage({ searchParams }: { search
         </form>
       </section>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* ---------------- Redenen ---------------- */}
         <section id="redenen" className="panel scroll-mt-24 p-5">
           <h2 className="font-display text-lg font-bold text-ink-900">Retourredenen</h2>
@@ -167,7 +167,7 @@ export default async function ServiceInstellingenPage({ searchParams }: { search
           ) : (
             <p className="mt-3 text-[13px] text-warm">Alle klanten hebben de standaardtermijn van {beleid.termijnDagen} dagen.</p>
           )}
-          <form action={zetKlantTermijnActie} className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+          <form action={zetKlantTermijnActie} className="mt-4 grid grid-cols-1 gap-3 border-t border-line pt-4 sm:grid-cols-[1fr_auto_auto] sm:items-end">
             <KlantZoeker klanten={klanten} label="Klant toevoegen" />
             <div>
               <label htmlFor="sv-kdagen" className="veld-label">Dagen</label>
@@ -199,7 +199,7 @@ export default async function ServiceInstellingenPage({ searchParams }: { search
           Klanten kunnen in het portaal naast terugsturen en ruilen ook een reparatie aanmelden: wat er kapot is, een toelichting en foto&apos;s.
           Er wordt niets terugbetaald; de reparatie loopt van aangemeld tot terug bij de klant.
         </p>
-        <form action={zetReparatieInstellingenActie} className="mt-4 grid gap-5 md:grid-cols-2">
+        <form action={zetReparatieInstellingenActie} className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="space-y-4">
             <label className="flex items-start gap-2 text-[13px] text-ink-800">
               <input type="checkbox" name="aan" defaultChecked={reparatie.aan} className="mt-0.5" />
@@ -240,7 +240,7 @@ export default async function ServiceInstellingenPage({ searchParams }: { search
       <section id="klachten" className="panel mt-6 scroll-mt-24 p-5">
         <h2 className="font-display text-lg font-bold text-ink-900">Klachten en vragen</h2>
         <p className="mt-1 text-[13px] text-warm">Categorieën om tickets in te delen (ook kiesbaar in het portaal) en de streeftijd voor de eerste reactie per prioriteit.</p>
-        <form action={zetKlachtInstellingenActie} className="mt-4 grid gap-5 md:grid-cols-2">
+        <form action={zetKlachtInstellingenActie} className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2">
           <div>
             <label htmlFor="sv-cat" className="veld-label">Categorieën (één per regel)</label>
             <textarea id="sv-cat" name="categorieen" rows={7} defaultValue={klacht.categorieen.join('\n')} className="veld font-mono text-[12px]" />

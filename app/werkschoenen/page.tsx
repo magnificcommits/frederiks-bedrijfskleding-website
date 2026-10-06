@@ -41,14 +41,14 @@ export default function WerkschoenenPage() {
       <BrandStrip />
 
       <section className="container-x sec-md">
-        <div className="grid items-stretch gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-14">
+        <div className="grid grid-cols-1 items-stretch gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-14">
           <div className="flex flex-col justify-center">
             <h2 className="kop-2">Schoenen die na acht uur nog goed zitten</h2>
             <div className="prose-nl mt-5 text-lg">
               <p>We leveren alleen merken die bekendstaan om een lange levensduur en goede bescherming: stalen of composiet neuzen, antislipzolen en modellen voor kou, hitte en ruwe ondergrond.</p>
               <p>Veilig is het minimum. Daarna gaat het om pasvorm en comfort, want een halve maat verkeerd voel je aan het eind van de dag.</p>
             </div>
-            <ul className="mt-6 grid gap-3 sm:grid-cols-3">
+            <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
                 { t: 'S1 tot S7', d: 'de juiste klasse voor je werk' },
                 { t: 'Passen op locatie', d: 'wij nemen de maten mee' },
@@ -72,7 +72,7 @@ export default function WerkschoenenPage() {
         </div>
 
         <h2 className="mt-16 kop-2">De klassen op een rij</h2>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
           {klassen.map((c) => (
             <div key={c.k} className="rounded-lg border border-line bg-white p-5 shadow-soft">
               <h3 className="font-display text-lg font-extrabold text-amber-700">{c.k}</h3>
@@ -86,7 +86,7 @@ export default function WerkschoenenPage() {
       <section className="border-y border-line bg-mist">
         <div className="container-x sec-md">
           <h2 className="kop-2">Zo kies je samen met ons de juiste schoen</h2>
-          <ol className="mt-8 grid gap-6 sm:grid-cols-3">
+          <ol className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
             <li className="rounded-xl border-l-2 border-amber-500 bg-white p-6 shadow-soft">
               <span className="font-display text-2xl font-extrabold text-amber-500">1</span>
               <h3 className="mt-2 text-base font-bold text-ink-900">Vraag gratis advies aan</h3>

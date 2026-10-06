@@ -77,7 +77,7 @@ export default async function RapportTab({ campagne: c }: { campagne: CampagneDe
         <Tegel label="Doel bereikt" waarde={r.doelBereikt} sub={`conversie ${pct(r.doelBereikt, r.totaal)}`} />
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section className="panel p-4">
           <h2 className="text-[14px] font-bold text-ink-900">Laatste 30 dagen</h2>
           <div className="mt-4">

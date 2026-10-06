@@ -62,7 +62,7 @@ export default async function ArtikelPage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
 
-      <article className="container-x grid gap-12 py-14 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <article className="container-x grid grid-cols-1 gap-12 py-14 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div>
           <p className="text-lg font-medium leading-relaxed text-ink-800">{a.intro}</p>
           {a.sections.map((s) => (
@@ -99,7 +99,7 @@ export default async function ArtikelPage({ params }: { params: Promise<{ slug: 
         <section className="border-t border-line bg-mist">
           <div className="container-x sec-md">
             <h2 className="kop-2">Meer over {a.category.toLowerCase()}</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
               {meer.map((x) => (
                 <Link key={x.slug} href={`/kennisbank/${x.slug}`} className="group flex items-center justify-between gap-3 rounded-xl border-2 border-ink-200 bg-white px-5 py-4 transition hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card h-full">
                   <h3 className="font-display text-[1.0625rem] font-extrabold leading-snug text-ink-900">{x.title}</h3>

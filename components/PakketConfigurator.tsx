@@ -455,7 +455,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         )}
 
         {step === 1 && (
-          <div className="no-print grid gap-8 lg:grid-cols-2">
+          <div className="no-print grid grid-cols-1 gap-8 lg:grid-cols-2">
             <div>
               <h3 className="font-display text-2xl font-extrabold text-ink-900">Je logo en afwerking</h3>
               <p className="mt-1 text-sm text-warm">Upload je logo, dan zie je het zo op de kleding. Geen logo bij de hand? Sla over, je kunt het later aanleveren.</p>
@@ -486,7 +486,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         )}
 
         {step === 2 && (
-          <div className="no-print grid gap-8 lg:grid-cols-2">
+          <div className="no-print grid grid-cols-1 gap-8 lg:grid-cols-2">
             <div>
               <h3 className="font-display text-2xl font-extrabold text-ink-900">Stel je kleding samen</h3>
               <ol className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-warm">
@@ -625,7 +625,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         )}
 
         {step === 3 && (
-          <div className="grid gap-8 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             <div id="pakket-print" className="rounded-2xl bg-ink-900 p-6 text-white print:bg-white print:text-ink-900">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-400 print:text-amber-700">Jouw pakket</p>
               <ul className="mt-4 space-y-1 text-sm text-ink-100 print:text-ink-800">
@@ -657,7 +657,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
             <div className="no-print rounded-2xl border-2 border-amber-500 bg-white p-6 shadow-card">
               <h3 className="text-lg font-extrabold text-ink-900">Vraag je pakket als offerte aan</h3>
               <p className="mt-1 text-sm text-warm">We bellen je binnen 24 uur terug en denken vrijblijvend mee.</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <input className={field} placeholder="Naam *" value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} autoComplete="name" />
                 <input className={field} placeholder="Bedrijf" value={contact.company} onChange={(e) => setContact({ ...contact, company: e.target.value })} autoComplete="organization" />
                 <input className={field} type="email" placeholder="E-mail *" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} autoComplete="email" />

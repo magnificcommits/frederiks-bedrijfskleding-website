@@ -63,7 +63,7 @@ export function SkeletDetail({ tekst }: { tekst?: string }) {
     <main className="container-app py-6" aria-busy="true">
       <Status tekst={tekst} />
       <Kop kruimel />
-      <div className="mt-5 grid gap-4 lg:grid-cols-12">
+      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-12">
         <div className="space-y-4 lg:col-span-8">
           <div className="panel space-y-3 p-4">
             <Blok className="h-4 w-32" />
@@ -100,7 +100,7 @@ export function SkeletStart({ tekst }: { tekst?: string }) {
     <main className="container-app py-6" aria-busy="true">
       <Status tekst={tekst} />
       <Kop />
-      <div className="mt-5 grid gap-4 lg:grid-cols-12">
+      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-12">
         <div className="panel space-y-3 p-4 lg:col-span-7">
           <Blok className="h-4 w-24" />
           {Array.from({ length: 4 }, (_, i) => (

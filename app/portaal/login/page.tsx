@@ -134,6 +134,10 @@ export default function PortaalLogin() {
           </>
         )}
         <p className="mt-5 text-xs text-warm">{t('login.nogGeenToegang')}</p>
+        <a href="/portaal/app" className="mt-4 flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink-800 hover:bg-mist">
+          <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0 text-amber-600" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" /><path d="M10.5 18.5h3" strokeLinecap="round" /></svg>
+          <span><span className="font-semibold">{t('installeer.titel')}</span><span className="block text-xs text-warm">{t('installeer.perApparaat')}</span></span>
+        </a>
       </div>
     </main>
   );

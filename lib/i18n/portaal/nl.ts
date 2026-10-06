@@ -70,6 +70,11 @@ export const nl = {
   },
 
   nav: {
+    sluiten: 'Sluiten',
+    bestellenKort: 'Bestellen',
+    meer: 'Meer',
+    appOpTelefoon: 'App op je telefoon',
+    naarWebsite: 'Naar de website',
     overzicht: 'Overzicht',
     kledingBestellen: 'Kleding bestellen',
     bestellingen: 'Bestellingen',

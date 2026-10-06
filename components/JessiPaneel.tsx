@@ -54,7 +54,7 @@ export function JessiPaneel({
             </li>
           ))}
         </ul>
-        <div className="mt-5 grid gap-2 border-t border-white/15 pt-5 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="mt-5 grid grid-cols-1 gap-2 border-t border-white/15 pt-5 sm:grid-cols-2 lg:grid-cols-1">
           {afspraak && (
             <Link href="/afspraak" className="btn bg-amber-500 px-4 text-ink-900 hover:bg-amber-400" data-cta="afspraak">
               Plan zelf een afspraak

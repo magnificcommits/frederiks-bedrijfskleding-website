@@ -166,7 +166,7 @@ export default async function NieuweKlantPage({
     inhoud = (
       <form action={slaBedrijfOpActie} className="flex flex-col gap-4">
         {org && <input type="hidden" name="klantId" value={org.id} />}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <BedrijfsnaamVeld standaard={org?.naam ?? ''} bestaande={alleKlanten} eigenId={org?.id} />
           <div>
             <label className="veld-label" htmlFor="w-branche">Branche</label>

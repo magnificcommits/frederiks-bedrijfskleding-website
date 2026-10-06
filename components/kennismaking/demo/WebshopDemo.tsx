@@ -46,7 +46,7 @@ export default function WebshopDemo() {
     <div className="mt-6">
       {/* Voor wie */}
       <section className="rounded-2xl border border-line bg-white p-4 shadow-soft sm:p-5">
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,20rem)_1fr] sm:items-end">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,20rem)_1fr] sm:items-end">
           <div>
             <label htmlFor="voor-wie" className="block text-sm font-semibold text-ink-900">
               Bestellen voor
@@ -104,7 +104,7 @@ export default function WebshopDemo() {
       )}
 
       {/* Artikelen */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {zichtbaar.map((a) => {
           const maat = maatKeuze[a.id] ?? (voor || a.maatSoort === 'een' ? maatVoor(voor, a) : '');
           const isVoorkeur = Boolean(voor) && maat === maatVoor(voor, a) && !maatKeuze[a.id];

@@ -27,7 +27,7 @@ export default function MaattabellenPage() {
 
       <section className="bg-mist">
         <div className="container-x sec-md">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:items-center lg:gap-10">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:items-center lg:gap-10">
             <p className="max-w-[68ch] text-lg text-warm">
               Pak een meetlint en meet over je gewone kleding heen, niet over je werkkleding. Twijfel je tussen twee
               maten, kies dan meestal de grootste, zodat je vrij kunt bewegen. Bij elke tabel staat hoe je meet.
@@ -39,7 +39,7 @@ export default function MaattabellenPage() {
             </div>
           </div>
 
-          <div className="mt-8 grid gap-5 xl:grid-cols-3">
+          <div className="mt-8 grid grid-cols-1 gap-5 xl:grid-cols-3">
             {maattabellen.map((tabel) => (
               <article key={tabel.id} id={tabel.id} className="flex scroll-mt-28 flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-card">
                 <div className="p-5 pb-4">

@@ -194,7 +194,7 @@ export default function FactuurRegelToevoegen({
             {zoekStand === 'klaar' && (
               <>
                 {resultaten.length > 0 && (
-                  <div className="mt-3 grid max-h-80 gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="mt-3 grid grid-cols-1 max-h-80 gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
                     {resultaten.map((p) => (
                       <button
                         key={p.id}

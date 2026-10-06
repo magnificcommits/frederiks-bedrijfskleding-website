@@ -148,7 +148,7 @@ export default async function InkooporderPage({ params, searchParams }: { params
         </ol>
       )}
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_340px]">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
         <section className="panel min-w-0">
           <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-2.5">
             <h2 className="font-display text-[14px] font-bold text-ink-900">Regels</h2>

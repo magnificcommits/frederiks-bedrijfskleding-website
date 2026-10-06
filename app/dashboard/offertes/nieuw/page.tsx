@@ -47,7 +47,7 @@ export default async function NieuweOffertePage({ searchParams }: { searchParams
       <form action={maakOfferteActie} className="panel mt-5 max-w-3xl space-y-6 p-6">
         <KlantContactKiezer klanten={klanten} beginKlantId={klant ?? ''} autoFocus />
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <label className="veld-label" htmlFor="geldig_tot">Geldig tot</label>
             <input id="geldig_tot" type="date" name="geldig_tot" defaultValue={over30Dagen()} className={groot} />

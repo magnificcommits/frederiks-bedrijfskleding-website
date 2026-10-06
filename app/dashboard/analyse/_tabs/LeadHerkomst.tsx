@@ -73,7 +73,7 @@ export default async function LeadHerkomst({ periode }: { periode: Periode }) {
         <LegeStaat titel="Geen leads in deze periode" tekst="Kies een langere periode of wacht op de eerste aanvragen met herkomst." />
       ) : (
         <>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Tabel titel="Kanaal" rijen={d.kanaal} />
             <Tabel titel="Campagne" rijen={d.campagne} />
             <Tabel titel="Landingspagina" rijen={d.landing} />

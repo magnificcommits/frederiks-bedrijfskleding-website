@@ -24,7 +24,7 @@ export default async function KmsAppUitleg() {
         <InstalleerApp gebied="kms" variant="pagina" />
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <section className="panel p-4">
           <h2 className="font-display text-base font-bold text-ink-900">iPhone en iPad</h2>
           <p className="mt-1 text-xs text-warm">In Safari, op een pagina van het KMS.</p>

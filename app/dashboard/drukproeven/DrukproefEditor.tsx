@@ -796,7 +796,7 @@ export default function DrukproefEditor({
           ))}
         </div>
 
-        <div className="mt-5 grid gap-6 lg:grid-cols-5">
+        <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-5">
           {/* Het werkvlak */}
           <div className="lg:col-span-3">
             {zijde === 'achter' && (
@@ -1029,7 +1029,7 @@ export default function DrukproefEditor({
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label className={label} htmlFor="dp-plek">Plek</label>
                     <input
@@ -1105,7 +1105,7 @@ export default function DrukproefEditor({
 
       {/* ---------------- Stap 3: gegevens en opslaan ---------------- */}
       <Stap nummer={3} titel="Gegevens en opslaan" uitleg="Dit is precies wat de klant te zien krijgt.">
-        <div className="grid gap-6 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
           <div className="lg:col-span-3">
             <div className="rounded-xl border border-line bg-white p-4">
               <p className="mb-3 font-display text-base font-bold text-ink-900">{naam || 'Drukproef'}</p>
@@ -1139,7 +1139,7 @@ export default function DrukproefEditor({
                 className={veld}
               />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={label} htmlFor="dp-techniek">Techniek</label>
                 <select id="dp-techniek" value={techniek} onChange={(e) => setTechniek(e.target.value)} className={veld}>

@@ -134,7 +134,7 @@ export default function Beoordeling({ token, opgeslagenScore, gevraagdeScore, na
               </div>
               {!laag && (
                 <>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label htmlFor="naam" className="block text-sm font-medium text-ink-800">Naam</label>
                       <input id="naam" name="naam" defaultValue={naam} className={veld} autoComplete="name" />

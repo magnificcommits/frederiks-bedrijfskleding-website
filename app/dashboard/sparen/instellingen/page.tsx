@@ -24,12 +24,12 @@ export default async function SparenInstellingen({ searchParams }: { searchParam
       <Meldingen fout={fout} melding={melding} />
       <MigratieBanner toon={!loyaliteit} />
 
-      <div className="mt-2 grid gap-3 lg:grid-cols-3">
+      <div className="mt-2 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <form action={zetSparenInstellingenActie} className="panel space-y-5 p-4 lg:col-span-2">
           <input type="hidden" name="terug" value={PAD} />
           <div>
             <h2 className="font-display text-base font-bold text-ink-900">Programma</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <JaNee naam="actief" label="Spaarprogramma aan" waarde={inst.actief} hint="Uit: geen nieuwe punten en niets zichtbaar in het portaal. Saldi blijven bewaard." />
               <div>
                 <label className="veld-label" htmlFor="euro_per_punt">Waarde van 1 punt (euro)</label>
@@ -46,7 +46,7 @@ export default async function SparenInstellingen({ searchParams }: { searchParam
 
           <div className="border-t border-line pt-4">
             <h2 className="font-display text-base font-bold text-ink-900">Verval en niveaus</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="veld-label" htmlFor="verval">Punten vervallen na (maanden)</label>
                 <input id="verval" name="verval_maanden" type="number" min="0" max="120" step="1" defaultValue={inst.vervalMaanden} className="veld" />
@@ -65,7 +65,7 @@ export default async function SparenInstellingen({ searchParams }: { searchParam
 
           <div className="border-t border-line pt-4">
             <h2 className="font-display text-base font-bold text-ink-900">Klantportaal</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <JaNee naam="portaal_aanvragen" label="Beheerders mogen beloningen aanvragen" waarde={inst.portaalAanvragen} hint="Elke aanvraag wacht op jouw goedkeuring." />
               <div>
                 <label className="veld-label" htmlFor="mail">Melding van nieuwe aanvragen naar</label>

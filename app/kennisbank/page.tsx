@@ -29,10 +29,10 @@ export default function KennisbankPage() {
                 <ul className="divide-y divide-line">
                   {items.map((a) => (
                     <li key={a.slug}>
-                      <Link href={`/kennisbank/${a.slug}`} className="group flex items-center gap-4 px-5 py-4 transition hover:bg-mist">
+                      <Link href={`/kennisbank/${a.slug}`} className="group flex min-h-[52px] items-center gap-4 px-5 py-3 transition hover:bg-mist sm:py-4">
                         <span className="min-w-0 flex-1">
                           <span className="block font-display text-[1.0625rem] font-extrabold leading-snug text-ink-900">{a.title}</span>
-                          <span className="mt-1 block text-sm leading-snug text-warm line-clamp-2">{a.intro}</span>
+                          <span className="mt-1 block text-sm leading-snug text-warm line-clamp-2 max-sm:hidden">{a.intro}</span>
                         </span>
                         <Pijl />
                       </Link>

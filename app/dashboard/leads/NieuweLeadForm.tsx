@@ -6,7 +6,7 @@ import { AANTAL_OPTIES, BRANCHE_OPTIES, HANDMATIGE_BRONNEN } from '@/lib/kms/lea
 export default function NieuweLeadForm({ personen, mijnPersoon }: { personen: { id: string; naam: string }[]; mijnPersoon: string | null }) {
   return (
     <form action={nieuweLeadActie} className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="veld-label">Naam *</span>
           <input name="name" required maxLength={120} className="veld" autoComplete="off" placeholder="Voor- en achternaam" />
@@ -59,7 +59,7 @@ export default function NieuweLeadForm({ personen, mijnPersoon }: { personen: { 
         Wil graag passen op locatie
       </label>
 
-      <div className="grid gap-4 border-t border-line pt-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 border-t border-line pt-4 sm:grid-cols-2">
         {personen.length > 0 && (
           <label className="block">
             <span className="veld-label">Eigenaar</span>

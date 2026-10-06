@@ -60,7 +60,7 @@ export default async function PakketPage({ params }: { params: Promise<{ id: str
 
       <section className="mt-8">
         <h2 className="font-display text-xl font-bold text-ink-900">Gegevens</h2>
-        <form action={werkPakket} className="mt-4 grid gap-4 panel p-4 sm:grid-cols-2">
+        <form action={werkPakket} className="mt-4 grid grid-cols-1 gap-4 panel p-4 sm:grid-cols-2">
           <input type="hidden" name="pakketId" value={id} />
           <div className="sm:col-span-2">
             <label className="veld-label">Naam</label>

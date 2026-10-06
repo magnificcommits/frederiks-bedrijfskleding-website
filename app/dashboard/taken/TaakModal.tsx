@@ -520,7 +520,7 @@ export default function TaakModal({
           </fieldset>
 
           {/* Wie en status */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col">
               <span className="veld-label">Persoon</span>
               <select value={c.persoonId} onChange={(e) => zet({ persoonId: e.target.value })} className="veld py-2 text-[14px]" disabled={!v2}>
@@ -577,7 +577,7 @@ export default function TaakModal({
 
           {/* Herinnering en herhalen */}
           {v2 && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="flex flex-col">
                 <span className="veld-label">Herinnering</span>
                 <select

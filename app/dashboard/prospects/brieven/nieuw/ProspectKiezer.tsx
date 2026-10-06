@@ -217,7 +217,7 @@ export default function ProspectKiezer({
       </div>
 
       {/* Actiebalk */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white/95 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur print:hidden">
+      <div className="fixed inset-x-0 bottom-[calc(58px+env(safe-area-inset-bottom))] z-30 border-t border-line bg-white/95 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur print:hidden md:bottom-0">
         <div className="container-app flex flex-wrap items-end gap-3 py-3">
           <div className="min-w-[12rem]">
             <p className="text-[14px] font-bold text-ink-900">

@@ -98,7 +98,7 @@ export default async function DrukproevenPage({ searchParams }: { searchParams: 
         <ProefMelding />
       </Suspense>
 
-      <section aria-label="Kerncijfers" className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Kerncijfers" className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiTegel
           label="Wachten op klant"
           waarde={String(kpis.wachtOpKlant)}
@@ -226,7 +226,7 @@ export default async function DrukproevenPage({ searchParams }: { searchParams: 
             )}
           </div>
 
-          <ul className="mt-4 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <ul className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {proeven.map((d) => (
               <DrukproefKaart
                 key={d.id}

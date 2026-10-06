@@ -72,7 +72,7 @@ export default async function PortaalLayout({ children }: { children: React.Reac
 
   return (
     <TaalProvider taal={taal} woordenboek={WOORDENBOEKEN[taal]}>
-    <div lang={taal} style={style} className="min-h-screen bg-mist">
+    <div lang={taal} style={style} className="min-h-screen bg-mist max-md:pb-[calc(76px+env(safe-area-inset-bottom))]">
       <PwaRegistratie gebied="portaal" />
       {demoRol && <DemoBalk rol={demoRol} />}
       <header className="border-b border-line bg-white">

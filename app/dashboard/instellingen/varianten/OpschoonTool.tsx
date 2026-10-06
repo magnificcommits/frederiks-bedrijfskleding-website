@@ -307,7 +307,7 @@ export default function OpschoonTool({ rijen, lijst, kanOpslaan }: { rijen: Opsc
         </div>
       )}
 
-      <div className="sticky bottom-0 z-20 -mx-1 mt-4 rounded-t-lg border border-line bg-white px-4 py-3 shadow-card">
+      <div className="sticky bottom-0 max-md:bottom-[calc(58px+env(safe-area-inset-bottom))] z-20 -mx-1 mt-4 rounded-t-lg border border-line bg-white px-4 py-3 shadow-card">
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-[13px] text-ink-900" aria-live="polite">
             {plan.paren.length === 0 ? (

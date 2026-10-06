@@ -53,7 +53,7 @@ export default function TriggerFormulier({
   }
 
   return (
-    <form action={bewaarInstellingenActie} className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+    <form action={bewaarInstellingenActie} className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <input type="hidden" name="campagneId" value={campagneId} />
       <input type="hidden" name="trigger" value={JSON.stringify(trigger)} />
       <input type="hidden" name="doel" value={JSON.stringify(doel)} />
@@ -217,7 +217,7 @@ export default function TriggerFormulier({
               <label className="veld-label" htmlFor="t-oms">Notitie voor jezelf</label>
               <textarea id="t-oms" name="omschrijving" defaultValue={begin.omschrijving} rows={2} className="veld" />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="veld-label" htmlFor="t-vn">Afzendernaam</label>
                 <input id="t-vn" name="van_naam" defaultValue={begin.van_naam} placeholder="Jessi Frederiks" className="veld" />

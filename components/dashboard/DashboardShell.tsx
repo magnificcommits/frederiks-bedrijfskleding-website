@@ -675,7 +675,7 @@ export function DashboardShell({
       >
         Naar de inhoud
       </a>
-      <div className="flex items-center justify-between gap-2 border-b border-line bg-ink-900 px-3 py-2 md:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-line bg-ink-900 px-3 py-2 md:hidden">
         {terugStap ? (
           <Link
             href={terugStap.href}
@@ -737,11 +737,41 @@ export function DashboardShell({
         </div>
       )}
       <aside className="hidden shrink-0 md:sticky md:top-0 md:z-40 md:block md:h-screen">{rail}</aside>
-      <div id="inhoud" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">{zoekBalk}{children}</div>
+      <div id="inhoud" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 max-md:pb-[calc(64px+env(safe-area-inset-bottom))]">{zoekBalk}{children}</div>
+      <KmsTabbalk pad={pathname ?? ''} menuOpen={open} onMenu={() => setOpen((v) => !v)} />
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
       <Sneltoetsen open={toetsenOpen} onOpen={openToetsen} onSluit={sluitToetsen} onZoek={openZoeken} />
       <BezigBalk />
       <Toast />
     </div>
+  );
+}
+
+/**
+ * Telefoon: vaste tabbalk onderin met de vier schermen die Jessi onderweg het
+ * meest opent, plus Menu voor de rest. Zo werkt het KMS op een telefoon als een app.
+ */
+function KmsTabbalk({ pad, menuOpen, onMenu }: { pad: string; menuOpen: boolean; onMenu: () => void }) {
+  const tabs = [
+    { href: '/dashboard', label: 'Overzicht', d: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z' },
+    { href: '/dashboard/leads', label: 'Leads', d: 'M4 5h16v11H8l-4 4zM8 9h8M8 12h5' },
+    { href: '/dashboard/klanten', label: 'Klanten', d: 'M9 11.2A3.2 3.2 0 1 0 9 4.8a3.2 3.2 0 0 0 0 6.4ZM3 20c.6-3.4 3-5.5 6-5.5s5.4 2.1 6 5.5M16 4.8a3.2 3.2 0 0 1 0 6.4M18 14.8c1.7.8 2.8 2.6 3 5.2' },
+    { href: '/dashboard/agenda', label: 'Agenda', d: 'M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v5M15.5 3.5v5' },
+  ];
+  const actief = (h: string) => (h === '/dashboard' ? pad === '/dashboard' : pad === h || pad.startsWith(h + '/'));
+  const tab = 'flex min-h-[58px] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold';
+  return (
+    <nav aria-label="Snelmenu" className="fixed inset-x-0 bottom-0 z-30 flex border-t border-ink-800 bg-ink-900 pb-[env(safe-area-inset-bottom)] md:hidden">
+      {tabs.map((t) => (
+        <Link key={t.href} href={t.href} aria-current={actief(t.href) ? 'page' : undefined} className={`${tab} ${actief(t.href) ? 'text-amber-400' : 'text-ink-200'}`}>
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={t.d} /></svg>
+          {t.label}
+        </Link>
+      ))}
+      <button type="button" onClick={onMenu} aria-expanded={menuOpen} aria-controls="kms-menu-mobiel" className={`${tab} ${menuOpen ? 'text-amber-400' : 'text-ink-200'}`}>
+        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        Menu
+      </button>
+    </nav>
   );
 }

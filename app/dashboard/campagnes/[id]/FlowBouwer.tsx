@@ -565,7 +565,7 @@ export default function FlowBouwer(props: FlowBouwerProps) {
         )}
       </div>
 
-      <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_30rem]">
+      <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_30rem]">
         <div className="panel overflow-x-auto bg-mist/60 px-3 py-5 sm:px-6">
           <div className="mx-auto flex min-w-[20rem] max-w-3xl flex-col items-center">
             <div className="w-full max-w-[22rem] rounded-lg border border-dashed border-ink-300 bg-white px-3 py-2.5">

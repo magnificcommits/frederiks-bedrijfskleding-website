@@ -358,7 +358,7 @@ export default function KlantContactKiezer({
         {klant && contactStand === 'laden' && <p className="veld-hint">Contactpersonen laden...</p>}
 
         {klant && contactStand === 'klaar' && (
-          <div role="radiogroup" aria-labelledby="contact-label" className="grid gap-2 sm:grid-cols-2">
+          <div role="radiogroup" aria-labelledby="contact-label" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {contacten.map((c) => {
               const isGekozen = keuze.id === c.id;
               return (
@@ -403,7 +403,7 @@ export default function KlantContactKiezer({
           // geen name, zodat ze niet met de offerte mee worden verstuurd.
           <div className="mt-3 rounded-md border border-line bg-mist p-3" role="group" aria-label="Nieuwe contactpersoon">
             <p className="text-[13px] font-semibold text-ink-900">Nieuwe contactpersoon bij {klant.naam}</p>
-            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="veld-label" htmlFor="nieuw-contact-naam">Naam</label>
                 <input

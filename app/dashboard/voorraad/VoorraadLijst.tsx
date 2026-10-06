@@ -439,7 +439,7 @@ function DetailPaneel({ rij, instellingenKlaar }: { rij: TabelRij; instellingenK
   }
 
   return (
-    <div className="grid gap-4 border-y border-line bg-mist/50 px-4 py-4 md:grid-cols-[240px_1fr]">
+    <div className="grid grid-cols-1 gap-4 border-y border-line bg-mist/50 px-4 py-4 md:grid-cols-[240px_1fr]">
       <dl className="space-y-2 text-[13px]">
         <div>
           <dt className="veld-label">Voorraadartikel</dt>

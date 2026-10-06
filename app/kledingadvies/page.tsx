@@ -19,7 +19,7 @@ export default async function KledingadviesPage({ searchParams }: { searchParams
   const { branche } = await searchParams;
   return (
     <section className="bg-ink-900">
-      <div className="container-x grid gap-12 py-14 sm:py-20 lg:grid-cols-[minmax(0,24rem)_minmax(0,44rem)] lg:justify-between">
+      <div className="container-x grid grid-cols-1 gap-12 py-14 sm:py-20 lg:grid-cols-[minmax(0,24rem)_minmax(0,44rem)] lg:justify-between">
         <div className="text-white">
           <p className="eyebrow text-amber-400">Kledingadvies in 1 minuut</p>
           <h1 className="mt-3 text-3xl font-extrabold text-white sm:text-4xl">Vertel ons wat je zoekt</h1>

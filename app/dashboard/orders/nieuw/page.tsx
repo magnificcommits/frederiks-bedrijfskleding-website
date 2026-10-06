@@ -56,7 +56,7 @@ export default async function NieuweOrderPage({
       )}
 
       {/* Formulier krijgt de volle werkbreedte; het spoor rechts legt de volgorde uit. */}
-      <div className="mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="mt-4 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="min-w-0">
           <NieuweOrderFormulier keuzes={keuzes} vandaag={vandaag} />
         </div>

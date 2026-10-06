@@ -76,7 +76,7 @@ export default function KoppelApp() {
   }
 
   return (
-    <div className="grid gap-5 sm:grid-cols-[220px_1fr]">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-[220px_1fr]">
       <div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={stap.qr} alt="QR-code om te scannen met je authenticator-app" width={220} height={220} className="rounded-md border border-line bg-white p-2" />

@@ -130,7 +130,7 @@ export default async function NieuwsbriefDetailPage({
       </form>
     </div>
   ) : (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
       <div className="flex flex-col gap-5">
         <section className="panel p-5">
           <h2 className="font-display text-lg font-bold text-ink-900">1. Onderwerp en ontvangers</h2>

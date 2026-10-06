@@ -85,7 +85,7 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
         </div>
       )}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
         <div className="panel p-4">
           <h2 className="font-display text-lg font-bold text-ink-900">Medewerkers importeren</h2>
           <p className="mt-1 text-xs text-warm">Kies eerst de klant. Verwachte kolommen: <code>naam;email;functie;personeelsnummer</code>. De volgorde mag anders, zolang de koppen kloppen. Staat er alleen een naam, dan splitsen we die zelf in voornaam en achternaam.</p>

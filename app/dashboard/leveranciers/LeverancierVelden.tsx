@@ -9,7 +9,7 @@ export default function LeverancierVelden({ l, nieuwKlaar = true }: { l?: Partia
   const franco = l?.franco_bedrag != null ? String(l.franco_bedrag).replace('.', ',') : '';
   return (
     <div className="flex flex-col gap-6">
-      <fieldset className="grid gap-3 sm:grid-cols-2">
+      <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <legend className="mb-2 font-display text-[15px] font-bold text-ink-900">Wie</legend>
         <div className="sm:col-span-2">
           <label className="veld-label" htmlFor="lv-naam">Naam (merk)</label>
@@ -35,7 +35,7 @@ export default function LeverancierVelden({ l, nieuwKlaar = true }: { l?: Partia
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-3 sm:grid-cols-2">
+      <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <legend className="mb-2 font-display text-[15px] font-bold text-ink-900">Algemeen contact</legend>
         <div>
           <label className="veld-label" htmlFor="lv-cp">Contactpersoon</label>
@@ -55,7 +55,7 @@ export default function LeverancierVelden({ l, nieuwKlaar = true }: { l?: Partia
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-3 sm:grid-cols-2">
+      <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <legend className="mb-2 font-display text-[15px] font-bold text-ink-900">Bestellen</legend>
         <div className="sm:col-span-2">
           <label className="veld-label" htmlFor="lv-portaal">Bestelportaal (B2B-webshop)</label>
@@ -76,7 +76,7 @@ export default function LeverancierVelden({ l, nieuwKlaar = true }: { l?: Partia
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-3 sm:grid-cols-3">
+      <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <legend className="mb-2 font-display text-[15px] font-bold text-ink-900">Afspraken</legend>
         <div>
           <label className="veld-label" htmlFor="lv-korting">Korting (%)</label>

@@ -31,7 +31,7 @@ async function eigenAccount() {
   if (!(await dashAuthed())) return null;
   const status = await adminSessieStatus();
   if (status.status !== 'ok') return null;
-  const sb = await getServerSupabase();
+  const sb = await getServerSupabase('dashboard');
   if (!sb) return null;
   return { sb, status };
 }

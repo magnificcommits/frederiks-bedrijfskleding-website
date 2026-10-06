@@ -31,7 +31,7 @@ export default async function BeveiligingPagina({
   let factoren: Factor[] = [];
   if (status.status === 'ok') {
     try {
-      const sb = await getServerSupabase();
+      const sb = await getServerSupabase('dashboard');
       const { data } = (await sb?.auth.mfa.listFactors()) ?? { data: null };
       factoren = ((data?.totp ?? []) as Factor[]).filter(Boolean);
     } catch {

@@ -9,7 +9,10 @@ export async function middleware(req: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return res;
 
+  // Portaal en KMS hebben elk een eigen sessiecookie (zie lib/portaal/supabaseServer.ts).
+  const portaal = req.nextUrl.pathname.startsWith('/portaal');
   const supabase = createServerClient(url, key, {
+    cookieOptions: portaal ? { name: 'sb-fb-portaal' } : undefined,
     cookies: {
       getAll() {
         return req.cookies.getAll();

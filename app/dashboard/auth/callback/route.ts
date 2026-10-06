@@ -34,7 +34,7 @@ export async function GET(req: Request) {
   if (!code) {
     return NextResponse.redirect(`${origin}/dashboard?fout=link`);
   }
-  const sb = await getServerSupabase();
+  const sb = await getServerSupabase('dashboard');
   if (!sb) {
     return NextResponse.redirect(`${origin}/dashboard?fout=link`);
   }

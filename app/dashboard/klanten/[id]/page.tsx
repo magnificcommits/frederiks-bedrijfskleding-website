@@ -15,7 +15,8 @@ import Tabs, { type TabDef } from '@/components/dashboard/Tabs';
 import Drawer from '@/components/dashboard/Drawer';
 import PersoonKiezer from '@/components/dashboard/PersoonKiezer';
 import { standaardInternePersoon } from '@/lib/kms/personen';
-import InloglinkKnop from './InloglinkKnop';
+import { PortaalTab, type KlaarzetStap } from './PortaalTab';
+import { laatsteLogins } from '@/lib/kms/crm';
 import AssortimentBeheer from './AssortimentBeheer';
 import WerknemersTab from './WerknemersTab';
 import AfdelingenTab from './AfdelingenTab';
@@ -53,7 +54,7 @@ const SOORT_LABEL: Record<string, string> = {
 
 const inputCls = 'veld py-2 text-[15px]';
 
-const TAB_IDS = ['gegevens', 'assortiment', 'werknemers', 'afdelingen', 'contact', 'verkoop', 'logos', 'drukproeven', 'koppelingen'];
+const TAB_IDS = ['gegevens', 'assortiment', 'werknemers', 'afdelingen', 'contact', 'portaal', 'verkoop', 'logos', 'drukproeven', 'koppelingen'];
 
 export default async function KlantPage({
   params,
@@ -116,6 +117,16 @@ export default async function KlantPage({
     standaardInternePersoon(),
   ]);
   const actieveWerknemers = werknemers.filter((w) => w.actief);
+  const logins = await laatsteLogins(gebruikers.map((g) => g.email ?? ''));
+  const orgVelden = org as unknown as Record<string, unknown>;
+  const klaarzetStappen: KlaarzetStap[] = [
+    { label: 'Klantgegevens', tab: 'gegevens', klaar: Boolean(org.adres && org.plaats), uitleg: 'Adres en plaats ingevuld, voor levering en factuur.' },
+    { label: 'Afdelingen', tab: 'afdelingen', klaar: afdelingen.length > 0, uitleg: 'Bijvoorbeeld Uitvoering, Werkplaats, Kantoor. Optioneel bij kleine teams.' },
+    { label: 'Werknemers met budget', tab: 'werknemers', klaar: actieveWerknemers.length > 0 && actieveWerknemers.some((w) => Number((w as unknown as { budget?: number | null }).budget ?? 0) > 0), uitleg: 'Wie draagt kleding, en hoeveel budget per persoon.' },
+    { label: 'Assortiment', tab: 'assortiment', klaar: assortiment.length > 0, uitleg: 'De artikelen die deze klant mag bestellen, met vaste kleur.' },
+    { label: 'Goedkeuren ingesteld', tab: 'gegevens', klaar: orgVelden.goedkeuren_bestellingen != null, uitleg: orgVelden.goedkeuren_bestellingen ? 'Bestellingen van werknemers gaan eerst langs de werkgever.' : 'Werknemers bestellen zonder goedkeuring. Aanpassen kan bij Gegevens.' },
+    { label: 'Een werkgever kan inloggen', tab: 'portaal', klaar: gebruikers.some((g) => g.rol === 'beheerder'), uitleg: 'Minimaal één persoon met de rol Werkgever. Die kan zelf zijn team uitnodigen.' },
+  ];
   const pasdag = await pasdagGegevens(id, actieveWerknemers);
   const afdelingKeuzes = afdelingen.map((a) => ({ id: a.id, naam: a.naam }));
   const hoofdcontact = contactpersonen.find((c) => c.hoofdcontact) ?? null;
@@ -551,56 +562,9 @@ export default async function KlantPage({
         )}
       </section>
 
-      <section id="gebruikers" className="mt-12 scroll-mt-24">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-xl font-bold text-ink-900">Gebruikers</h2>
-          <Drawer knop="E-mail koppelen" titel="E-mail koppelen">
-            <form action={koppelGebruiker} className="mt-4 flex flex-col gap-3">
-              <input type="hidden" name="orgId" value={id} />
-              <div>
-                <label className="veld-label">E-mail</label>
-                <input name="email" type="email" required placeholder="naam@bedrijf.nl" className={inputCls} />
-              </div>
-              <div>
-                <label className="veld-label">Naam</label>
-                <input name="naam" placeholder="Naam" className={inputCls} />
-              </div>
-              <label className="flex items-center gap-2 text-[13px] text-ink-800">
-                <input type="checkbox" name="uitnodigen" defaultChecked />
-                Stuur een uitnodiging per mail
-              </label>
-              <button type="submit" className="self-start knop-donker">Koppelen</button>
-            </form>
-          </Drawer>
-        </div>
-        {startTab === 'contact' && meldingParam && (
-          <p className="mb-3 rounded-lg border border-line bg-mist px-4 py-2.5 text-[13px] font-semibold text-ink-800">{meldingParam}</p>
-        )}
-
-        {gebruikers.length === 0 ? (
-          <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen gebruikers gekoppeld.</p>
-        ) : (
-          <div className="panel overflow-x-auto">
-            <table className="tbl">
-              <thead>
-                <tr><th>E-mail</th><th>Naam</th><th>Rol</th><th>Inloggen als</th></tr>
-              </thead>
-              <tbody>
-                {gebruikers.map((g) => (
-                  <tr key={g.id} className="border-b border-line">
-                    <td className="font-medium text-ink-900">{g.email}</td>
-                    <td className="text-warm">{g.naam || '-'}</td>
-                    <td className="text-warm">{g.rol}</td>
-                    <td>
-                      <InloglinkKnop gebruikerId={g.id} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <p className="mt-10 rounded-lg border border-line bg-mist px-4 py-3 text-[13px] text-ink-800">
+        Wie kan inloggen in het portaal, met welke rol, staat op het tabblad <a href="?tab=portaal" className="font-semibold underline">Portaal</a>.
+      </p>
     </>
   );
 
@@ -753,6 +717,10 @@ export default async function KlantPage({
     { id: 'werknemers', label: 'Werknemers', content: werknemersTab, badge: actieveWerknemers.length || null },
     { id: 'afdelingen', label: 'Afdelingen', content: afdelingenTab, badge: afdelingen.length || null },
     { id: 'contact', label: 'Contact', content: contactTab, badge: contactpersonen.length || null },
+    { id: 'portaal', label: 'Portaal', content: (
+      <PortaalTab orgId={id} orgNaam={org.naam} gebruikers={gebruikers} logins={logins} stappen={klaarzetStappen}
+        melding={startTab === 'portaal' ? meldingParam ?? null : null} />
+    ), badge: gebruikers.length || null },
     { id: 'verkoop', label: 'Verkoop', content: verkoopTab, badge: verkoop.orders.length || null },
     { id: 'logos', label: "Logo's", content: logosTab, badge: logos.length || null },
     { id: 'drukproeven', label: 'Drukproeven', content: drukproevenTab, badge: drukproefTelling.totaal || null },

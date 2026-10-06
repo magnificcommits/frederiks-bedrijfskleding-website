@@ -8,6 +8,8 @@ import { pwaMetadata, pwaViewport } from '@/lib/pwa/apps';
 import { getTaalInfo, getVertaler, WOORDENBOEKEN } from '@/lib/i18n/portaal/server';
 import { TaalProvider } from '@/lib/i18n/portaal/client';
 import TaalKiezer from './TaalKiezer';
+import { DemoBalk } from './DemoBalk';
+import { demoRolVanEmail, type DemoRol } from '@/lib/demo';
 
 // Installeerbaar als app "Frederiks Kledingportaal" (scope /portaal), los van het KMS.
 export const metadata = pwaMetadata('portaal');
@@ -58,7 +60,12 @@ export default async function PortaalLayout({ children }: { children: React.Reac
   if (!naam) return kaal();
 
   let rol: PortaalRol | null = null;
-  try { rol = (await getMijnToegang()).rol; } catch { /* rol optioneel */ }
+  let demoRol: DemoRol | null = null;
+  try {
+    const toegang = await getMijnToegang();
+    rol = toegang.rol;
+    demoRol = demoRolVanEmail(toegang.email);
+  } catch { /* rol optioneel */ }
 
   const accent = veiligeKleur(kleur);
   const style = { '--portaal-accent': accent } as CSSProperties;
@@ -67,6 +74,7 @@ export default async function PortaalLayout({ children }: { children: React.Reac
     <TaalProvider taal={taal} woordenboek={WOORDENBOEKEN[taal]}>
     <div lang={taal} style={style} className="min-h-screen bg-mist">
       <PwaRegistratie gebied="portaal" />
+      {demoRol && <DemoBalk rol={demoRol} />}
       <header className="border-b border-line bg-white">
         <div className="container-x flex items-center justify-between gap-4 py-4">
           <div className="flex min-w-0 items-center gap-3">

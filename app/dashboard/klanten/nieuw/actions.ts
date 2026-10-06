@@ -225,7 +225,8 @@ export async function slaContactenOpActie(formData: FormData) {
         meldingen.push(`${r.naam} heeft geen e-mailadres, dus geen portaaltoegang.`);
         continue;
       }
-      const uitkomst = await geefPortaalToegang(klantId, r.email, r.naam, werknemerId);
+      // Draagt hij zelf kleding, dan is hij werknemer; anders werkgever. Aanpassen kan op het tabblad Portaal.
+      const uitkomst = await geefPortaalToegang(klantId, r.email, r.naam, werknemerId, r.werknemer ? 'medewerker' : 'beheerder');
       if (uitkomst === 'toegevoegd') {
         await logAudit('portaalgebruiker_gekoppeld', { entiteit: 'organisatie', entiteitId: klantId, details: { email: r.email, via: 'wizard' } });
         // Zonder uitnodiging weet de nieuwe gebruiker niet dat hij kan inloggen.

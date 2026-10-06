@@ -26,7 +26,7 @@ export async function verifieerAdminCode(
   if (await loginGeblokkeerd([`code-email:${email}`])) return { ok: false, fout: blokkade };
   if (ip && (await loginGeblokkeerd([`code-ip:${ip}`], 10))) return { ok: false, fout: blokkade };
 
-  const sb = await getServerSupabase();
+  const sb = await getServerSupabase('dashboard');
   if (!sb) return { ok: false, fout: 'Inloggen met e-mail is nog niet geconfigureerd.' };
 
   const { data, error } = await sb.auth.verifyOtp({ email, token, type: 'email' });

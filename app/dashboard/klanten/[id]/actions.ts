@@ -43,7 +43,7 @@ async function authed() {
   return dashAuthed();
 }
 
-const TABS = ['gegevens', 'assortiment', 'werknemers', 'afdelingen', 'contact', 'verkoop', 'logos'] as const;
+const TABS = ['gegevens', 'assortiment', 'werknemers', 'afdelingen', 'contact', 'portaal', 'verkoop', 'logos'] as const;
 type Tab = (typeof TABS)[number];
 
 /**
@@ -140,22 +140,51 @@ export async function koppelGebruiker(formData: FormData) {
   const email = tekst(formData, 'email');
   const naam = tekst(formData, 'naam');
   const uitnodigen = formData.get('uitnodigen') != null;
+  const rolKeuze = tekst(formData, 'rol');
+  const rol = PORTAAL_ROLLEN.includes(rolKeuze as PortaalRolKms) ? rolKeuze : 'medewerker';
   if (!id) redirect('/dashboard/klanten');
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    terug(id, 'contact', undefined, { melding: 'Vul een geldig e-mailadres in.' });
+    terug(id, 'portaal', undefined, { melding: 'Vul een geldig e-mailadres in.' });
   }
-  const uitkomst = await geefPortaalToegang(id, email, naam || null);
-  if (uitkomst === 'elders') terug(id, 'contact', undefined, { melding: `${email} kan al inloggen bij een andere klant en is daarom hier niet gekoppeld.` });
-  if (uitkomst === 'bestond') terug(id, 'contact', undefined, { melding: `${email} had al toegang tot het portaal van deze klant.` });
-  if (uitkomst === 'mislukt') terug(id, 'contact', undefined, { melding: 'Koppelen is niet gelukt. Probeer het opnieuw.' });
-  await logAudit('portaalgebruiker_gekoppeld', { entiteit: 'organisatie', entiteitId: id, details: { email, uitgenodigd: uitnodigen } });
-  if (!uitnodigen) terug(id, 'contact', undefined, { melding: `${email} heeft toegang. Er is geen uitnodiging verstuurd.` });
+  const uitkomst = await geefPortaalToegang(id, email, naam || null, null, rol as PortaalRolKms);
+  if (uitkomst === 'elders') terug(id, 'portaal', undefined, { melding: `${email} kan al inloggen bij een andere klant en is daarom hier niet gekoppeld.` });
+  if (uitkomst === 'bestond') terug(id, 'portaal', undefined, { melding: `${email} had al toegang tot het portaal van deze klant.` });
+  if (uitkomst === 'mislukt') terug(id, 'portaal', undefined, { melding: 'Koppelen is niet gelukt. Probeer het opnieuw.' });
+  await logAudit('portaalgebruiker_gekoppeld', { entiteit: 'organisatie', entiteitId: id, details: { email, rol, uitgenodigd: uitnodigen } });
+  if (!uitnodigen) terug(id, 'portaal', undefined, { melding: `${email} heeft toegang. Er is geen uitnodiging verstuurd.` });
   const verstuurd = await stuurPortaalUitnodiging(email, naam || null, id);
-  terug(id, 'contact', undefined, {
+  terug(id, 'portaal', undefined, {
     melding: verstuurd
       ? `${email} heeft toegang en heeft een uitnodiging per mail gekregen.`
       : `${email} heeft toegang, maar de uitnodiging kon niet worden gemaild. Laat de klant zelf weten dat hij kan inloggen op /portaal/login.`,
   });
+}
+
+const PORTAAL_ROLLEN = ['beheerder', 'leidinggevende', 'medewerker'] as const;
+type PortaalRolKms = (typeof PORTAAL_ROLLEN)[number];
+
+/** Rol van een portaalgebruiker wijzigen (werkgever, leidinggevende of werknemer). */
+export async function wijzigPortaalRol(formData: FormData) {
+  if (!(await authed())) redirect('/dashboard');
+  const id = tekst(formData, 'orgId');
+  const gebruikerId = tekst(formData, 'gebruikerId');
+  const rol = tekst(formData, 'rol');
+  if (!id || !gebruikerId || !PORTAAL_ROLLEN.includes(rol as PortaalRolKms)) terug(id || '', 'portaal', undefined, { melding: 'Rol wijzigen is niet gelukt.' });
+  const sb = kmsAdmin();
+  const { error } = sb ? await sb.from('portaal_gebruikers').update({ rol }).eq('id', gebruikerId).eq('organisatie_id', id) : { error: true };
+  if (!error) await logAudit('portaalgebruiker_rol', { entiteit: 'organisatie', entiteitId: id, details: { gebruiker_id: gebruikerId, rol } });
+  terug(id, 'portaal', undefined, { melding: error ? 'Rol wijzigen is niet gelukt.' : 'Rol aangepast.' });
+}
+
+/** De uitnodiging voor het portaal opnieuw mailen. */
+export async function herstuurUitnodiging(formData: FormData) {
+  if (!(await authed())) redirect('/dashboard');
+  const id = tekst(formData, 'orgId');
+  const email = tekst(formData, 'email');
+  const naam = tekst(formData, 'naam');
+  if (!id || !email) redirect('/dashboard/klanten');
+  const ok = await stuurPortaalUitnodiging(email, naam || null, id);
+  terug(id, 'portaal', undefined, { melding: ok ? `Uitnodiging opnieuw gemaild naar ${email}.` : `Mailen naar ${email} is niet gelukt.` });
 }
 
 export async function voegItemToe(formData: FormData) {

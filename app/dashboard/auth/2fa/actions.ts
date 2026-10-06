@@ -21,7 +21,7 @@ export async function bevestigTweeStap(formData: FormData) {
   const code = String(formData.get('code') ?? '').replace(/\D/g, '');
   if (code.length !== 6) redirect('/dashboard/auth/2fa?fout=formaat');
 
-  const sb = await getServerSupabase();
+  const sb = await getServerSupabase('dashboard');
   if (!sb) redirect('/dashboard');
 
   let gelukt = false;

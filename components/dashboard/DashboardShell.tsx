@@ -441,6 +441,23 @@ export function DashboardShell({
       </div>
 
       <div className="mt-auto border-t border-ink-800 pt-3">
+        {/* Demo-portaal: één klik, geen e-mail of code. Opent in een nieuw tabblad; het KMS blijft ingelogd. */}
+        <div className="mb-3 rounded-lg bg-ink-800 p-2.5" data-plek="demo-knop">
+          <a
+            href="/dashboard/demo?rol=beheerder"
+            target="_blank"
+            rel="noopener"
+            className="flex min-h-[40px] items-center justify-center rounded-md bg-amber-500 px-3 text-[13px] font-bold text-ink-900 hover:bg-amber-400"
+          >
+            Demo portaal openen
+          </a>
+          <p className="mt-1.5 text-center text-[11px] text-ink-300">
+            Als{' '}
+            <a href="/dashboard/demo?rol=beheerder" target="_blank" rel="noopener" className="underline hover:text-white">werkgever</a>,{' '}
+            <a href="/dashboard/demo?rol=leidinggevende" target="_blank" rel="noopener" className="underline hover:text-white">leidinggevende</a> of{' '}
+            <a href="/dashboard/demo?rol=medewerker" target="_blank" rel="noopener" className="underline hover:text-white">werknemer</a>
+          </p>
+        </div>
         <InstalleerApp gebied="kms" variant="zijbalk" />
         {adminNaam && (
           <p className="mb-1.5 truncate px-2 text-[11px] text-ink-300" title={adminNaam}>

@@ -65,7 +65,7 @@ export async function logout() {
   jar.delete(DASH_COOKIE);
   jar.delete(ADMIN_SESSIE_COOKIE);
   try {
-    const sb = await getServerSupabase();
+    const sb = await getServerSupabase('dashboard');
     if (sb) await sb.auth.signOut();
   } catch {
     // best-effort: account-sessie afmelden mag niet crashen

@@ -35,7 +35,7 @@ export default function AdminLoginForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    const sb = createPortalBrowserClient();
+    const sb = createPortalBrowserClient('dashboard');
     if (!sb) { setError('Inloggen met e-maillink is nog niet geconfigureerd.'); return; }
     setBezig(true);
     try {

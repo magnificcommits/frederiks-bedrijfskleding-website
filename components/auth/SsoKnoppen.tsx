@@ -48,7 +48,7 @@ export default function SsoKnoppen({ gebied, className }: { gebied: SsoGebied; c
 
   async function start(provider: SsoProvider) {
     setFout('');
-    const sb = createPortalBrowserClient();
+    const sb = createPortalBrowserClient(gebied === 'dashboard' ? 'dashboard' : 'portaal');
     if (!sb) { setFout(t('sso.nietGeconfigureerd')); return; }
     setBezig(provider);
     const { error } = await sb.auth.signInWithOAuth({

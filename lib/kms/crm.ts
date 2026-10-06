@@ -308,6 +308,7 @@ export async function geefPortaalToegang(
   email: string,
   naam: string | null,
   medewerkerId?: string | null,
+  rol?: 'beheerder' | 'leidinggevende' | 'medewerker',
 ): Promise<PortaalUitkomst> {
   const sb = kmsAdmin(); if (!sb) return 'mislukt';
   const adres = email.trim().toLowerCase();
@@ -321,6 +322,8 @@ export async function geefPortaalToegang(
   const rij: Record<string, unknown> = { organisatie_id: orgId, email: adres };
   if (naam?.trim()) rij.naam = naam.trim();
   if (medewerkerId) rij.medewerker_id = medewerkerId;
+  // Zonder keuze is de database-standaard 'beheerder' (werkgever).
+  if (rol) rij.rol = rol;
   const { error } = await sb.from('portaal_gebruikers').insert(rij);
   return error ? 'mislukt' : 'toegevoegd';
 }
@@ -353,4 +356,25 @@ export async function stuurPortaalUitnodiging(email: string, naam: string | null
     }),
   }).catch(() => ({ sent: false }));
   return res.sent;
+}
+
+/**
+ * Laatste inlog per e-mailadres, uit Supabase Auth. Null = nog nooit ingelogd.
+ * Leest maximaal 10 pagina's van 1000 gebruikers; ruim genoeg voor het portaal.
+ */
+export async function laatsteLogins(emails: string[]): Promise<Record<string, string | null>> {
+  const sb = kmsAdmin();
+  const gezocht = new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean));
+  const uit: Record<string, string | null> = {};
+  if (!sb || gezocht.size === 0) return uit;
+  for (let page = 1; page <= 10; page++) {
+    const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error || !data) break;
+    for (const u of data.users) {
+      const e = u.email?.toLowerCase();
+      if (e && gezocht.has(e)) uit[e] = u.last_sign_in_at ?? null;
+    }
+    if (data.users.length < 1000) break;
+  }
+  return uit;
 }

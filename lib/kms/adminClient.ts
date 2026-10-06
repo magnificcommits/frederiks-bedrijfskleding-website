@@ -172,7 +172,7 @@ export type AdminSessieStatus =
  */
 export const adminSessieStatus = cache(async (): Promise<AdminSessieStatus> => {
   try {
-    const sb = await getServerSupabase();
+    const sb = await getServerSupabase('dashboard');
     if (!sb) return { status: 'geen' };
     const { data: { user } } = await sb.auth.getUser();
     const email = user?.email?.toLowerCase().trim();

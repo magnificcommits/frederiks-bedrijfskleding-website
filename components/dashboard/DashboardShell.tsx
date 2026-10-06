@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/dashboard/actions';
@@ -128,7 +128,11 @@ export function DashboardShell({
   const [favorieten, setFavorieten] = useState<string[] | null>(navFavorieten);
   const [bewerken, setBewerken] = useState(false);
   const [flyout, setFlyout] = useState<string | null>(null);
+  const [ankerY, setAnkerY] = useState(0);
+  const [flyoutTop, setFlyoutTop] = useState(0);
   const railRef = useRef<HTMLDivElement>(null);
+  const flyoutRef = useRef<HTMLDivElement>(null);
+  const sluitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [melding, setMelding] = useState('');
   const opslagRef = useRef<NavOpslag>(navOpslag);
   const beginFavorieten = useRef<string[] | null>(navFavorieten);
@@ -420,6 +424,28 @@ export function DashboardShell({
     );
   }
 
+  // Uitklappaneel verticaal gecentreerd op het icoon waar je op staat, binnen het scherm gehouden.
+  useLayoutEffect(() => {
+    if (!flyout || !flyoutRef.current) return;
+    const h = flyoutRef.current.offsetHeight;
+    const max = window.innerHeight - h - 8;
+    setFlyoutTop(Math.max(8, Math.min(ankerY - h / 2, max)));
+  }, [flyout, ankerY]);
+
+  function openFlyout(titel: string, el: HTMLElement) {
+    if (sluitTimer.current) { clearTimeout(sluitTimer.current); sluitTimer.current = null; }
+    const r = el.getBoundingClientRect();
+    setAnkerY(r.top + r.height / 2);
+    setFlyout(titel);
+  }
+  function sluitFlyoutStraks() {
+    if (sluitTimer.current) clearTimeout(sluitTimer.current);
+    sluitTimer.current = setTimeout(() => setFlyout(null), 180);
+  }
+  function houdFlyoutOpen() {
+    if (sluitTimer.current) { clearTimeout(sluitTimer.current); sluitTimer.current = null; }
+  }
+
   const railGroepen = [
     { titel: 'Favorieten', items: zichtbareFavorieten },
     ...zichtbareGroepen,
@@ -427,7 +453,7 @@ export function DashboardShell({
   const flyoutGroep = railGroepen.find((g) => g.titel === flyout) ?? null;
 
   const rail = (
-    <div ref={railRef} className="relative h-full">
+    <div ref={railRef} className="relative h-full" onMouseLeave={sluitFlyoutStraks} onMouseEnter={houdFlyoutOpen}>
       <nav aria-label="Dashboard" className="flex h-full w-[84px] flex-col items-center gap-1 overflow-y-auto border-r border-line bg-[#f7f5f0] py-3">
         <Link href="/dashboard" className="mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-ink-900 font-display text-sm font-extrabold text-amber-500" aria-label="Overzicht">
           FB
@@ -440,7 +466,9 @@ export function DashboardShell({
             <button
               key={g.titel}
               type="button"
-              onClick={() => setFlyout(isOpen ? null : g.titel)}
+              onClick={(e) => (isOpen ? setFlyout(null) : openFlyout(g.titel, e.currentTarget))}
+              onMouseEnter={(e) => openFlyout(g.titel, e.currentTarget)}
+              onFocus={(e) => openFlyout(g.titel, e.currentTarget)}
               aria-expanded={isOpen}
               aria-haspopup="menu"
               className={`flex w-[72px] flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-semibold leading-tight transition ${isOpen ? 'bg-white text-ink-900 shadow-soft' : bevatActief ? 'bg-amber-50 text-amber-800' : 'text-ink-600 hover:bg-white hover:text-ink-900'}`}
@@ -471,7 +499,13 @@ export function DashboardShell({
       </nav>
 
       {flyoutGroep && (
-        <div role="menu" aria-label={flyoutGroep.titel} className="absolute left-[92px] top-3 z-40 w-64 rounded-2xl border border-line bg-white p-3 shadow-card">
+        <div
+          ref={flyoutRef}
+          role="menu"
+          aria-label={flyoutGroep.titel}
+          style={{ top: flyoutTop }}
+          className="fixed left-[92px] z-50 w-64 rounded-2xl border border-line bg-white p-3 shadow-card"
+        >
           <div className="mb-1 flex items-center justify-between px-2">
             <p className="font-display text-[15px] font-extrabold text-ink-900">{flyoutGroep.titel}</p>
             {flyoutGroep.titel === 'Favorieten' && (

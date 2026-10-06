@@ -21,10 +21,11 @@ export const DEMO_LABEL: Record<DemoRol, string> = {
   medewerker: 'Werknemer',
 };
 
-export const DEMO_ROLLEN = Object.keys(DEMO_ACCOUNTS) as DemoRol[];
+/** Wat je in de demo kunt kiezen. Leidinggevende ziet vrijwel hetzelfde als werkgever, dus die laten we weg. */
+export const DEMO_ROLLEN: DemoRol[] = ['beheerder', 'medewerker'];
 
 export function isDemoRol(v: unknown): v is DemoRol {
-  return typeof v === 'string' && Object.prototype.hasOwnProperty.call(DEMO_ACCOUNTS, v);
+  return typeof v === 'string' && (DEMO_ROLLEN as string[]).includes(v);
 }
 
 export function demoRolVanEmail(email: string | null | undefined): DemoRol | null {

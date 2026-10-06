@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dashAuthed } from '@/lib/kms/adminClient';
-import { isDemoRol, logInAlsDemo } from '@/lib/demo';
+import { isDemoRol, logInAlsDemo, zorgDemoGevuld } from '@/lib/demo';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +14,7 @@ export async function GET(req: Request) {
   if (!(await dashAuthed())) return NextResponse.redirect(new URL('/dashboard', url));
   const rolParam = url.searchParams.get('rol') ?? 'beheerder';
   const rol = isDemoRol(rolParam) ? rolParam : 'beheerder';
+  await zorgDemoGevuld();
   const r = await logInAlsDemo(rol);
   if (!r.ok) return NextResponse.redirect(new URL(`/dashboard?melding=${encodeURIComponent(r.fout)}`, url));
   return NextResponse.redirect(new URL('/portaal', url));

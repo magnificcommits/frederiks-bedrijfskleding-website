@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { DEMO_LABEL, DEMO_ROLLEN, type DemoRol } from '@/lib/demo';
 
 /**
@@ -13,15 +12,15 @@ export function DemoBalk({ rol, melding }: { rol: DemoRol; melding?: string | nu
         <span className="text-ink-200">Je bekijkt het portaal als</span>
         <nav aria-label="Demo-rol" className="flex flex-wrap gap-1.5">
           {DEMO_ROLLEN.map((r) => (
-            <Link
+            // Gewone link (geen client-navigatie): de sessie wisselt op de server en de hele pagina moet opnieuw laden.
+            <a
               key={r}
               href={`/portaal/demo/wissel?rol=${r}`}
-              prefetch={false}
               aria-current={r === rol ? 'true' : undefined}
               className={`rounded-full px-3 py-1 font-semibold transition ${r === rol ? 'bg-amber-500 text-ink-900' : 'bg-white/10 text-white hover:bg-white/20'}`}
             >
               {DEMO_LABEL[r]}
-            </Link>
+            </a>
           ))}
         </nav>
         <div className="ml-auto flex flex-wrap items-center gap-2">

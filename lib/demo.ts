@@ -74,3 +74,17 @@ export async function resetDemo(): Promise<boolean> {
   const { error } = await admin.rpc('demo_reset');
   return !error;
 }
+
+/**
+ * Is de demo leeg of nog de oude voorbeeldklant? Dan eerst vullen. Zo staat er bij
+ * de eerste keer openen meteen een complete klant klaar.
+ */
+export async function zorgDemoGevuld(): Promise<void> {
+  const admin = kmsAdmin();
+  if (!admin) return;
+  const { data } = await admin.from('organisaties').select('id, naam').eq('is_demo', true).maybeSingle();
+  const org = data as { id: string; naam: string } | null;
+  if (!org) return;
+  const { count } = await admin.from('medewerkers').select('id', { count: 'exact', head: true }).eq('organisatie_id', org.id);
+  if (org.naam !== 'Demo Bouwbedrijf' || (count ?? 0) < 3) await resetDemo();
+}

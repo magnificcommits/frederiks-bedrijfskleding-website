@@ -5,7 +5,7 @@ import type { Gebruiker } from '@/lib/portaalAdmin';
 import type { PortaalActiviteit } from '@/lib/kms/crm';
 
 const ROLLEN = [
-  { id: 'beheerder', label: 'Werkgever', uitleg: 'ziet alles, keurt goed, beheert team en budgetten' },
+  { id: 'beheerder', label: 'Werkgever', uitleg: 'ziet alles, keurt goed, beheert budgetten, vraagt nieuwe werknemers aan' },
   { id: 'leidinggevende', label: 'Leidinggevende', uitleg: 'keurt bestellingen goed, ziet de hele organisatie' },
   { id: 'medewerker', label: 'Werknemer', uitleg: 'bestelt zelf binnen zijn budget, ziet alleen zijn eigen bestellingen' },
 ] as const;
@@ -98,7 +98,7 @@ export function PortaalTab({ orgId, orgNaam, gebruikers, logins, activiteit, mai
                     <input type="checkbox" name="uitnodigen" defaultChecked />
                     Stuur een uitnodiging per mail
                   </label>
-                  <p className="text-[12px] text-warm">Begin met één werkgever. Die kan in het portaal zelf zijn team toevoegen en uitnodigen.</p>
+                  <p className="text-[12px] text-warm">Hier geef je de werkgever toegang. Werknemers maak je aan op het tabblad Werknemers, met hun maten, en geef je daar toegang.</p>
                   <button type="submit" className="self-start knop-donker">Toegang geven</button>
                 </form>
               </Drawer>
@@ -108,7 +108,7 @@ export function PortaalTab({ orgId, orgNaam, gebruikers, logins, activiteit, mai
 
           {gebruikers.length === 0 ? (
             <p className="mt-3 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">
-              Nog niemand kan inloggen. Geef eerst één werkgever toegang.
+              Nog niemand kan inloggen. Geef eerst de werkgever toegang.
             </p>
           ) : (
             <div className="panel mt-3 overflow-x-auto">
@@ -173,15 +173,16 @@ export function PortaalTab({ orgId, orgNaam, gebruikers, logins, activiteit, mai
         <aside className="panel bg-mist p-5">
           <h2 className="font-display text-lg font-bold text-ink-900">Zo werkt het</h2>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-[13px] text-ink-800">
-            <li>Geef één persoon toegang als <span className="font-semibold">werkgever</span>. Hij krijgt een uitnodiging per mail.</li>
-            <li>Hij gaat naar het portaal, vult zijn e-mailadres in en krijgt een inloglink met code. Geen wachtwoord.</li>
-            <li>In het portaal voegt hij zelf zijn team toe. Iedereen die hij toegang geeft, krijgt ook een uitnodiging.</li>
+            <li>Geef de <span className="font-semibold">werkgever</span> hier toegang. Hij krijgt een uitnodiging per mail.</li>
+            <li>Werknemers maak jij aan op het tabblad <span className="font-semibold">Werknemers</span>, met de maten van het passen. Daar klik je per werknemer op Toegang geven; hij krijgt dan een uitnodiging.</li>
+            <li>Heeft de werkgever een nieuwe medewerker? Dan vraagt hij die in het portaal aan. Jij keurt goed bij Medewerker-verzoeken en vult meteen de maten in.</li>
+            <li>Inloggen gaat met een link of code per mail. Geen wachtwoord.</li>
             <li>Hier zie je of de uitnodiging is gemaild, wanneer iemand voor het laatst inlogde en wat er gebeurde.</li>
           </ol>
           <ul className="mt-4 space-y-1.5 border-t border-line pt-3 text-[13px] text-ink-800">
             {ROLLEN.map((r) => <li key={r.id}><span className="font-semibold">{r.label}:</span> {r.uitleg}.</li>)}
           </ul>
-          <p className="mt-3 text-[12px] text-warm">Alleen adressen die hier of door de werkgever zijn toegevoegd kunnen inloggen. Een onbekend adres krijgt geen code.</p>
+          <p className="mt-3 text-[12px] text-warm">Alleen adressen die hier, op het tabblad Werknemers of door de werkgever toegang hebben gekregen kunnen inloggen. Een onbekend adres krijgt geen code.</p>
         </aside>
       </section>
 

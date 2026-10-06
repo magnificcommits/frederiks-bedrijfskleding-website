@@ -4,8 +4,6 @@ import {
   getMijnToegang,
   zetBudgetInstellingen,
   zetVestiging,
-  zetVoorkeursmaat,
-  verwijderVoorkeursmaat,
   type BudgetType,
   type BudgetPeriode,
 } from '@/lib/portaal/team';
@@ -55,24 +53,4 @@ export async function zetBudgetInstellingenAction(formData: FormData) {
 
   const vest = await zetVestiging(id, vestigingRaw || null);
   redirect(vest.ok ? `/portaal/team/${id}?ok=budget` : `/portaal/team/${id}?fout=opslaan`);
-}
-
-export async function zetVoorkeursmaatAction(formData: FormData) {
-  await guardBeheerder();
-  const id = String(formData.get('medewerker_id') ?? '').trim();
-  const productId = String(formData.get('product_id') ?? '').trim();
-  if (!id || !productId) redirect('/portaal/team');
-  const voorkeursmaat = String(formData.get('voorkeursmaat') ?? '').trim();
-  const plusMinus = formData.get('plus_minus_toegestaan') === 'on';
-  const res = await zetVoorkeursmaat(id, productId, voorkeursmaat || null, plusMinus);
-  redirect(res.ok ? `/portaal/team/${id}?ok=maat` : `/portaal/team/${id}?fout=opslaan`);
-}
-
-export async function verwijderVoorkeursmaatAction(formData: FormData) {
-  await guardBeheerder();
-  const id = String(formData.get('medewerker_id') ?? '').trim();
-  const maatId = String(formData.get('maat_id') ?? '').trim();
-  if (!id || !maatId) redirect('/portaal/team');
-  const res = await verwijderVoorkeursmaat(maatId);
-  redirect(res.ok ? `/portaal/team/${id}?ok=maat_weg` : `/portaal/team/${id}?fout=opslaan`);
 }

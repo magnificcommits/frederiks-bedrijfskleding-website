@@ -1,10 +1,8 @@
 'use server';
 import { logPortaal } from '@/lib/portaal/activiteit';
 import { redirect } from 'next/navigation';
-import { getKledinglijn, verwijderMedewerker, zetMaat } from '@/lib/portaal/queries';
 import {
   getMijnToegang,
-  maakMedewerkerMetToegang,
   geefToegang,
   wijzigRol,
   trekToegangIn,
@@ -23,7 +21,7 @@ function leesBudget(waarde: string): number | null {
 }
 
 /**
- * Beheerder of leidinggevende mag personen, maten en budget beheren.
+ * Beheerder of leidinggevende mag personen aanvragen en budget beheren. Maten legt Frederiks vast.
  * Geeft de eigen toegang terug zodat acties de organisatie en rol kennen.
  */
 async function guardBeheren() {
@@ -95,18 +93,6 @@ export async function bewaarBudget(formData: FormData) {
   const res = id ? await zetBudget(id, budget) : { ok: false };
   if (res.ok) await logPortaal('budget_gewijzigd');
   redirect(res.ok ? '/portaal/medewerkers?ok=budget' : '/portaal/medewerkers?fout=opslaan');
-}
-
-export async function bewaarMaten(formData: FormData) {
-  await guardBeheren();
-  const medewerkerId = String(formData.get('medewerker_id') ?? '');
-  if (!medewerkerId) redirect('/portaal/medewerkers');
-  const items = await getKledinglijn();
-  for (const it of items) {
-    const maat = String(formData.get(`maat_${it.id}`) ?? '').trim();
-    await zetMaat(medewerkerId, it.id, maat);
-  }
-  redirect('/portaal/medewerkers?ok=maten');
 }
 
 /** Geeft een bestaande persoon (zonder login) toegang met een rol. Alleen beheerder. */

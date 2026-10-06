@@ -648,6 +648,8 @@ export const en: Woordenboek = {
     maten: 'Sizes',
     maatPlaceholder: 'size',
     matenOpslaan: 'Save sizes',
+    matenDoorFrederiks: 'Frederiks records the sizes at the fitting. Is a size no longer right? Let Jessi know and she will change it.',
+    nogNietGepast: 'Not fitted yet',
     toegangPortaal: 'Portal access',
     rol: 'Role',
     rolOpslaan: 'Save role',

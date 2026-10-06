@@ -19,7 +19,11 @@ export async function keurGoedActie(formData: FormData): Promise<void> {
   const id = String(formData.get('id') || '').trim();
   if (!id) redirect('/dashboard/medewerker-verzoeken');
   const doorWie = await huidigeNaam();
-  await keurGoedVerzoek(id, doorWie);
+  const r = await keurGoedVerzoek(id, doorWie);
+  // Nieuwe werknemer: meteen naar de klant, met zijn maten open. Daar geeft Jessi ook de portaaltoegang.
+  if (r.ok && r.organisatieId && r.nieuweWerknemerId) {
+    redirect(`/dashboard/klanten/${r.organisatieId}?tab=werknemers&maten=${r.nieuweWerknemerId}&melding=${encodeURIComponent('Werknemer aangemaakt. Vul de maten in en geef toegang tot het portaal.')}`);
+  }
   redirect('/dashboard/medewerker-verzoeken?ok=status');
 }
 

@@ -68,11 +68,16 @@ async function meldNaarMedewerker(sb: SbAdmin, orgId: string, medewerkerId: stri
 }
 
 /** Keurt een verzoek goed: voert de wijziging door en stuurt e-mail plus portaalmelding. */
-export async function keurGoedVerzoek(id: string, doorWie: string): Promise<boolean> {
-  const sb = kmsAdmin(); if (!sb) return false;
+/** Keurt goed. Bij toevoegen komt de nieuwe werknemer terug, zodat Jessi meteen de maten kan invullen. */
+export async function keurGoedVerzoek(
+  id: string,
+  doorWie: string,
+): Promise<{ ok: boolean; organisatieId?: string; nieuweWerknemerId?: string | null }> {
+  const sb = kmsAdmin(); if (!sb) return { ok: false };
   const { data } = await sb.from('medewerker_verzoeken').select('*').eq('id', id).maybeSingle();
   const v = data as MedewerkerVerzoek | null;
-  if (!v || v.status !== 'wacht') return false;
+  if (!v || v.status !== 'wacht') return { ok: false };
+  let nieuweWerknemerId: string | null = null;
 
   if (v.type === 'toevoegen') {
     const { data: nieuw } = await sb
@@ -81,6 +86,7 @@ export async function keurGoedVerzoek(id: string, doorWie: string): Promise<bool
       .select('id')
       .single();
     const nieuweId = (nieuw as { id: string } | null)?.id ?? null;
+    nieuweWerknemerId = nieuweId;
     await meldNaarMedewerker(sb, v.organisatie_id, nieuweId, v.email, 'Je bent aangemeld voor bedrijfskleding bij Frederiks Bedrijfskleding. Je kunt binnenkort je kleding bestellen via het klantportaal.');
   } else if (v.type === 'verwijderen' && v.medewerker_id) {
     await sb.from('medewerkers').update({ actief: false, datum_uit_dienst: new Date().toISOString().slice(0, 10) }).eq('id', v.medewerker_id);
@@ -91,7 +97,7 @@ export async function keurGoedVerzoek(id: string, doorWie: string): Promise<bool
     .from('medewerker_verzoeken')
     .update({ status: 'goedgekeurd', behandeld_door: doorWie, behandeld_op: new Date().toISOString() })
     .eq('id', id);
-  return !error;
+  return { ok: !error, organisatieId: v.organisatie_id, nieuweWerknemerId };
 }
 
 export async function wijsAfVerzoek(id: string, doorWie: string, notitie?: string): Promise<boolean> {

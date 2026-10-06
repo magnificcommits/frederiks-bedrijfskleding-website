@@ -11,7 +11,7 @@ import {
   getVoorkeursmaten,
 } from '@/lib/portaal/team';
 import PortaalNav from '../../PortaalNav';
-import { zetBudgetInstellingenAction, zetVoorkeursmaatAction, verwijderVoorkeursmaatAction } from './actions';
+import { zetBudgetInstellingenAction } from './actions';
 import { getVertaler } from '@/lib/i18n/portaal/server';
 import type { Sleutel } from '@/lib/i18n/portaal/nl';
 
@@ -238,78 +238,34 @@ export default async function MedewerkerInstellingen({
           </form>
         </section>
 
-        {/* Voorkeursmaten */}
+        {/* Voorkeursmaten: alleen-lezen. Frederiks legt de maten vast bij het passen. */}
         <section className="rounded-2xl border border-line bg-white p-6 shadow-soft">
           <h2 className="font-display text-lg font-extrabold text-ink-900">{t('medewerker.voorkeursmaten')}</h2>
-          <p className="mt-1 text-sm text-warm">
-            {t('medewerker.voorkeursmatenUitleg')}
-          </p>
+          <p className="mt-1 text-sm text-warm">{t('medewerkers.matenDoorFrederiks')}</p>
 
           {producten.length === 0 ? (
-            <p className="mt-5 text-sm text-warm">
-              {t('medewerker.geenProducten')}
-            </p>
+            <p className="mt-5 text-sm text-warm">{t('medewerker.geenProducten')}</p>
           ) : (
-            <div className="mt-5 space-y-4">
+            <dl className="mt-5 divide-y divide-line rounded-xl border border-line bg-mist/60">
               {producten.map((p) => {
                 const huidig = maatPerProduct.get(p.id);
                 return (
-                  <form
-                    key={p.id}
-                    action={zetVoorkeursmaatAction}
-                    className="rounded-xl border border-line bg-mist/60 p-4"
-                  >
-                    <input type="hidden" name="medewerker_id" value={medewerker.id} />
-                    <input type="hidden" name="product_id" value={p.id} />
-                    <p className="font-semibold text-ink-900">{p.naam}</p>
-                    <div className="mt-3 flex flex-wrap items-end gap-3">
-                      <div className="min-w-[8rem]">
-                        <label className="block text-xs font-semibold text-warm">{t('algemeen.maat')}</label>
-                        <select
-                          name="voorkeursmaat"
-                          defaultValue={huidig?.voorkeursmaat ?? ''}
-                          className="mt-1 rounded-md border border-line px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                        >
-                          <option value="">{t('medewerker.geenVoorkeur')}</option>
-                          {p.maten.map((maat) => (
-                            <option key={maat} value={maat}>
-                              {maat}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <label className="flex items-center gap-2 py-2 text-sm text-ink-800">
-                        <input
-                          type="checkbox"
-                          name="plus_minus_toegestaan"
-                          defaultChecked={huidig?.plusMinusToegestaan ?? false}
-                          className="h-4 w-4 rounded border-line text-amber-700 focus:ring-amber-200"
-                        />
-                        <span>{t('medewerker.plusMin')}</span>
-                      </label>
-                      <button className="rounded-md border border-line px-2.5 py-2 text-xs font-semibold text-ink-700 hover:bg-mist">
-                        {t('algemeen.opslaan')}
-                      </button>
-                    </div>
-                    {p.maten.length === 0 && (
-                      <p className="mt-2 text-xs text-warm">{t('medewerker.geenMaten')}</p>
-                    )}
-                    {huidig && (
-                      <div className="mt-2">
-                        <button
-                          formAction={verwijderVoorkeursmaatAction}
-                          name="maat_id"
-                          value={huidig.id}
-                          className="text-xs font-semibold text-warm hover:text-amber-800"
-                        >
-                          {t('medewerker.voorkeurVerwijderen')}
-                        </button>
-                      </div>
-                    )}
-                  </form>
+                  <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                    <dt className="font-semibold text-ink-900">{p.naam}</dt>
+                    <dd className="text-sm">
+                      {huidig?.voorkeursmaat ? (
+                        <span className="font-semibold text-ink-900">
+                          {huidig.voorkeursmaat}
+                          {huidig.plusMinusToegestaan && <span className="ml-2 font-normal text-warm">{t('medewerker.plusMin')}</span>}
+                        </span>
+                      ) : (
+                        <span className="text-warm">{t('medewerkers.nogNietGepast')}</span>
+                      )}
+                    </dd>
+                  </div>
                 );
               })}
-            </div>
+            </dl>
           )}
         </section>
       </div>

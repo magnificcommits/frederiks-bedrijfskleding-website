@@ -3,7 +3,6 @@ import { logPortaal } from '@/lib/portaal/activiteit';
 import { redirect } from 'next/navigation';
 import {
   getMijnToegang,
-  maakMedewerkerMetToegang,
   geefToegang,
   wijzigRol,
   trekToegangIn,
@@ -26,26 +25,6 @@ async function guardBeheerder() {
   if (!toegang.email) redirect('/portaal/login');
   if (toegang.rol !== 'beheerder' || !toegang.organisatieId) redirect('/portaal/team');
   return toegang;
-}
-
-export async function nieuwTeamlid(formData: FormData) {
-  const toegang = await guardBeheerder();
-  const naam = String(formData.get('naam') ?? '').trim();
-  const email = String(formData.get('email') ?? '').trim();
-  const functie = String(formData.get('functie') ?? '').trim();
-  const rol = leesRol(String(formData.get('rol') ?? 'medewerker'));
-  const budget = leesBudget(String(formData.get('budget') ?? ''));
-  if (!naam) redirect('/portaal/team?fout=naam');
-  const res = await maakMedewerkerMetToegang({
-    organisatieId: toegang.organisatieId!,
-    naam,
-    email,
-    functie,
-    rol,
-    budget,
-  });
-  if (res.ok) await logPortaal('teamlid_toegevoegd', { naam });
-  redirect(res.ok ? '/portaal/team?ok=toegevoegd' : '/portaal/team?fout=opslaan');
 }
 
 export async function geefToegangAction(formData: FormData) {

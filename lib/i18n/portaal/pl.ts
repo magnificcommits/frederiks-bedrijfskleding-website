@@ -668,6 +668,8 @@ export const pl: Woordenboek = {
     maten: 'Rozmiary',
     maatPlaceholder: 'rozmiar',
     matenOpslaan: 'Zapisz rozmiary',
+    matenDoorFrederiks: 'Frederiks zapisuje rozmiary podczas przymiarki. Rozmiar się nie zgadza? Daj znać Jessi, a ona go zmieni.',
+    nogNietGepast: 'Jeszcze bez przymiarki',
     toegangPortaal: 'Dostęp do portalu',
     rol: 'Rola',
     rolOpslaan: 'Zapisz rolę',

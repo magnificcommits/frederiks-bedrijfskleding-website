@@ -667,6 +667,8 @@ export const nl = {
     maten: 'Maten',
     maatPlaceholder: 'maat',
     matenOpslaan: 'Maten opslaan',
+    matenDoorFrederiks: 'Maten legt Frederiks vast bij het passen. Klopt een maat niet meer? Laat het Jessi weten, dan past zij het aan.',
+    nogNietGepast: 'Nog niet gepast',
     toegangPortaal: 'Toegang tot het portaal',
     rol: 'Rol',
     rolOpslaan: 'Rol opslaan',

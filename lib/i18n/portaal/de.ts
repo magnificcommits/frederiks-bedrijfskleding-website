@@ -648,6 +648,8 @@ export const de: Woordenboek = {
     maten: 'Größen',
     maatPlaceholder: 'Größe',
     matenOpslaan: 'Größen speichern',
+    matenDoorFrederiks: 'Frederiks legt die Größen bei der Anprobe fest. Passt eine Größe nicht mehr? Sag Jessi Bescheid, dann ändert sie sie.',
+    nogNietGepast: 'Noch nicht anprobiert',
     toegangPortaal: 'Zugang zum Portal',
     rol: 'Rolle',
     rolOpslaan: 'Rolle speichern',

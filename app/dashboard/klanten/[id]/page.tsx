@@ -693,6 +693,7 @@ export default async function KlantPage({
       pasdag={pasdag}
       openWerknemerId={startTab === 'werknemers' ? matenParam ?? null : null}
       melding={startTab === 'werknemers' ? meldingParam ?? null : null}
+      portaalMails={[...portaalMails]}
     />
   );
   const afdelingenTab = (

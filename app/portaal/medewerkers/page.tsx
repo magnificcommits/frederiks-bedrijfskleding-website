@@ -13,7 +13,6 @@ import { listMijnVerzoeken } from '@/lib/portaal/verzoeken';
 import {
   nieuweMedewerker,
   verwijderMedewerkerAction,
-  bewaarMaten,
   bewaarBudget,
   geefToegangAction,
   wijzigRolAction,
@@ -171,28 +170,20 @@ export default async function Medewerkers({
           </div>
         </div>
 
-        {/* Maten */}
+        {/* Maten: alleen-lezen. Frederiks legt de maten vast bij het passen. */}
         {items.length > 0 && (
-          <form action={bewaarMaten} className="mt-4 border-t border-line pt-4">
-            <input type="hidden" name="medewerker_id" value={m.medewerkerId} />
+          <div className="mt-4 border-t border-line pt-4">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-warm">{t('medewerkers.maten')}</p>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <dl className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
               {items.map((it) => (
-                <div key={it.id}>
-                  <label className="block text-xs font-semibold text-warm">{it.naam}</label>
-                  <input
-                    name={`maat_${it.id}`}
-                    defaultValue={matenPer[m.medewerkerId]?.[it.id] ?? ''}
-                    placeholder={t('medewerkers.maatPlaceholder')}
-                    className={veld}
-                  />
+                <div key={it.id} className="flex justify-between gap-3 border-b border-line/60 py-1">
+                  <dt className="text-warm">{it.naam}</dt>
+                  <dd className="font-semibold text-ink-900">{matenPer[m.medewerkerId]?.[it.id] || <span className="font-normal text-warm">{t('medewerkers.nogNietGepast')}</span>}</dd>
                 </div>
               ))}
-            </div>
-            <button className="mt-3 rounded-md bg-ink-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-ink-800">
-              {t('medewerkers.matenOpslaan')}
-            </button>
-          </form>
+            </dl>
+            <p className="mt-2 text-xs text-warm">{t('medewerkers.matenDoorFrederiks')}</p>
+          </div>
         )}
 
         {/* Toegang, alleen voor de beheerder */}

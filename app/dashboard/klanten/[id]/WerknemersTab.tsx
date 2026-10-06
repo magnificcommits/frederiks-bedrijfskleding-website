@@ -10,6 +10,7 @@ import {
   zetWerknemerActiefActie,
   contactNaarWerknemerActie,
   bulkWerknemersActie,
+  werknemerToegangActie,
 } from './actions';
 import PasdagMaten from './PasdagMaten';
 import WerknemersInvoer from '../_delen/WerknemersInvoer';
@@ -32,6 +33,7 @@ export default function WerknemersTab({
   pasdag,
   openWerknemerId = null,
   melding = null,
+  portaalMails = [],
 }: {
   orgId: string;
   orgNaam: string;
@@ -44,7 +46,10 @@ export default function WerknemersTab({
   openWerknemerId?: string | null;
   /** Terugmelding na meerdere tegelijk toevoegen. */
   melding?: string | null;
+  /** E-mailadressen die al kunnen inloggen in het portaal van deze klant (kleine letters). */
+  portaalMails?: string[];
 }) {
+  const kanInloggen = new Set(portaalMails);
   const afdelingNaam = new Map(afdelingen.map((a) => [a.id, a.naam]));
   const vestigingNaam = new Map(vestigingen.map((v) => [v.id, v.naam]));
   const actief = werknemers.filter((w) => w.actief);
@@ -160,6 +165,25 @@ export default function WerknemersTab({
         </td>
         <td className="stil">{[w.email, w.telefoon].filter(Boolean).join(' · ') || '—'}</td>
         <td className="stil whitespace-nowrap">{w.actief ? matenTekst(w) : '—'}</td>
+        <td className="whitespace-nowrap text-[13px]">
+          {!w.actief ? (
+            <span className="text-warm">—</span>
+          ) : w.email && kanInloggen.has(w.email.trim().toLowerCase()) ? (
+            <span className="font-semibold text-emerald-800">Kan inloggen</span>
+          ) : w.email ? (
+            <form action={werknemerToegangActie}>
+              <input type="hidden" name="orgId" value={orgId} />
+              <input type="hidden" name="werknemerId" value={w.id} />
+              <input type="hidden" name="email" value={w.email} />
+              <input type="hidden" name="naam" value={w.naam} />
+              <button type="submit" className="rounded-md border border-line px-2 py-1 text-xs font-semibold text-ink-800 hover:bg-mist">
+                Toegang geven
+              </button>
+            </form>
+          ) : (
+            <span className="text-warm" title="Vul via Bewerken een e-mailadres in om toegang te geven">Geen e-mail</span>
+          )}
+        </td>
         <td>
           <div className="flex flex-wrap justify-end gap-2">
             <Drawer knop="Bewerken" titel={`Werknemer bewerken: ${w.naam}`} knopKlasse="knop-stil">
@@ -309,6 +333,7 @@ export default function WerknemersTab({
                   <th>Afdeling</th>
                   <th>Contact</th>
                   <th>Maten</th>
+                  <th>Portaal</th>
                   <th></th>
                 </tr>
               </thead>

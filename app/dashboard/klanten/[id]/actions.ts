@@ -160,6 +160,33 @@ export async function koppelGebruiker(formData: FormData) {
   });
 }
 
+/**
+ * Werknemer die Jessi zelf heeft aangemaakt (met maten) toegang geven tot het portaal
+ * als werknemer, en meteen uitnodigen. Vanaf het tabblad Werknemers.
+ */
+export async function werknemerToegangActie(formData: FormData) {
+  if (!(await authed())) redirect('/dashboard');
+  const id = tekst(formData, 'orgId');
+  const werknemerId = tekst(formData, 'werknemerId');
+  const email = tekst(formData, 'email');
+  const naam = tekst(formData, 'naam');
+  if (!id) redirect('/dashboard/klanten');
+  if (!werknemerId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    terug(id, 'werknemers', undefined, { melding: 'Vul eerst een geldig e-mailadres in bij deze werknemer.' });
+  }
+  const uitkomst = await geefPortaalToegang(id, email, naam || null, werknemerId, 'medewerker');
+  if (uitkomst === 'elders') terug(id, 'werknemers', undefined, { melding: `${email} kan al inloggen bij een andere klant en is daarom niet gekoppeld.` });
+  if (uitkomst === 'bestond') terug(id, 'werknemers', undefined, { melding: `${naam || email} kon al inloggen.` });
+  if (uitkomst === 'mislukt') terug(id, 'werknemers', undefined, { melding: 'Toegang geven is niet gelukt. Probeer het opnieuw.' });
+  await logAudit('portaalgebruiker_gekoppeld', { entiteit: 'organisatie', entiteitId: id, details: { email, rol: 'medewerker', uitgenodigd: true } });
+  const verstuurd = await stuurPortaalUitnodiging(email, naam || null, id);
+  terug(id, 'werknemers', undefined, {
+    melding: verstuurd
+      ? `${naam || email} kan inloggen en heeft een uitnodiging per mail gekregen.`
+      : `${naam || email} kan inloggen, maar de uitnodiging kon niet worden gemaild. Laat de werknemer zelf weten dat hij kan inloggen op /portaal/login.`,
+  });
+}
+
 const PORTAAL_ROLLEN = ['beheerder', 'leidinggevende', 'medewerker'] as const;
 type PortaalRolKms = (typeof PORTAAL_ROLLEN)[number];
 

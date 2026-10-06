@@ -28,6 +28,7 @@ export const NAV_GROEPEN: NavGroep[] = [
   ] },
   { titel: 'Klanten', items: [
     { href: '/dashboard/klanten', label: 'Klanten' },
+    { href: '/dashboard/portaalgebruik', label: 'Portaalgebruik' },
     { href: '/dashboard/passessie', label: 'Passen en maten' },
     { href: '/dashboard/medewerker-verzoeken', label: 'Medewerker-verzoeken' },
     { href: '/dashboard/reviews', label: 'Reviews en NPS' },

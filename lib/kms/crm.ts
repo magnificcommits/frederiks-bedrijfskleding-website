@@ -432,3 +432,62 @@ export async function laatsteLogins(emails: string[]): Promise<Record<string, st
   }
   return uit;
 }
+
+export type PortaalKlantRij = {
+  orgId: string;
+  naam: string;
+  isDemo: boolean;
+  werkgevers: number;
+  leidinggevenden: number;
+  werknemers: number;
+  logins: number;
+  ooitIngelogd: number;
+  laatsteLogin: string | null;
+  actiesMaand: number;
+  medewerkersInSysteem: number;
+};
+
+/**
+ * Per klant met portaaltoegang: hoeveel logins per rol, hoeveel daarvan ooit inlogden,
+ * de laatste inlog en het aantal handelingen in de laatste 30 dagen.
+ */
+export async function portaalOverzicht(): Promise<PortaalKlantRij[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+  const sinds = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const [{ data: pg }, { data: acties }] = await Promise.all([
+    sb.from('portaal_gebruikers').select('organisatie_id, email, rol').limit(5000),
+    sb.from('audit_log').select('entiteit_id, actie').eq('entiteit', 'organisatie').like('actie', 'portaal\\_%').gte('created_at', sinds).limit(10000),
+  ]);
+  const gebruikers = (pg as { organisatie_id: string | null; email: string; rol: string }[] | null) ?? [];
+  const orgIds = [...new Set(gebruikers.map((g) => g.organisatie_id).filter((v): v is string => Boolean(v)))];
+  if (orgIds.length === 0) return [];
+  const [{ data: orgs }, { data: mws }, logins] = await Promise.all([
+    sb.from('organisaties').select('id, naam, is_demo').in('id', orgIds),
+    sb.from('medewerkers').select('organisatie_id').in('organisatie_id', orgIds).eq('actief', true).limit(20000),
+    laatsteLogins(gebruikers.map((g) => g.email)),
+  ]);
+  const mwTelling = new Map<string, number>();
+  for (const m of (mws as { organisatie_id: string }[] | null) ?? []) mwTelling.set(m.organisatie_id, (mwTelling.get(m.organisatie_id) ?? 0) + 1);
+  const actieTelling = new Map<string, number>();
+  for (const a of (acties as { entiteit_id: string | null; actie: string }[] | null) ?? []) {
+    if (a.entiteit_id && !a.actie.startsWith('portaal_uitnodiging')) actieTelling.set(a.entiteit_id, (actieTelling.get(a.entiteit_id) ?? 0) + 1);
+  }
+  return ((orgs as { id: string; naam: string; is_demo: boolean | null }[] | null) ?? []).map((o) => {
+    const eigen = gebruikers.filter((g) => g.organisatie_id === o.id);
+    const datums = eigen.map((g) => logins[g.email.toLowerCase()]).filter((d): d is string => Boolean(d));
+    return {
+      orgId: o.id,
+      naam: o.naam,
+      isDemo: Boolean(o.is_demo),
+      werkgevers: eigen.filter((g) => g.rol === 'beheerder').length,
+      leidinggevenden: eigen.filter((g) => g.rol === 'leidinggevende').length,
+      werknemers: eigen.filter((g) => g.rol === 'medewerker').length,
+      logins: eigen.length,
+      ooitIngelogd: datums.length,
+      laatsteLogin: datums.sort().at(-1) ?? null,
+      actiesMaand: actieTelling.get(o.id) ?? 0,
+      medewerkersInSysteem: mwTelling.get(o.id) ?? 0,
+    };
+  }).sort((a, b) => (b.laatsteLogin ?? '').localeCompare(a.laatsteLogin ?? '') || a.naam.localeCompare(b.naam, 'nl'));
+}

@@ -151,6 +151,7 @@ export async function maakMedewerkerMetToegang(input: {
       medewerker_id: medewerkerId,
     });
     if (e2) return { ok: false, error: e2.message };
+    await naToegang(input.organisatieId, email, input.naam);
   }
   return { ok: true };
 }
@@ -196,7 +197,22 @@ export async function geefToegang(input: {
     medewerker_id: input.medewerkerId,
   });
   if (error) return { ok: false, error: error.message };
+  await naToegang(input.organisatieId, email, input.naam);
   return { ok: true };
+}
+
+/**
+ * Na toegang geven door de werkgever: account aanmaken (het inlogscherm doet dat niet
+ * meer) en de uitnodiging mailen, met de werkgever als afzender in het logboek.
+ */
+async function naToegang(orgId: string, email: string, naam: string): Promise<void> {
+  try {
+    const [{ zorgAuthGebruiker, stuurPortaalUitnodiging }, mij] = await Promise.all([import('@/lib/kms/crm'), getMijnToegang()]);
+    await zorgAuthGebruiker(email);
+    await stuurPortaalUitnodiging(email, naam || null, orgId, mij.email ?? undefined);
+  } catch {
+    // Toegang staat; de mail is een extra. Het KMS toont of hij is aangekomen.
+  }
 }
 
 /** Zet het kledingbudget van een medewerker. Alleen beheerder (RLS). */

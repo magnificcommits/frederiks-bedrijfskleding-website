@@ -1,4 +1,5 @@
 'use server';
+import { logPortaal } from '@/lib/portaal/activiteit';
 import { redirect } from 'next/navigation';
 import {
   getMijnToegang,
@@ -43,6 +44,7 @@ export async function nieuwTeamlid(formData: FormData) {
     rol,
     budget,
   });
+  if (res.ok) await logPortaal('teamlid_toegevoegd', { naam });
   redirect(res.ok ? '/portaal/team?ok=toegevoegd' : '/portaal/team?fout=opslaan');
 }
 
@@ -54,6 +56,7 @@ export async function geefToegangAction(formData: FormData) {
   const rol = leesRol(String(formData.get('rol') ?? 'medewerker'));
   if (!medewerkerId || !email) redirect('/portaal/team?fout=email');
   const res = await geefToegang({ organisatieId: toegang.organisatieId!, medewerkerId, naam, email, rol });
+  if (res.ok) await logPortaal('toegang_gegeven', { email, rol });
   redirect(res.ok ? '/portaal/team?ok=toegang' : '/portaal/team?fout=opslaan');
 }
 
@@ -62,6 +65,7 @@ export async function wijzigRolAction(formData: FormData) {
   const email = String(formData.get('email') ?? '').trim();
   const rol = leesRol(String(formData.get('rol') ?? 'medewerker'));
   const res = email ? await wijzigRol(email, rol) : { ok: false };
+  if (res.ok) await logPortaal('rol_gewijzigd', { email, rol });
   redirect(res.ok ? '/portaal/team?ok=rol' : '/portaal/team?fout=opslaan');
 }
 
@@ -69,6 +73,7 @@ export async function trekToegangInAction(formData: FormData) {
   await guardBeheerder();
   const email = String(formData.get('email') ?? '').trim();
   if (email) await trekToegangIn(email);
+  if (email) await logPortaal('toegang_ingetrokken', { email });
   redirect('/portaal/team?ok=ingetrokken');
 }
 
@@ -77,5 +82,6 @@ export async function zetBudgetAction(formData: FormData) {
   const medewerkerId = String(formData.get('medewerker_id') ?? '').trim();
   const budget = leesBudget(String(formData.get('budget') ?? ''));
   if (medewerkerId) await zetBudget(medewerkerId, budget);
+  if (medewerkerId) await logPortaal('budget_gewijzigd', { medewerker_id: medewerkerId, budget });
   redirect('/portaal/team?ok=budget');
 }

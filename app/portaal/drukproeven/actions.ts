@@ -1,4 +1,5 @@
 'use server';
+import { logPortaal } from '@/lib/portaal/activiteit';
 import { redirect } from 'next/navigation';
 import { getPortaalUser } from '@/lib/portaal/queries';
 import { getMijnToegang } from '@/lib/portaal/team';
@@ -69,5 +70,6 @@ export async function beslisDrukproefPortaalActie(formData: FormData) {
     }),
   }).catch(() => {});
 
+  await logPortaal('drukproef_beoordeeld');
   redirect('/portaal/drukproeven?ok=opgeslagen');
 }

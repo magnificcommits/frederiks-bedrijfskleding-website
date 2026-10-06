@@ -1,4 +1,5 @@
 'use server';
+import { logPortaal } from '@/lib/portaal/activiteit';
 import { redirect } from 'next/navigation';
 import { getPortaalUser, getMijnOrganisatie } from '@/lib/portaal/queries';
 import { meldReparatie, meldRetour, type RetourRegel } from '@/lib/portaal/service';
@@ -46,6 +47,7 @@ export async function vraagRetour(formData: FormData) {
   const soort = formData.get('soort') === 'ruilen' ? 'ruilen' : 'retour';
   const res = await meldRetour({ orderId, reden, redenKeuze, regels, soort });
   if (!res.ok) redirect('/portaal/retouren?fout=1');
+  await logPortaal('retour_aangevraagd', { order_id: orderId });
   redirect('/portaal/retouren?ok=1');
 }
 
@@ -90,5 +92,6 @@ export async function vraagReparatie(formData: FormData) {
     fotos,
   });
   if (!res.ok) redirect('/portaal/retouren?soort=reparatie&rep=fout');
+  await logPortaal('reparatie_aangevraagd');
   redirect('/portaal/retouren?rep=ok');
 }

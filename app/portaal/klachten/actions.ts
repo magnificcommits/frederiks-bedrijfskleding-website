@@ -1,4 +1,5 @@
 'use server';
+import { logPortaal } from '@/lib/portaal/activiteit';
 import { redirect } from 'next/navigation';
 import { getPortaalUser, getMijnOrganisatie } from '@/lib/portaal/queries';
 import { meldKlacht, reageerOpKlacht, type KlachtSoort } from '@/lib/portaal/service';
@@ -18,6 +19,7 @@ export async function vraagKlacht(formData: FormData) {
 
   const res = await meldKlacht({ orderId, soort, omschrijving, categorie });
   if (!res.ok) redirect('/portaal/klachten?fout=1');
+  await logPortaal('klacht_gemeld');
   redirect('/portaal/klachten?ok=1');
 }
 

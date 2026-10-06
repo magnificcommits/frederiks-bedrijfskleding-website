@@ -9,6 +9,7 @@
  *   regels die met "- " beginnen worden een opsomming
  *   een lege regel is een nieuwe alinea
  */
+import { appUrl } from '@/lib/appUrl';
 import { site } from '@/content/site';
 
 export type MergeContext = {
@@ -49,7 +50,7 @@ export const VOORBEELD_CONTEXT: MergeContext = {
   plaats: 'Doetinchem',
   branche: 'installatietechniek',
   kennismakingslink: `${site.url}/k/voorbeeld`,
-  portaallink: `${site.url}/portaal`,
+  portaallink: `${appUrl()}/portaal`,
   reviewlink: 'https://g.page/r/frederiks/review',
   spaarsaldo: 870,
   spaardrempel: 1000,
@@ -84,7 +85,7 @@ export function vulMergeTags(tekst: string, ctx: MergeContext): string {
     plaats: (ctx.plaats ?? '').trim() || 'de Achterhoek',
     branche: (ctx.branche ?? '').trim() || 'jullie vak',
     kennismakingslink: (ctx.kennismakingslink ?? '').trim() || site.url,
-    portaallink: (ctx.portaallink ?? '').trim() || `${site.url}/portaal`,
+    portaallink: (ctx.portaallink ?? '').trim() || `${appUrl()}/portaal`,
     reviewlink: (ctx.reviewlink ?? '').trim() || site.url,
     spaarsaldo: String(Math.max(0, Math.round(saldo))),
     spaardrempel: String(Math.max(0, Math.round(drempel))),

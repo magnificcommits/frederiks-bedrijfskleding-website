@@ -1,4 +1,5 @@
 'use server';
+import { logPortaal } from '@/lib/portaal/activiteit';
 import { redirect } from 'next/navigation';
 import { getKledinglijn, verwijderMedewerker, zetMaat } from '@/lib/portaal/queries';
 import {
@@ -92,6 +93,7 @@ export async function bewaarBudget(formData: FormData) {
   const id = String(formData.get('medewerker_id') ?? '');
   const budget = leesBudget(String(formData.get('budget') ?? ''));
   const res = id ? await zetBudget(id, budget) : { ok: false };
+  if (res.ok) await logPortaal('budget_gewijzigd');
   redirect(res.ok ? '/portaal/medewerkers?ok=budget' : '/portaal/medewerkers?fout=opslaan');
 }
 
@@ -116,6 +118,7 @@ export async function geefToegangAction(formData: FormData) {
   const rol = leesRol(String(formData.get('rol') ?? 'medewerker'));
   if (!medewerkerId || !email) redirect('/portaal/medewerkers?fout=email');
   const res = await geefToegang({ organisatieId: toegang.organisatieId!, medewerkerId, naam, email, rol });
+  if (res.ok) await logPortaal('toegang_gegeven', { email, rol });
   redirect(res.ok ? '/portaal/medewerkers?ok=toegang' : '/portaal/medewerkers?fout=opslaan');
 }
 
@@ -125,6 +128,7 @@ export async function wijzigRolAction(formData: FormData) {
   const email = String(formData.get('email') ?? '').trim();
   const rol = leesRol(String(formData.get('rol') ?? 'medewerker'));
   const res = email ? await wijzigRol(email, rol) : { ok: false };
+  if (res.ok) await logPortaal('rol_gewijzigd', { email, rol });
   redirect(res.ok ? '/portaal/medewerkers?ok=rol' : '/portaal/medewerkers?fout=opslaan');
 }
 
@@ -133,5 +137,6 @@ export async function trekToegangInAction(formData: FormData) {
   await guardBeheerder();
   const email = String(formData.get('email') ?? '').trim();
   const res = email ? await trekToegangIn(email) : { ok: false };
+  if (res.ok) await logPortaal('toegang_ingetrokken', { email });
   redirect(res.ok ? '/portaal/medewerkers?ok=ingetrokken' : '/portaal/medewerkers?fout=opslaan');
 }

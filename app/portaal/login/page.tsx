@@ -31,7 +31,8 @@ export default function PortaalLogin() {
     setBezig(true);
     const { error } = await sb.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/portaal/auth/callback` },
+      // Alleen wie is uitgenodigd kan een code krijgen; zo maakt niemand zelf een account aan.
+      options: { emailRedirectTo: `${window.location.origin}/portaal/auth/callback`, shouldCreateUser: false },
     });
     setBezig(false);
     if (!error) { setSent(true); return; }

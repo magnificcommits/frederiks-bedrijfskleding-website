@@ -1,4 +1,5 @@
 'use server';
+import { logPortaal } from '@/lib/portaal/activiteit';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { toggleFavoriet } from '@/lib/portaal/favorieten';
@@ -125,6 +126,7 @@ export async function plaatsBestelling(formData: FormData) {
     redirect(`/portaal/webshop?reden=${encodeURIComponent(res.error ?? (await getVertaler()).t('webshop.plaatsenMislukt'))}`);
   }
 
+  await logPortaal('bestelling_geplaatst', { regels: regels.length });
   redirect('/portaal/webshop?ok=1');
 }
 
@@ -162,6 +164,7 @@ export async function bestelPakketActie(formData: FormData) {
     redirect(`/portaal/webshop?reden=${encodeURIComponent(res.error ?? (await getVertaler()).t('webshop.pakketMislukt'))}`);
   }
 
+  await logPortaal('pakket_besteld', { pakket_id: pakketId });
   redirect('/portaal/webshop?pakketok=1');
 }
 

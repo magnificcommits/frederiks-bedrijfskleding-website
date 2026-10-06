@@ -325,7 +325,9 @@ export async function geefPortaalToegang(
   // Zonder keuze is de database-standaard 'beheerder' (werkgever).
   if (rol) rij.rol = rol;
   const { error } = await sb.from('portaal_gebruikers').insert(rij);
-  return error ? 'mislukt' : 'toegevoegd';
+  if (error) return 'mislukt';
+  await zorgAuthGebruiker(adres);
+  return 'toegevoegd';
 }
 
 /**
@@ -334,28 +336,80 @@ export async function geefPortaalToegang(
  * gebruiker vult op de inlogpagina zijn adres in en krijgt de link toegestuurd.
  * Best effort: false als mailen niet lukte (dan moet Jessi het zelf laten weten).
  */
-export async function stuurPortaalUitnodiging(email: string, naam: string | null, orgId: string): Promise<boolean> {
-  const [{ sendEmail, emailLayout, escapeHtml }, { site }] = await Promise.all([import('@/lib/email'), import('@/content/site')]);
-  const sb = kmsAdmin();
-  const { data } = sb ? await sb.from('organisaties').select('naam').eq('id', orgId).maybeSingle() : { data: null };
-  const klant = (data as { naam: string | null } | null)?.naam ?? null;
-  const inlog = `${site.url}/portaal/login`;
-  const res = await sendEmail({
-    to: email,
-    replyTo: site.email,
-    subject: 'Je toegang tot het klantportaal van Frederiks Bedrijfskleding',
+/** Onderwerp en HTML van de uitnodiging. Los, zodat het KMS hem als voorbeeld kan tonen. */
+export async function portaalUitnodigingMail(email: string, naam: string | null, klant: string | null): Promise<{ subject: string; html: string; inlog: string }> {
+  const [{ emailLayout, escapeHtml }, { site }, { appUrl }] = await Promise.all([import('@/lib/email'), import('@/content/site'), import('@/lib/appUrl')]);
+  const inlog = `${appUrl()}/portaal/login`;
+  return {
+    inlog,
+    subject: `Je toegang tot het klantportaal${klant ? ` van ${klant}` : ''} bij Frederiks Bedrijfskleding`,
     html: emailLayout({
       heading: 'Welkom in het klantportaal',
-      preheader: 'Je kunt nu inloggen in het klantportaal.',
+      preheader: 'Je kunt nu inloggen in het klantportaal van Frederiks Bedrijfskleding.',
       bodyHtml: `
         <p style="margin:0;">${naam ? `Hallo ${escapeHtml(naam)},` : 'Hallo,'}</p>
-        <p style="margin:14px 0 0;">Je hebt toegang gekregen tot het klantportaal van Frederiks Bedrijfskleding${klant ? ` voor ${escapeHtml(klant)}` : ''}. Daar bestel je kleding, volg je bestellingen en keur je drukproeven goed.</p>
-        <p style="margin:14px 0 0;">Ga naar <a href="${escapeHtml(inlog)}">${escapeHtml(inlog)}</a> en vul dit e-mailadres in (${escapeHtml(email)}). Je krijgt dan een inloglink toegestuurd. Een wachtwoord is niet nodig.</p>
+        <p style="margin:14px 0 0;">Je hebt toegang gekregen tot het klantportaal van Frederiks Bedrijfskleding${klant ? ` voor <strong>${escapeHtml(klant)}</strong>` : ''}. Daar bestel je kleding binnen je budget, volg je bestellingen en keur je drukproeven goed.</p>
+        <p style="margin:22px 0;"><a href="${escapeHtml(inlog)}" style="display:inline-block;background:#f06a20;color:#111;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:8px;">Naar het portaal</a></p>
+        <p style="margin:0;"><strong>Zo log je in:</strong></p>
+        <ol style="margin:6px 0 0;padding-left:20px;">
+          <li>Vul op de inlogpagina dit e-mailadres in: <strong>${escapeHtml(email)}</strong>.</li>
+          <li>Je krijgt direct een mail met een inloglink en een code.</li>
+          <li>Klik op de link, of typ de code over. Een wachtwoord is niet nodig.</li>
+        </ol>
+        <p style="margin:14px 0 0;">Tip: zet het portaal op je telefoon als app, dan staat het met één tik op je beginscherm.</p>
         <p style="margin:14px 0 0;">Vragen? Bel of app gerust: <strong>${escapeHtml(site.phone)}</strong>.</p>
       `,
     }),
-  }).catch(() => ({ sent: false }));
+  };
+}
+
+/**
+ * Stuurt de uitnodiging en legt vast of dat lukte (audit_log, per klant), zodat het
+ * KMS per persoon kan tonen of en wanneer hij is uitgenodigd.
+ */
+export async function stuurPortaalUitnodiging(email: string, naam: string | null, orgId: string, door?: string): Promise<boolean> {
+  const [{ sendEmail }, { site }, { logAudit }] = await Promise.all([import('@/lib/email'), import('@/content/site'), import('@/lib/kms/audit')]);
+  const sb = kmsAdmin();
+  const { data } = sb ? await sb.from('organisaties').select('naam').eq('id', orgId).maybeSingle() : { data: null };
+  const klant = (data as { naam: string | null } | null)?.naam ?? null;
+  const mail = await portaalUitnodigingMail(email, naam, klant);
+  const res = await sendEmail({ to: email, replyTo: site.email, subject: mail.subject, html: mail.html }).catch((e: unknown) => ({ sent: false, error: String(e) }));
+  await logAudit(res.sent ? 'portaal_uitnodiging_verstuurd' : 'portaal_uitnodiging_mislukt', {
+    entiteit: 'organisatie',
+    entiteitId: orgId,
+    details: { email: email.toLowerCase(), fout: res.sent ? null : (res as { error?: string }).error ?? null },
+    ...(door ? { actor: door } : {}),
+  });
   return res.sent;
+}
+
+/**
+ * Zorgt dat er een Supabase-account bestaat voor dit adres. Het inlogscherm maakt zelf
+ * geen accounts meer aan (shouldCreateUser: false), dus wie toegang krijgt, krijgt hier
+ * meteen een (bevestigd) account. Bestaat het al, dan gebeurt er niets.
+ */
+export async function zorgAuthGebruiker(email: string): Promise<void> {
+  const sb = kmsAdmin();
+  const adres = email.trim().toLowerCase();
+  if (!sb || !adres.includes('@')) return;
+  await sb.auth.admin.createUser({ email: adres, email_confirm: true }).catch(() => undefined);
+}
+
+export type PortaalActiviteit = { id: string; actor: string | null; actie: string; details: Record<string, unknown> | null; created_at: string };
+
+/** Wat er rond het portaal van deze klant is gebeurd: uitnodigingen, toegang, bestellingen, goedkeuringen. */
+export async function portaalActiviteit(orgId: string, limiet = 40): Promise<PortaalActiviteit[]> {
+  const sb = kmsAdmin();
+  if (!sb) return [];
+  const { data } = await sb
+    .from('audit_log')
+    .select('id, actor, actie, details, created_at')
+    .eq('entiteit', 'organisatie')
+    .eq('entiteit_id', orgId)
+    .or('actie.like.portaal%,actie.like.portaalgebruiker%')
+    .order('created_at', { ascending: false })
+    .limit(limiet);
+  return (data as PortaalActiviteit[] | null) ?? [];
 }
 
 /**

@@ -15,8 +15,10 @@ import Tabs, { type TabDef } from '@/components/dashboard/Tabs';
 import Drawer from '@/components/dashboard/Drawer';
 import PersoonKiezer from '@/components/dashboard/PersoonKiezer';
 import { standaardInternePersoon } from '@/lib/kms/personen';
-import { PortaalTab, type KlaarzetStap } from './PortaalTab';
-import { laatsteLogins } from '@/lib/kms/crm';
+import { PortaalTab } from './PortaalTab';
+import { laatsteLogins, portaalActiviteit } from '@/lib/kms/crm';
+import { isEmailConfigured } from '@/lib/env';
+import { appUrl } from '@/lib/appUrl';
 import AssortimentBeheer from './AssortimentBeheer';
 import WerknemersTab from './WerknemersTab';
 import AfdelingenTab from './AfdelingenTab';
@@ -118,15 +120,7 @@ export default async function KlantPage({
   ]);
   const actieveWerknemers = werknemers.filter((w) => w.actief);
   const logins = await laatsteLogins(gebruikers.map((g) => g.email ?? ''));
-  const orgVelden = org as unknown as Record<string, unknown>;
-  const klaarzetStappen: KlaarzetStap[] = [
-    { label: 'Klantgegevens', tab: 'gegevens', klaar: Boolean(org.adres && org.plaats), uitleg: 'Adres en plaats ingevuld, voor levering en factuur.' },
-    { label: 'Afdelingen', tab: 'afdelingen', klaar: afdelingen.length > 0, uitleg: 'Bijvoorbeeld Uitvoering, Werkplaats, Kantoor. Optioneel bij kleine teams.' },
-    { label: 'Werknemers met budget', tab: 'werknemers', klaar: actieveWerknemers.length > 0 && actieveWerknemers.some((w) => Number((w as unknown as { budget?: number | null }).budget ?? 0) > 0), uitleg: 'Wie draagt kleding, en hoeveel budget per persoon.' },
-    { label: 'Assortiment', tab: 'assortiment', klaar: assortiment.length > 0, uitleg: 'De artikelen die deze klant mag bestellen, met vaste kleur.' },
-    { label: 'Goedkeuren ingesteld', tab: 'gegevens', klaar: orgVelden.goedkeuren_bestellingen != null, uitleg: orgVelden.goedkeuren_bestellingen ? 'Bestellingen van werknemers gaan eerst langs de werkgever.' : 'Werknemers bestellen zonder goedkeuring. Aanpassen kan bij Gegevens.' },
-    { label: 'Een werkgever kan inloggen', tab: 'portaal', klaar: gebruikers.some((g) => g.rol === 'beheerder'), uitleg: 'Minimaal één persoon met de rol Werkgever. Die kan zelf zijn team uitnodigen.' },
-  ];
+  const activiteit = await portaalActiviteit(id);
   const pasdag = await pasdagGegevens(id, actieveWerknemers);
   const afdelingKeuzes = afdelingen.map((a) => ({ id: a.id, naam: a.naam }));
   const hoofdcontact = contactpersonen.find((c) => c.hoofdcontact) ?? null;
@@ -718,7 +712,8 @@ export default async function KlantPage({
     { id: 'afdelingen', label: 'Afdelingen', content: afdelingenTab, badge: afdelingen.length || null },
     { id: 'contact', label: 'Contact', content: contactTab, badge: contactpersonen.length || null },
     { id: 'portaal', label: 'Portaal', content: (
-      <PortaalTab orgId={id} orgNaam={org.naam} gebruikers={gebruikers} logins={logins} stappen={klaarzetStappen}
+      <PortaalTab orgId={id} orgNaam={org.naam} gebruikers={gebruikers} logins={logins} activiteit={activiteit}
+        mailAan={isEmailConfigured} inlogUrl={`${appUrl()}/portaal/login`}
         melding={startTab === 'portaal' ? meldingParam ?? null : null} />
     ), badge: gebruikers.length || null },
     { id: 'verkoop', label: 'Verkoop', content: verkoopTab, badge: verkoop.orders.length || null },

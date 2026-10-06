@@ -28,6 +28,7 @@ import {
   type Plaatsing,
   type Zijde,
 } from './ontwerp';
+import { LogoOnbelast } from './LogoOnbelast';
 import { bewaarDrukproefActie, kleurenActie, zoekArtikelenActie } from './actions';
 
 /**
@@ -1061,6 +1062,9 @@ export default function DrukproefEditor({
                       onChange={(e) => wijzig(zijde, actief.id, { breedte_cm: e.target.value === '' ? null : Number(e.target.value) })}
                       className={veld}
                     />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <LogoOnbelast ontwerp={ontwerp} />
                   </div>
                   <div className="sm:col-span-2">
                     <label className={label} htmlFor="dp-toelichting">Maatvoering of toelichting</label>

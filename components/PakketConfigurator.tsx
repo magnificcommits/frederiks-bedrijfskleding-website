@@ -1,13 +1,15 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { kleuren, kledingtypes, logoposities, broekposities, positiesVoor, teamgroottes, starterpakketten } from '@/content/configurator';
+import { kleuren, kledingtypes, logoposities, broekposities, positiesVoor, teamgroottes, starterpakketten, teamAantal } from '@/content/configurator';
+import { logoFormaten, oppervlakVan, logoCheck, standaardFormaatVoor, LOGO_MIN_CM2 } from '@/lib/fiscaal';
 import { branches } from '@/content/branches';
 import { Garment } from '@/components/Garments';
 import { getHerkomst, leesHerkomstVoorLead } from '@/lib/herkomst';
 import { site } from '@/content/site';
 
 type Status = 'idle' | 'sending' | 'ok' | 'error';
-type Item = { id: number; type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string };
+type Item = { id: number; type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string; formaat?: string };
 type Artikel = { id: string; naam: string; merk: string | null; foto: string | null; kleurTreffer: boolean };
 
 const extrasOpties = [
@@ -32,6 +34,23 @@ function Preview({ type, kleur, logo, positie, techniek }: { type: string; kleur
   return (
     <div className="relative mx-auto aspect-square w-full">
       <Garment type={type} color={k.hex} light={k.licht} logo={logo} pos={positie} techniek={techniek} />
+    </div>
+  );
+}
+
+/** Logo-afmeting per kledingstuk, met direct of het onbelast mag (70 cm²-regel). */
+function LogoRegel({ formaat, onChange }: { formaat?: string; onChange: (f: string) => void }) {
+  const cm2 = oppervlakVan(formaat);
+  const { onbelast, tekort } = logoCheck(cm2);
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+      <select value={formaat ?? 'standaard'} onChange={(e) => onChange(e.target.value)} aria-label="Logo-afmeting"
+        className="rounded-md border border-line bg-white px-2 py-1 text-xs text-ink-800">
+        {logoFormaten.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+      </select>
+      <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${onbelast ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+        {onbelast ? `Onbelast · ${cm2} cm²` : `Nog ${tekort} cm² te klein`}
+      </span>
     </div>
   );
 }
@@ -132,6 +151,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
           kleur: Number(i.kleur) || 0,
           positie: String(i.positie),
           aantal: String(i.aantal ?? ''),
+          formaat: typeof i.formaat === 'string' ? i.formaat : standaardFormaatVoor(String(i.positie)),
         })));
       }
       if (data.extras && typeof data.extras === 'object') setExtras(data.extras);
@@ -158,7 +178,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     });
   }
   function addItem() {
-    setItems((p) => [...p, { id: Date.now(), ...draft }]);
+    setItems((p) => [...p, { id: Date.now(), ...draft, formaat: standaardFormaatVoor(draft.positie) }]);
     setLastAdded(typeLabel(draft.type));
     setDraft((d) => ({ ...d, aantal: '', artikelId: undefined, artikelNaam: undefined }));
   }
@@ -168,9 +188,14 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   function vulMetStarter() {
     if (!starter) return;
     const basis = Date.now();
-    setItems(starter.map((s, n) => ({ id: basis + n, type: s.type, kleur: s.kleur, positie: s.positie, aantal: s.aantal })));
+    const n = teamAantal(team);
+    setItems(starter.map((s, k) => ({ id: basis + k, type: s.type, kleur: s.kleur, positie: s.positie, aantal: String(s.per * n), formaat: standaardFormaatVoor(s.positie) })));
     setLastAdded(null);
   }
+  function zetFormaat(id: number, formaat: string) {
+    setItems((p) => p.map((i) => (i.id === id ? { ...i, formaat } : i)));
+  }
+  const onbelastAantal = items.filter((i) => logoCheck(oppervlakVan(i.formaat)).onbelast).length;
 
   function buildResumeUrl(): string {
     const payload = { branche, team, techniek, defPositie, items, extras };
@@ -179,7 +204,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
 
   function buildBericht(): string {
     const kledingLijst = items.length
-      ? items.map((i) => `- ${typeLabel(i.type)}, ${kleuren[i.kleur].name}, logo ${posLabel(i.positie).toLowerCase()}${i.aantal ? `, ${i.aantal}x` : ''}${i.artikelNaam ? ` — voorkeur: ${i.artikelNaam}` : ''}`).join('\n')
+      ? items.map((i) => `- ${typeLabel(i.type)}, ${kleuren[i.kleur].name}, logo ${posLabel(i.positie).toLowerCase()} (${oppervlakVan(i.formaat)} cm²)${i.aantal ? `, ${i.aantal}x` : ''}${i.artikelNaam ? `, voorkeur: ${i.artikelNaam}` : ''}`).join('\n')
       : '- (nog geen kledingstukken toegevoegd)';
     const extraLijst = extrasOpties.filter((e) => extras[e.id]?.on).map((e) => `- ${e.label}${extras[e.id].aantal ? ` (${extras[e.id].aantal}x)` : ''}`).join('\n');
     return [
@@ -546,8 +571,10 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Jouw pakket ({items.length})</p>
               {starter && items.length === 0 && (
                 <button type="button" onClick={vulMetStarter} className="mt-3 w-full rounded-lg border-2 border-amber-400 bg-amber-50 px-4 py-3 text-left text-sm font-semibold text-amber-800 transition hover:bg-amber-100">
-                  Begin met een voorbeeldpakket voor {branche}
-                  <span className="mt-0.5 block text-xs font-normal text-amber-700">Een paar veelgekozen stukken als startpunt. Je past het daarna naar wens aan.</span>
+                  Basispakket voor {branche}, {teamAantal(team)} medewerkers{team ? '' : ' (pas aan bij stap 1)'}
+                  <span className="mt-0.5 block text-xs font-normal text-amber-700">
+                    Per medewerker: {starter.map((s) => `${s.per}x ${typeLabel(s.type).toLowerCase()}`).join(', ')}. Je past het daarna naar wens aan.
+                  </span>
                 </button>
               )}
               {items.length === 0 && (
@@ -563,11 +590,20 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
                       <p className="font-bold text-ink-900">{typeLabel(i.type)}{i.aantal ? ` · ${i.aantal}x` : ''}</p>
                       <p className="text-warm">{kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}</p>
                       {i.artikelNaam && <p className="truncate text-xs font-semibold text-amber-700">{i.artikelNaam}</p>}
+                      <LogoRegel formaat={i.formaat} onChange={(f) => zetFormaat(i.id, f)} />
                     </div>
                     <button type="button" onClick={() => removeItem(i.id)} className="shrink-0 text-sm text-warm hover:text-amber-800">Verwijder</button>
                   </li>
                 ))}
               </ul>
+              {items.length > 0 && (
+                <p className={`mt-3 rounded-lg px-3 py-2 text-sm ${onbelastAantal === items.length ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
+                  {onbelastAantal === items.length
+                    ? `Alle ${items.length} kledingstukken hebben een logo van minimaal ${LOGO_MIN_CM2} cm². Dat mag je als werkgever onbelast geven.`
+                    : `${items.length - onbelastAantal} van de ${items.length} kledingstukken ${items.length - onbelastAantal === 1 ? 'heeft' : 'hebben'} een logo onder ${LOGO_MIN_CM2} cm². ${items.length - onbelastAantal === 1 ? 'Dat telt' : 'Die tellen'} mee in je vrije ruimte. Kies een groter logo of laat het ons bekijken.`}{' '}
+                  <Link href="/kennisbank/werkkostenregeling-werkkleding" className="font-semibold underline underline-offset-2">Hoe zit dat?</Link>
+                </p>
+              )}
               <p className="mt-6 text-sm font-semibold text-ink-800">Aanvullend nodig?</p>
               <p className="text-xs text-warm">Items zonder bedrukking, zoals schoenen.</p>
               <div className="mt-2 space-y-2">

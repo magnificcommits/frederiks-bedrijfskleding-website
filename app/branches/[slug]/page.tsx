@@ -12,6 +12,8 @@ import { JsonLd } from '@/components/JsonLd';
 import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import { CtaKnoppen } from '@/components/CtaKnoppen';
 import { BrancheArtikelen } from '@/components/BrancheArtikelen';
+import { BrancheVerdieping } from '@/components/BrancheVerdieping';
+import { verdiepingBySlug } from '@/content/branche-verdieping';
 
 // De artikelenrij komt uit de catalogus; met ISR is dat één query per uur.
 export const revalidate = 3600;
@@ -38,10 +40,12 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
   if (!b) notFound();
 
   const url = `${site.url}/branches/${b.slug}`;
+  const v = verdiepingBySlug[b.slug];
+  const faq = v ? [...b.faq, ...v.extraFaq] : b.faq;
   return (
     <>
       <JsonLd data={serviceJsonLd({ name: b.name, description: b.metaDescription, url })} />
-      {b.faq.length > 0 && <JsonLd data={faqJsonLd(b.faq)} />}
+      {faq.length > 0 && <JsonLd data={faqJsonLd(faq)} />}
       {/* Geen tussenstap "Branches": daar is geen eigen pagina voor, en een
           #anker als kruimel-URL keurt Google af. */}
       <JsonLd data={breadcrumbJsonLd([
@@ -172,6 +176,8 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
 
+      {v && <BrancheVerdieping v={v} label={b.navLabel} pakketHref={`/pakket-samenstellen?branche=${encodeURIComponent(b.navLabel)}`} />}
+
       {/* Eén foto: naast een donker vlak met de pakketsamensteller, zodat er geen halve witte rij overblijft.
           Twee of meer: naast elkaar over de volle breedte. */}
       {b.gallery && b.gallery.length > 0 && (
@@ -216,7 +222,7 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
 
       <Werkwijze />
 
-      <Faq items={b.faq} title={`Veelgestelde vragen over ${b.navLabel.toLowerCase()}`} />
+      <Faq items={faq} title={`Veelgestelde vragen over ${b.navLabel.toLowerCase()}`} />
 
       <ContactSectie defaultBranche={b.navLabel} title={`Kleding voor ${b.navLabel.toLowerCase()}? Vertel wat je zoekt`} />
 

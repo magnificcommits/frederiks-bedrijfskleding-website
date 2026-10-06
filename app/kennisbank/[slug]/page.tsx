@@ -8,6 +8,7 @@ import { CtaBand } from '@/components/CtaBand';
 import { JsonLd } from '@/components/JsonLd';
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import { Pijl } from '@/components/Pijl';
+import { OnbelastCalculator } from '@/components/OnbelastCalculator';
 
 const MND = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
 function fmtDate(d: string) { const t = d.split('-'); return parseInt(t[2],10) + ' ' + MND[parseInt(t[1],10)-1] + ' ' + t[0]; }
@@ -27,6 +28,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     openGraph: { title: a.metaTitle, description: a.metaDescription, url: `${site.url}/kennisbank/${a.slug}`, type: 'article', images: ['/Bedrijfskleding-bedrukken-en-borduren.jpg'] },
   };
 }
+
+const REKEN_SLUGS = ['bedrijfskleding-fiscaal-aftrekbaar', 'werkkostenregeling-werkkleding'];
 
 export default async function ArtikelPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -70,6 +73,9 @@ export default async function ArtikelPage({ params }: { params: Promise<{ slug: 
               </div>
             </div>
           ))}
+          {REKEN_SLUGS.includes(a.slug) && (
+            <div className="mt-10"><OnbelastCalculator compact /></div>
+          )}
         </div>
         <aside>
           <div className="sticky top-24 space-y-4">

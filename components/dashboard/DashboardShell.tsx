@@ -86,7 +86,7 @@ const RAIL: Record<string, { kort: string; pad: string }> = {
   Vandaag: { kort: 'Start', pad: 'M4 11l8-6.5 8 6.5M6.5 9.5V19h11V9.5M10 19v-5h4v5' },
   Verkoop: { kort: 'Verkoop', pad: 'M5 4h14v16H5zM8.5 8.5h7M8.5 12h7M8.5 15.5h4' },
   Klanten: { kort: 'Klanten', pad: 'M9 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM2.5 20c.6-3.6 3.1-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.5a3.3 3.3 0 010 6.4M18 14.8c1.9.7 3.1 2.4 3.5 5.2' },
-  'Nieuwe klanten werven': { kort: 'Werven', pad: 'M4 10v4l11 4.5V5.5L4 10zM15 9h2.5a2.5 2.5 0 010 5H15M7 14.5l1.5 5h3' },
+  'Marketing en sales': { kort: 'Groei', pad: 'M4 10v4l11 4.5V5.5L4 10zM15 9h2.5a2.5 2.5 0 010 5H15M7 14.5l1.5 5h3' },
   'Artikelen en inkoop': { kort: 'Artikelen', pad: 'M8.5 4L4 6.5 6 10l2-1V20h8V9l2 1 2-3.5L15.5 4c-.5 1.5-1.9 2.5-3.5 2.5S9 5.5 8.5 4z' },
   'Bedrukken en borduren': { kort: 'Bedrukken', pad: 'M7 8V3.5h10V8M7 17H4.5V9.5a1.5 1.5 0 011.5-1.5h12a1.5 1.5 0 011.5 1.5V17H17M7 13.5h10v7H7z' },
   'Retouren en klachten': { kort: 'Service', pad: 'M4 12a8 8 0 1113.7 5.7L20 20h-6M8.5 10.5h7M8.5 14h4.5' },

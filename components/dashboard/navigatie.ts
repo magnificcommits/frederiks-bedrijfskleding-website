@@ -34,7 +34,8 @@ export const NAV_GROEPEN: NavGroep[] = [
     { href: '/dashboard/reviews', label: 'Reviews en NPS' },
     { href: '/dashboard/sparen', label: 'Sparen' },
   ] },
-  { titel: 'Nieuwe klanten werven', items: [
+  { titel: 'Marketing en sales', items: [
+    { href: '/dashboard/groei', label: 'Acties en cijfers' },
     { href: '/dashboard/prospects', label: 'Prospects' },
     { href: '/dashboard/prospects/brieven', label: 'Brieven met QR' },
     { href: '/dashboard/campagnes', label: 'Mailcampagnes' },

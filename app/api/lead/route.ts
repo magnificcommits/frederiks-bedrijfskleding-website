@@ -131,7 +131,7 @@ export async function POST(req: Request) {
   }
 
   // Bevestiging naar de klant (best effort).
-  await sendEmail({
+  const bevestiging = await sendEmail({
     to: d.email,
     subject: 'Bedankt voor je aanvraag bij Frederiks Bedrijfskleding',
     html: emailLayout({
@@ -143,7 +143,7 @@ export async function POST(req: Request) {
         <p style="margin:14px 0 0;">Heb je een dringende vraag? Bel of WhatsApp gerust: <strong style="color:#1c1c1c;">${escapeHtml(site.phone)}</strong>.</p>
       `,
     }),
-  }).catch(() => {});
+  }).catch(() => ({ sent: false }));
 
-  return NextResponse.json({ ok: true, emailed: sent.sent, opgeslagen: inname.opgeslagen });
+  return NextResponse.json({ ok: true, emailed: sent.sent, bevestigd: bevestiging.sent, opgeslagen: inname.opgeslagen });
 }

@@ -76,6 +76,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   const [contact, setContact] = useState({ name: '', company: '', email: '', phone: '' });
   const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
+  const [bevestigd, setBevestigd] = useState(false);
   const [error, setError] = useState('');
   const [gedeeld, setGedeeld] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
@@ -375,6 +376,8 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         body: JSON.stringify({ ...contact, branche, aantal: team, bericht, bron: getHerkomst(), consent: true, logo: logo ?? '', logoNaam: logoNaam ?? '', ontwerp: ontwerp ?? '', bron_kanaal: 'configurator', herkomst: leesHerkomstVoorLead(), regels: buildLeadRegels() }),
       });
       if (!res.ok) { const j = await res.json().catch(() => null); throw new Error(j?.error ?? 'Er ging iets mis.'); }
+      const j = (await res.json().catch(() => null)) as { bevestigd?: boolean } | null;
+      setBevestigd(Boolean(j?.bevestigd));
       (window as unknown as { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'generate_lead', { event_label: 'pakket-configurator' });
       setStatus('ok');
     } catch (e) { setStatus('error'); setError(e instanceof Error ? e.message : 'Onbekende fout'); }
@@ -392,7 +395,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         ) : (
           <>
             <p className="font-display text-2xl font-extrabold text-ink-900">Bedankt, {contact.name.split(' ')[0]}.</p>
-            <p className="mt-3 text-warm">We hebben je samengestelde pakket binnen. We bellen je binnen 24 uur terug om het door te nemen en maken een offerte op maat. Je krijgt ook een bevestiging per e-mail.</p>
+            <p className="mt-3 text-warm">We hebben je samengestelde pakket binnen. We bellen je binnen 24 uur terug om het door te nemen en maken een offerte op maat.{bevestigd ? ' Je krijgt ook een bevestiging per e-mail.' : ''}</p>
           </>
         )}
       </div>

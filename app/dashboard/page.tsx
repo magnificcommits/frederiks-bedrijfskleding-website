@@ -17,6 +17,8 @@ import Aandacht, { type AandachtItem } from '@/components/dashboard/overzicht/Aa
 import OmzetGrafiek from '@/components/dashboard/overzicht/OmzetGrafiek';
 import Pijplijn from '@/components/dashboard/overzicht/Pijplijn';
 import Activiteit from '@/components/dashboard/overzicht/Activiteit';
+import NieuweWebleads from './leads/NieuweWebleads';
+import { listOngezieneWebleads } from '@/lib/kms/leads';
 import TopKlanten from '@/components/dashboard/overzicht/TopKlanten';
 
 export const metadata: Metadata = { title: 'Overzicht', robots: { index: false, follow: false } };
@@ -101,12 +103,13 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
     );
   }
 
-  const [stats, signalen, admin, eigenaar, cookieLijst] = await Promise.all([
+  const [stats, signalen, admin, eigenaar, cookieLijst, ongezien] = await Promise.all([
     getDashboardStats(),
     getVandaagSignalen(),
     getHuidigeAdmin().catch(() => null),
     magEigenaar().catch(() => false),
     cookies(),
+    listOngezieneWebleads(5).catch(() => ({ aantal: 0, leads: [] })),
   ]);
   // Aan de slag: alleen voor de eigenaar, tot alles staat of tot ze het verbergt.
   const aanDeSlag =
@@ -329,6 +332,8 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
           ))}
         </nav>
       </div>
+      {/* Nieuwe webaanvragen bovenaan het overzicht: dit is het eerste wat Jessi moet zien. */}
+      <NieuweWebleads begin={ongezien} />
 
       {/* Eerst wat er vandaag moet gebeuren, dan hoe het gaat. */}
       <div className="mt-5 grid gap-4 lg:grid-cols-12">

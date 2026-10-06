@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { bronKanaalLabel } from '@/lib/leadHerkomst';
 import { allesGezienActie, ongezieneWebleadsActie } from './actions';
 
-type Weblead = { id: string; naam: string; bedrijf: string | null; bron_kanaal: string | null; created_at: string };
+import type { OngezieneWeblead as Weblead } from '@/lib/kms/leads';
 type Stand = { aantal: number; leads: Weblead[] };
 
 const ELKE_MS = 60_000;
@@ -67,10 +67,14 @@ export default function NieuweWebleads({ begin }: { begin: Stand }) {
   const meer = stand.aantal - stand.leads.length;
 
   return (
-    <section role="status" aria-live="polite" className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-[13px] font-semibold text-ink-900">
-          {stand.aantal === 1 ? '1 nieuwe webaanvraag' : `${stand.aantal} nieuwe webaanvragen`} die nog niemand heeft geopend
+    <section role="status" aria-live="polite" className="mt-4 overflow-hidden rounded-xl border-2 border-amber-500 bg-white shadow-card" data-plek="nieuwe-leads">
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-amber-500 px-4 py-2.5">
+        <p className="flex items-center gap-2 text-[14px] font-bold text-ink-900">
+          <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ink-900 opacity-40" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-ink-900" />
+          </span>
+          {stand.aantal === 1 ? '1 nieuwe aanvraag wacht op je' : `${stand.aantal} nieuwe aanvragen wachten op je`}
         </p>
         <button
           type="button"
@@ -82,24 +86,39 @@ export default function NieuweWebleads({ begin }: { begin: Stand }) {
               setStand({ aantal: 0, leads: [] });
             })
           }
-          className="text-[12px] font-semibold text-warm underline-offset-2 hover:text-ink-900 hover:underline disabled:opacity-50"
+          className="text-[12px] font-semibold text-ink-900 underline-offset-2 hover:underline disabled:opacity-50"
         >
           Alles als gezien markeren
         </button>
       </div>
-      <ul className="mt-2 grid gap-1">
+      <ul className="divide-y divide-line">
         {stand.leads.map((l) => (
-          <li key={l.id} className="text-[13px]">
-            <Link href={`/dashboard/leads/${l.id}`} className="font-semibold text-ink-900 underline-offset-2 hover:text-amber-700 hover:underline">
-              {l.bedrijf || l.naam}
-            </Link>
-            <span className="text-warm">
-              {l.bedrijf ? ` · ${l.naam}` : ''} · {bronKanaalLabel(l.bron_kanaal)} · {geleden(l.created_at)}
-            </span>
+          <li key={l.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+            <div className="min-w-0 grow">
+              <p className="text-[15px] font-bold text-ink-900">
+                {l.bedrijf || l.naam}
+                <span className={`ml-2 rounded-full px-2 py-0.5 align-middle text-[11px] font-bold ${l.opnieuw ? 'bg-ink-900 text-white' : 'bg-amber-100 text-amber-900'}`}>
+                  {l.opnieuw ? 'Opnieuw aangevraagd' : 'Nieuw'}
+                </span>
+              </p>
+              <p className="text-[13px] text-warm">
+                {[l.bedrijf ? l.naam : null, l.branche, l.aantal ? `${l.aantal}` : null, bronKanaalLabel(l.bron_kanaal), geleden(l.binnen)].filter(Boolean).join(' · ')}
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              {l.telefoon && (
+                <a href={`tel:${l.telefoon.replace(/[^\d+]/g, '')}`} className="knop-stil">Bel {l.telefoon}</a>
+              )}
+              <Link href={`/dashboard/leads/${l.id}`} className="knop-primair">Open lead</Link>
+            </div>
           </li>
         ))}
       </ul>
-      {meer > 0 && <p className="mt-1 text-[12px] text-warm">en nog {meer} andere</p>}
+      {meer > 0 && (
+        <p className="border-t border-line px-4 py-2 text-[12px] text-warm">
+          en nog {meer} andere. <Link href="/dashboard/leads" className="font-semibold underline">Alle leads</Link>
+        </p>
+      )}
     </section>
   );
 }

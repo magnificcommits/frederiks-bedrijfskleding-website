@@ -51,10 +51,10 @@ export function WachtLabel({ uren, kort = false }: { uren: number | null; kort?:
   return (
     <span
       className={`inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${te ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'}`}
-      title="Tijd sinds binnenkomst zonder contact"
+      title="Zo lang staat deze lead al zonder dat er contact is gelegd. Na 24 uur rood."
     >
       <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${te ? 'bg-red-600' : 'bg-amber-500'}`} />
-      {kort ? duurKort(uren) : `wacht ${duurKort(uren)}`}
+      {kort ? duurKort(uren) : `${duurKort(uren)} zonder contact`}
     </span>
   );
 }

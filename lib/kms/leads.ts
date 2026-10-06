@@ -973,28 +973,47 @@ export async function markeerAlleWebleadsGezien(): Promise<void> {
   await sb.from('leads').update({ gezien_op: new Date().toISOString() }).is('gezien_op', null).not('bron_kanaal', 'is', null);
 }
 
-export type OngezieneWeblead = { id: string; naam: string; bedrijf: string | null; bron_kanaal: string | null; created_at: string };
+export type OngezieneWeblead = {
+  id: string; naam: string; bedrijf: string | null; bron_kanaal: string | null; created_at: string;
+  telefoon: string | null; branche: string | null; aantal: string | null;
+  /** Tijd van de laatste aanvraag (bij een tweede aanvraag op dezelfde lead later dan created_at). */
+  binnen: string;
+  opnieuw: boolean;
+};
 
-/** Webaanvragen die nog niemand heeft geopend, nieuwste eerst. Leeg zonder migratie. */
+/** Webaanvragen die nog niemand heeft geopend, laatst binnengekomen eerst. Leeg zonder migratie. */
 export async function listOngezieneWebleads(limiet = 10): Promise<{ aantal: number; leads: OngezieneWeblead[] }> {
   const sb = kmsAdmin();
   if (!sb) return { aantal: 0, leads: [] };
-  const { data, count, error } = await sb
+  const basis = 'id, name, company, phone, branche, aantal, bron_kanaal, created_at';
+  const vraag = (kolommen: string) => sb
     .from('leads')
-    .select('id, name, company, bron_kanaal, created_at', { count: 'exact' })
+    .select(kolommen, { count: 'exact' })
     .is('gezien_op', null)
     .in('bron_kanaal', [...WEB_KANALEN])
     .order('created_at', { ascending: false })
-    .limit(limiet);
+    .limit(50);
+  let { data, count, error } = await vraag(`${basis}, laatste_aanvraag_op`);
+  // Kolom laatste_aanvraag_op nog niet aangemaakt: zonder verder.
+  if (error && /laatste_aanvraag_op/.test(error.message ?? '')) ({ data, count, error } = await vraag(basis));
   // Leeg zonder migratie; elke andere fout gooit (anders lijkt het alsof er geen nieuwe aanvragen zijn).
   if (zonderMigratie(error)) return { aantal: 0, leads: [] };
   eisData('leads.ongezien', { data, error });
-  const leads = ((data as { id: string; name: string; company: string | null; bron_kanaal: string | null; created_at: string }[]) ?? []).map((l) => ({
-    id: l.id,
-    naam: l.name,
-    bedrijf: l.company,
-    bron_kanaal: l.bron_kanaal,
-    created_at: l.created_at,
-  }));
+  type Rij = { id: string; name: string; company: string | null; phone: string | null; branche: string | null; aantal: string | null; bron_kanaal: string | null; created_at: string; laatste_aanvraag_op?: string | null };
+  const leads = ((data as unknown as Rij[]) ?? []).map((l) => {
+    const laatste = l.laatste_aanvraag_op && l.laatste_aanvraag_op > l.created_at ? l.laatste_aanvraag_op : l.created_at;
+    return {
+      id: l.id,
+      naam: l.name,
+      bedrijf: l.company,
+      bron_kanaal: l.bron_kanaal,
+      created_at: l.created_at,
+      telefoon: l.phone,
+      branche: l.branche,
+      aantal: l.aantal,
+      binnen: laatste,
+      opnieuw: laatste !== l.created_at,
+    };
+  }).sort((a, b) => b.binnen.localeCompare(a.binnen)).slice(0, limiet);
   return { aantal: count ?? leads.length, leads };
 }

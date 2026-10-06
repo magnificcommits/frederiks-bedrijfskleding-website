@@ -184,7 +184,9 @@ async function werkOpenLeadBij(sb: Sb, eerder: OpenLead, lead: NieuweLead): Prom
   const bericht = voegBerichtSamen(eerder.bericht, lead.bericht, vandaag);
   if (bericht !== (eerder.bericht ?? null)) patch.bericht = bericht;
   // Opnieuw in de melding "nieuwe webaanvragen": er is iets bijgekomen.
-  const { error } = await sb.from('leads').update({ ...patch, gezien_op: null }).eq('id', eerder.id);
+  // Tijdstip van deze nieuwe aanvraag, zodat de melding "opnieuw aangevraagd, vandaag" kan tonen.
+  let { error } = await sb.from('leads').update({ ...patch, gezien_op: null, laatste_aanvraag_op: new Date().toISOString() }).eq('id', eerder.id);
+  if (error) ({ error } = await sb.from('leads').update({ ...patch, gezien_op: null }).eq('id', eerder.id));
   if (error && Object.keys(patch).length) {
     // gezien_op ontbreekt (migratie niet gedraaid): dan alleen de inhoud.
     const { error: tweede } = await sb.from('leads').update(patch).eq('id', eerder.id);

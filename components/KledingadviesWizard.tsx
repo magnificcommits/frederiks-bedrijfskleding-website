@@ -23,6 +23,7 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
   const [opLocatie, setOpLocatie] = useState(true);
   const [contact, setContact] = useState({ name: '', company: '', email: '', phone: '' });
   const [consent, setConsent] = useState(false);
+  const [bevestigd, setBevestigd] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
 
@@ -52,6 +53,8 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
         const j = await res.json().catch(() => null);
         throw new Error(j?.error ?? 'Er ging iets mis. Probeer het later opnieuw.');
       }
+      const j = (await res.json().catch(() => null)) as { bevestigd?: boolean } | null;
+      setBevestigd(Boolean(j?.bevestigd));
       track('generate_lead', { formulier: 'kledingadvies', branche });
       setStatus('ok');
     } catch (e) {
@@ -64,7 +67,7 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
     return (
       <div className="rounded-2xl border-2 border-amber-500 bg-white p-8 shadow-card">
         <p className="font-display text-2xl font-extrabold text-ink-900">Bedankt, {contact.name.split(' ')[0]}.</p>
-        <p className="mt-3 text-warm">We hebben je aanvraag binnen. We bellen je {site.beloftKort} terug (op werkdagen) om je wensen door te nemen. Je krijgt ook een bevestiging in je mail.</p>
+        <p className="mt-3 text-warm">We hebben je aanvraag binnen. We bellen je {site.beloftKort} terug (op werkdagen) om je wensen door te nemen.{bevestigd ? ' Je krijgt ook een bevestiging in je mail.' : ''}</p>
         <p className="mt-4 text-sm text-warm">
           Liever meteen een moment vastleggen?{' '}
           <Link href="/afspraak" className="font-semibold text-amber-700 underline underline-offset-2" data-cta="afspraak">Plan een adviesgesprek</Link>
@@ -120,7 +123,7 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
                 }}
               >
                 <span className="keuze-rond" aria-hidden="true">✓</span>
-                {naam}
+                <span className="min-w-0">{naam === 'Representatief' ? 'Represen\u00adtatief' : naam}</span>
               </button>
             ))}
           </div>

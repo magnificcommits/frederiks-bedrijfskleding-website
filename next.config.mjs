@@ -62,7 +62,11 @@ const nextConfig = {
       representatief: 'kantoor-en-retail',
       'sport-en-promotie': 'clubs-en-verenigingen',
     };
-    return Object.entries(oud).map(([van, naar]) => ({ source: `/branches/${van}`, destination: `/branches/${naar}`, permanent: true }));
+    const vakOud = { 'installatie-en-techniek': 'elektro-en-servicetechniek', 'horeca-en-food': 'keuken-en-bediening' };
+    return [
+      ...Object.entries(oud).map(([van, naar]) => ({ source: `/branches/${van}`, destination: `/branches/${naar}`, permanent: true })),
+      ...Object.entries(vakOud).map(([van, naar]) => ({ source: `/voor/${van}`, destination: `/voor/${naar}`, permanent: true })),
+    ];
   },
   async headers() {
     return [

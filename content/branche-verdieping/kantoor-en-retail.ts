@@ -53,7 +53,7 @@ export const verdieping: BrancheVerdieping | null = {
       kleding: 'Stevige polo’s, werkbroek in een nette snit, softshell, schoenen die je binnen kunt aanhouden.',
       normen: 'Geen specifieke norm. Voert hij ook werk uit op een bouwlocatie, dan gelden de eisen van die locatie.',
       sets: '3 broeken, 4 polo’s, 1 softshell',
-      vakgebied: 'installatie-en-techniek',
+      vakgebied: 'elektro-en-servicetechniek',
     },
     {
       functie: 'Verkoper in showroom of winkel',

@@ -27,7 +27,7 @@ const vakPaden: Record<string, React.ReactNode> = {
       <rect x="10.5" y="13" width="5" height="8" rx="1.2" />
     </>
   ),
-  'installatie-en-techniek': (
+  'elektro-en-servicetechniek': (
     <>
       <path d="M13 2 4 13.5h6.5L10 22l9-11.5h-6.5z" />
     </>
@@ -56,7 +56,7 @@ const vakPaden: Record<string, React.ReactNode> = {
       <path d="M12 14c0-2.2-1.5-3.9-3.6-4.4 0 2.3 1.5 4 3.6 4.4z" />
     </>
   ),
-  'horeca-en-food': (
+  'keuken-en-bediening': (
     <>
       <path d="M7.5 16.5V21h9v-4.5" />
       <path d="M7.5 17a4 4 0 0 1-1.2-7.8 4 4 0 0 1 6-4.2 4 4 0 0 1 6 4.2A4 4 0 0 1 16.5 17z" />

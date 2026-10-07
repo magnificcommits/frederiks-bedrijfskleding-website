@@ -16,6 +16,7 @@ import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import { CtaKnoppen } from '@/components/CtaKnoppen';
 import { BrancheArtikelen } from '@/components/BrancheArtikelen';
 import { BrancheVerdieping } from '@/components/BrancheVerdieping';
+import { vakkenVanBranche } from '@/content/vakgebieden';
 import { verdiepingBySlug } from '@/content/branche-verdieping';
 
 // De artikelenrij komt uit de catalogus; met ISR is dat één query per uur.
@@ -45,6 +46,7 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
   const starter = starterpakketten[b?.navLabel ?? ''];
   if (!b) notFound();
 
+  const vakken = vakkenVanBranche(b.slug);
   const url = `${site.url}/branches/${b.slug}`;
   const v = verdiepingBySlug[b.slug];
   const faq = v ? [...b.faq, ...v.extraFaq] : b.faq;
@@ -237,6 +239,24 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
       />
 
       <Werkwijze />
+
+      {vakken.length > 0 && (
+        <section className="container-x sec-md">
+          <h2 className="kop-2">Per vak binnen {b.navLabel.toLowerCase()}</h2>
+          <p className="mt-2 max-w-2xl text-warm">Elk vak vraagt iets anders van de kleding. Hier lees je per beroep wat er speelt, welke normen gelden en wat we meestal leveren.</p>
+          <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {vakken.map((x) => (
+              <li key={x.slug}>
+                <Link href={`/voor/${x.slug}`} className="group flex h-full flex-col rounded-xl border-2 border-ink-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card">
+                  <span className="font-display text-lg font-extrabold text-ink-900">{x.naam}</span>
+                  <span className="mt-2 line-clamp-3 text-sm text-warm">{x.intro}</span>
+                  <span className="mt-auto pt-3 text-sm font-semibold text-amber-700 group-hover:underline">Werkkleding voor {x.naam.toLowerCase()}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <Faq items={faq} title={`Veelgestelde vragen over ${b.navLabel.toLowerCase()}`} />
 

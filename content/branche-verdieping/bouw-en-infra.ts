@@ -75,7 +75,7 @@ export const verdieping: BrancheVerdieping | null = {
       kleding: 'Werkbroek met holsterzakken en gereedschapslussen, shirts, softshell, veiligheidsschoenen, hi-vis hesje voor de bouwplaats.',
       normen: 'EN ISO 20345 (S3), EN ISO 20471 alleen als het project dat vraagt. Kleding zelf heeft geen specifieke norm, tenzij het werk dat afdwingt.',
       sets: '2 tot 3 broeken, 4 shirts, 1 softshell, 1 hi-vis hesje, 1 paar schoenen',
-      vakgebied: 'installatie-en-techniek',
+      vakgebied: 'elektro-en-servicetechniek',
     },
     {
       functie: 'Lasser en constructiebankwerker op de bouwplaats',

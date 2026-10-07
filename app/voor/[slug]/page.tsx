@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { vakgebieden, vakgebiedenBySlug } from '@/content/vakgebieden';
+import { vakgebieden, vakgebiedenBySlug, VAK_BRANCHE, vakkenVanBranche } from '@/content/vakgebieden';
+import { branchesBySlug } from '@/content/branches';
 import { site } from '@/content/site';
 import { PageHero } from '@/components/PageHero';
 import { ContactSectie } from '@/components/ContactSectie';
@@ -163,13 +164,16 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
     .map((c) => categorieVanSlug(c))
     .filter((c): c is NonNullable<ReturnType<typeof categorieVanSlug>> => c !== null);
   const anderen = vakgebieden.filter((x) => x.slug !== v.slug);
+  // De branchepagina is de hoofdpagina voor de sector; dit vak hoort eronder.
+  const hub = branchesBySlug[VAK_BRANCHE[v.slug] ?? ''] ?? null;
+  const broers = hub ? vakkenVanBranche(hub.slug).filter((x) => x.slug !== v.slug) : [];
 
   return (
     <>
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Home', url: site.url },
-          { name: 'Vakgebieden', url: `${site.url}/voor` },
+          hub ? { name: hub.navLabel, url: `${site.url}/branches/${hub.slug}` } : { name: 'Vakgebieden', url: `${site.url}/voor` },
           { name: v.naam, url },
         ])}
       />
@@ -180,7 +184,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
       <PageHero
         eyebrow={v.eyebrow}
         title={v.titel}
-        kruimels={[{ label: 'Home', href: '/' }, { label: 'Voor jouw vak', href: '/voor' }]}
+        kruimels={[{ label: 'Home', href: '/' }, hub ? { label: hub.navLabel, href: `/branches/${hub.slug}` } : { label: 'Voor jouw vak', href: '/voor' }]}
         beeld={<RegioKaart className="w-full lg:max-w-lg" />}
         acties={
           <CtaKnoppen
@@ -190,6 +194,21 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
           />
         }
       />
+
+      {hub && (
+        <nav aria-label="Branche" className="border-b border-line bg-mist">
+          <div className="container-x flex flex-wrap items-center gap-x-3 gap-y-2 py-3 text-sm">
+            <span className="text-warm">Onderdeel van</span>
+            <Link href={`/branches/${hub.slug}`} className="font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-800">
+              werkkleding voor {hub.navLabel.toLowerCase()}
+            </Link>
+            {broers.length > 0 && <span className="text-warm">· ook:</span>}
+            {broers.map((x) => (
+              <Link key={x.slug} href={`/voor/${x.slug}`} className="text-ink-800 underline-offset-2 hover:underline">{x.naam.toLowerCase()}</Link>
+            ))}
+          </div>
+        </nav>
+      )}
 
       {/* 2. Het werk zelf */}
       <section className="container-x sec-md">

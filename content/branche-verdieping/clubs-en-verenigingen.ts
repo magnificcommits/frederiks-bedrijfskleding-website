@@ -52,7 +52,7 @@ export const verdieping: BrancheVerdieping | null = {
       kleding: 'Polo of overhemd met clublogo, schort of bodywarmer, eventueel een vest voor in de koude kantine.',
       normen: 'Geen kledingnorm. Voor het eten gelden de voedselhygiëneregels voor de kantine.',
       sets: '2 polo’s of overhemden per vaste vrijwilliger',
-      vakgebied: 'horeca-en-food',
+      vakgebied: 'keuken-en-bediening',
     },
     {
       functie: 'Verkeersregelaar en parkeerhulp bij evenementen',

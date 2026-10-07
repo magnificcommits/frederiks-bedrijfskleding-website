@@ -101,9 +101,9 @@ const basisVakgebieden: Vakgebied[] = [
   },
   {
     slug: 'bouw-en-aannemers',
-    naam: 'Bouw en aannemers',
-    titel: 'Werkkleding voor de bouw in de Achterhoek',
-    eyebrow: 'Bouw en aanneming',
+    naam: 'Timmerlieden en aannemers',
+    titel: 'Werkkleding voor timmerlieden en aannemers in de Achterhoek',
+    eyebrow: 'Timmerlieden en aannemers',
     metaDescription:
       'Werkkleding voor bouwbedrijven en aannemers in de Achterhoek en de Liemers. Broeken met holsterzakken, hi-vis, winterjassen en veiligheidsschoenen. Passen op de bouwplaats of in de loods.',
     intro:
@@ -204,10 +204,10 @@ const basisVakgebieden: Vakgebied[] = [
     ],
   },
   {
-    slug: 'installatie-en-techniek',
-    naam: 'Installatie en techniek',
-    titel: 'Werkkleding voor installateurs en technici in de Achterhoek',
-    eyebrow: 'Installatie en techniek',
+    slug: 'elektro-en-servicetechniek',
+    naam: 'Elektro en servicetechniek',
+    titel: 'Werkkleding voor elektromonteurs en servicetechnici in de Achterhoek',
+    eyebrow: 'Elektro en servicetechniek',
     metaDescription:
       'Werkkleding voor installateurs, elektromonteurs en servicetechnici in de Achterhoek en de Liemers. Multinorm, vlamboogbescherming en antistatische kleding. Advies over de juiste klasse, passen op locatie.',
     intro:
@@ -416,10 +416,10 @@ const basisVakgebieden: Vakgebied[] = [
     ],
   },
   {
-    slug: 'horeca-en-food',
-    naam: 'Horeca en food',
-    titel: 'Werkkleding voor horeca en food in de Achterhoek',
-    eyebrow: 'Horeca en food',
+    slug: 'keuken-en-bediening',
+    naam: 'Keuken en bediening',
+    titel: 'Koksbuizen, schorten en bedieningskleding in de Achterhoek',
+    eyebrow: 'Keuken en bediening',
     metaDescription:
       'Werkkleding voor restaurants, keukens en foodbedrijven in de Achterhoek en de Liemers. Koksbuizen, schorten, bedieningskleding en antislip schoenen. Persoonlijk advies en passen op locatie.',
     intro:
@@ -469,7 +469,7 @@ const basisVakgebieden: Vakgebied[] = [
   {
     slug: 'zorg-en-welzijn',
     naam: 'Zorg en welzijn',
-    titel: 'Werkkleding voor zorg en welzijn in de Achterhoek',
+    titel: 'Werkkleding voor thuiszorg, verpleging en praktijken in de Achterhoek',
     eyebrow: 'Zorg en welzijn',
     metaDescription:
       "Werkkleding voor zorginstellingen, thuiszorg en welzijnsorganisaties in de Achterhoek en de Liemers. Zorgpolo's, tunieken en schoenen die een dienst volhouden. Persoonlijk advies en passen op locatie.",
@@ -566,6 +566,31 @@ const basisVakgebieden: Vakgebied[] = [
 
 /** Alle vakgebieden; de drie uit oktober 2026 staan in vakgebieden-extra.ts. */
 export const vakgebieden: Vakgebied[] = [...basisVakgebieden, ...vakgebiedenExtra];
+
+/**
+ * Bij welke branchepagina een vakgebied hoort. De branche (/branches/...) is de
+ * hoofdpagina voor de sector, het vakgebied (/voor/...) gaat over één beroep.
+ * Ze linken naar elkaar, zodat Google en AI-zoekers de structuur zien en de
+ * pagina's elkaar versterken in plaats van op dezelfde zoekterm te concurreren.
+ */
+export const VAK_BRANCHE: Record<string, string> = {
+  'bouw-en-aannemers': 'bouw-en-infra',
+  'schilders-en-afbouw': 'bouw-en-infra',
+  'elektro-en-servicetechniek': 'installatie-en-techniek',
+  'automotive-en-garage': 'installatie-en-techniek',
+  'metaal-en-industrie': 'industrie-en-logistiek',
+  'transport-en-logistiek': 'industrie-en-logistiek',
+  'keuken-en-bediening': 'horeca-en-food',
+  'kantoor-en-receptie': 'kantoor-en-retail',
+  'winkel-en-retail': 'kantoor-en-retail',
+  'agrarisch-en-loonwerk': 'agrarisch-en-groen',
+  'hoveniers-en-groenvoorziening': 'agrarisch-en-groen',
+  'zorg-en-welzijn': 'zorg-en-salon',
+  'kapsalon-en-beauty': 'zorg-en-salon',
+};
+
+export const vakkenVanBranche = (brancheSlug: string): Vakgebied[] =>
+  vakgebieden.filter((v) => VAK_BRANCHE[v.slug] === brancheSlug);
 
 export const vakgebiedenBySlug: Record<string, Vakgebied> = Object.fromEntries(
   vakgebieden.map((v) => [v.slug, v]),

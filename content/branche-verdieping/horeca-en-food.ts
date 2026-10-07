@@ -40,7 +40,7 @@ export const verdieping: BrancheVerdieping | null = {
       normen:
         'Geen specifieke norm voor de koksbuis. Hygiëne volgt uit je HACCP-plan of de Hygiënecode voor de Horeca. Schoenen volgens EN ISO 20347 (zonder neusbescherming) of EN ISO 20345 (met neusbescherming), met slipweerstand.',
       sets: '2 koksbroeken, 4 koksbuizen, 3 schorten',
-      vakgebied: 'horeca-en-food',
+      vakgebied: 'keuken-en-bediening',
     },
     {
       functie: 'Bediening en gastheer of gastvrouw',
@@ -49,7 +49,7 @@ export const verdieping: BrancheVerdieping | null = {
         'Overhemd of blouse, polo, schort of gilet, nette broek of rok en gesloten schoenen met antislipzool.',
       normen: 'Geen specifieke norm. Voor de schoenen is slipweerstand verstandig op natte en vette vloeren.',
       sets: '1 broek of rok, 3 overhemden of polo’s, 1 schort',
-      vakgebied: 'horeca-en-food',
+      vakgebied: 'keuken-en-bediening',
     },
     {
       functie: 'Barmedewerker',
@@ -57,7 +57,7 @@ export const verdieping: BrancheVerdieping | null = {
       kleding: 'Overhemd of polo met geborduurd logo, schort of lang barschort, strakke broek en antislipschoenen.',
       normen: 'Geen specifieke norm.',
       sets: '2 broeken, 3 overhemden of polo’s, 2 schorten',
-      vakgebied: 'horeca-en-food',
+      vakgebied: 'keuken-en-bediening',
     },
     {
       functie: 'Receptionist hotel of vakantiepark',
@@ -89,7 +89,7 @@ export const verdieping: BrancheVerdieping | null = {
       kleding: 'Zwarte of donkere broek, overhemd of polo met logo, schort, gesloten schoenen.',
       normen: 'Geen specifieke norm. Bereiding op locatie valt onder je HACCP-plan.',
       sets: '1 broek, 2 overhemden of polo’s, 1 schort',
-      vakgebied: 'horeca-en-food',
+      vakgebied: 'keuken-en-bediening',
     },
   ],
   uitdagingen: [

@@ -86,7 +86,7 @@ export const verdieping: BrancheVerdieping | null = {
       kleding: 'Werkbroek met veel opbergruimte, shirt of polo, softshell, regenjas, hi-vis bij werk op het terrein van een klant, veiligheidsschoen.',
       normen: 'EN ISO 20345 S3, EN ISO 20471 waar het terrein dat eist, EN 343 voor regenkleding.',
       sets: '3 broeken, 4 shirts, 1 softshell, 1 regenjas, 1 paar schoenen',
-      vakgebied: 'installatie-en-techniek',
+      vakgebied: 'elektro-en-servicetechniek',
     },
     {
       functie: 'Medewerker koelhuis of vrieshuis',

@@ -68,7 +68,7 @@ export const branches: Branche[] = [
     slug: 'installatie-en-techniek',
     name: 'Werkkleding voor installatie en techniek',
     navLabel: 'Installatie & techniek',
-    metaTitle: 'Werkkleding installateurs en monteurs Achterhoek',
+    metaTitle: 'Werkkleding installatie en techniek in de Achterhoek',
     metaDescription:
       'Werkkleding voor installateurs, elektromonteurs, servicemonteurs en garages in de Achterhoek. Kniezakken, vlamboog, ESD-schoenen en jouw logo erop.',
     image: '/Frederiks-bedrijfskleding-1.jpg',
@@ -133,7 +133,7 @@ export const branches: Branche[] = [
     slug: 'horeca-en-food',
     name: 'Bedrijfskleding voor horeca en food',
     navLabel: 'Horeca & food',
-    metaTitle: 'Horecakleding en koksbuizen met logo in de Achterhoek',
+    metaTitle: 'Horecakleding met logo voor restaurants en hotels in de Achterhoek',
     metaDescription:
       'Horecakleding voor keuken, bediening en foodbedrijven: koksbuizen, schorten, blouses en gilets. Met logo geborduurd, passen in de Achterhoek.',
     image: '/Kleding-horeca-Achterhoek.jpg',

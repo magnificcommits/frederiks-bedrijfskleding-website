@@ -38,7 +38,7 @@ export const verdieping: BrancheVerdieping | null = {
       kleding: 'Werkbroek met kniezakken en holsterzakken, zoals de Snickers AllroundWork of FlexiWork, shirts of polo’s met logo, sweater of softshell, bodywarmer voor onverwarmde ruimtes, veiligheidsschoenen.',
       normen: 'EN 14404 voor kniebeschermers, EN ISO 20345 (S3 op de bouw, S1P of S3 bij servicewerk). Voor de kleding zelf geldt geen specifieke norm.',
       sets: '2 tot 3 broeken, 4 shirts of polo’s, 1 sweater of softshell, 1 bodywarmer, 1 paar schoenen',
-      vakgebied: 'installatie-en-techniek',
+      vakgebied: 'elektro-en-servicetechniek',
     },
     {
       functie: 'Elektromonteur',
@@ -46,7 +46,7 @@ export const verdieping: BrancheVerdieping | null = {
       kleding: 'Multinorm werkbroek en jack met vlamboogbescherming, zoals Fristads Flamestat of Hydrowear multinorm, vlamvertragend shirt of FR-polo als onderlaag, veiligheidsschoenen zonder metaal.',
       normen: 'IEC 61482-2 (klasse 1 of 2, volgens de risicobeoordeling), EN ISO 11612, EN 1149-5, EN ISO 20345. Het werk zelf valt onder NEN 3140.',
       sets: '2 multinorm broeken, 1 multinorm jack, 3 tot 4 vlamvertragende shirts of polo’s, 1 paar schoenen',
-      vakgebied: 'installatie-en-techniek',
+      vakgebied: 'elektro-en-servicetechniek',
     },
     {
       functie: 'Servicemonteur aan huis',
@@ -54,7 +54,7 @@ export const verdieping: BrancheVerdieping | null = {
       kleding: 'Servicebroek of chino met verborgen kniezakken, zoals de Snickers Service-lijn, geborduurde polo’s, vest of softshell met logo, lage veiligheidsschoen die er net uitziet.',
       normen: 'EN ISO 20345 (S1P of S3), EN 14404 als je knielt met kniebeschermers. Verder geen specifieke norm.',
       sets: '2 servicebroeken, 3 polo’s, 1 sweater, 1 softshell, 1 paar schoenen',
-      vakgebied: 'installatie-en-techniek',
+      vakgebied: 'elektro-en-servicetechniek',
     },
     {
       functie: 'Zonnepaneel- en warmtepompmonteur',
@@ -62,7 +62,7 @@ export const verdieping: BrancheVerdieping | null = {
       kleding: 'Stretchbroek met kniezakken, shirts met lange mouw tegen de zon, softshell, regenjas, veiligheidsschoenen met antislipzool.',
       normen: 'EN ISO 20345 (S3 met SR-antislip), EN 14404, EN 343 voor de regenjas. Valbeveiliging is een apart PBM en valt buiten de kleding.',
       sets: '2 tot 3 broeken, 4 shirts, 1 softshell, 1 regenjas, 1 paar schoenen',
-      vakgebied: 'installatie-en-techniek',
+      vakgebied: 'elektro-en-servicetechniek',
     },
     {
       functie: 'Koel- en klimaattechnicus',
@@ -70,7 +70,7 @@ export const verdieping: BrancheVerdieping | null = {
       kleding: 'Werkbroek met holsterzakken, polo’s of shirts, bodywarmer of softshell, regenjas voor het dakwerk, veiligheidsschoenen.',
       normen: 'EN ISO 20345 (S3), EN 343 voor regenkleding. Bij werk aan installaties onder spanning gelden dezelfde regels als bij elektrotechniek.',
       sets: '2 broeken, 4 polo’s of shirts, 1 bodywarmer, 1 regenjas, 1 paar schoenen',
-      vakgebied: 'installatie-en-techniek',
+      vakgebied: 'elektro-en-servicetechniek',
     },
     {
       functie: 'Paneelbouwer en monteur elektronica',
@@ -86,6 +86,7 @@ export const verdieping: BrancheVerdieping | null = {
       kleding: 'Overall of werkbroek met kniezakken, shirts of polo’s, softshell of bodywarmer, veiligheidsschoenen met olie- en antislipbestendige zool. Voor de balie een nette polo met logo.',
       normen: 'EN ISO 20345 (S1P of S3, SR-antislip). Voor de werkplaatskleding geen specifieke norm. Bij werk aan hoogvoltagesystemen van elektrische auto’s bepaalt de risicobeoordeling welke bescherming nodig is.',
       sets: '2 overalls of 3 broeken, 4 shirts of polo’s, 1 softshell, 1 paar schoenen',
+      vakgebied: 'automotive-en-garage',
     },
   ],
   uitdagingen: [

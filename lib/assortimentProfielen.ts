@@ -2,7 +2,7 @@
  * Welke artikelen er op een branche- of vakpagina staan.
  *
  * Regel: een artikel komt alleen op een pagina als het aantoonbaar bij dat werk
- * past. Eerst moet `wel` matchen op merk + naam + subcategorie, daarna mag
+ * past. Eerst moet `wel` matchen op merk + naam, daarna mag
  * `niet` niet matchen. Er wordt NOOIT aangevuld met willekeurige artikelen: zijn
  * er te weinig passende, dan toont de pagina er minder (en onder MIN geen blok).
  * Dat ging eerder mis: de vakpagina's pakten de eerste artikelen op alfabet uit
@@ -169,8 +169,10 @@ type Artikel = {
   kleuren: string[];
 };
 
-export const zoektekst = (p: Pick<Artikel, 'naam' | 'merk' | 'subcategorie'>) =>
-  `${p.merk ?? ''} ${p.naam} ${p.subcategorie ?? ''}`.toLowerCase();
+// Alleen merk en naam: de subcategorie van leveranciers is onbetrouwbaar (Hydrowear zet
+// zijn gewone multistretch-broek onder "Multinorm", wat hem op de pagina voor
+// vlamvertragende kleding bracht).
+export const zoektekst = (p: Pick<Artikel, 'naam' | 'merk'>) => `${p.merk ?? ''} ${p.naam}`.toLowerCase();
 
 export function past(p: Pick<Artikel, 'naam' | 'merk' | 'subcategorie' | 'categorieSlug'>, pr: AssortimentProfiel): boolean {
   if (!p.categorieSlug || !pr.categorieen.includes(p.categorieSlug)) return false;

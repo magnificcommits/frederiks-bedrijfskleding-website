@@ -59,7 +59,12 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
       <PaginaKop
         titel="Reviews en NPS"
         sub="Na elke geleverde order vraagt een korte mail om een cijfer. Lage scores worden automatisch een klacht en een taak."
-        acties={<Link href="/dashboard/klachten" className="knop-stil">Naar klachten</Link>}
+        acties={
+          <>
+            <Link href="/dashboard/reviews/uitnodigingen" className="knop-stil">Google-reviewuitnodigingen</Link>
+            <Link href="/dashboard/klachten" className="knop-stil">Naar klachten</Link>
+          </>
+        }
       />
 
       {m && (

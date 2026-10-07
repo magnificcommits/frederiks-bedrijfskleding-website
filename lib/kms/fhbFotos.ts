@@ -13,17 +13,44 @@ export function fhbKleurCode(kleur: string): string | null {
   return m ? m[1] : null;
 }
 
-/** Pagina-URL voor artikel en kleur, of null als er geen kleurcode is. */
-export function fhbPaginaUrl(artNr: string, kleur: string): string | null {
-  const code = fhbKleurCode(kleur);
-  const slug = artNr
+function fhbSlug(artNr: string): string {
+  return artNr
     .trim()
     .toLowerCase()
     .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  if (!code || !slug) return null;
-  return `${FHB_HOST}/de/produkt/${slug}/${code}/`;
+}
+
+/** Pagina-URL voor artikel en kleur, of null als er geen kleurcode is. */
+export function fhbPaginaUrl(artNr: string, kleur: string): string | null {
+  return fhbPaginaUrls(artNr, kleur)[0] ?? null;
+}
+
+/**
+ * Kandidaat-pagina's, in volgorde. FHB zet damesmodellen soms onder '<naam>-f'
+ * (Julia, Kira, Marieke, Andrea); de oude naam stuurt dan door naar een
+ * standaardkleur van dat damesmodel. Daarom proberen we beide.
+ */
+export function fhbPaginaUrls(artNr: string, kleur: string): string[] {
+  const code = fhbKleurCode(kleur);
+  const slug = fhbSlug(artNr);
+  if (!code || !slug) return [];
+  const urls = [`${FHB_HOST}/de/produkt/${slug}/${code}/`];
+  if (!slug.endsWith('-f')) urls.push(`${FHB_HOST}/de/produkt/${slug}-f/${code}/`);
+  return urls;
+}
+
+/** Telt alleen als FHB ons niet heeft doorgestuurd: de pagina moet precies op die kleurcode eindigen. */
+export function isFhbKleurPagina(eindUrl: string, kleur: string): boolean {
+  const code = fhbKleurCode(kleur);
+  if (!code) return false;
+  try {
+    const u = new URL(eindUrl);
+    return u.hostname === 'www.fhb.de' && /^\/de\/produkt\/[a-z0-9-]+\/\d+\/$/.test(u.pathname) && u.pathname.endsWith(`/${code}/`);
+  } catch {
+    return false;
+  }
 }
 
 /** Zoek in de HTML de voorkant-foto. Alleen een afbeelding op www.fhb.de telt. */

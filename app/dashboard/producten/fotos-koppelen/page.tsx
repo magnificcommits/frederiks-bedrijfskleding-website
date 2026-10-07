@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { dashAuthed, kmsAdmin } from '@/lib/kms/adminClient';
 import FotosKoppelen from './FotosKoppelen';
 import FhbOphalen from './FhbOphalen';
+import FotoLinks from './FotoLinks';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: "Foto's koppelen", robots: { index: false, follow: false } };
@@ -24,6 +25,7 @@ export default async function FotosKoppelenPage() {
       {kmsAdmin() ? (
         <>
           <FhbOphalen />
+          <FotoLinks />
           <h2 className="mt-8 text-base font-bold text-ink-900">Zelf foto&apos;s koppelen</h2>
           <FotosKoppelen />
         </>

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { KoppelArtikel } from '@/lib/kms/fotoKoppelen';
 import { haalFhbKleurfotoActie, koppelArtikelenActie, type FhbResultaat } from './actions';
 
-type Taak = { productId: string; naam: string; kleur: string };
+type Taak = { productId: string; naam: string; artNr: string; kleur: string; heeftFoto: boolean };
 type Uitkomst = Taak & { status: FhbResultaat['status']; fout?: string };
 
 const REDEN: Record<FhbResultaat['status'], string> = {
@@ -18,22 +18,35 @@ const TEGELIJK = 3;
 
 /** Haalt voor alle FHB-kleuren zonder foto de voorkant-foto op bij fhb.de. */
 export default function FhbOphalen() {
-  const [taken, setTaken] = useState<Taak[] | null>(null);
+  const [alle, setAlle] = useState<Taak[] | null>(null);
+  const [vervang, setVervang] = useState(false);
+  const [filter, setFilter] = useState('');
   const [bezig, setBezig] = useState(false);
   const [uitkomsten, setUitkomsten] = useState<Uitkomst[]>([]);
   const stop = useRef(false);
 
   const laad = async () => {
     const artikelen: KoppelArtikel[] = await koppelArtikelenActie();
-    setTaken(
+    setAlle(
       artikelen
         .filter((a) => /^fhb$/i.test((a.merk ?? '').trim()))
-        .flatMap((a) => a.kleuren.filter((k) => !k.heeftFoto).map((k) => ({ productId: a.id, naam: a.naam, kleur: k.kleur }))),
+        .flatMap((a) => a.kleuren.map((k) => ({ productId: a.id, naam: a.naam, artNr: a.artNr ?? '', kleur: k.kleur, heeftFoto: k.heeftFoto }))),
     );
   };
   useEffect(() => {
     laad();
   }, []);
+
+  const woorden = filter
+    .toLowerCase()
+    .split(/[\s,]+/)
+    .filter(Boolean);
+  const taken =
+    alle?.filter(
+      (t) =>
+        (vervang || !t.heeftFoto) &&
+        (!woorden.length || woorden.some((w) => t.artNr.toLowerCase() === w || t.naam.toLowerCase().includes(w))),
+    ) ?? null;
 
   const start = async () => {
     if (!taken?.length) return;
@@ -71,8 +84,24 @@ export default function FhbOphalen() {
             Haalt per kleur de voorkant-foto van fhb.de en koppelt hem. Alleen kleuren zonder eigen foto; bestaande foto&apos;s blijven staan.
           </p>
           <p className="mt-2 text-sm font-semibold text-ink-900">
-            {taken === null ? 'Kleuren tellen…' : `${taken.length} FHB-kleuren zonder foto`}
+            {taken === null ? 'Kleuren tellen…' : `${taken.length} FHB-kleuren ${vervang ? 'worden opnieuw opgehaald' : 'zonder foto'}`}
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-ink-800">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={vervang} disabled={bezig} onChange={(e) => setVervang(e.target.checked)} className="h-4 w-4 rounded border-line" />
+              Bestaande FHB-foto&apos;s vervangen
+            </label>
+            <label className="flex min-w-0 items-center gap-2">
+              <span className="shrink-0">Alleen artikelen</span>
+              <input
+                value={filter}
+                disabled={bezig}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="bijv. Julia, Kira"
+                className="w-44 max-w-full rounded-md border border-line px-2 py-1 text-sm"
+              />
+            </label>
+          </div>
         </div>
         {bezig ? (
           <button type="button" className="knop-stil" onClick={() => (stop.current = true)}>

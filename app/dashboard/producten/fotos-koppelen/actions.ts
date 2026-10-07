@@ -5,7 +5,8 @@ import { zetKleurAfbeelding } from '@/lib/kms/afbeeldingen';
 import { haalAllesOp } from '@/lib/kms/varianten';
 import { logAudit } from '@/lib/kms/audit';
 import type { KoppelArtikel } from '@/lib/kms/fotoKoppelen';
-import { fhbPaginaUrl, fhbVoorkantUit } from '@/lib/kms/fhbFotos';
+import { fhbPaginaUrls, fhbVoorkantUit, isFhbKleurPagina } from '@/lib/kms/fhbFotos';
+import { veiligeFotoUrl } from '@/lib/kms/fotoLinks';
 
 /** Alle artikelen met hun kleuren en of die kleur al een foto heeft. Voor het vooraf koppelen in de browser. */
 export async function koppelArtikelenActie(): Promise<KoppelArtikel[]> {
@@ -66,13 +67,21 @@ export async function haalFhbKleurfotoActie(productId: string, kleur: string): P
   if (!sb || !/^[0-9a-f-]{36}$/i.test(productId) || !kleur.trim()) return { ok: false, status: 'fout', fout: 'Gegevens ontbreken.' };
   const { data: p } = await sb.from('producten').select('art_nr_leverancier, merk').eq('id', productId).maybeSingle();
   if (!p || !/^fhb$/i.test((p.merk ?? '').trim()) || !p.art_nr_leverancier) return { ok: false, status: 'fout', fout: 'Geen FHB-artikel.' };
-  const pagina = fhbPaginaUrl(p.art_nr_leverancier, kleur);
-  if (!pagina) return { ok: false, status: 'geen-code' };
+  const paginas = fhbPaginaUrls(p.art_nr_leverancier, kleur);
+  if (!paginas.length) return { ok: false, status: 'geen-code' };
   const kop = { 'User-Agent': 'Mozilla/5.0 (compatible; FrederiksKMS/1.0)' };
   try {
-    const res = await fetch(pagina, { headers: kop, cache: 'no-store', signal: AbortSignal.timeout(15000) });
-    if (!res.ok || !new URL(res.url).pathname.includes('/produkt/')) return { ok: false, status: 'geen-pagina' };
-    const fotoUrl = fhbVoorkantUit(await res.text());
+    let fotoUrl: string | null = null;
+    let paginaGevonden = false;
+    for (const pagina of paginas) {
+      const res = await fetch(pagina, { headers: kop, cache: 'no-store', signal: AbortSignal.timeout(15000) });
+      // FHB stuurt een onbekende kleur door naar een ander (dames)model; dat is nooit goed.
+      if (!res.ok || !isFhbKleurPagina(res.url, kleur)) continue;
+      paginaGevonden = true;
+      fotoUrl = fhbVoorkantUit(await res.text());
+      if (fotoUrl) break;
+    }
+    if (!paginaGevonden) return { ok: false, status: 'geen-pagina' };
     if (!fotoUrl) return { ok: false, status: 'geen-foto' };
     const img = await fetch(fotoUrl, { headers: kop, cache: 'no-store', signal: AbortSignal.timeout(15000) });
     const type = img.headers.get('content-type') ?? '';
@@ -86,5 +95,49 @@ export async function haalFhbKleurfotoActie(productId: string, kleur: string): P
     return { ok: true, status: 'gekoppeld' };
   } catch {
     return { ok: false, status: 'fout', fout: 'FHB niet bereikbaar.' };
+  }
+}
+
+const MAX_LINK_BYTES = 15 * 1024 * 1024;
+
+/**
+ * Foto via link: haal een afbeelding op van een openbare https-link (site of CDN
+ * van de leverancier), sla hem op in onze eigen opslag en koppel hem. Met kleur
+ * wordt het de foto van die kleur; zonder kleur de algemene productfoto, maar
+ * alleen als het artikel nog geen foto heeft of de link nieuw is.
+ */
+export async function fotoVanLinkActie(productId: string, kleur: string, link: string): Promise<{ ok: boolean; fout?: string }> {
+  if (!(await dashAuthed())) return { ok: false, fout: 'Niet ingelogd.' };
+  const sb = kmsAdmin();
+  const url = veiligeFotoUrl(link);
+  if (!sb || !/^[0-9a-f-]{36}$/i.test(productId)) return { ok: false, fout: 'Gegevens ontbreken.' };
+  if (!url) return { ok: false, fout: 'Geen geldige https-link.' };
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FrederiksKMS/1.0)', Accept: 'image/*' },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!veiligeFotoUrl(res.url)) return { ok: false, fout: 'Link verwijst door naar een ongeldig adres.' };
+    const type = (res.headers.get('content-type') ?? '').split(';')[0].trim();
+    if (!res.ok) return { ok: false, fout: `Link gaf ${res.status}.` };
+    if (!/^image\/(jpeg|png|webp|gif|avif)$/.test(type)) return { ok: false, fout: 'Link is geen foto.' };
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength > MAX_LINK_BYTES) return { ok: false, fout: 'Foto is groter dan 15 MB.' };
+    const ext = type.split('/')[1].replace('jpeg', 'jpg');
+    const opslag = await uploadMedia(new File([buf], `link.${ext}`, { type }), kleur.trim() ? 'producten/kleuren' : 'producten');
+    if (!opslag) return { ok: false, fout: 'Opslaan mislukt.' };
+    if (kleur.trim()) {
+      if (!(await zetKleurAfbeelding(productId, kleur, opslag))) return { ok: false, fout: 'Koppelen mislukt.' };
+    } else {
+      const { data: p } = await sb.from('producten').select('afbeeldingen').eq('id', productId).maybeSingle();
+      const huidig = ((p?.afbeeldingen as string[] | null) ?? []).filter(Boolean);
+      const { error } = await sb.from('producten').update({ afbeeldingen: [...huidig, opslag] }).eq('id', productId);
+      if (error) return { ok: false, fout: 'Koppelen mislukt.' };
+    }
+    await logAudit('foto_via_link', { entiteit: 'product', entiteitId: productId, details: { kleur: kleur.trim() || null, bron: url } });
+    return { ok: true };
+  } catch {
+    return { ok: false, fout: 'Link niet bereikbaar.' };
   }
 }

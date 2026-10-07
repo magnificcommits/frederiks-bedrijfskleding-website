@@ -7,6 +7,7 @@ describe('Snickers-maatcodes', () => {
     expect(merkMaat('Snickers Workwear', '004')).toBe('S');
     expect(merkMaat('Snickers Workwear', '8')).toBe('2XL');
     expect(merkMaat('Snickers Workwear', '12')).toBe('6XL');
+    expect(merkMaat('Snickers Workwear', '000')).toBe('One size');
   });
   it('laat broekmaten en andere merken staan', () => {
     expect(merkMaat('Snickers Workwear', '52')).toBe('52');

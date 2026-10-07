@@ -13,3 +13,9 @@ from public.producten p
 where p.id = pv.product_id
   and p.merk ilike '%snickers%'
   and pv.maat in ('2','3','4','5','6','7','8','9','10','11','12');
+
+-- Accessoires (kniebeschermers, riemen, gereedschapszakken): code 0 = één maat.
+update public.product_varianten pv
+set maat_leverancier = coalesce(pv.maat_leverancier, pv.maat), maat = 'One size'
+from public.producten p
+where p.id = pv.product_id and p.merk ilike '%snickers%' and pv.maat in ('0','00','000');

@@ -30,11 +30,11 @@ const schoon = (s: string | null | undefined) => {
 
 /**
  * Snickers zet in zijn prijslijsten een maatcode in plaats van de maat bij
- * bovenkleding: 003 = XS, 004 = S ... 009 = 3XL. Broekmaten (44 en hoger) zijn
+ * bovenkleding: 003 = XS, 004 = S ... 009 = 3XL, en 000 = één maat (accessoires). Broekmaten (44 en hoger) zijn
  * gewone maten en blijven staan. De code zelf blijft bewaard als maat_leverancier.
  */
 export const SNICKERS_MAATCODES: Record<number, string> = {
-  2: 'XXS', 3: 'XS', 4: 'S', 5: 'M', 6: 'L', 7: 'XL', 8: '2XL', 9: '3XL', 10: '4XL', 11: '5XL', 12: '6XL',
+  0: 'One size', 2: 'XXS', 3: 'XS', 4: 'S', 5: 'M', 6: 'L', 7: 'XL', 8: '2XL', 9: '3XL', 10: '4XL', 11: '5XL', 12: '6XL',
 };
 
 /** Vertaalt een merkeigen maatcode naar de echte maat; anders ongewijzigd. */

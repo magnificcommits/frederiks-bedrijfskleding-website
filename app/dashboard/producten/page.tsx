@@ -159,6 +159,7 @@ export default async function ProductenPage({ searchParams }: { searchParams: Pr
       <div className="dash-kop flex items-center justify-between gap-4">
         <h1 className="dash-h1">Producten</h1>
         <div className="flex items-center gap-2">
+          <Link href="/dashboard/producten/fotos-koppelen" className="knop-stil">Foto&apos;s koppelen</Link>
           <Link href="/dashboard/producten/fotocontrole" className="knop-stil">Fotocontrole</Link>
           <Drawer
             knop="Nieuw product"

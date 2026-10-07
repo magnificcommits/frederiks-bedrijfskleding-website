@@ -26,7 +26,10 @@ export default async function FotoControlePage({ searchParams }: { searchParams:
     <main className="container-app py-6">
       <div className="dash-kop flex items-center justify-between gap-4">
         <h1 className="dash-h1">Fotocontrole</h1>
-        <Link href="/dashboard/producten" className="knop-tekst">Terug naar producten</Link>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/producten/fotos-koppelen" className="knop-stil">Foto&apos;s in bulk koppelen</Link>
+          <Link href="/dashboard/producten" className="knop-tekst">Terug naar producten</Link>
+        </div>
       </div>
       <p className="mt-2 max-w-3xl text-sm text-warm">
         Elke productfoto wordt in je browser geladen en gemeten: pixels, verhouding, bestandsgrootte, scherpte en hoeveel witte

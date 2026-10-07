@@ -101,6 +101,7 @@ export const EIGENAAR_ONLY = new Set<string>([
 /** Namen van tussenpagina's die niet in het menu staan. */
 const EXTRA_LABELS: Record<string, string> = {
   '/dashboard/producten/fotocontrole': 'Fotocontrole',
+  '/dashboard/producten/fotos-koppelen': "Foto's koppelen",
   '/dashboard/voorraad/telling': 'Voorraadtelling',
   '/dashboard/instellingen/varianten': 'Maten en kleuren',
   '/dashboard/instellingen/service': 'Service',

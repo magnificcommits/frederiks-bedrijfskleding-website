@@ -389,6 +389,7 @@ export async function importeerProductenLijst(csv: string): Promise<LijstResulta
       veld(rij, idx, 'basis kleur', 'kleur') || null,
       parseMaat(veld(rij, idx, 'variant waardes', 'variant', 'maat')) || null,
       lijst,
+      merk,
     );
     if (norm.onbekendeKleur) onbekendeKleuren.set(norm.onbekendeKleur, (onbekendeKleuren.get(norm.onbekendeKleur) ?? 0) + 1);
     if (norm.onbekendeMaat) onbekendeMaten.set(norm.onbekendeMaat, (onbekendeMaten.get(norm.onbekendeMaat) ?? 0) + 1);

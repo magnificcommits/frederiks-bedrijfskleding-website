@@ -28,24 +28,42 @@ const schoon = (s: string | null | undefined) => {
   return t || null;
 };
 
+/**
+ * Snickers zet in zijn prijslijsten een maatcode in plaats van de maat bij
+ * bovenkleding: 003 = XS, 004 = S ... 009 = 3XL. Broekmaten (44 en hoger) zijn
+ * gewone maten en blijven staan. De code zelf blijft bewaard als maat_leverancier.
+ */
+export const SNICKERS_MAATCODES: Record<number, string> = {
+  2: 'XXS', 3: 'XS', 4: 'S', 5: 'M', 6: 'L', 7: 'XL', 8: '2XL', 9: '3XL', 10: '4XL', 11: '5XL', 12: '6XL',
+};
+
+/** Vertaalt een merkeigen maatcode naar de echte maat; anders ongewijzigd. */
+export function merkMaat(merk: string | null | undefined, maat: string | null): string | null {
+  if (!maat || !/snickers/i.test(merk ?? '')) return maat;
+  const m = /^0*(\d{1,2})$/.exec(maat.trim());
+  return m ? SNICKERS_MAATCODES[Number(m[1])] ?? maat : maat;
+}
+
 export function normaliseerImportVariant(
   ruweKleur: string | null | undefined,
   ruweMaat: string | null | undefined,
   lijst: VariantLijsten = STANDAARD_LIJSTEN,
+  merk?: string | null,
 ): GenormaliseerdeVariant {
   const kleurRuw = schoon(ruweKleur);
   const maatRuw = schoon(ruweMaat);
   const k = kleurRuw ? normaliseerKleur(kleurRuw, lijst) : null;
-  const m = maatRuw ? normaliseerMaat(maatRuw, lijst) : null;
+  const maatVertaald = merkMaat(merk, maatRuw);
+  const m = maatVertaald ? normaliseerMaat(maatVertaald, lijst) : null;
   const kleur = k?.zeker && k.naam ? k.naam : kleurRuw;
-  const maat = m?.zeker && m.naam ? m.naam : maatRuw;
+  const maat = m?.zeker && m.naam ? m.naam : maatVertaald;
   return {
     kleur,
     maat,
     kleurLeverancier: kleurRuw,
     maatLeverancier: maatRuw,
     onbekendeKleur: kleurRuw && !(k?.zeker && k.naam) ? kleurRuw : null,
-    onbekendeMaat: maatRuw && !(m?.zeker && m.naam) ? maatRuw : null,
+    onbekendeMaat: maatVertaald && !(m?.zeker && m.naam) ? maatVertaald : null,
   };
 }
 

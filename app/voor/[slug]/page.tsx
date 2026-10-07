@@ -14,6 +14,7 @@ import { CtaKnoppen } from '@/components/CtaKnoppen';
 import { NormIcoon, type NormSoort } from '@/components/NormIcoon';
 import { breadcrumbJsonLd, faqJsonLd } from '@/lib/jsonld';
 import { listPubliekeProducten, categorieVanSlug, type PubliekProduct, naarKaart } from '@/lib/kms/catalogus';
+import { PROFIELEN, kiesArtikelen } from '@/lib/assortimentProfielen';
 
 export const revalidate = 3600;
 
@@ -38,27 +39,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 /**
- * Acht artikelen uit de categorieën die bij dit vak horen, om en om uit elke
- * categorie. Anders vult de eerste categorie het hele grid en zie je acht
- * broeken op een pagina die ook over jassen en schoenen gaat.
+ * Acht artikelen die aantoonbaar bij dit vak passen (regels in
+ * lib/assortimentProfielen.ts). Nooit aanvullen met willekeurige artikelen.
  */
-async function haalProducten(categorieSlugs: string[], max = 8): Promise<PubliekProduct[]> {
-  const lijsten = await Promise.all(
-    categorieSlugs.map((c) => listPubliekeProducten({ categorieSlug: c })),
-  );
-  const gekozen: PubliekProduct[] = [];
-  const gezien = new Set<string>();
-  const langste = lijsten.reduce((n, l) => Math.max(n, l.length), 0);
-  for (let i = 0; i < langste && gekozen.length < max; i++) {
-    for (const lijst of lijsten) {
-      const p = lijst[i];
-      if (!p || gezien.has(p.id)) continue;
-      gezien.add(p.id);
-      gekozen.push(p);
-      if (gekozen.length >= max) break;
-    }
-  }
-  return gekozen;
+async function haalProducten(vakSlug: string, max = 8): Promise<PubliekProduct[]> {
+  const pr = PROFIELEN[`vak:${vakSlug}`];
+  if (!pr) return [];
+  return kiesArtikelen(await listPubliekeProducten(), pr, max);
 }
 
 /**
@@ -159,7 +146,7 @@ export default async function VakgebiedPagina({ params }: { params: Promise<{ sl
   if (!v) notFound();
 
   const url = `${site.url}/voor/${v.slug}`;
-  const producten = await haalProducten(v.productCategorieSlugs);
+  const producten = await haalProducten(v.slug);
   const categorieen = v.productCategorieSlugs
     .map((c) => categorieVanSlug(c))
     .filter((c): c is NonNullable<ReturnType<typeof categorieVanSlug>> => c !== null);

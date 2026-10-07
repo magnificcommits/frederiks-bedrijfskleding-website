@@ -10,6 +10,7 @@ import { breadcrumbJsonLd, faqJsonLd } from '@/lib/jsonld';
 import { listPubliekeProducten, type PubliekProduct, naarKaart } from '@/lib/kms/catalogus';
 import { site } from '@/content/site';
 import { normen, normenBySlug, voldoetAanNorm, type Norm } from '@/content/normen';
+import { normUitNaam } from '@/lib/assortimentProfielen';
 
 export const revalidate = 3600;
 
@@ -36,27 +37,23 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 /**
- * Artikelen bij de norm. Eerst de artikelen die de norm zelf in hun
- * normeringsveld noemen, daarna de rest uit dezelfde categorieën — zodat de
- * bovenste rij altijd de meest relevante is en de pagina niet leeg blijft.
+ * Artikelen bij de norm: alleen wat de norm aantoonbaar heeft (normeringsveld of
+ * een naam die het zeker maakt, zie NORM_NAAM). Nooit aanvullen met de rest van
+ * de categorie.
  */
 async function productenBijNorm(n: Norm): Promise<{ lijst: PubliekProduct[]; metNorm: number }> {
-  const perCategorie = await Promise.all(
-    n.productCategorieSlugs.map((categorieSlug) => listPubliekeProducten({ categorieSlug })),
-  );
-  const gezien = new Set<string>();
-  const uniek: PubliekProduct[] = [];
-  perCategorie.flat().forEach((p) => {
-    if (gezien.has(p.id)) return;
-    gezien.add(p.id);
-    uniek.push(p);
+  const alle = await listPubliekeProducten();
+  const namen = new Set<string>();
+  const passend = alle.filter((p) => {
+    if (!p.categorieSlug || !n.productCategorieSlugs.includes(p.categorieSlug)) return false;
+    if (!(voldoetAanNorm(p.normeringen, n) || normUitNaam(p, n.slug))) return false;
+    const k = `${p.merk ?? ''}|${p.naam}`.toLowerCase();
+    if (namen.has(k)) return false;
+    namen.add(k);
+    return true;
   });
-  const metNorm = uniek.filter((p) => voldoetAanNorm(p.normeringen, n));
-  const overig = uniek.filter((p) => !voldoetAanNorm(p.normeringen, n));
-  return {
-    lijst: [...metNorm, ...overig].slice(0, MAX_PRODUCTEN),
-    metNorm: metNorm.length,
-  };
+  const lijst = [...passend.filter((p) => voldoetAanNorm(p.normeringen, n)), ...passend.filter((p) => !voldoetAanNorm(p.normeringen, n))];
+  return { lijst: lijst.slice(0, MAX_PRODUCTEN), metNorm: lijst.length };
 }
 
 /** Eerste zin als bijschrift onder het beeld; de tabel blijft de volledige tekst. */
@@ -277,9 +274,7 @@ export default async function NormPagina({ params }: { params: Promise<{ slug: s
               {n.categorie === 'schoenen' ? 'Schoenen' : 'Kleding'} die bij {n.code} hoort
             </h2>
             <p className="mt-3 max-w-2xl text-warm">
-              {metNorm > 0
-                ? `De bovenste artikelen noemen ${n.code} in hun normering. Welke klasse of code op het label staat, lees je op de productpagina.`
-                : `Dit zijn de categorieën waarin ${n.code} voorkomt. Wat er op een artikel getest is, staat bij de normering op de productpagina.`}
+              {`Artikelen uit ons assortiment die volgens ${n.code} getest zijn. Welke klasse of code op het label staat, lees je op de productpagina.`}
             </p>
 
             <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">

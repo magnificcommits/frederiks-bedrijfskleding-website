@@ -4,7 +4,7 @@ import { MandKnop } from '@/components/OfferteSelectie';
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import PortaalKnop from '@/components/PortaalKnop';
-import { branches } from '@/content/branches';
+import { hoofdBranches as branches } from '@/content/branches';
 import { site } from '@/content/site';
 
 // Kledingpagina's gebundeld onder één dropdown zodat de balk overzichtelijk blijft

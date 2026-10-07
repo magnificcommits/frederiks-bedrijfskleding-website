@@ -1,7 +1,7 @@
 import type { BrancheVerdieping } from './type';
 
 export const verdieping: BrancheVerdieping | null = {
-  slug: 'zorg-en-beauty',
+  slug: 'zorg-en-salon',
   bijgewerkt: '2026-10-06',
   regioIntro:
     'Zorg en welzijn is in de Achterhoek een van de drie grootste werkgevers. Het gaat om thuiszorgteams en verpleeghuizen, instellingen voor gehandicaptenzorg, fysio- en tandartspraktijken en een groot aantal kleine zelfstandigen: kappers, schoonheidsspecialisten en pedicures in elk dorp. De kleding verschilt per tak. In de zorg draait het om hygiëne en wasbaarheid, in de salon om uitstraling en comfort. Beide hebben baat bij één vast aanspreekpunt, omdat teams vaak klein zijn en personeel wisselt.',

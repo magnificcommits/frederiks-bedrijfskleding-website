@@ -95,11 +95,13 @@ export const AANTAL_OPTIES = ['1-5', '5-10', '10-25', '25-50', '50+'] as const;
 
 export const BRANCHE_OPTIES = [
   'Bouw & infra',
-  'Industrie & techniek',
-  'Transport & logistiek',
-  'Agri & milieu',
-  'Horeca & hospitality',
-  'Zorg & beauty',
+  'Installatie & techniek',
+  'Industrie & logistiek',
+  'Horeca & food',
+  'Kantoor & retail',
+  'Agrarisch & groen',
+  'Zorg & salon',
+  'Clubs & verenigingen',
   'Anders',
 ] as const;
 

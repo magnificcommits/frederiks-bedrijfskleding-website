@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { branches } from '@/content/branches';
+import { hoofdBranches as branches } from '@/content/branches';
 
 export function BrancheGrid() {
   return (

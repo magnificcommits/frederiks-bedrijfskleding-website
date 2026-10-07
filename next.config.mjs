@@ -51,6 +51,19 @@ const nextConfig = {
       { protocol: 'https', hostname: 'ldbyljadqququzoicyid.supabase.co', pathname: '/storage/v1/object/public/media/**' },
     ],
   },
+  // Branche-indeling oktober 2026 (zie claude/branche-onderzoek-2026-10-07.md):
+  // oude adressen blijven werken voor wie ze heeft gedeeld of gebookmarkt.
+  async redirects() {
+    const oud = {
+      'industrie-en-transport': 'industrie-en-logistiek',
+      'horeca-en-hospitality': 'horeca-en-food',
+      'zorg-en-beauty': 'zorg-en-salon',
+      'agri-en-milieu': 'agrarisch-en-groen',
+      representatief: 'kantoor-en-retail',
+      'sport-en-promotie': 'clubs-en-verenigingen',
+    };
+    return Object.entries(oud).map(([van, naar]) => ({ source: `/branches/${van}`, destination: `/branches/${naar}`, permanent: true }));
+  },
   async headers() {
     return [
       {

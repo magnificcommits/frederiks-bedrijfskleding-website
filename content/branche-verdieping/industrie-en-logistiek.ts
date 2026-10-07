@@ -1,7 +1,7 @@
 import type { BrancheVerdieping } from './type';
 
 export const verdieping: BrancheVerdieping | null = {
-  slug: 'industrie-en-transport',
+  slug: 'industrie-en-logistiek',
   bijgewerkt: '2026-10-06',
   regioIntro:
     'In de Achterhoek zit meer industrie dan je op het eerste gezicht denkt. Het gaat om metaalbewerking, machinebouw, mechatronica en toeleveranciers, vaak familiebedrijven, naast distributie en transport. Werkgevers als Royal Kaak in Terborg (bakkerijmachines), NEDCON in Doetinchem (opslagsystemen), Kramp in Varsseveld (distributie) en Ter Horst Groep in Varsseveld (transport en logistiek) laten zien hoe breed dat is. Voor dat soort bedrijven leveren we kleding, van de werkplaats en productiehal tot het magazijn en het wagenpark.',

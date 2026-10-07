@@ -1,7 +1,7 @@
 import type { BrancheVerdieping } from './type';
 
 export const verdieping: BrancheVerdieping | null = {
-  slug: 'agri-en-milieu',
+  slug: 'agrarisch-en-groen',
   bijgewerkt: '2026-10-06',
   regioIntro:
     'Agri in de Achterhoek is meer dan melkvee en maïs. Het agro-complex telt in de regio 16.435 werkzame personen en is daarmee het vierde cluster van de Achterhoek. Naast melkveehouders, varkenshouders en akkerbouwers werken hier loonbedrijven, hoveniers en groenvoorzieners, en bedrijven in afval en recycling. Hun werkdag verschilt, maar de kleding krijgt dezelfde klappen: nat, vuil, machines en lange dagen.',

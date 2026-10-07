@@ -1,7 +1,7 @@
 import type { BrancheVerdieping } from './type';
 
 export const verdieping: BrancheVerdieping | null = {
-  slug: 'sport-en-promotie',
+  slug: 'clubs-en-verenigingen',
   bijgewerkt: '2026-10-06',
   regioIntro:
     'Sport en promotie hebben in de Achterhoek dezelfde opdrachtgever nodig: het bedrijf. Een club vraagt om shirts, maar de rekening komt vaak van de sponsor, en dezelfde sponsor staat daarnaast met eigen mensen op beurzen en evenementen. De schaal loopt uiteen van een dorpsteam tot een evenement als de Zwarte Cross in Lichtenvoorde, dat in 2025 een record van 277.000 bezoekers haalde. Wij kleden beide kanten: het team op het veld en de mensen achter de stand.',

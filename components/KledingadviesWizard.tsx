@@ -123,7 +123,7 @@ export function KledingadviesWizard({ defaultBranche = '' }: { defaultBranche?: 
                 }}
               >
                 <span className="keuze-rond" aria-hidden="true">✓</span>
-                <span className="min-w-0">{naam === 'Representatief' ? 'Represen\u00adtatief' : naam}</span>
+                <span className="min-w-0">{naam}</span>
               </button>
             ))}
           </div>

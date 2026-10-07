@@ -32,7 +32,7 @@ export const plaatsen: Plaats[] = [
       'We leveren in heel Hengelo en de buurtschappen eromheen, van Keijenborg tot Veldhoek en Varssel. Van werkbroek en hi-vis tot een verzorgde representatieve lijn, afgestemd op het werk en de uitstraling van je bedrijf.',
     ],
     gebieden: ['Centrum en Spalstraat', 'Bedrijventerrein Winkelskamp', 'Keijenborg', 'Veldhoek', 'Varssel'],
-    populair: ['bouw-en-infra', 'horeca-en-hospitality', 'agri-en-milieu'],
+    populair: ['bouw-en-infra', 'horeca-en-food', 'agrarisch-en-groen'],
     faq: [
       { q: 'Kan ik langskomen in de showroom in Hengelo?', a: 'Ja, op afspraak. We zitten in de Brouwersmolen aan de Kruisbergseweg 9. Bel of vraag online een afspraak aan, dan zorgen we dat we de tijd voor je hebben.' },
       { q: 'Komen jullie ook bij mijn bedrijf in Hengelo langs?', a: 'Zeker. Passen op locatie is juist onze kracht, en in Hengelo zijn we zo bij je. Zo kost het je geen werktijd.' },
@@ -53,7 +53,7 @@ export const plaatsen: Plaats[] = [
       'We bedienen ook de kernen rondom, zoals Gaanderen, Wehl en Langerak. Het logo brengen we in eigen huis aan, en je kledinglijn leggen we vast zodat nabestellen voor een nieuwe kracht een belletje is. Doetinchem ligt op een kwartier van onze showroom, dus we zijn snel bij je om te passen of een set af te leveren.',
     ],
     gebieden: ['Wijnbergen', 'Verheulsweide', 'A18 Bedrijvenpark', 'Gaanderen', 'Wehl', 'Langerak'],
-    populair: ['bouw-en-infra', 'industrie-en-transport', 'horeca-en-hospitality'],
+    populair: ['bouw-en-infra', 'industrie-en-logistiek', 'horeca-en-food'],
     faq: [
       { q: 'Leveren jullie ook hi-vis voor wegwerkzaamheden in Doetinchem?', a: 'Ja. Voor werk langs de weg leveren we zichtbaarheidskleding volgens EN ISO 20471 in de juiste klasse. We bepalen samen welke klasse bij je werk hoort.' },
       { q: 'Hoe snel kunnen jullie in Doetinchem leveren?', a: 'Doetinchem ligt op ongeveer een kwartier van onze showroom, dus we zijn snel bij je om te passen. Ligt je kledinglijn vast, dan regelen we nabestellingen meestal binnen een paar werkdagen.' },
@@ -75,7 +75,7 @@ export const plaatsen: Plaats[] = [
       'Naast Zutphen zelf bedienen we de omliggende kernen zoals Warnsveld en, net over de gemeentegrens, Eefde. Van industrie en bouw tot zorg en horeca: we kleden uiteenlopende bedrijven en houden je lijn consistent. Zutphen ligt op een klein half uur, dus persoonlijk langskomen blijft gewoon mogelijk.',
     ],
     gebieden: ['Industrieterrein De Mars', 'Binnenstad', 'Warnsveld', 'Eefde', 'Revelhorst'],
-    populair: ['industrie-en-transport', 'bouw-en-infra', 'horeca-en-hospitality'],
+    populair: ['industrie-en-logistiek', 'bouw-en-infra', 'horeca-en-food'],
     faq: [
       { q: 'Werken jullie ook voor bedrijven op De Mars?', a: 'Ja, veel van onze klanten in Zutphen zitten op of rond industrieterrein De Mars. We komen langs om te passen en leveren de juiste kleding en veiligheidsschoenen voor het werk.' },
       { q: 'Kunnen jullie zowel industrie- als horecakleding leveren?', a: 'Zeker. We leveren stevige werkkleding voor de industrie en bouw, en verzorgde koksbuizen, schorten en bediening voor de horeca in de binnenstad.' },
@@ -96,7 +96,7 @@ export const plaatsen: Plaats[] = [
       'We werken ook in de buurtschappen rondom, zoals Halle en Velswijk. Het bedrukken en borduren doen we in eigen huis, dus snel en met grip op de kwaliteit.',
     ],
     gebieden: ['De Vinkenkamp', 'Het Blek', 'De Hoge Voort', 'Centrum', 'Halle', 'Velswijk'],
-    populair: ['agri-en-milieu', 'bouw-en-infra', 'industrie-en-transport'],
+    populair: ['agrarisch-en-groen', 'bouw-en-infra', 'industrie-en-logistiek'],
     faq: [
       { q: 'Hebben jullie kleding die tegen het werk op het land kan?', a: 'Ja. Voor de agrarische sector leveren we overalls, tuinbroeken en weerbestendige jassen die tegen modder, machines en lange dagen kunnen, plus stevige schoenen of laarzen.' },
       { q: 'Hoe snel zijn jullie in Zelhem?', a: 'Zelhem ligt op ongeveer tien minuten van onze showroom. We zijn dus zo bij je om te passen en te leveren.' },
@@ -117,7 +117,7 @@ export const plaatsen: Plaats[] = [
       'We bedienen ook de buurtschappen rond Vorden, zoals Wichmond en Kranenburg. Van een hovenier met weerbestendige kleding tot een restaurant met geborduurde koksbuizen.',
     ],
     gebieden: ['Centrum', 'Bedrijventerrein Werkveld', 'Wichmond', 'Kranenburg'],
-    populair: ['agri-en-milieu', 'horeca-en-hospitality', 'representatief'],
+    populair: ['agrarisch-en-groen', 'horeca-en-food', 'kantoor-en-retail'],
     faq: [
       { q: 'Verzorgen jullie ook kleding voor de horeca in Vorden?', a: 'Ja. Voor restaurants en hotels leveren we koksbuizen, schorten en bediening, met je logo geborduurd voor een verzorgde uitstraling.' },
       { q: 'Komen jullie naar Vorden toe om te passen?', a: 'Zeker, Vorden ligt op een kleine tien minuten. We komen graag langs zodat iedereen goed past zonder werktijd te verliezen.' },
@@ -138,7 +138,7 @@ export const plaatsen: Plaats[] = [
       'We werken in heel Ruurlo en de omliggende kernen. Of het nu gaat om een loonbedrijf, een aannemer of een zaak met klantcontact, we stellen een lijn samen die klopt.',
     ],
     gebieden: ['Bedrijventerrein De Venterkamp', 'Centrum', 'Buitengebied'],
-    populair: ['industrie-en-transport', 'bouw-en-infra', 'agri-en-milieu'],
+    populair: ['industrie-en-logistiek', 'bouw-en-infra', 'agrarisch-en-groen'],
     faq: [
       { q: 'Leveren jullie ook veiligheidsschoenen in Ruurlo?', a: 'Ja, we leveren veiligheidsschoenen van S1 tot S3 met persoonlijk pasadvies, afgestemd op het werk en het terrein waarop je werkt.' },
       { q: 'Kunnen jullie een vaste kledinglijn voor ons team opzetten?', a: 'Zeker. We leggen per functie vast wat iemand draagt, inclusief maten en logo-positie, zodat nabestellen voor nieuwe medewerkers snel gaat.' },
@@ -159,7 +159,7 @@ export const plaatsen: Plaats[] = [
       'We werken ook in de kernen rondom, zoals Geesteren en Gelselaar. Het logo brengen we in eigen huis aan, dus je ziet vooraf het resultaat en we schakelen snel.',
     ],
     gebieden: ['Bedrijvenpark Borculo', 'Centrum', 'Geesteren', 'Gelselaar'],
-    populair: ['industrie-en-transport', 'bouw-en-infra', 'agri-en-milieu'],
+    populair: ['industrie-en-logistiek', 'bouw-en-infra', 'agrarisch-en-groen'],
     faq: [
       { q: 'Verzorgen jullie ook de bedrukking in Borculo?', a: 'Ja, we bedrukken en borduren in eigen huis. Je logo brengen we slijtvast aan en je ziet vooraf hoe het eruitkomt.' },
       { q: 'Hebben jullie ook grote maten?', a: 'Zeker. We hebben een ruim maatbereik en bestellen indien nodig een pasmaat, zodat iedereen op het team goed zit.' },
@@ -180,7 +180,7 @@ export const plaatsen: Plaats[] = [
       'Vanuit Doesburg bedienen we ook de omliggende plaatsen in de Liemers. Eén vast aanspreekpunt dat je bedrijf kent, met snelle nalevering als er iemand bij komt.',
     ],
     gebieden: ['Historisch centrum', 'Bedrijventerrein Beinum', 'Verhuellweg en Koppelweg', 'Angerlo (Zevenaar)'],
-    populair: ['horeca-en-hospitality', 'bouw-en-infra', 'representatief'],
+    populair: ['horeca-en-food', 'bouw-en-infra', 'kantoor-en-retail'],
     faq: [
       { q: 'Werken jullie ook in de Liemers?', a: 'Ja, vanuit Doesburg bedienen we ook de plaatsen in de Liemers. We komen langs om te passen en leveren kleding op maat.' },
       { q: 'Kunnen jullie kleding op onze huisstijl afstemmen?', a: 'Zeker. We kiezen kleur, model en logo-positie zo dat het past bij je huisstijl en consistent is over het hele team.' },
@@ -201,7 +201,7 @@ export const plaatsen: Plaats[] = [
       'Lichtenvoorde staat ook bekend om zijn bloemencorso en een bruisend verenigingsleven. Naast bedrijfskleding verzorgen we daarom sport- en promotiekleding voor clubs, teams en evenementen. We werken in heel Lichtenvoorde en de kernen eromheen, zoals Vragender, Lievelde en Harreveld.',
     ],
     gebieden: ['Bedrijventerrein De Kamp', 'Centrum', 'Vragender', 'Lievelde', 'Harreveld'],
-    populair: ['bouw-en-infra', 'agri-en-milieu', 'sport-en-promotie'],
+    populair: ['bouw-en-infra', 'agrarisch-en-groen', 'clubs-en-verenigingen'],
     faq: [
       { q: 'Leveren jullie ook sport- en promotiekleding in Lichtenvoorde?', a: 'Ja. Naast bedrijfskleding verzorgen we sport- en promotiekleding voor clubs, teams en evenementen, bedrukt of geborduurd met logo of sponsor.' },
       { q: 'Hoe snel leveren jullie na een akkoord?', a: 'Zodra je lijn bij ons vastligt, regelen we nabestellingen meestal binnen een paar werkdagen, inclusief logo.' },
@@ -223,7 +223,7 @@ export const plaatsen: Plaats[] = [
       'Het bedrukken doen we zelf, dus je ziet vooraf het resultaat en we schakelen snel. We werken in heel Groenlo en de kernen eromheen, zoals Beltrum en Zwolle (Gld). Voor de brouwerij- en horecabedrijven in de vesting leveren we daarnaast verzorgde bedienings- en keukenkleding.',
     ],
     gebieden: ['Bedrijvenpark Laarberg', 'Centrum en vesting', 'Beltrum', 'Zwolle (Gld)'],
-    populair: ['industrie-en-transport', 'sport-en-promotie', 'horeca-en-hospitality'],
+    populair: ['industrie-en-logistiek', 'clubs-en-verenigingen', 'horeca-en-food'],
     faq: [
       { q: 'Verzorgen jullie clubkleding voor verenigingen in Groenlo?', a: 'Ja. Voor clubs, teams en evenementen leveren we shirts, hoodies en accessoires met logo of sponsor, in kleine en grote oplagen.' },
       { q: 'Werken jullie ook voor bedrijven op Laarberg?', a: 'Zeker. Voor de maakindustrie en logistiek op en rond Laarberg leveren we functionele werkkleding, hi-vis en veiligheidsschoenen.' },
@@ -244,7 +244,7 @@ export const plaatsen: Plaats[] = [
       'We bedienen heel Aalten en de kernen rondom, zoals Bredevoort, Dinxperlo en IJzerlo. Dinxperlo ligt tegen de Duitse grens, waar veel bedrijven aan beide kanten werken. Van een akkerbouwer tot een installatiebedrijf, we stemmen de kleding af op het werk.',
     ],
     gebieden: ['Centrum', 'Bredevoort', 'Dinxperlo', 'IJzerlo'],
-    populair: ['bouw-en-infra', 'agri-en-milieu', 'industrie-en-transport'],
+    populair: ['bouw-en-infra', 'agrarisch-en-groen', 'industrie-en-logistiek'],
     faq: [
       { q: 'Werken jullie ook voor familiebedrijven in Aalten?', a: 'Juist. Veel van onze klanten in Aalten zijn familiebedrijven die persoonlijk contact waarderen. Je krijgt bij ons één vast aanspreekpunt dat je bedrijf kent.' },
       { q: 'Komen jullie helemaal naar Aalten toe?', a: 'Ja. Ondanks de afstand houden we het persoonlijk: we komen langs om te passen en zorgen dat nabestellingen snel je kant op komen.' },
@@ -265,7 +265,7 @@ export const plaatsen: Plaats[] = [
       'Ondanks de afstand houden we het persoonlijk: we komen langs om te passen en zorgen dat nabestellingen snel je kant op komen. We werken ook in de kernen rondom, zoals Meddo, Kotten, Henxel en Miste.',
     ],
     gebieden: ['Bedrijventerrein Misterweg', 'Centrum', 'Meddo', 'Kotten', 'Henxel'],
-    populair: ['industrie-en-transport', 'zorg-en-beauty', 'horeca-en-hospitality'],
+    populair: ['industrie-en-logistiek', 'zorg-en-salon', 'horeca-en-food'],
     faq: [
       { q: 'Leveren jullie ook zorgkleding in Winterswijk?', a: 'Ja. Voor zorg, salons en beauty leveren we comfortabele, makkelijk wasbare tunieken, polo’s en jassen die er verzorgd uitzien.' },
       { q: 'Is Winterswijk niet te ver voor persoonlijk advies?', a: 'Nee. We komen ook naar Winterswijk toe om te passen en houden de lijnen kort, zodat je dezelfde persoonlijke service krijgt als dichterbij.' },
@@ -284,7 +284,7 @@ export const plaatsen: Plaats[] = [
       'Doordat we dichtbij zitten, zijn de lijnen kort: passen op locatie, het logo in eigen huis, en een snelle nalevering als er iemand bij komt. We werken ook in Bronkhorst en Baak.',
     ],
     gebieden: ['Bedrijventerrein Steenderdiek', 'Centrum', 'Bronkhorst', 'Baak', 'Buitengebied'],
-    populair: ['agri-en-milieu', 'bouw-en-infra', 'industrie-en-transport'],
+    populair: ['agrarisch-en-groen', 'bouw-en-infra', 'industrie-en-logistiek'],
     faq: [
       { q: 'Komen jullie naar Steenderen toe?', a: 'Ja, Steenderen ligt dichtbij onze showroom. We komen langs om te passen en leveren kleding op maat.' },
       { q: 'Hebben jullie kleding voor agrarisch werk?', a: 'Zeker. Overalls, tuinbroeken en weerbestendige jassen die tegen het werk op het land kunnen, plus stevige laarzen en schoenen.' },
@@ -303,7 +303,7 @@ export const plaatsen: Plaats[] = [
       'We komen langs om te passen, brengen het logo in eigen huis aan en leggen je kledinglijn vast voor een snelle nalevering. Ook in Drempt en Hoog-Keppel zijn we actief.',
     ],
     gebieden: ['Centrum', 'Drempt', 'Hoog-Keppel', 'Laag-Keppel'],
-    populair: ['bouw-en-infra', 'agri-en-milieu', 'horeca-en-hospitality'],
+    populair: ['bouw-en-infra', 'agrarisch-en-groen', 'horeca-en-food'],
     faq: [
       { q: 'Verzorgen jullie ook horecakleding in Hummelo?', a: 'Ja, voor restaurants en hotels leveren we koksbuizen, schorten en bediening, met je logo geborduurd.' },
       { q: 'Hoe snel zijn jullie ter plaatse?', a: 'Hummelo ligt dichtbij. We zijn snel langs om te passen en kunnen vlot leveren.' },
@@ -322,7 +322,7 @@ export const plaatsen: Plaats[] = [
       'Passen doen we bij je op de zaak. Het logo brengen we slijtvast aan, bedrukt of geborduurd, en je lijn leggen we vast. We werken ook in Barchem, Gorssel en Almen.',
     ],
     gebieden: ['Bedrijventerrein Aalsvoort', 'Centrum', 'Barchem', 'Gorssel', 'Almen'],
-    populair: ['industrie-en-transport', 'bouw-en-infra', 'representatief'],
+    populair: ['industrie-en-logistiek', 'bouw-en-infra', 'kantoor-en-retail'],
     faq: [
       { q: 'Leveren jullie ook in de kernen rond Lochem?', a: 'Ja, naast Lochem werken we ook in Barchem, Gorssel en Almen. We komen langs om te passen.' },
       { q: 'Kunnen jullie veiligheidsschoenen leveren?', a: 'Zeker, van S1 tot S3 met persoonlijk pasadvies, afgestemd op het werk.' },
@@ -341,7 +341,7 @@ export const plaatsen: Plaats[] = [
       'We komen langs om te passen, brengen het logo in eigen huis aan en zorgen voor een snelle nalevering. Ook in Rekken en Beltrum zijn we actief.',
     ],
     gebieden: ['Bedrijventerrein De Mors', 'Centrum', 'Rekken'],
-    populair: ['industrie-en-transport', 'agri-en-milieu', 'bouw-en-infra'],
+    populair: ['industrie-en-logistiek', 'agrarisch-en-groen', 'bouw-en-infra'],
     faq: [
       { q: 'Werken jullie ook voor de industrie in Eibergen?', a: 'Ja. Voor de maakindustrie leveren we functionele, slijtvaste werkkleding en de juiste veiligheidsschoenen.' },
       { q: 'Komen jullie naar Eibergen toe?', a: 'Ja, we komen langs om te passen en houden de lijnen kort, ook al ligt het wat verder.' },
@@ -360,7 +360,7 @@ export const plaatsen: Plaats[] = [
       'Het logo brengen we in eigen huis aan en je kledinglijn leggen we vast voor een snelle nalevering. We werken ook in Borculo, Ruurlo en de omliggende kernen.',
     ],
     gebieden: ['Centrum', 'Bedrijventerrein', 'Rietmolen', 'Noordijk'],
-    populair: ['industrie-en-transport', 'bouw-en-infra', 'agri-en-milieu'],
+    populair: ['industrie-en-logistiek', 'bouw-en-infra', 'agrarisch-en-groen'],
     faq: [
       { q: 'Hebben jullie ook grote maten?', a: 'Zeker, we hebben een ruim maatbereik en bestellen indien nodig een pasmaat.' },
       { q: 'Verzorgen jullie de bedrukking zelf?', a: 'Ja, bedrukken en borduren doen we in eigen huis, dus snel en met grip op de kwaliteit.' },
@@ -380,7 +380,7 @@ export const plaatsen: Plaats[] = [
       'We werken ook in de kernen eromheen, zoals Westendorp en Heelweg. Naast de industrie kennen we hier ook bouw- en agrarische bedrijven, en voor elk daarvan stellen we een lijn samen die bij het werk past.',
     ],
     gebieden: ['Bedrijventerrein Hofskamp Oost', 'Centrum', 'Westendorp', 'Heelweg'],
-    populair: ['industrie-en-transport', 'bouw-en-infra', 'agri-en-milieu'],
+    populair: ['industrie-en-logistiek', 'bouw-en-infra', 'agrarisch-en-groen'],
     faq: [
       { q: 'Leveren jullie hi-vis voor werk langs de A18?', a: 'Ja, we leveren zichtbaarheidskleding volgens EN ISO 20471 in de juiste klasse voor werk langs de weg.' },
       { q: 'Komen jullie naar Varsseveld toe?', a: 'Ja, we komen langs om te passen en zorgen voor een snelle levering.' },
@@ -400,7 +400,7 @@ export const plaatsen: Plaats[] = [
       'We komen langs om te passen en leggen je kledinglijn vast voor een snelle nalevering. Ook in Silvolde en Ulft zijn we actief.',
     ],
     gebieden: ['Centrum', 'Silvolde', 'Varsselder'],
-    populair: ['bouw-en-infra', 'industrie-en-transport', 'representatief'],
+    populair: ['bouw-en-infra', 'industrie-en-logistiek', 'kantoor-en-retail'],
     faq: [
       { q: 'Werken jullie ook in Silvolde en Ulft?', a: 'Ja, vanuit Terborg bedienen we de hele Oude IJsselstreek, waaronder Silvolde en Ulft.' },
       { q: 'Kunnen jullie een vaste kledinglijn opzetten?', a: 'Zeker. We leggen per functie vast wat iemand draagt, zodat nabestellen snel gaat.' },
@@ -420,7 +420,7 @@ export const plaatsen: Plaats[] = [
       'Ook in Gendringen, Etten en Silvolde zijn we actief. De hele Oude IJsselstreek heeft die mix van maakindustrie en familiebedrijven, en wij stemmen de kleding af op wat het werk vraagt.',
     ],
     gebieden: ['Bedrijventerrein De Rieze', 'DRU Industriepark', 'Centrum', 'Gendringen', 'Etten'],
-    populair: ['industrie-en-transport', 'bouw-en-infra', 'representatief'],
+    populair: ['industrie-en-logistiek', 'bouw-en-infra', 'kantoor-en-retail'],
     faq: [
       { q: 'Werken jullie voor de industrie in Ulft?', a: 'Ja. Voor de maakindustrie en techniek leveren we functionele, slijtvaste werkkleding en de juiste veiligheidsschoenen.' },
       { q: 'Komen jullie helemaal naar Ulft?', a: 'Ja, we komen langs om te passen en houden de lijnen kort, ook in de zuidelijke Achterhoek.' },
@@ -441,7 +441,7 @@ export const plaatsen: Plaats[] = [
       'Het logo brengen we zelf aan in onze bedrukkerij in Hengelo. Je ziet vooraf een drukproef, en de vaste kledinglijn leggen we vast in het gratis kledingportaal, zodat nabestellen voor een nieuwe medewerker in een paar klikken geregeld is.',
     ],
     gebieden: ['Kern Keijenborg', 'Buitengebied', 'Hengelo (Gld)', 'Bronckhorst'],
-    populair: ['bouw-en-infra', 'agri-en-milieu', 'industrie-en-transport'],
+    populair: ['bouw-en-infra', 'agrarisch-en-groen', 'industrie-en-logistiek'],
     faq: [
       { q: 'Hoe snel zijn jullie in Keijenborg?', a: 'Keijenborg ligt hemelsbreed ruim 4 kilometer van onze showroom. We zijn er dus vaak dezelfde week om te passen of af te leveren.' },
       { q: 'Kan ik in Keijenborg ook kleding laten borduren?', a: 'Ja. Borduren en bedrukken doen we in eigen huis in Hengelo. Je krijgt eerst een drukproef ter goedkeuring.' },
@@ -462,7 +462,7 @@ export const plaatsen: Plaats[] = [
       'We komen langs om te passen, brengen het logo in onze eigen bedrukkerij aan en leggen je lijn vast in het kledingportaal. Zo heeft een nieuwe medewerker binnen een paar werkdagen dezelfde set als de rest van het team.',
     ],
     gebieden: ['Bedrijventerrein Dambroek', 'Kern Baak', 'Wichmond', 'Buitengebied langs de IJssel'],
-    populair: ['bouw-en-infra', 'agri-en-milieu', 'industrie-en-transport'],
+    populair: ['bouw-en-infra', 'agrarisch-en-groen', 'industrie-en-logistiek'],
     faq: [
       { q: 'Leveren jullie ook op bedrijventerrein Dambroek?', a: 'Ja. We komen op de zaak langs om te passen en leveren de kleding daar ook af.' },
       { q: 'Welke hi-vis klasse heb ik nodig voor werk op de dijk of langs de weg?', a: 'Dat hangt af van de snelheid van het verkeer en de situatie. Voor werk langs de openbare weg is vaak klasse 2 of 3 nodig. We bekijken het samen per functie.' },
@@ -483,7 +483,7 @@ export const plaatsen: Plaats[] = [
       'Het logo zetten we in eigen huis op de kleding. Je vaste set staat daarna in het kledingportaal, met per medewerker de maten en het budget, zodat nabestellen geen zoekwerk meer is.',
     ],
     gebieden: ['A18 Bedrijvenpark', 'Kern Wehl', 'Nieuw-Wehl', 'Doetinchem'],
-    populair: ['industrie-en-transport', 'bouw-en-infra', 'representatief'],
+    populair: ['industrie-en-logistiek', 'bouw-en-infra', 'kantoor-en-retail'],
     faq: [
       { q: 'Komen jullie ook naar het A18 Bedrijvenpark?', a: 'Ja. We komen bij je op de zaak om te passen en stellen per functie een lijn samen, van magazijn tot buitendienst.' },
       { q: 'Kunnen chauffeurs ook een nette lijn krijgen?', a: 'Zeker. Polo’s, softshells en jassen in je huisstijl, met je logo, die bij klanten aan de deur verzorgd ogen en toch praktisch zijn.' },
@@ -504,7 +504,7 @@ export const plaatsen: Plaats[] = [
       'Passen doen we bij je op de zaak. Het logo brengen we in onze eigen bedrukkerij aan, en met het kledingportaal houd je overzicht over wie wat heeft en wanneer er vervangen moet worden.',
     ],
     gebieden: ['Kern Gaanderen', 'Langs de Oude IJssel', 'Terborg', 'Doetinchem'],
-    populair: ['industrie-en-transport', 'bouw-en-infra', 'agri-en-milieu'],
+    populair: ['industrie-en-logistiek', 'bouw-en-infra', 'agrarisch-en-groen'],
     faq: [
       { q: 'Leveren jullie ook lasbestendige kleding?', a: 'Ja. Voor laswerk leveren we kleding volgens EN ISO 11611, en voor werk met vonken of hitte ook EN ISO 11612. We kijken samen welke klasse je nodig hebt.' },
       { q: 'Hoe ver is Gaanderen van jullie showroom?', a: 'Hemelsbreed ongeveer 12 kilometer. We komen dus makkelijk langs om te passen of af te leveren.' },
@@ -525,7 +525,7 @@ export const plaatsen: Plaats[] = [
       'Warnsveld ligt op de route tussen Zutphen en Vorden, dus we combineren een pasafspraak vaak met andere klanten in de buurt. Het logo brengen we in eigen huis aan en je set leggen we vast, zodat nabestellen een kwestie van een paar klikken is.',
     ],
     gebieden: ['Bedrijventerrein De Lage Weide', 'Kern Warnsveld', 'Leesten', 'Zutphen'],
-    populair: ['bouw-en-infra', 'zorg-en-beauty', 'representatief'],
+    populair: ['bouw-en-infra', 'zorg-en-salon', 'kantoor-en-retail'],
     faq: [
       { q: 'Kan ik als zzp’er of klein bedrijf ook bij jullie terecht?', a: 'Ja. We helpen ook kleine teams en zelfstandigen. Je krijgt hetzelfde persoonlijke advies en hetzelfde bedrukwerk als een groot bedrijf.' },
       { q: 'Komen jullie in Warnsveld langs om te passen?', a: 'Ja. Warnsveld ligt hemelsbreed zo’n 11 kilometer van onze showroom. We komen bij je langs of je komt op afspraak naar de Brouwersmolen.' },
@@ -546,7 +546,7 @@ export const plaatsen: Plaats[] = [
       'We passen bij je op locatie, ook in kleine groepjes per ploeg, en brengen het logo in onze eigen bedrukkerij aan. In het kledingportaal zie je per medewerker wat er is uitgegeven en wanneer vervanging nodig is.',
     ],
     gebieden: ['Bedrijventerrein Hazenberg', 'Eerbeek-Zuid', 'Kern Brummen', 'Leuvenheim'],
-    populair: ['industrie-en-transport', 'bouw-en-infra', 'agri-en-milieu'],
+    populair: ['industrie-en-logistiek', 'bouw-en-infra', 'agrarisch-en-groen'],
     faq: [
       { q: 'Leveren jullie ook voor ploegendiensten?', a: 'Ja. We rekenen samen uit hoeveel sets per medewerker nodig zijn met de wasfrequentie, zodat er altijd een schone set klaarligt.' },
       { q: 'Werken jullie ook in Eerbeek?', a: 'Ja. Eerbeek ligt binnen ons werkgebied. We komen langs om te passen en leveren op de zaak af.' },
@@ -567,7 +567,7 @@ export const plaatsen: Plaats[] = [
       'Laren ligt in de buurt van onze klanten in Lochem en Barchem, dus we combineren pasafspraken vaak. Het logo brengen we in eigen huis aan, en met het kledingportaal regel je een nabestelling zonder te bellen of te mailen.',
     ],
     gebieden: ['Bedrijventerrein Holterweg', 'Kern Laren', 'Barchem', 'Lochem'],
-    populair: ['agri-en-milieu', 'bouw-en-infra', 'industrie-en-transport'],
+    populair: ['agrarisch-en-groen', 'bouw-en-infra', 'industrie-en-logistiek'],
     faq: [
       { q: 'Leveren jullie werkkleding voor agrarische bedrijven in Laren?', a: 'Ja. Overalls, regenkleding, laarzen en werkschoenen die tegen mest en modder kunnen, met je bedrijfsnaam erop als je dat wilt.' },
       { q: 'Komen jullie naar Laren toe?', a: 'Ja. Laren ligt hemelsbreed zo’n 12 kilometer van onze showroom. We komen bij je langs om te passen.' },
@@ -588,7 +588,7 @@ export const plaatsen: Plaats[] = [
       'Passen doen we bij je op de zaak. Het logo brengen we in onze eigen bedrukkerij aan, en je lijn ligt daarna vast in het kledingportaal, zodat je bij een nieuwe medewerker niet opnieuw hoeft te zoeken.',
     ],
     gebieden: ['Dieren Oost', 'Kanaalzone', 'Centrum', 'Spankeren'],
-    populair: ['industrie-en-transport', 'bouw-en-infra', 'zorg-en-beauty'],
+    populair: ['industrie-en-logistiek', 'bouw-en-infra', 'zorg-en-salon'],
     faq: [
       { q: 'Leveren jullie ook zorgkleding in Dieren?', a: 'Ja. Comfortabele, goed wasbare zorgkleding en een verzorgde lijn voor receptie en dienstverlening, met je logo.' },
       { q: 'Komen jullie over de IJssel naar Dieren?', a: 'Ja. Dieren ligt hemelsbreed zo’n 14 kilometer van onze showroom. We komen langs om te passen en leveren op de zaak af.' },
@@ -609,7 +609,7 @@ export const plaatsen: Plaats[] = [
       'We komen bij je langs om te passen, brengen het logo in eigen huis aan en leggen de lijn vast in het kledingportaal. Zo bestel je na zonder telkens maten en modellen opnieuw op te zoeken.',
     ],
     gebieden: ['Bedrijventerrein De Fluun', 'Kern Didam', 'Loil', 'Nieuw-Dijk'],
-    populair: ['bouw-en-infra', 'industrie-en-transport', 'representatief'],
+    populair: ['bouw-en-infra', 'industrie-en-logistiek', 'kantoor-en-retail'],
     faq: [
       { q: 'Werken jullie ook voor bedrijven op De Fluun?', a: 'Ja. We komen bij je op de zaak om te passen en leveren de kleding daar ook af.' },
       { q: 'Is Didam niet te ver weg voor persoonlijk advies?', a: 'Nee. Didam ligt hemelsbreed zo’n 17 kilometer van onze showroom, binnen ons vaste werkgebied. We komen gewoon langs.' },

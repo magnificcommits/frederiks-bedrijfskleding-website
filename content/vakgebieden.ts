@@ -1,3 +1,4 @@
+import { vakgebiedenExtra } from '@/content/vakgebieden-extra';
 /**
  * Vakgebiedpagina's (/voor/[slug]). Landelijke webshops schalen op plaatsnaam;
  * op het vak zelf doen ze bijna niets. Daar zit voor ons de ruimte.
@@ -44,7 +45,7 @@ export const werkgebiedPlaatsen: string[] = [
   'Winterswijk', 'Didam', 'Zevenaar', 'Duiven',
 ];
 
-export const vakgebieden: Vakgebied[] = [
+const basisVakgebieden: Vakgebied[] = [
   {
     slug: 'hoveniers-en-groenvoorziening',
     naam: 'Hoveniers en groenvoorziening',
@@ -562,6 +563,9 @@ export const vakgebieden: Vakgebied[] = [
     ],
   },
 ];
+
+/** Alle vakgebieden; de drie uit oktober 2026 staan in vakgebieden-extra.ts. */
+export const vakgebieden: Vakgebied[] = [...basisVakgebieden, ...vakgebiedenExtra];
 
 export const vakgebiedenBySlug: Record<string, Vakgebied> = Object.fromEntries(
   vakgebieden.map((v) => [v.slug, v]),

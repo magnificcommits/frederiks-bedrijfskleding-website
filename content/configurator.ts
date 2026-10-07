@@ -58,35 +58,41 @@ export const starterpakketten: Record<string, { type: string; kleur: number; pos
     { type: 'sweater', kleur: 0, positie: 'borst-links', per: 1 },
     { type: 'softshell', kleur: 1, positie: 'rug', per: 1 },
   ],
-  'Industrie & transport': [
+  'Installatie & techniek': [
+    { type: 'werkbroek', kleur: 2, positie: 'dijbeen-rechts', per: 2 },
+    { type: 'polo', kleur: 1, positie: 'borst-links', per: 3 },
+    { type: 'sweater', kleur: 1, positie: 'borst-links', per: 1 },
+    { type: 'softshell', kleur: 0, positie: 'rug', per: 1 },
+  ],
+  'Industrie & logistiek': [
     { type: 'werkbroek', kleur: 0, positie: 'dijbeen-rechts', per: 2 },
     { type: 'polo', kleur: 1, positie: 'borst-links', per: 3 },
     { type: 'softshell', kleur: 2, positie: 'rug', per: 1 },
     { type: 'bodywarmer', kleur: 7, positie: 'borst-rechts', per: 1 },
   ],
-  'Horeca & hospitality': [
+  'Horeca & food': [
     { type: 'polo', kleur: 0, positie: 'borst-links', per: 3 },
     { type: 'tshirt', kleur: 4, positie: 'borst-links', per: 2 },
     { type: 'sweater', kleur: 2, positie: 'borst-links', per: 1 },
   ],
-  'Zorg & beauty': [
+  'Zorg & salon': [
     { type: 'polo', kleur: 4, positie: 'borst-links', per: 3 },
     { type: 'tshirt', kleur: 3, positie: 'borst-links', per: 2 },
     { type: 'softshell', kleur: 2, positie: 'borst-rechts', per: 1 },
   ],
-  'Agri & milieu': [
+  'Agrarisch & groen': [
     { type: 'werkbroek', kleur: 2, positie: 'dijbeen-links', per: 2 },
     { type: 'tshirt', kleur: 5, positie: 'borst-links', per: 3 },
     { type: 'bodywarmer', kleur: 5, positie: 'borst-rechts', per: 1 },
     { type: 'winterjas', kleur: 5, positie: 'rug', per: 1 },
   ],
-  'Representatief': [
+  'Kantoor & retail': [
     { type: 'polo', kleur: 1, positie: 'borst-links', per: 3 },
     { type: 'softshell', kleur: 0, positie: 'borst-links', per: 1 },
     { type: 'bodywarmer', kleur: 1, positie: 'borst-rechts', per: 1 },
   ],
-  'Sport & promotie': [
-    { type: 'tshirt', kleur: 6, positie: 'borst-links', per: 2 },
+  'Clubs & verenigingen': [
+    { type: 'tshirt', kleur: 1, positie: 'borst-links', per: 2 },
     { type: 'polo', kleur: 1, positie: 'borst-links', per: 1 },
     { type: 'sweater', kleur: 0, positie: 'rug', per: 1 },
   ],

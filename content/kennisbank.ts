@@ -73,7 +73,7 @@ export const artikelen: Artikel[] = [
         'Hi-vis kleding verliest na verloop van tijd zijn zichtbaarheid. De norm gaat uit van een maximaal aantal wasbeurten, vaak rond de 25 tot 50, afhankelijk van het kledingstuk. Verbleekte of dofgewassen kleding voldoet niet meer. Vervang het op tijd.',
       ]},
     ],
-    relatedBranche: 'industrie-en-transport',
+    relatedBranche: 'industrie-en-logistiek',
   },
   {
     slug: 'bedrukken-of-borduren',
@@ -96,7 +96,7 @@ export const artikelen: Artikel[] = [
         'Voor een polo of jas met klantcontact kiezen we meestal borduren. Voor t-shirts, een kleurrijk sponsorlogo of een grote oplage is bedrukken vaak slimmer. Omdat we het in eigen huis doen, schakelen we snel en zie je vooraf hoe het eruit komt te zien. Lever je logo het liefst aan als vectorbestand (AI, EPS of PDF).',
       ]},
     ],
-    relatedBranche: 'representatief',
+    relatedBranche: 'kantoor-en-retail',
   },
   {
     slug: 'bedrijfskleding-fiscaal-aftrekbaar',
@@ -119,7 +119,7 @@ export const artikelen: Artikel[] = [
         'Kleding kan ook onbelast blijven als die aantoonbaar op de werkplek achterblijft. Huisstijlkleuren en andere huisstijlelementen tellen mee bij de beoordeling. Twijfel je over jouw situatie, leg het dan voor aan je boekhouder. Wij zorgen in elk geval dat het logo groot en duidelijk genoeg is om aan de eis te voldoen.',
       ]},
     ],
-    relatedBranche: 'representatief',
+    relatedBranche: 'kantoor-en-retail',
   },
   {
     slug: 'werkkleding-wassen-en-onderhouden',
@@ -187,7 +187,7 @@ export const artikelen: Artikel[] = [
         'Voor horeca adviseren we meestal borduren. Het oogt verzorgd en gaat goed door de vaak hete was van horecatextiel. We kijken samen naar kleur en plek, zodat het past bij je huisstijl.',
       ]},
     ],
-    relatedBranche: 'horeca-en-hospitality',
+    relatedBranche: 'horeca-en-food',
   },
   {
     slug: 'duurzame-circulaire-bedrijfskleding',
@@ -254,7 +254,7 @@ export const artikelen: Artikel[] = [
         'De vraag naar winterkleding piekt zodra het kouder wordt, en dan zijn maten sneller uitverkocht. Regel het liefst in het najaar, dan ligt alles klaar voordat de eerste vorst komt. We denken met je mee over wat je team echt nodig heeft.',
       ]},
     ],
-    relatedBranche: 'agri-en-milieu',
+    relatedBranche: 'agrarisch-en-groen',
   },
   {
     slug: 'werkkleding-voor-zorg-en-beauty',
@@ -277,7 +277,7 @@ export const artikelen: Artikel[] = [
         'In deze sectoren werkt een klein, geborduurd logo vaak beter dan een grote print. Het oogt verzorgd, blijft netjes door de was en wekt vertrouwen bij wie tegenover je zit.',
       ]},
     ],
-    relatedBranche: 'zorg-en-beauty',
+    relatedBranche: 'zorg-en-salon',
   },
   {
     slug: 'werkkleding-voor-agrarisch-en-groen-werk',
@@ -300,7 +300,7 @@ export const artikelen: Artikel[] = [
         'Werk je langs de weg of met grote machines, dan is hi-vis verstandig of verplicht. We kijken samen of en welke klasse je nodig hebt, zodat je gezien wordt zonder onnodige extra’s.',
       ]},
     ],
-    relatedBranche: 'agri-en-milieu',
+    relatedBranche: 'agrarisch-en-groen',
   },
   {
     slug: 'pbm-en-werkkleding-werkgever',
@@ -368,7 +368,7 @@ export const artikelen: Artikel[] = [
         'Vaak werkt een subtiel geborduurd logo sterker dan een grote print. Het oogt verzorgd en past bij een zakelijke uitstraling. We laten je vooraf zien hoe het eruitziet op de gekozen kleding.',
       ]},
     ],
-    relatedBranche: 'representatief',
+    relatedBranche: 'kantoor-en-retail',
   },
   {
     slug: 'industrieel-wassen-werkkleding',
@@ -395,7 +395,7 @@ export const artikelen: Artikel[] = [
         'Ga je met een wasserij of een leasepartij werken, kies dan vanaf het begin kleding die voor industrieel wassen geschikt is. Dat scheelt je het verschil tussen kleding die na een half jaar versleten is en kleding die jaren meegaat. We vertellen je per model of het een industrieel-was-label heeft en wat dat voor jouw situatie betekent.',
       ]},
     ],
-    relatedBranche: 'industrie-en-transport',
+    relatedBranche: 'industrie-en-logistiek',
   },
   {
     slug: 'esd-antistatische-werkkleding',
@@ -422,7 +422,7 @@ export const artikelen: Artikel[] = [
         'We leveren ESD-gecertificeerde polo’s, jassen en schoenen die passen binnen een ESD-omgeving. Wat we niet doen, is je ESD-programma inrichten of meten, daar is een gespecialiseerde partij voor. Wel zorgen we dat de kleding die je bij ons koopt de juiste certificering heeft en aansluit bij wat je opdrachtgever vraagt.',
       ]},
     ],
-    relatedBranche: 'industrie-en-transport',
+    relatedBranche: 'industrie-en-logistiek',
   },
   {
     slug: 'werkkostenregeling-werkkleding',
@@ -449,7 +449,7 @@ export const artikelen: Artikel[] = [
         'De regels rond de werkkostenregeling en de exacte percentages van de vrije ruimte veranderen geregeld. Voor de fiscale beoordeling van jouw situatie is je boekhouder of de Belastingdienst leidend. Wij regelen de kant die wij kennen: kleding met een logo dat aan de 70 cm2-eis voldoet, zodat die route in elk geval openstaat.',
       ]},
     ],
-    relatedBranche: 'representatief',
+    relatedBranche: 'kantoor-en-retail',
   },
   {
     slug: 'oeko-tex-grs-keurmerken-werkkleding',
@@ -475,7 +475,7 @@ export const artikelen: Artikel[] = [
         'Wil je voor je team duurzamere keuzes maken, kijk dan naar deze keurmerken in plaats van naar losse marketingteksten als "eco" of "groen", want die zijn niet beschermd. Vraag ons gerust welke modellen OEKO-TEX of GRS hebben. We zijn er eerlijk over: niet alles is gecertificeerd, en soms is een stevig kledingstuk dat tien jaar meegaat duurzamer dan een gerecycled stuk dat snel slijt.',
       ]},
     ],
-    relatedBranche: 'representatief',
+    relatedBranche: 'kantoor-en-retail',
   },
   {
     slug: 'werkhandschoenen-en-388',

@@ -1,7 +1,7 @@
 import type { BrancheVerdieping } from './type';
 
 export const verdieping: BrancheVerdieping | null = {
-  slug: 'horeca-en-hospitality',
+  slug: 'horeca-en-food',
   bijgewerkt: '2026-10-06',
   regioIntro:
     'De Achterhoek is een regio waar mensen komen om te eten, te fietsen en te overnachten. Het onderzoek naar toerisme in de regio telt drie delen: horeca, verblijfsrecreatie (vakantieparken, campings, B&B’s, hotels) en dagrecreatie. Voor je kleding betekent dat dat je team in een restaurant, een zaal, een lunchroom of op een park werkt met heel verschillende eisen. In de keuken telt hygiëne en grip, in de bediening uitstraling, bij onderhoud en schoonmaak slijtvastheid. In de zomer en op drukke weekenden komt daar vaak tijdelijk personeel bij.',

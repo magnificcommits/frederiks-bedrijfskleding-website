@@ -1,7 +1,7 @@
 import type { BrancheVerdieping } from './type';
 
 export const verdieping: BrancheVerdieping | null = {
-  slug: 'representatief',
+  slug: 'kantoor-en-retail',
   bijgewerkt: '2026-10-06',
   regioIntro:
     'Representatieve kleding draag je waar de klant je ziet: achter de balie, in de showroom, aan de keukentafel bij een bezichtiging of bij een afspraak op locatie. In de Achterhoek gaat het om kantoren, adviesbureaus, makelaars, autobedrijven, verkooppunten, schoonmaakbedrijven die bij klanten binnen werken en organisaties die evenementen draaien. Bij veel van deze bedrijven is elke medewerker voor de klant het bedrijf. Daarom telt hier meer dan elders dat iedereen er hetzelfde en verzorgd uitziet.',

@@ -33,32 +33,37 @@ const PROFIELEN: Record<string, Profiel> = {
     trefwoorden: /werkbroek|holster|knie|stretch|softshell|hi-?vis|20471|s3|allroundwork|flexiwork|cordura/i,
     merken: /snickers|fhb|blåkläder|blaklader|hydrowear|u-?power|fristads/i,
   },
-  'industrie-en-transport': {
+  'installatie-en-techniek': {
+    categorieen: ['broeken', 't-shirts-en-polos', 'jassen', 'truien-en-vesten', 'werkschoenen'],
+    trefwoorden: /service|knie|holster|esd|vlamboog|61482|multinorm|stretch|softshell|polo/i,
+    merken: /snickers|fristads|u-?power|hydrowear/i,
+  },
+  'industrie-en-logistiek': {
     categorieen: ['broeken', 'jassen', 'overalls', 'werkschoenen', 't-shirts-en-polos'],
     trefwoorden: /overall|multinorm|vlamvertragend|hi-?vis|20471|service|s3|esd|amerikaan/i,
     merken: /hydrowear|fristads|snickers|tricorp|u-?power/i,
   },
-  'horeca-en-hospitality': {
+  'horeca-en-food': {
     categorieen: ['blouses-en-overhemden', 't-shirts-en-polos', 'truien-en-vesten', 'werkschoenen'],
     trefwoorden: /schort|koks|chef|blouse|overhemd|polo|gilet|vest/i,
     merken: /xirtrum|mi-?piace|tq amsterdam|wk\.|brook taverner/i,
   },
-  'zorg-en-beauty': {
+  'zorg-en-salon': {
     categorieen: ['blouses-en-overhemden', 't-shirts-en-polos', 'broeken', 'truien-en-vesten'],
     trefwoorden: /tuniek|lab|zorg|blouse|polo|stretch|stay fresh/i,
     merken: /wk\.|mi-?piace|xirtrum/i,
   },
-  'agri-en-milieu': {
+  'agrarisch-en-groen': {
     categorieen: ['overalls', 'jassen', 'bodywarmers', 'werkschoenen', 'broeken'],
     trefwoorden: /overall|amerikaan|winter|gevoerd|insulated|waterdicht|wp|bodywarmer|s3|laars/i,
     merken: /fhb|snickers|hydrowear|grisport|fristads/i,
   },
-  representatief: {
+  'kantoor-en-retail': {
     categorieen: ['blouses-en-overhemden', 't-shirts-en-polos', 'truien-en-vesten', 'jassen'],
     trefwoorden: /blazer|kolbert|overhemd|blouse|polo|softshell|vest|trui/i,
     merken: /brook taverner|xirtrum|mi-?piace|tq amsterdam/i,
   },
-  'sport-en-promotie': {
+  'clubs-en-verenigingen': {
     categorieen: ['t-shirts-en-polos', 'truien-en-vesten', 'jassen'],
     trefwoorden: /t-?shirt|hoodie|sweater|polo|jog/i,
     merken: /wk\.|kariban/i,

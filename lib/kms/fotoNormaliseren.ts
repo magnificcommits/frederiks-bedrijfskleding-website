@@ -7,8 +7,8 @@
  * - transparant (WK, Tricorp): op wit leggen en bijsnijden op de vorm;
  * - lichte achtergrond (FHB, Brook): achtergrond optrekken naar zuiver wit en
  *   bijsnijden. Hier halen we bewust niets weg, anders verdwijnt wit textiel;
- * - grijze of gekleurde achtergrond (Snickers, Fristads): de achtergrond vanaf
- *   de randen laten 'weglopen' tot de omtrek van het kledingstuk en wit maken.
+ * - grijze of gekleurde achtergrond (Snickers): ongewijzigd laten. Weghalen
+ *   beschadigde donker textiel; zie stap 3.
  */
 
 export type Methode = 'transparant' | 'licht' | 'vrijstaand' | 'ongewijzigd';
@@ -24,8 +24,6 @@ export type Resultaat = {
   methode: Methode;
 };
 
-/** Maximaal kleurverschil tussen buurpixels binnen de achtergrond: eerst fijn, dan ruimer. */
-const STAPPEN = [6, 12, 18];
 const LICHT = 225; // achtergrond telt als licht boven deze waarde per kanaal
 
 function mediaan(waarden: number[]): number {
@@ -97,62 +95,12 @@ export function normaliseer(invoer: Uint8ClampedArray | Uint8Array, W: number, H
     return { pixels: d, ...(k ?? heel), methode: k ? 'licht' : 'ongewijzigd' };
   }
 
-  // 3. Grijze of gekleurde achtergrond: vanaf de randen laten weglopen. Lukt dat
-  // niet met de fijne stap (sterk verloop of korrelige studiogloed), dan nog twee
-  // keer met een ruimere stap. Pas daarna blijft de foto ongewijzigd.
-  for (const stap of STAPPEN) {
-    const achter = loopWeg(d, W, H, stap);
-    let product = 0;
-    for (let i = 0; i < n; i++) if (!achter[i]) product++;
-    // Vangnet: blijft er bijna niets of bijna alles over, dan klopt het niet.
-    if (product < n * 0.03 || product > n * 0.97) continue;
-    for (let i = 0; i < n; i++) {
-      if (achter[i]) {
-        d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = 255;
-        continue;
-      }
-      const x = i % W;
-      const rand = (x > 0 && achter[i - 1]) || (x < W - 1 && achter[i + 1]) || (i >= W && achter[i - W]) || (i < n - W && achter[i + W]);
-      if (rand) opWit(d, i * 4, 150); // zachte rand, geen kartels
-    }
-    const k = kader(W, H, (i) => !achter[i]);
-    return { pixels: d, ...(k ?? heel), methode: 'vrijstaand' };
-  }
+  // 3. Grijze of gekleurde achtergrond: bewust NIET weghalen. Bij studiofoto's met
+  // een donkere vignet (Snickers) liep het weghalen het zwarte of grijze textiel in
+  // en beschadigde het product (7 okt 2026, 99 foto's teruggezet). Een hele foto met
+  // eigen achtergrond is beter dan een kapotte. Vrijstaande versies vraag je op bij
+  // de leverancier en zet je via het sleepvak erin.
   return { pixels: d, ...heel, methode: 'ongewijzigd' };
-}
-
-/** Markeer de achtergrond: alles wat vanaf de rand bereikbaar is met kleine kleurstappen. */
-function loopWeg(d: Uint8ClampedArray, W: number, H: number, stap: number): Uint8Array {
-  const n = W * H;
-  const achter = new Uint8Array(n);
-  const rij = new Int32Array(n);
-  let kop = 0, staart = 0;
-  const zet = (i: number) => {
-    if (!achter[i]) {
-      achter[i] = 1;
-      rij[staart++] = i;
-    }
-  };
-  for (let x = 0; x < W; x++) {
-    zet(x);
-    zet((H - 1) * W + x);
-  }
-  for (let y = 0; y < H; y++) {
-    zet(y * W);
-    zet(y * W + W - 1);
-  }
-  const verschil = (a: number, b: number) =>
-    Math.max(Math.abs(d[a * 4] - d[b * 4]), Math.abs(d[a * 4 + 1] - d[b * 4 + 1]), Math.abs(d[a * 4 + 2] - d[b * 4 + 2]));
-  while (kop < staart) {
-    const i = rij[kop++];
-    const x = i % W;
-    const buren = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i >= W ? i - W : -1, i < n - W ? i + W : -1];
-    for (const b of buren) if (b >= 0 && !achter[b] && verschil(i, b) <= stap) {
-      achter[b] = 1;
-      rij[staart++] = b;
-    }
-  }
-  return achter;
 }
 
 /** Marge rond het product in het vierkante eindbeeld (aandeel van de zijde). */

@@ -15,12 +15,10 @@ function beeld(achtergrond: (x: number, y: number) => [number, number, number, n
 const px = (d: Uint8ClampedArray, x: number, y: number) => Array.from(d.slice((y * W + x) * 4, (y * W + x) * 4 + 4));
 
 describe('fotoNormaliseren', () => {
-  it('haalt een grijs verloop weg en snijdt bij op het product', () => {
+  it('laat een grijze of gekleurde achtergrond bewust staan', () => {
     const r = normaliseer(beeld((x, y) => { const v = 150 + Math.round((x + y) / 4); return [v, v, v, 255]; }, [20, 20, 30, 255]), W, H);
-    expect(r.methode).toBe('vrijstaand');
-    expect([r.x, r.y, r.w, r.h]).toEqual([10, 5, 20, 30]);
-    expect(px(r.pixels, 2, 2)).toEqual([255, 255, 255, 255]);
-    expect(px(r.pixels, 20, 20)).toEqual([20, 20, 30, 255]);
+    expect(r.methode).toBe('ongewijzigd');
+    expect([r.x, r.y, r.w, r.h]).toEqual([0, 0, W, H]);
   });
   it('trekt een bijna-witte achtergrond op naar wit en laat wit textiel staan', () => {
     const r = normaliseer(beeld(() => [244, 244, 244, 255], [235, 235, 235, 255]), W, H);

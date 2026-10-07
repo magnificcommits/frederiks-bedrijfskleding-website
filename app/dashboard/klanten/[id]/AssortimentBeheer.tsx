@@ -421,12 +421,17 @@ function RegelRij({
       <td>
         <div className="flex items-center gap-3">
           {regel.afbeelding ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={regel.afbeelding}
-              alt={regel.kleur ? `${regel.naam} in ${regel.kleur}` : ''}
-              className="h-14 w-14 shrink-0 rounded border border-line bg-white object-contain"
-            />
+            <span className="relative shrink-0" title={regel.eigenFoto ? undefined : 'Geen foto in deze kleur: dit is de algemene foto van het artikel'}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={regel.afbeelding}
+                alt={regel.kleur ? `${regel.naam} in ${regel.kleur}` : ''}
+                className={`h-14 w-14 rounded border bg-white object-contain ${regel.eigenFoto ? 'border-line' : 'border-dashed border-amber-400 opacity-80'}`}
+              />
+              {!regel.eigenFoto && (
+                <span className="absolute inset-x-0 bottom-0 rounded-b bg-amber-100 px-0.5 text-center text-[9px] font-semibold leading-tight text-amber-900">andere kleur</span>
+              )}
+            </span>
           ) : (
             <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded border border-line bg-mist text-[10px] text-warm">
               geen foto

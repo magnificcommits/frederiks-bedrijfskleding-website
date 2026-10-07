@@ -250,7 +250,8 @@ export function zelfdeKleur(a: string | null | undefined, b: string | null | und
 /* Kleuren van een artikel, met foto per kleur.                               */
 /* ------------------------------------------------------------------------- */
 
-export type KleurKeuze = { kleur: string; afbeelding: string | null };
+/** `eigenFoto` is false als er voor deze kleur geen foto is en de algemene artikelfoto wordt getoond. */
+export type KleurKeuze = { kleur: string; afbeelding: string | null; eigenFoto: boolean };
 
 type VariantKleurRij = { product_id: string; kleur: string | null; actief: boolean | null };
 type KleurFotoRij = { product_id: string; kleur: string | null; afbeelding_url: string | null };
@@ -335,10 +336,10 @@ export async function kleurenPerArtikel(
       id,
       [...kleuren]
         .sort((a, b) => a.localeCompare(b, 'nl'))
-        .map((kleur) => ({
-          kleur,
-          afbeelding: fotoVan.get(`${id}|${kleur.toLowerCase()}`) ?? hoofdfoto.get(id) ?? null,
-        })),
+        .map((kleur) => {
+          const eigen = fotoVan.get(`${id}|${kleur.toLowerCase()}`) ?? null;
+          return { kleur, afbeelding: eigen ?? hoofdfoto.get(id) ?? null, eigenFoto: Boolean(eigen) };
+        }),
     );
   }
   return uit;
@@ -459,6 +460,8 @@ export type AssortimentRij = {
   sku: string | null;
   /** Foto in de gekozen kleur, anders de hoofdfoto van het artikel. */
   afbeelding: string | null;
+  /** False als `afbeelding` de algemene artikelfoto is (geen foto in deze kleur). */
+  eigenFoto: boolean;
   /** Blijft null zolang de kleur-migratie nog niet gedraaid is. */
   kleur: string | null;
   /** De kleuren die dit artikel in de catalogus heeft. */
@@ -549,7 +552,8 @@ export async function listKlantAssortiment(orgId: string): Promise<AssortimentRi
     if (!r.product_id || !artikel) continue;
     const kleur = r.kleur?.trim() || null;
     const kleuren = kleurenVan.get(r.product_id) ?? [];
-    const kleurFoto = kleur ? kleuren.find((k) => zelfdeKleur(k.kleur, kleur))?.afbeelding : null;
+    const kleurKeuze = kleur ? kleuren.find((k) => zelfdeKleur(k.kleur, kleur)) : undefined;
+    const kleurFoto = kleurKeuze?.eigenFoto ? kleurKeuze.afbeelding : null;
     rijen.push({
       id: r.id,
       product_id: r.product_id,
@@ -558,6 +562,7 @@ export async function listKlantAssortiment(orgId: string): Promise<AssortimentRi
       categorie: artikel.categorie,
       sku: artikel.sku,
       afbeelding: kleurFoto ?? hoofdfoto.get(r.product_id) ?? null,
+      eigenFoto: Boolean(kleurFoto) || !kleur,
       kleur,
       kleuren: kleuren.map((k) => k.kleur),
       toegestaan: r.toegestaan !== false,

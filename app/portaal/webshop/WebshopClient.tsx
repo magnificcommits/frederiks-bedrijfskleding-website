@@ -296,12 +296,23 @@ export default function WebshopClient({
               const heeftVoorkeur = Boolean(voorkeur?.voorkeursmaat);
               const kleurMap = kleurAfbeeldingen[p.id];
               const huidigeKleur = opties.find((v) => v.id === gekozenVariant)?.kleur ?? null;
-              const kleurImg = kleurMap ? ((huidigeKleur && kleurMap[huidigeKleur]) || Object.values(kleurMap)[0] || null) : null;
+              // Foto in de gekozen kleur. Is die er niet, dan de algemene artikelfoto met een
+              // melding, nooit stil de foto van een andere kleur.
+              const eigenKleurImg = kleurMap && huidigeKleur ? kleurMap[huidigeKleur] ?? null : null;
+              const kleurImg = eigenKleurImg ?? p.afbeeldingen?.[0] ?? (kleurMap ? Object.values(kleurMap)[0] ?? null : null);
+              const andereKleur = Boolean(kleurImg && !eigenKleurImg && huidigeKleur);
               return (
                 <div key={p.id} className="rounded-2xl border border-line bg-white p-6 shadow-soft">
                   {kleurImg && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={kleurImg} alt={p.naam} className="mb-3 h-32 w-full rounded-lg border border-line bg-mist object-contain" />
+                    <div className="relative mb-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={kleurImg} alt={p.naam} className="h-32 w-full rounded-lg border border-line bg-mist object-contain" />
+                      {andereKleur && (
+                        <span className="absolute bottom-1.5 left-1.5 rounded bg-white/90 px-1.5 py-0.5 text-[11px] font-semibold text-ink-700 shadow-sm">
+                          {t('webshop.fotoAndereKleur')}
+                        </span>
+                      )}
+                    </div>
                   )}
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-bold text-ink-900">{p.naam}</p>

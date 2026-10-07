@@ -197,7 +197,9 @@ export default function ArtikelKiezer({
   }
 
   const kleurVerplicht = (kleurKeuzes?.length ?? 0) > 0;
-  const gekozenKleurFoto = kleurKeuzes?.find((k) => k.kleur === kleur)?.afbeelding ?? null;
+  const gekozenKleurKeuze = kleurKeuzes?.find((k) => k.kleur === kleur) ?? null;
+  const gekozenKleurFoto = gekozenKleurKeuze?.afbeelding ?? null;
+  const fotoAlgemeen = Boolean(gekozenKleurKeuze && !gekozenKleurKeuze.eigenFoto);
   const kanToevoegen =
     Boolean(gekozen) &&
     kleurKeuzes !== null &&
@@ -272,12 +274,19 @@ export default function ArtikelKiezer({
 
             <div className="mt-3 flex flex-wrap items-center gap-4 rounded-xl border border-line bg-mist p-3">
               {gekozenKleurFoto || gekozen.afbeelding ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={gekozenKleurFoto ?? gekozen.afbeelding ?? ''}
-                  alt=""
-                  className="h-28 w-28 shrink-0 rounded-md border border-line bg-white object-contain"
-                />
+                <span className="relative shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={gekozenKleurFoto ?? gekozen.afbeelding ?? ''}
+                    alt=""
+                    className={`h-28 w-28 rounded-md border bg-white object-contain ${fotoAlgemeen ? 'border-dashed border-amber-400' : 'border-line'}`}
+                  />
+                  {fotoAlgemeen && (
+                    <span className="absolute inset-x-0 bottom-0 rounded-b-md bg-amber-100 px-1 text-center text-[10px] font-semibold text-amber-900">
+                      geen foto in deze kleur
+                    </span>
+                  )}
+                </span>
               ) : (
                 <span className="flex h-28 w-28 shrink-0 items-center justify-center rounded-md border border-line bg-white text-[11px] text-warm">
                   geen foto
@@ -323,8 +332,13 @@ export default function ArtikelKiezer({
                           }`}
                         >
                           {k.afbeelding ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img src={k.afbeelding} alt="" className="h-16 w-16 object-contain" />
+                            <span className="relative">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={k.afbeelding} alt="" className={`h-16 w-16 object-contain ${k.eigenFoto ? '' : 'opacity-60'}`} />
+                              {!k.eigenFoto && (
+                                <span className="absolute inset-x-0 bottom-0 bg-amber-100 text-[9px] font-semibold leading-tight text-amber-900">geen kleurfoto</span>
+                              )}
+                            </span>
                           ) : (
                             <span className="flex h-16 w-16 items-center justify-center rounded bg-mist text-[10px] text-warm">
                               geen foto

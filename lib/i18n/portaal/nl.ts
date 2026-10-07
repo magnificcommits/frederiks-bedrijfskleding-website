@@ -287,6 +287,7 @@ export const nl = {
   },
 
   webshop: {
+    fotoAndereKleur: 'Foto in een andere kleur',
     intro:
       'Kies je producten, stel je winkelwagen samen en plaats je bestelling. We zetten hem klaar in het systeem en handelen de levering met je af.',
     bestellenVoor: 'Bestellen voor',

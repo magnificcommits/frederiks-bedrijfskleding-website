@@ -284,6 +284,7 @@ export const pl: Woordenboek = {
   },
 
   webshop: {
+    fotoAndereKleur: 'Zdjęcie w innym kolorze',
     intro: 'Wybierz produkty, skompletuj koszyk i złóż zamówienie. Przygotujemy je w naszym systemie i uzgodnimy z Tobą dostawę.',
     bestellenVoor: 'Zamów dla',
     geenMedewerkerAlles: 'Bez wybranego pracownika (wszystkie artykuły)',

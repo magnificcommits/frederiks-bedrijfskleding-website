@@ -276,6 +276,7 @@ export const de: Woordenboek = {
   },
 
   webshop: {
+    fotoAndereKleur: 'Foto in anderer Farbe',
     intro: 'Wähle deine Produkte, stelle deinen Warenkorb zusammen und gib deine Bestellung auf. Wir bereiten sie in unserem System vor und klären die Lieferung mit dir.',
     bestellenVoor: 'Bestellen für',
     geenMedewerkerAlles: 'Keine bestimmte Person (alle Artikel)',

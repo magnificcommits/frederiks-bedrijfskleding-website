@@ -24,7 +24,8 @@ export type Resultaat = {
   methode: Methode;
 };
 
-const STAP = 6; // maximaal kleurverschil tussen buurpixels binnen de achtergrond
+/** Maximaal kleurverschil tussen buurpixels binnen de achtergrond: eerst fijn, dan ruimer. */
+const STAPPEN = [6, 12, 18];
 const LICHT = 225; // achtergrond telt als licht boven deze waarde per kanaal
 
 function mediaan(waarden: number[]): number {
@@ -96,7 +97,33 @@ export function normaliseer(invoer: Uint8ClampedArray | Uint8Array, W: number, H
     return { pixels: d, ...(k ?? heel), methode: k ? 'licht' : 'ongewijzigd' };
   }
 
-  // 3. Grijze of gekleurde achtergrond: vanaf de randen laten weglopen.
+  // 3. Grijze of gekleurde achtergrond: vanaf de randen laten weglopen. Lukt dat
+  // niet met de fijne stap (sterk verloop of korrelige studiogloed), dan nog twee
+  // keer met een ruimere stap. Pas daarna blijft de foto ongewijzigd.
+  for (const stap of STAPPEN) {
+    const achter = loopWeg(d, W, H, stap);
+    let product = 0;
+    for (let i = 0; i < n; i++) if (!achter[i]) product++;
+    // Vangnet: blijft er bijna niets of bijna alles over, dan klopt het niet.
+    if (product < n * 0.03 || product > n * 0.97) continue;
+    for (let i = 0; i < n; i++) {
+      if (achter[i]) {
+        d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = 255;
+        continue;
+      }
+      const x = i % W;
+      const rand = (x > 0 && achter[i - 1]) || (x < W - 1 && achter[i + 1]) || (i >= W && achter[i - W]) || (i < n - W && achter[i + W]);
+      if (rand) opWit(d, i * 4, 150); // zachte rand, geen kartels
+    }
+    const k = kader(W, H, (i) => !achter[i]);
+    return { pixels: d, ...(k ?? heel), methode: 'vrijstaand' };
+  }
+  return { pixels: d, ...heel, methode: 'ongewijzigd' };
+}
+
+/** Markeer de achtergrond: alles wat vanaf de rand bereikbaar is met kleine kleurstappen. */
+function loopWeg(d: Uint8ClampedArray, W: number, H: number, stap: number): Uint8Array {
+  const n = W * H;
   const achter = new Uint8Array(n);
   const rij = new Int32Array(n);
   let kop = 0, staart = 0;
@@ -120,27 +147,12 @@ export function normaliseer(invoer: Uint8ClampedArray | Uint8Array, W: number, H
     const i = rij[kop++];
     const x = i % W;
     const buren = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i >= W ? i - W : -1, i < n - W ? i + W : -1];
-    for (const b of buren) if (b >= 0 && !achter[b] && verschil(i, b) <= STAP) {
+    for (const b of buren) if (b >= 0 && !achter[b] && verschil(i, b) <= stap) {
       achter[b] = 1;
       rij[staart++] = b;
     }
   }
-  let product = 0;
-  for (let i = 0; i < n; i++) if (!achter[i]) product++;
-  // Vangnet: blijft er bijna niets of bijna alles over, dan klopt het niet. Foto laten zoals hij is.
-  if (product < n * 0.03 || product > n * 0.97) return { pixels: d, ...heel, methode: 'ongewijzigd' };
-
-  for (let i = 0; i < n; i++) {
-    if (achter[i]) {
-      d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = 255;
-      continue;
-    }
-    const x = i % W;
-    const rand = (x > 0 && achter[i - 1]) || (x < W - 1 && achter[i + 1]) || (i >= W && achter[i - W]) || (i < n - W && achter[i + W]);
-    if (rand) opWit(d, i * 4, 150); // zachte rand, geen kartels
-  }
-  const k = kader(W, H, (i) => !achter[i]);
-  return { pixels: d, ...(k ?? heel), methode: 'vrijstaand' };
+  return achter;
 }
 
 /** Marge rond het product in het vierkante eindbeeld (aandeel van de zijde). */

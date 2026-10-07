@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { afronden, euro, logoFormaat, logoPrijs, type PrijsData } from '@/lib/kms/prijsindicatie';
 import { kleuren, kledingtypes, logoposities, broekposities, positiesVoor, teamgroottes, starterpakketten, teamAantal } from '@/content/configurator';
 import { logoFormaten, oppervlakVan, logoCheck, standaardFormaatVoor, LOGO_MIN_CM2 } from '@/lib/fiscaal';
 import { branches } from '@/content/branches';
@@ -55,12 +56,15 @@ function LogoRegel({ formaat, onChange }: { formaat?: string; onChange: (f: stri
   );
 }
 
-export function PakketConfigurator({ defaultBranche = '', initialLogo = null, portaal }: {
+export function PakketConfigurator({ defaultBranche = '', initialLogo = null, portaal, prijzen = null }: {
   defaultBranche?: string;
+  /** Prijsindicatie uit het KMS; null als de schakelaar uit staat. Nooit in het portaal. */
+  prijzen?: (PrijsData & { perBranche: Record<string, number> }) | null;
   initialLogo?: string | null;
   portaal?: { onAanvraag: (p: { regels: { item_naam: string; kleur: string | null; aantal: number }[]; notitie: string }) => Promise<{ ok: boolean; error?: string }>; bedrijfsnaam?: string };
 }) {
   const [step, setStep] = useState(0);
+  const toonPrijs = !portaal && prijzen;
   const [branche, setBranche] = useState(defaultBranche);
   const [team, setTeam] = useState('');
   const [logo, setLogo] = useState<string | null>(initialLogo);
@@ -71,6 +75,19 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   const [artikelen, setArtikelen] = useState<Artikel[]>([]);
   const [artikelenBezig, setArtikelenBezig] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
+  /** Indicatie voor het hele pakket: adviesprijs min standaardkorting plus geborduurd logo per stuk. */
+  const indicatie = (() => {
+    if (!prijzen || !items.length) return null;
+    const factor = 1 - prijzen.korting / 100;
+    let som = 0;
+    for (const i of items) {
+      const n = parseInt(i.aantal || '0', 10) || 0;
+      const kleding = prijzen.typePrijzen[i.type];
+      if (!n || !kleding) return null;
+      som += n * (kleding * factor + (logoPrijs(prijzen.staffel, 'borduren', logoFormaat(i.positie), n) ?? 0));
+    }
+    return afronden(som);
+  })();
   const [lastAdded, setLastAdded] = useState<string | null>(null);
   const [extras, setExtras] = useState<Record<string, { on: boolean; aantal: string }>>({});
   const [contact, setContact] = useState({ name: '', company: '', email: '', phone: '' });
@@ -578,6 +595,9 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
                   <span className="mt-0.5 block text-xs font-normal text-amber-700">
                     Per medewerker: {starter.map((s) => `${s.per}x ${typeLabel(s.type).toLowerCase()}`).join(', ')}. Je past het daarna naar wens aan.
                   </span>
+                  {toonPrijs && prijzen.perBranche[branche] && (
+                    <span className="mt-1 block text-xs font-bold text-amber-900">Vanaf ca. {euro(prijzen.perBranche[branche])} per medewerker, met logo, excl. btw</span>
+                  )}
                 </button>
               )}
               {items.length === 0 && (
@@ -638,6 +658,13 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
                 {items.length ? items.map((i) => <li key={i.id}>{typeLabel(i.type)}, {kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}{i.aantal ? `, ${i.aantal}x` : ''}</li>) : <li className="text-ink-400">Geen kledingstukken gekozen</li>}
                 {extrasOpties.filter((e) => extras[e.id]?.on).map((e) => <li key={e.id}>{e.label}{extras[e.id].aantal ? `, ${extras[e.id].aantal}x` : ''}</li>)}
               </ul>
+              {toonPrijs && indicatie !== null && (
+                <div className="mt-4 rounded-lg bg-ink-800 px-4 py-3 print:bg-mist">
+                  <p className="text-xs font-bold uppercase tracking-wide text-amber-400 print:text-amber-700">Prijsindicatie</p>
+                  <p className="mt-1 text-lg font-extrabold text-white print:text-ink-900">ca. {euro(indicatie)} <span className="text-sm font-normal text-ink-300 print:text-warm">excl. btw</span></p>
+                  <p className="mt-1 text-xs text-ink-300 print:text-warm">Kleding met geborduurd logo, voor de aantallen hierboven. Eenmalig komen daar een borduurkaart (€ 65 per logo) en instelkosten bij. Je exacte prijs staat in de offerte.</p>
+                </div>
+              )}
               <div className="mt-5 hidden border-t border-ink-700 pt-3 text-xs text-warm print:block">
                 <p>Frederiks Bedrijfskleding. Samenvatting van je samengestelde pakket.</p>
                 {(contact.name || contact.company || contact.email || contact.phone) && (

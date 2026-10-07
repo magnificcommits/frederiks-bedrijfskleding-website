@@ -8,6 +8,8 @@ import { JsonLd } from '@/components/JsonLd';
 import { breadcrumbJsonLd, faqJsonLd, serviceJsonLd } from '@/lib/jsonld';
 import { stappen, logoposities } from '@/content/decoratie';
 import { site } from '@/content/site';
+import { getPrijsindicatie } from '@/lib/kms/prijsindicatieData';
+import { LogoPrijzen } from '@/components/LogoPrijzen';
 
 export const metadata: Metadata = {
   title: 'Bedrukken en borduren',
@@ -58,7 +60,10 @@ const eigenHuis = [
   { t: 'Spoed? Loop binnen', d: 'Eén jas voor maandag is bespreekbaar.' },
 ];
 
-export default function BedrukkenBordurenPage() {
+export const revalidate = 3600;
+
+export default async function BedrukkenBordurenPage() {
+  const prijzen = await getPrijsindicatie();
   return (
     <>
       <JsonLd
@@ -110,6 +115,8 @@ export default function BedrukkenBordurenPage() {
           </p>
         </div>
       </section>
+
+      {prijzen && <LogoPrijzen p={prijzen} />}
 
       <section className="container-x sec-md">
         <h2 className="kop-2">Van kledingstuk naar goedgekeurd logo</h2>

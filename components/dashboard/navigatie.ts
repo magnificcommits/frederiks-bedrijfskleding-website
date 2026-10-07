@@ -106,6 +106,7 @@ const EXTRA_LABELS: Record<string, string> = {
   '/dashboard/instellingen/varianten': 'Maten en kleuren',
   '/dashboard/instellingen/service': 'Service',
   '/dashboard/instellingen/boekhouding': 'Boekhouding',
+  '/dashboard/instellingen/prijzen': 'Prijsindicaties',
   '/dashboard/instellingen/api': 'API en HR-koppeling',
   '/dashboard/taken/instellingen': 'Instellingen',
   '/dashboard/afspraken/instellingen': 'Beschikbaarheid',

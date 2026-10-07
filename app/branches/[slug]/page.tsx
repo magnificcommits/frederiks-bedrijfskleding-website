@@ -3,6 +3,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { branches, branchesBySlug } from '@/content/branches';
+import { getPrijsindicatie } from '@/lib/kms/prijsindicatieData';
+import { euro } from '@/lib/kms/prijsindicatie';
+import { starterpakketten, kledingtypes } from '@/content/configurator';
 import { Werkwijze } from '@/components/Werkwijze';
 import { site } from '@/content/site';
 import { Faq } from '@/components/Faq';
@@ -37,6 +40,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function BranchePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const b = branchesBySlug[slug];
+  const prijs = await getPrijsindicatie();
+  const vanaf = prijs?.perBranche[b?.navLabel ?? ''];
+  const starter = starterpakketten[b?.navLabel ?? ''];
   if (!b) notFound();
 
   const url = `${site.url}/branches/${b.slug}`;
@@ -114,6 +120,16 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
               <div className="rounded-2xl border-2 border-amber-500 bg-white p-6 shadow-card">
                 <h2 className="font-display text-xl font-extrabold text-ink-900">Kleding voor {b.navLabel.toLowerCase()}</h2>
                 <p className="mt-2 text-sm text-warm">Vertel wat je zoekt. We reageren binnen 24 uur (werkdagen) en komen langs om te passen.</p>
+                {vanaf && starter && (
+                  <Link href={`/pakket-samenstellen?branche=${encodeURIComponent(b.navLabel)}`} className="mt-4 block rounded-xl bg-amber-50 p-4 transition hover:bg-amber-100">
+                    <span className="block text-xs font-bold uppercase tracking-[0.14em] text-amber-700">Startpakket</span>
+                    <span className="mt-1 block font-display text-2xl font-extrabold text-ink-900">vanaf ca. {euro(vanaf)}</span>
+                    <span className="block text-sm text-ink-800">per medewerker, met geborduurd logo, excl. btw</span>
+                    <span className="mt-2 block text-xs text-warm">
+                      {starter.map((s) => `${s.per}x ${(kledingtypes.find((k) => k.id === s.type)?.label ?? s.type).toLowerCase()}`).join(', ')}. Stel je eigen pakket samen &rarr;
+                    </span>
+                  </Link>
+                )}
                 <CtaKnoppen
                   plek="branche-zijbalk"
                   vol

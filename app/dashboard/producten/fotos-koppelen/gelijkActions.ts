@@ -16,21 +16,24 @@ export async function teNormaliserenActie(): Promise<{ todo: string[]; klaar: nu
   if (!sb) return { todo: [], klaar: 0 };
   type P = { afbeeldingen: string[] | null };
   type K = { afbeelding_url: string | null };
-  type N = { bron_url: string; url: string };
+  type N = { bron_url: string; url: string; methode: string; teruggezet: boolean };
   const [producten, kleuren, gedaan] = await Promise.all([
     haalAllesOp<P>((van, tot) => sb.from('producten').select('afbeeldingen').order('id').range(van, tot)),
     haalAllesOp<K>((van, tot) => sb.from('product_kleur_afbeeldingen').select('afbeelding_url').order('id').range(van, tot)),
-    haalAllesOp<N>((van, tot) => sb.from('foto_normalisaties').select('bron_url, url').order('bron_url').range(van, tot)),
+    haalAllesOp<N>((van, tot) => sb.from('foto_normalisaties').select('bron_url, url, methode, teruggezet').order('bron_url').range(van, tot)),
   ]);
   const overslaan = new Set<string>();
+  // Ongewijzigd gebleven foto's krijgen een herkansing vanaf het origineel.
+  const herkansing: string[] = [];
   for (const g of gedaan) {
-    overslaan.add(g.bron_url);
     overslaan.add(g.url);
+    if (g.methode === 'ongewijzigd' && !g.teruggezet) herkansing.push(g.bron_url);
+    else overslaan.add(g.bron_url);
   }
   const alle = new Set<string>();
   for (const p of producten) for (const u of p.afbeeldingen ?? []) if (u) alle.add(u.trim());
   for (const k of kleuren) if (k.afbeelding_url) alle.add(k.afbeelding_url.trim());
-  const todo = [...alle].filter((u) => u && !u.includes('|') && !overslaan.has(u));
+  const todo = [...[...alle].filter((u) => u && !u.includes('|') && !overslaan.has(u)), ...herkansing];
   return { todo, klaar: gedaan.length };
 }
 
@@ -87,9 +90,11 @@ export async function normaliseerFotoActie(bron: string): Promise<GelijkResultaa
       .toBuffer();
     const url = await uploadMedia(new File([new Uint8Array(uit)], 'gelijk.webp', { type: 'image/webp' }), 'producten/gelijk');
     if (!url) return { ok: false, fout: 'Opslaan mislukt.' };
-    const { error } = await sb.from('foto_normalisaties').upsert({ bron_url: bron, url, methode: r.methode, teruggezet: false });
+    const { data: eerder } = await sb.from('foto_normalisaties').select('url').eq('bron_url', bron).maybeSingle();
+    const { error } = await sb.from('foto_normalisaties').upsert({ bron_url: bron, url, methode: r.methode === 'ongewijzigd' && eerder ? 'ongewijzigd_herkansing' : r.methode, teruggezet: false });
     if (error) return { ok: false, fout: 'Vastleggen mislukt.' };
     await vervangOveral(bron, url);
+    if (eerder?.url && eerder.url !== url) await vervangOveral(eerder.url, url);
     return { ok: true, url, methode: r.methode };
   } catch (e) {
     return { ok: false, fout: e instanceof Error ? e.message.slice(0, 120) : 'Verwerken mislukt.' };

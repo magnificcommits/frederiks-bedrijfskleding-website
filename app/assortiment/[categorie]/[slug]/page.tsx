@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { ContactSectie } from '@/components/ContactSectie';
 import { ProductKaart } from '@/components/ProductKaart';
 import { SelectieKnop } from '@/components/OfferteSelectie';
+import { getPrijsindicatie, klasseVan } from '@/lib/kms/prijsindicatieData';
 import { PrijsBlok } from '@/components/PrijsBlok';
 import { JsonLd } from '@/components/JsonLd';
 import { breadcrumbJsonLd } from '@/lib/jsonld';
@@ -34,6 +35,7 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
   const { categorie, slug } = await params;
   const c = categorieVanSlug(categorie);
   const p = await getPubliekProduct(categorie, slug);
+  const prijsInfo = await getPrijsindicatie();
   if (!c || !p) notFound();
 
   const verwant = (await listPubliekeProducten({ categorieSlug: categorie }))
@@ -147,6 +149,21 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
               </dl>
             )}
 
+            {(() => {
+              const k = p && prijsInfo ? klasseVan(prijsInfo, p.id) : null;
+              if (!k) return null;
+              const tekst = { 1: 'voordelig binnen deze categorie', 2: 'middensegment', 3: 'topsegment' }[k];
+              return (
+                <p className="mt-6 flex flex-wrap items-baseline gap-x-2 text-sm">
+                  <span className="text-xs font-bold uppercase tracking-[0.14em] text-warm">Prijsklasse</span>
+                  <span className="font-display text-lg font-extrabold tracking-wider text-ink-900" aria-label={`${k} van 3`}>
+                    {'€'.repeat(k)}
+                    <span className="text-line">{'€'.repeat(3 - k)}</span>
+                  </span>
+                  <span className="text-warm">{tekst}. Jouw prijs zie je na inloggen of in je offerte.</span>
+                </p>
+              );
+            })()}
             <div className="mt-7 flex flex-wrap items-center gap-3" data-plek="product">
               <Link href={`/offerte?product=${encodeURIComponent(`${p.merk ? p.merk + ' ' : ''}${p.naam}`)}`} className="btn-primary" data-cta="offerte">
                 Vraag offerte aan

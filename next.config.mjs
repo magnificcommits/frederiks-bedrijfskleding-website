@@ -47,6 +47,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'hf-hcms-staging1.azureedge.net' }, // Snickers Workwear
       { protocol: 'https', hostname: 'www.brooktaverner.com' },   // Brook Taverner
       { protocol: 'https', hostname: 'image-pim.fristadskansas.com' }, // Fristads
+      // Eigen opslag: gelijkgetrokken productfoto's en geüploade kleurfoto's.
+      { protocol: 'https', hostname: 'ldbyljadqququzoicyid.supabase.co', pathname: '/storage/v1/object/public/media/**' },
     ],
   },
   async headers() {

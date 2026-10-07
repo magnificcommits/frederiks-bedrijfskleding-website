@@ -5,6 +5,8 @@ import { branches } from '@/content/branches';
 import { getHerkomst, leesHerkomstVoorLead } from '@/lib/herkomst';
 import { site } from '@/content/site';
 import { useOfferteSelectie } from '@/components/OfferteSelectie';
+import { MandRegels } from '@/components/MandRegels';
+import { naarLeadRegels, samenvatting } from '@/lib/offerteMand';
 
 type Status = 'idle' | 'sending' | 'ok' | 'error';
 
@@ -40,17 +42,13 @@ export function OfferteAanvraag({
   defaultProduct?: string;
 }) {
   const uid = useId();
-  const { items: gekozenArtikelen, verwijder, leegmaken } = useOfferteSelectie();
+  const { items: gekozenArtikelen, leegmaken } = useOfferteSelectie();
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
   const [fouten, setFouten] = useState<Record<string, string>>({});
   const [aantal, setAantal] = useState('');
   const [alKlant, setAlKlant] = useState<'' | 'ja' | 'nee'>('');
   const [behoeften, setBehoeften] = useState<string[]>([]);
-  // Per gekozen artikel optioneel een aantal en kleur; gaat gestructureerd mee naar het KMS.
-  const [details, setDetails] = useState<Record<string, { aantal: string; kleur: string }>>({});
-  const zetDetail = (id: string, veld: 'aantal' | 'kleur', waarde: string) =>
-    setDetails((h) => ({ ...h, [id]: { aantal: h[id]?.aantal ?? '', kleur: h[id]?.kleur ?? '', [veld]: waarde } }));
 
   const voornaam = site.owner.split(' ')[0];
 
@@ -84,27 +82,13 @@ export function OfferteAanvraag({
 
     const extra: string[] = [];
     if (gekozenArtikelen.length > 0) {
-      extra.push(
-        `Gekozen artikelen (${gekozenArtikelen.length}):\n` +
-          gekozenArtikelen
-            .map((a) => {
-              const det = details[a.id];
-              const extraTekst = [det?.kleur?.trim(), det?.aantal ? `${det.aantal}x` : ''].filter(Boolean).join(', ');
-              return `- ${[a.merk, a.naam].filter(Boolean).join(' ')}${extraTekst ? `, ${extraTekst}` : ''}`;
-            })
-            .join('\n'),
-      );
+      extra.push(`Offertemandje (${gekozenArtikelen.length}):\n${samenvatting(gekozenArtikelen)}`);
     }
     if (behoeften.length > 0) extra.push(`Nodig: ${behoeften.join(', ')}`);
     if (alKlant) extra.push(`Al klant bij Frederiks: ${alKlant}`);
     const bericht = [lees('bericht'), extra.join('\n')].filter(Boolean).join('\n\n').slice(0, 2000);
 
-    const regels = gekozenArtikelen.map((a) => ({
-      product_id: a.id,
-      omschrijving: [a.merk, a.naam].filter(Boolean).join(' '),
-      kleur: details[a.id]?.kleur?.trim() || null,
-      aantal: Number(details[a.id]?.aantal) || null,
-    }));
+    const regels = naarLeadRegels(gekozenArtikelen);
 
     const payload: Record<string, unknown> = {
       name: naam,
@@ -168,6 +152,8 @@ export function OfferteAanvraag({
     <form onSubmit={onSubmit} className="grid content-start gap-7 self-start rounded-2xl border border-line bg-white p-6 shadow-card sm:p-8" noValidate>
       {/* Honeypot, verborgen voor mensen */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
+
+      <MandRegels />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
@@ -277,64 +263,6 @@ export function OfferteAanvraag({
           ))}
         </div>
       </fieldset>
-
-      {gekozenArtikelen.length > 0 && (
-        <div className="rounded-xl border border-line bg-mist p-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-sm font-semibold text-ink-900">
-              {gekozenArtikelen.length} {gekozenArtikelen.length === 1 ? 'artikel' : 'artikelen'} in deze aanvraag
-            </p>
-            <button
-              type="button"
-              onClick={leegmaken}
-              className="text-xs font-semibold text-amber-700 underline underline-offset-2"
-            >
-              Alles verwijderen
-            </button>
-          </div>
-          <ul className="mt-3 grid gap-2">
-            {gekozenArtikelen.map((a) => (
-              <li
-                key={a.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm text-ink-800 sm:grid-cols-[minmax(0,1fr)_7rem_5rem_auto]"
-              >
-                <span className="min-w-0 truncate font-medium">{[a.merk, a.naam].filter(Boolean).join(' ')}</span>
-                <button
-                  type="button"
-                  onClick={() => verwijder(a.id)}
-                  aria-label={`${a.naam} uit de aanvraag halen`}
-                  className="rounded px-1.5 text-warm hover:bg-mist hover:text-ink-900 sm:order-last"
-                >
-                  ×
-                </button>
-                <label className="col-span-2 flex items-center gap-2 sm:col-span-1">
-                  <span className="sr-only">Kleur voor {a.naam}</span>
-                  <input
-                    value={details[a.id]?.kleur ?? ''}
-                    onChange={(e) => zetDetail(a.id, 'kleur', e.target.value)}
-                    placeholder="Kleur"
-                    maxLength={60}
-                    className="min-h-[36px] w-full rounded-md border border-line px-2 py-1 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                  />
-                </label>
-                <label className="col-span-2 flex items-center gap-2 sm:col-span-1">
-                  <span className="sr-only">Aantal voor {a.naam}</span>
-                  <input
-                    value={details[a.id]?.aantal ?? ''}
-                    onChange={(e) => zetDetail(a.id, 'aantal', e.target.value.replace(/\D/g, '').slice(0, 5))}
-                    inputMode="numeric"
-                    placeholder="Aantal"
-                    className="min-h-[36px] w-full rounded-md border border-line px-2 py-1 text-sm tabular-nums focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                  />
-                </label>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-xs text-warm">
-            Kleur en aantal mag je openlaten. We rekenen alles door in één voorstel, met jouw staffel en bedrukking erbij.
-          </p>
-        </div>
-      )}
 
       <div>
         <label className={label} htmlFor={`${uid}-bericht`}>Vertel kort waar het om gaat</label>

@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import { MandKnop } from '@/components/OfferteSelectie';
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import PortaalKnop from '@/components/PortaalKnop';
@@ -177,7 +178,7 @@ export function Header() {
           </nav>
           <div className="hidden shrink-0 items-center gap-2 lg:flex">
             <PortaalKnop className="whitespace-nowrap rounded-md px-3 py-2.5 text-[13px] font-semibold text-ink-800 hover:text-amber-700 hover:bg-mist" />
-            <Link href="/offerte" className="btn-primary inline-flex whitespace-nowrap px-5 py-2.5 text-[13px]" data-cta="offerte">Offerte aanvragen</Link>
+            <MandKnop className="btn-primary inline-flex items-center whitespace-nowrap px-5 py-2.5 text-[13px]" />
           </div>
           <div className="flex items-center gap-1 lg:hidden">
             <a
@@ -247,7 +248,7 @@ function MobielMenu({ sluit }: { sluit: () => void }) {
     <div id="mobiel-menu" className="fixed inset-x-0 top-16 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 overflow-y-auto overscroll-contain border-t border-line bg-white lg:hidden">
       <nav className="container-x flex min-h-full flex-col pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4" aria-label="Mobiele navigatie">
         <div className="grid grid-cols-2 gap-2" data-plek="mobiel-menu">
-          <Link href="/offerte" className="btn-primary w-full px-3 text-[15px]" onClick={sluit} data-cta="offerte">Offerte aanvragen</Link>
+          <MandKnop className="btn-primary inline-flex w-full items-center justify-center px-3 text-[15px]" onClick={sluit} />
           <Link href="/afspraak" className="btn-outline w-full px-3 text-[15px]" onClick={sluit} data-cta="afspraak">Adviesgesprek</Link>
         </div>
 

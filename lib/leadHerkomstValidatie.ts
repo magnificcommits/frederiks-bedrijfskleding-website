@@ -91,7 +91,8 @@ export const leadRegelSchema = z.object({
   opmerking: z.string().max(300).optional().nullable(),
 });
 
-export const leadRegelsSchema = z.array(leadRegelSchema).max(60);
+// Eén regel per maat: 15 artikelen x 10 maten moet passen.
+export const leadRegelsSchema = z.array(leadRegelSchema).max(200);
 
 export function schoneRegels(ruw: unknown): LeadRegelInvoer[] {
   const p = leadRegelsSchema.safeParse(ruw ?? []);

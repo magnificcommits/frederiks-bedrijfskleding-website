@@ -17,7 +17,7 @@ export function ProductKaart({ p, selecteerbaar = true }: { p: KaartProduct; sel
       {selecteerbaar && (
         <SelectieKnop
           className="absolute right-2 top-2 z-10"
-          item={{ id: p.id, naam: p.naam, merk: p.merk, categorieSlug: p.categorieSlug, slug: p.slug, foto: p.foto }}
+          item={{ id: p.id, naam: p.naam, merk: p.merk, categorieSlug: p.categorieSlug, slug: p.slug, foto: p.foto, kleuren: p.kleuren, maten: p.maten }}
         />
       )}
       <Link href={`/assortiment/${p.categorieSlug}/${p.slug}`} className="flex grow flex-col">

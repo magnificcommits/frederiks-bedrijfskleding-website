@@ -38,7 +38,7 @@ export function PrijsBlok({ productId }: { productId: string }) {
         <p className="mt-1 text-warm">
           Klanten van Frederiks zien hun eigen prijzen in het{' '}
           <Link href="/portaal" className="font-semibold text-amber-700 underline underline-offset-2">klantportaal</Link>. Nog geen klant?{' '}
-          <Link href="/offerte" className="font-semibold text-amber-700 underline underline-offset-2">Vraag een offerte aan</Link> — dan rekenen we meteen met je aantallen en je logo.
+          <Link href="/offerte" className="font-semibold text-amber-700 underline underline-offset-2">Vraag een offerte aan</Link>, dan rekenen we meteen met je aantallen en je logo.
         </p>
       </div>
     );

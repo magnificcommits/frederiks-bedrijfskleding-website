@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { MandKnop } from '@/components/OfferteSelectie';
 import { site } from '@/content/site';
 
 /**
@@ -35,10 +35,10 @@ export function MobileActionBar() {
         </svg>
         WhatsApp
       </a>
-      <Link href="/offerte" className={`${vak} bg-amber-500 text-[14px] font-bold text-ink-900`} data-cta="offerte">
-        Offerte aanvragen
-        <span className="text-[11px] font-semibold text-ink-900/80">reactie {site.beloftKort}</span>
-      </Link>
+      <MandKnop
+        className={`${vak} bg-amber-500 text-[14px] font-bold text-ink-900`}
+        sub={<span className="text-[11px] font-semibold text-ink-900/80">reactie {site.beloftKort}</span>}
+      />
     </nav>
   );
 }

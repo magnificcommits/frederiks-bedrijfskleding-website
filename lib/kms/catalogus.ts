@@ -122,6 +122,8 @@ export type PubliekProduct = {
   fotos: string[];
   maten: string[];
   kleuren: string[];
+  /** Welke maten er per kleur leverbaar zijn (opgeschoonde kleurnaam als sleutel). */
+  matenPerKleur: Record<string, string[]>;
 };
 
 type Rij = {
@@ -172,7 +174,32 @@ function naarProduct(r: Rij): PubliekProduct {
     fotos,
     maten: sorteerMaten([...new Set(varianten.map((v) => v.maat).filter((m): m is string => !!m))]),
     kleuren: [...new Set(varianten.map((v) => (v.kleur ? schoneKleur(v.kleur) : null)).filter((k): k is string => !!k))].sort((a, b) => a.localeCompare(b, 'nl')),
+    matenPerKleur: (() => {
+      const m = new Map<string, Set<string>>();
+      for (const v of varianten) {
+        if (!v.kleur || !v.maat) continue;
+        const k = schoneKleur(v.kleur);
+        if (!m.has(k)) m.set(k, new Set());
+        m.get(k)!.add(v.maat);
+      }
+      return Object.fromEntries([...m].map(([k, set]) => [k, sorteerMaten([...set])]));
+    })(),
   };
+}
+
+/** Foto per kleur voor de publieke productpagina, met dezelfde opgeschoonde kleurnamen als `kleuren`. */
+export async function kleurFotosPubliek(productId: string): Promise<Record<string, string>> {
+  const sb = kmsAdmin();
+  if (!sb) return {};
+  const { data } = await sb.from('product_kleur_afbeeldingen').select('kleur, afbeelding_url').eq('product_id', productId);
+  const uit: Record<string, string> = {};
+  for (const r of (data as { kleur: string | null; afbeelding_url: string | null }[]) ?? []) {
+    const url = (r.afbeelding_url ?? '').trim();
+    if (!r.kleur || !isFotoUrl(url)) continue;
+    const k = schoneKleur(r.kleur);
+    if (!uit[k]) uit[k] = url;
+  }
+  return uit;
 }
 
 const VELDEN = 'id, naam, sku, merk, categorie, subcategorie, geslacht, omschrijving, materiaal, normeringen, afbeeldingen';

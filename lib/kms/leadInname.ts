@@ -86,6 +86,9 @@ async function catalogusPrijs(productId: string, kleur: string | null): Promise<
   return { prijs: prijzen.length ? Math.min(...prijzen) : 0, inkoop: null, kleur };
 }
 
+/** Aantal verschillende artikelen (artikel + kleur); het mandje stuurt één regel per maat. */
+const aantalArtikelen = (regels: LeadRegelInvoer[]) => new Set(regels.map((r) => `${r.product_id ?? r.omschrijving}|${r.kleur ?? ''}`)).size;
+
 /** Regels als offerteregels toevoegen. Geeft het aantal geslaagde regels terug. */
 export async function regelsNaarOfferte(sb: Sb, offerteId: string, regels: LeadRegelInvoer[]): Promise<number> {
   const ids = [...new Set(regels.map((r) => r.product_id).filter((x): x is string => !!x))];
@@ -95,11 +98,18 @@ export async function regelsNaarOfferte(sb: Sb, offerteId: string, regels: LeadR
     for (const p of (data as { id: string; naam: string; merk: string | null }[]) ?? []) producten.set(p.id, p);
   }
   let gelukt = 0;
+  // Eén regel per maat: de prijs per artikel en kleur maar één keer opzoeken.
+  const prijsCache = new Map<string, Awaited<ReturnType<typeof catalogusPrijs>>>();
   for (const r of regels) {
     const prod = r.product_id ? producten.get(r.product_id) : undefined;
-    const prijs = prod && r.product_id ? await catalogusPrijs(r.product_id, r.kleur) : { prijs: 0, inkoop: null, kleur: r.kleur };
+    let prijs: Awaited<ReturnType<typeof catalogusPrijs>> = { prijs: 0, inkoop: null, kleur: r.kleur };
+    if (prod && r.product_id) {
+      const k = `${r.product_id}|${r.kleur ?? ''}`;
+      prijs = prijsCache.get(k) ?? (await catalogusPrijs(r.product_id, r.kleur));
+      prijsCache.set(k, prijs);
+    }
     const basis = prod ? regelOmschrijving(prod, prijs.kleur, null) : [r.omschrijving, r.kleur].filter(Boolean).join(', ');
-    const extra = [r.maat ? `maat ${r.maat}` : null, r.opmerking, prod ? null : 'prijs nog invullen'].filter(Boolean).join(' · ');
+    const extra = [prod ? null : r.maat ? `maat ${r.maat}` : null, r.opmerking, prod ? null : 'prijs nog invullen'].filter(Boolean).join(' · ');
     const ok = await voegRegelToe(offerteId, {
       omschrijving: (extra ? `${basis} (${extra})` : basis).slice(0, 300),
       aantal: r.aantal ?? 1,
@@ -107,7 +117,8 @@ export async function regelsNaarOfferte(sb: Sb, offerteId: string, regels: LeadR
       inkoop: prijs.inkoop,
       product_id: prod ? r.product_id : null,
       kleur: prijs.kleur,
-      maat: null,
+      // Bij een catalogusartikel staat de maat in de eigen kolom, zodat de offerte per maat klopt.
+      maat: prod ? r.maat : null,
     });
     if (ok) gelukt += 1;
   }
@@ -252,7 +263,7 @@ export async function neemWebleadIn(invoer: WebleadInvoer): Promise<WebleadUitko
     if (error) {
       console.error('[lead] productregels niet opgeslagen:', error.message);
       waarschuwingen.push('De gekozen artikelen konden niet apart worden opgeslagen (ze staan wel in het bericht).');
-    } else tijdlijn.push(`${regels.length} artikel${regels.length === 1 ? '' : 'en'} ${samengevoegd ? 'erbij' : 'gekozen'}.`);
+    } else tijdlijn.push(`${aantalArtikelen(regels)} artikel${aantalArtikelen(regels) === 1 ? '' : 'en'} ${samengevoegd ? 'erbij' : 'gekozen'}${regels.length > aantalArtikelen(regels) ? `, ${regels.length} regels per maat` : ''}.`);
   }
 
   // 2. Logo naar de logobibliotheek (bij de lead, later bij de klant).
@@ -276,7 +287,7 @@ export async function neemWebleadIn(invoer: WebleadInvoer): Promise<WebleadUitko
         lead.phone ? `Telefoon: ${lead.phone}` : '',
         lead.email ? `E-mail: ${lead.email}` : '',
         `Via: ${kanaalLabel}${lead.utm_campaign ? ` (campagne ${lead.utm_campaign})` : ''}`,
-        regels.length ? `${regels.length} artikel${regels.length === 1 ? '' : 'en'} gekozen` : '',
+        regels.length ? `${aantalArtikelen(regels)} artikel${aantalArtikelen(regels) === 1 ? '' : 'en'} gekozen` : '',
         `Openen: /dashboard/leads/${id}`,
       ].filter(Boolean);
       const taak = await maakTaak({

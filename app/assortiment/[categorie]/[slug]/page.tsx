@@ -1,16 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ContactSectie } from '@/components/ContactSectie';
 import { ProductKaart } from '@/components/ProductKaart';
-import { SelectieKnop } from '@/components/OfferteSelectie';
+import { ProductKoop } from '@/components/ProductKoop';
 import { getPrijsindicatie, klasseVan } from '@/lib/kms/prijsindicatieData';
 import { PrijsBlok } from '@/components/PrijsBlok';
 import { JsonLd } from '@/components/JsonLd';
 import { breadcrumbJsonLd } from '@/lib/jsonld';
 import { env } from '@/lib/env';
-import { categorieVanSlug, getPubliekProduct, listPubliekeProducten, alleProductPaden, naarKaart } from '@/lib/kms/catalogus';
+import { categorieVanSlug, getPubliekProduct, listPubliekeProducten, alleProductPaden, naarKaart, kleurFotosPubliek } from '@/lib/kms/catalogus';
 
 export const revalidate = 3600;
 
@@ -37,6 +36,7 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
   const p = await getPubliekProduct(categorie, slug);
   const prijsInfo = await getPrijsindicatie();
   if (!c || !p) notFound();
+  const kleurFotos = await kleurFotosPubliek(p.id);
 
   const verwant = (await listPubliekeProducten({ categorieSlug: categorie }))
     .filter((x) => x.id !== p.id && (p.merk ? x.merk === p.merk : true))
@@ -88,105 +88,64 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
       </div>
 
       <section className="container-x py-8">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-          <div>
-            <div className="relative aspect-square overflow-hidden rounded-xl border border-line bg-white">
-              {p.foto && (
-                <Image src={p.foto} alt={p.naam} fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-contain p-6" priority />
+        <ProductKoop
+          p={{
+            id: p.id, naam: p.naam, merk: p.merk, categorieSlug: p.categorieSlug, slug: p.slug,
+            foto: p.foto, fotos: p.fotos, kleuren: p.kleuren, maten: p.maten, matenPerKleur: p.matenPerKleur,
+          }}
+          kleurFotos={kleurFotos}
+          kop={
+            <>
+              {p.merk && (
+                <Link href={`/merk/${p.merkSlug}`} className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700 hover:text-amber-800">
+                  {p.merk}
+                </Link>
               )}
-            </div>
-            {p.fotos.length > 1 && (
-              <div className="mt-3 grid grid-cols-4 gap-3">
-                {p.fotos.slice(1, 5).map((f) => (
-                  <div key={f} className="relative aspect-square overflow-hidden rounded-lg border border-line bg-white">
-                    <Image src={f} alt="" fill sizes="25vw" className="object-contain p-2" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+              <h1 className="mt-2 text-2xl font-bold text-balance sm:text-3xl">{p.naam}</h1>
+              {p.omschrijving && <p className="mt-4 text-warm leading-relaxed">{p.omschrijving}</p>}
+              <div className="mt-6"><PrijsBlok productId={p.id} /></div>
+            </>
+          }
+          onder={
+            <>
+              <p className="mt-3 text-xs text-warm">
+                Bedrukken en borduren doen we in eigen huis in Hengelo Gld. Levering door heel de Achterhoek.
+                Twijfel je over maat of model?{' '}
+                <Link href="/afspraak" className="font-semibold text-amber-700 underline underline-offset-2" data-cta="afspraak">
+                  Plan een adviesgesprek
+                </Link>
+                , dan nemen we pasmodellen mee.
+              </p>
 
-          <div>
-            {p.merk && (
-              <Link href={`/merk/${p.merkSlug}`} className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700 hover:text-amber-800">
-                {p.merk}
-              </Link>
-            )}
-            <h1 className="mt-2 text-2xl font-bold text-balance sm:text-3xl">{p.naam}</h1>
-            {p.omschrijving && <p className="mt-4 text-warm leading-relaxed">{p.omschrijving}</p>}
-
-            <div className="mt-6"><PrijsBlok productId={p.id} /></div>
-
-            {p.maten.length > 0 && (
-              <div className="mt-6">
-                <p className="text-sm font-semibold text-ink-900">Maten</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {p.maten.map((m) => (
-                    <span key={m} className="rounded border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink-700">{m}</span>
+              {specs.length > 0 && (
+                <dl className="mt-6 divide-y divide-line border-y border-line text-sm">
+                  {specs.map((s) => (
+                    <div key={s.label} className="flex gap-4 py-2.5">
+                      <dt className="w-32 shrink-0 text-warm">{s.label}</dt>
+                      <dd className="text-ink-900">{s.waarde}</dd>
+                    </div>
                   ))}
-                </div>
-                <p className="mt-2 text-xs text-warm">
-                  Twijfel je over de maat? Bekijk de <Link href="/maattabellen" className="font-semibold text-amber-700 underline underline-offset-2">maattabellen</Link> of kom passen.
-                </p>
-              </div>
-            )}
+                </dl>
+              )}
 
-            {p.kleuren.length > 0 && (
-              <div className="mt-5">
-                <p className="text-sm font-semibold text-ink-900">Kleuren ({p.kleuren.length})</p>
-                <p className="mt-1.5 text-sm text-warm">{p.kleuren.slice(0, 12).join(' · ')}{p.kleuren.length > 12 ? ' en meer' : ''}</p>
-              </div>
-            )}
-
-            {specs.length > 0 && (
-              <dl className="mt-6 divide-y divide-line border-y border-line text-sm">
-                {specs.map((s) => (
-                  <div key={s.label} className="flex gap-4 py-2.5">
-                    <dt className="w-32 shrink-0 text-warm">{s.label}</dt>
-                    <dd className="text-ink-900">{s.waarde}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-
-            {(() => {
-              const k = p && prijsInfo ? klasseVan(prijsInfo, p.id) : null;
-              if (!k) return null;
-              const tekst = { 1: 'voordelig binnen deze categorie', 2: 'middensegment', 3: 'topsegment' }[k];
-              return (
-                <p className="mt-6 flex flex-wrap items-baseline gap-x-2 text-sm">
-                  <span className="text-xs font-bold uppercase tracking-[0.14em] text-warm">Prijsklasse</span>
-                  <span className="font-display text-lg font-extrabold tracking-wider text-ink-900" aria-label={`${k} van 3`}>
-                    {'€'.repeat(k)}
-                    <span className="text-line">{'€'.repeat(3 - k)}</span>
-                  </span>
-                  <span className="text-warm">{tekst}. Jouw prijs zie je na inloggen of in je offerte.</span>
-                </p>
-              );
-            })()}
-            <div className="mt-7 flex flex-wrap items-center gap-3" data-plek="product">
-              <Link href={`/offerte?product=${encodeURIComponent(`${p.merk ? p.merk + ' ' : ''}${p.naam}`)}`} className="btn-primary" data-cta="offerte">
-                Vraag offerte aan
-              </Link>
-              {/* Meerdere artikelen verzamelen en er in één keer een offerte voor
-                  vragen; de balk onderin telt mee wat je hebt gekozen. */}
-              <SelectieKnop
-                className="h-11 px-4 text-sm"
-                labels={{ uit: 'Meenemen in mijn offerte', aan: 'Staat in je offerte' }}
-                item={{ id: p.id, naam: p.naam, merk: p.merk, categorieSlug: p.categorieSlug, slug: p.slug, foto: p.foto }}
-              />
-              <Link href="/pakket-samenstellen" className="btn-outline">Zet je logo erop</Link>
-            </div>
-            <p className="mt-3 text-xs text-warm">
-              Bedrukken en borduren doen we in eigen huis in Hengelo Gld. Levering door heel de Achterhoek.
-              Twijfel je over maat of model?{' '}
-              <Link href="/afspraak" className="font-semibold text-amber-700 underline underline-offset-2" data-cta="afspraak">
-                Plan een adviesgesprek
-              </Link>
-              , dan nemen we pasmodellen mee.
-            </p>
-          </div>
-        </div>
+              {(() => {
+                const k = prijsInfo ? klasseVan(prijsInfo, p.id) : null;
+                if (!k) return null;
+                const tekst = { 1: 'voordelig binnen deze categorie', 2: 'middensegment', 3: 'topsegment' }[k];
+                return (
+                  <p className="mt-6 flex flex-wrap items-baseline gap-x-2 text-sm">
+                    <span className="text-xs font-bold uppercase tracking-[0.14em] text-warm">Prijsklasse</span>
+                    <span className="font-display text-lg font-extrabold tracking-wider text-ink-900" aria-label={`${k} van 3`}>
+                      {'€'.repeat(k)}
+                      <span className="text-line">{'€'.repeat(3 - k)}</span>
+                    </span>
+                    <span className="text-warm">{tekst}. Jouw prijs zie je na inloggen of in je offerte.</span>
+                  </p>
+                );
+              })()}
+            </>
+          }
+        />
       </section>
 
       {verwant.length > 0 && (

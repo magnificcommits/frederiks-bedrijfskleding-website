@@ -4,8 +4,10 @@ import { dashAuthed, kmsAdmin } from '@/lib/kms/adminClient';
 import FotosKoppelen from './FotosKoppelen';
 import FhbOphalen from './FhbOphalen';
 import FotoLinks from './FotoLinks';
+import GelijkTrekken from './GelijkTrekken';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 export const metadata = { title: "Foto's koppelen", robots: { index: false, follow: false } };
 
 export default async function FotosKoppelenPage() {
@@ -24,6 +26,7 @@ export default async function FotosKoppelenPage() {
       </p>
       {kmsAdmin() ? (
         <>
+          <GelijkTrekken />
           <FhbOphalen />
           <FotoLinks />
           <h2 className="mt-8 text-base font-bold text-ink-900">Zelf foto&apos;s koppelen</h2>

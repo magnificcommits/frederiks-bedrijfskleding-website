@@ -7,6 +7,7 @@ import { logAudit } from '@/lib/kms/audit';
 import type { KoppelArtikel } from '@/lib/kms/fotoKoppelen';
 import { fhbPaginaUrls, fhbVoorkantUit, isFhbKleurPagina } from '@/lib/kms/fhbFotos';
 import { veiligeFotoUrl } from '@/lib/kms/fotoLinks';
+import { normaliseerFotoActie } from './gelijkActions';
 
 /** Alle artikelen met hun kleuren en of die kleur al een foto heeft. Voor het vooraf koppelen in de browser. */
 export async function koppelArtikelenActie(): Promise<KoppelArtikel[]> {
@@ -51,6 +52,7 @@ export async function koppelFotoActie(formData: FormData): Promise<{ ok: boolean
   const ok = await zetKleurAfbeelding(productId, kleur, url);
   if (!ok) return { ok: false, fout: 'Koppelen mislukt.' };
   await logAudit('kleurfoto_gekoppeld', { entiteit: 'product', entiteitId: productId, details: { kleur, bestand: naam } });
+  await normaliseerFotoActie(url).catch(() => null);
   return { ok: true };
 }
 
@@ -92,6 +94,7 @@ export async function haalFhbKleurfotoActie(productId: string, kleur: string): P
     if (!url) return { ok: false, status: 'fout', fout: 'Opslaan mislukt.' };
     if (!(await zetKleurAfbeelding(productId, kleur, url))) return { ok: false, status: 'fout', fout: 'Koppelen mislukt.' };
     await logAudit('kleurfoto_gekoppeld', { entiteit: 'product', entiteitId: productId, details: { kleur, bron: fotoUrl } });
+    await normaliseerFotoActie(url).catch(() => null);
     return { ok: true, status: 'gekoppeld' };
   } catch {
     return { ok: false, status: 'fout', fout: 'FHB niet bereikbaar.' };
@@ -136,6 +139,7 @@ export async function fotoVanLinkActie(productId: string, kleur: string, link: s
       if (error) return { ok: false, fout: 'Koppelen mislukt.' };
     }
     await logAudit('foto_via_link', { entiteit: 'product', entiteitId: productId, details: { kleur: kleur.trim() || null, bron: url } });
+    await normaliseerFotoActie(opslag).catch(() => null);
     return { ok: true };
   } catch {
     return { ok: false, fout: 'Link niet bereikbaar.' };

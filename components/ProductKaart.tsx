@@ -21,7 +21,7 @@ export function ProductKaart({ p, selecteerbaar = true }: { p: KaartProduct; sel
         />
       )}
       <Link href={`/assortiment/${p.categorieSlug}/${p.slug}`} className="flex grow flex-col">
-        <div className="relative aspect-square bg-mist">
+        <div className="relative aspect-square bg-white">
           {p.foto && (
             <Image
               src={p.foto}

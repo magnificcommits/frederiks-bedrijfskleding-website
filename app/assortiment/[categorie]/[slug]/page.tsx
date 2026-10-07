@@ -88,7 +88,7 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
       <section className="container-x py-8">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
           <div>
-            <div className="relative aspect-square overflow-hidden rounded-xl border border-line bg-mist">
+            <div className="relative aspect-square overflow-hidden rounded-xl border border-line bg-white">
               {p.foto && (
                 <Image src={p.foto} alt={p.naam} fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-contain p-6" priority />
               )}
@@ -96,7 +96,7 @@ export default async function ProductPagina({ params }: { params: Promise<{ cate
             {p.fotos.length > 1 && (
               <div className="mt-3 grid grid-cols-4 gap-3">
                 {p.fotos.slice(1, 5).map((f) => (
-                  <div key={f} className="relative aspect-square overflow-hidden rounded-lg border border-line bg-mist">
+                  <div key={f} className="relative aspect-square overflow-hidden rounded-lg border border-line bg-white">
                     <Image src={f} alt="" fill sizes="25vw" className="object-contain p-2" />
                   </div>
                 ))}

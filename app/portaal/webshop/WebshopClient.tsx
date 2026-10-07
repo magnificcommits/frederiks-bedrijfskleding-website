@@ -306,7 +306,7 @@ export default function WebshopClient({
                   {kleurImg && (
                     <div className="relative mb-3">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={kleurImg} alt={p.naam} className="h-32 w-full rounded-lg border border-line bg-mist object-contain" />
+                      <img src={kleurImg} alt={p.naam} className="h-32 w-full rounded-lg border border-line bg-white object-contain" />
                       {andereKleur && (
                         <span className="absolute bottom-1.5 left-1.5 rounded bg-white/90 px-1.5 py-0.5 text-[11px] font-semibold text-ink-700 shadow-sm">
                           {t('webshop.fotoAndereKleur')}

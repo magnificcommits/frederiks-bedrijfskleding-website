@@ -1,10 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { typeVanNaam } from '@/lib/kms/prijsindicatie';
+import { kleurIndexVoor } from '@/content/configurator';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useOfferteSelectie } from '@/components/OfferteSelectie';
-import { LOGO_KEUZES, mandSleutel, schoonAantal, stuks, volledigeNaam, type LogoKeuze } from '@/lib/offerteMand';
+import { AantalKiezer } from '@/components/AantalKiezer';
+import { LOGO_KEUZES, mandSleutel, stuks, volledigeNaam, type LogoKeuze } from '@/lib/offerteMand';
 
 export type KoopProduct = {
   id: string;
@@ -52,6 +56,27 @@ export function ProductKoop({
   }, [kleur, p.matenPerKleur, p.maten]);
   const totaal = stuks({ aantallen, aantalZonderMaat: zonderMaat });
   const inMand = items.filter((r) => r.productId === p.id);
+
+  // De pakketsamensteller kent polo's, shirts, truien, jassen, bodywarmers en broeken.
+  // Voor andere artikelen (koksbuis, blouse, schoenen) tonen we de knop niet.
+  const router = useRouter();
+  const ontwerpType = typeVanNaam(p.naam);
+  function naarOntwerp() {
+    if (!ontwerpType) return;
+    try {
+      window.sessionStorage.setItem('fb-pakket-proef', JSON.stringify({
+        type: ontwerpType,
+        kleur: kleurIndexVoor(kleur ?? p.kleuren[0]),
+        positie: ontwerpType === 'werkbroek' ? 'dijbeen-rechts' : 'borst-links',
+        artikelId: p.id,
+        artikelNaam: volledigeNaam(p.merk, p.naam),
+        artikelFoto: (kleur && kleurFotos[kleur]) || p.foto,
+      }));
+    } catch {
+      /* geen opslag: dan opent de samensteller leeg */
+    }
+    router.push('/pakket-samenstellen');
+  }
 
   function kiesKleur(k: string) {
     setKleur(k);
@@ -172,46 +197,33 @@ export function ProductKoop({
             {totaal > 0 && <p className="text-sm text-warm"><span className="font-semibold text-ink-900 tabular-nums">{totaal}</span> stuks</p>}
           </div>
           {p.maten.length > 0 ? (
-            <div className="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-6">
+            <div className="mt-2 grid grid-cols-2 gap-2 min-[420px]:grid-cols-3 sm:grid-cols-4">
               {p.maten.map((m) => {
                 const ok = leverbaar.has(m);
                 return (
-                  <label
+                  <AantalKiezer
                     key={m}
-                    className={`flex flex-col items-center rounded-lg border px-1 pb-1.5 pt-1 ${ok ? 'border-line bg-white focus-within:border-amber-400' : 'border-line bg-mist opacity-50'}`}
-                    title={ok ? undefined : `Niet leverbaar in ${kleur}`}
-                  >
-                    <span className="text-xs font-bold text-ink-800">{m}</span>
-                    <input
-                      inputMode="numeric"
-                      disabled={!ok}
-                      value={aantallen[m] ? String(aantallen[m]) : ''}
-                      onChange={(e) => {
-                        const n = schoonAantal(e.target.value);
-                        setAantallen((h) => {
-                          const nieuw = { ...h };
-                          if (n) nieuw[m] = n;
-                          else delete nieuw[m];
-                          return nieuw;
-                        });
-                      }}
-                      placeholder="0"
-                      aria-label={`Aantal in maat ${m}`}
-                      className="mt-1 w-full rounded border-0 bg-transparent p-0 text-center text-base tabular-nums text-ink-900 placeholder:text-ink-300 focus:outline-none focus:ring-0"
-                    />
-                  </label>
+                    kop={m}
+                    label={`Aantal in maat ${m}`}
+                    waarde={aantallen[m] ?? 0}
+                    uit={!ok}
+                    titel={ok ? undefined : `Niet leverbaar in ${kleur}`}
+                    onChange={(n) =>
+                      setAantallen((h) => {
+                        const nieuw = { ...h };
+                        if (n) nieuw[m] = n;
+                        else delete nieuw[m];
+                        return nieuw;
+                      })
+                    }
+                  />
                 );
               })}
             </div>
           ) : (
-            <input
-              inputMode="numeric"
-              value={zonderMaat ? String(zonderMaat) : ''}
-              onChange={(e) => setZonderMaat(schoonAantal(e.target.value))}
-              placeholder="0"
-              aria-label="Aantal"
-              className="invoer mt-2 w-32 tabular-nums"
-            />
+            <div className="mt-2 w-44">
+              <AantalKiezer label="Aantal" waarde={zonderMaat} onChange={setZonderMaat} />
+            </div>
           )}
           <p className="mt-2 text-xs text-warm">
             Maten nog niet bekend? Laat ze leeg, dan passen we eerst. Bekijk de{' '}
@@ -240,7 +252,9 @@ export function ProductKoop({
           <button type="button" onClick={toevoegen} className="btn-primary" data-cta="mandje">
             In mijn offerte
           </button>
-          <Link href="/pakket-samenstellen" className="btn-outline">Ontwerp met je logo</Link>
+          {ontwerpType && (
+            <button type="button" onClick={naarOntwerp} className="btn-outline">Ontwerp met je logo</button>
+          )}
         </div>
 
         <div aria-live="polite">

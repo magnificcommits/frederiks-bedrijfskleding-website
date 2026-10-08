@@ -118,3 +118,19 @@ const TEAM_AANTAL: Record<string, number> = {
 export function teamAantal(team: string): number {
   return TEAM_AANTAL[team] ?? 10;
 }
+
+/** Dichtstbijzijnde kleur uit `kleuren` bij een kleurnaam uit de catalogus (voor de overstap vanaf een productpagina). */
+export function kleurIndexVoor(naam: string | null | undefined): number {
+  const n = (naam ?? '').toLowerCase().split(/[\/,]/)[0];
+  const regels: [RegExp, number][] = [
+    [/navy|marine|donkerblauw|dark blue|blauw/, 1],
+    [/antraciet|anthracite|charcoal|graphite/, 2],
+    [/grijs|grey|gray/, 3],
+    [/wit|white/, 4],
+    [/groen|green|olive|khaki/, 5],
+    [/geel|yellow/, 6],
+    [/oranje|orange/, 7],
+    [/zwart|black/, 0],
+  ];
+  return regels.find(([re]) => re.test(n))?.[1] ?? 0;
+}

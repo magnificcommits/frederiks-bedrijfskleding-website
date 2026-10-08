@@ -49,6 +49,19 @@ export function OfferteAanvraag({
   const [aantal, setAantal] = useState('');
   const [alKlant, setAlKlant] = useState<'' | 'ja' | 'nee'>('');
   const [behoeften, setBehoeften] = useState<string[]>([]);
+  // Logo meesturen mag, hoeft niet. Komt in het KMS bij de lead en als bijlage in de mail aan Jessi.
+  const [logo, setLogo] = useState<{ data: string; naam: string } | null>(null);
+  const [logoFout, setLogoFout] = useState('');
+  function kiesLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    setLogoFout('');
+    if (!f) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { setLogoFout('Kies een PNG, JPG of WebP. Een PDF of AI-bestand mail je gerust apart.'); return; }
+    if (f.size > 2_000_000) { setLogoFout('Dit bestand is groter dan 2 MB. Mail het gerust apart.'); return; }
+    const r = new FileReader();
+    r.onload = () => typeof r.result === 'string' && setLogo({ data: r.result, naam: f.name });
+    r.readAsDataURL(f);
+  }
 
   const voornaam = site.owner.split(' ')[0];
 
@@ -104,6 +117,7 @@ export function OfferteAanvraag({
       bron_kanaal: regels.length ? 'selectie' : 'formulier',
       herkomst: leesHerkomstVoorLead(),
       regels,
+      ...(logo ? { logo: logo.data, logoNaam: logo.naam } : {}),
     };
 
     try {
@@ -263,6 +277,25 @@ export function OfferteAanvraag({
           ))}
         </div>
       </fieldset>
+
+      <div>
+        <p className={label}>Je logo <span className="font-normal text-warm">(optioneel)</span></p>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <label className="btn-outline cursor-pointer px-4 py-2 text-sm">
+            {logo ? 'Ander logo kiezen' : 'Upload je logo'}
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={kiesLogo} className="sr-only" />
+          </label>
+          {logo && (
+            <span className="flex items-center gap-2 text-sm text-ink-800">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logo.data} alt="" className="h-10 w-10 rounded border border-line bg-white object-contain p-0.5" />
+              {logo.naam}
+              <button type="button" onClick={() => setLogo(null)} className="text-xs text-warm underline">weghalen</button>
+            </span>
+          )}
+        </div>
+        {logoFout ? <p className={foutTekst}>{logoFout}</p> : <p className="mt-1 text-xs text-warm">Dan rekenen we meteen met de juiste afmeting en maken we een proef op de kleding.</p>}
+      </div>
 
       <div>
         <label className={label} htmlFor={`${uid}-bericht`}>Vertel kort waar het om gaat</label>

@@ -3,7 +3,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useOfferteSelectie } from '@/components/OfferteSelectie';
-import { LOGO_KEUZES, schoonAantal, stuks, volledigeNaam, type LogoKeuze } from '@/lib/offerteMand';
+import { AantalKiezer } from '@/components/AantalKiezer';
+import { LOGO_KEUZES, stuks, volledigeNaam, type LogoKeuze } from '@/lib/offerteMand';
 
 /**
  * Het offertemandje op /offerte: per regel kleur, aantallen per maat en logo
@@ -89,38 +90,27 @@ export function MandRegels() {
 
               <div className="mt-3">
                 {r.maten.length > 0 ? (
-                  <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-8">
+                  <div className="grid grid-cols-2 gap-1.5 min-[420px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-6">
                     {r.maten.map((m) => (
-                      <label key={m} className="flex flex-col items-center rounded-md border border-line px-1 pb-1 pt-0.5 focus-within:border-amber-400">
-                        <span className="text-[11px] font-bold text-ink-700">{m}</span>
-                        <input
-                          inputMode="numeric"
-                          value={r.aantallen[m] ? String(r.aantallen[m]) : ''}
-                          onChange={(e) => {
-                            const n = schoonAantal(e.target.value);
-                            const nieuw = { ...r.aantallen };
-                            if (n) nieuw[m] = n;
-                            else delete nieuw[m];
-                            werkBij(r.sleutel, { aantallen: nieuw });
-                          }}
-                          placeholder="0"
-                          aria-label={`${naam}, aantal in maat ${m}`}
-                          className="w-full border-0 bg-transparent p-0 text-center text-sm tabular-nums placeholder:text-ink-300 focus:outline-none focus:ring-0"
-                        />
-                      </label>
+                      <AantalKiezer
+                        key={m}
+                        klein
+                        kop={m}
+                        label={`${naam}, aantal in maat ${m}`}
+                        waarde={r.aantallen[m] ?? 0}
+                        onChange={(n) => {
+                          const nieuw = { ...r.aantallen };
+                          if (n) nieuw[m] = n;
+                          else delete nieuw[m];
+                          werkBij(r.sleutel, { aantallen: nieuw });
+                        }}
+                      />
                     ))}
                   </div>
                 ) : (
-                  <label className="flex items-center gap-2 text-sm text-warm">
-                    Aantal
-                    <input
-                      inputMode="numeric"
-                      value={r.aantalZonderMaat ? String(r.aantalZonderMaat) : ''}
-                      onChange={(e) => werkBij(r.sleutel, { aantalZonderMaat: schoonAantal(e.target.value) })}
-                      placeholder="0"
-                      className={`${veld} w-24 tabular-nums`}
-                    />
-                  </label>
+                  <div className="w-40">
+                    <AantalKiezer klein label={`${naam}, aantal`} waarde={r.aantalZonderMaat} onChange={(n) => werkBij(r.sleutel, { aantalZonderMaat: n })} />
+                  </div>
                 )}
                 <p className="mt-1.5 text-xs text-warm">
                   {stuks(r) > 0 ? `${stuks(r)} stuks` : 'Aantallen nog open, mag ook.'}

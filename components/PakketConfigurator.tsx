@@ -10,7 +10,7 @@ import { getHerkomst, leesHerkomstVoorLead } from '@/lib/herkomst';
 import { site } from '@/content/site';
 
 type Status = 'idle' | 'sending' | 'ok' | 'error';
-type Item = { id: number; type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string; formaat?: string };
+type Item = { id: number; type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string; artikelFoto?: string | null; formaat?: string };
 type Artikel = { id: string; naam: string; merk: string | null; foto: string | null; kleurTreffer: boolean };
 
 const extrasOpties = [
@@ -30,8 +30,29 @@ function decodeState(s: string): unknown {
   return JSON.parse(decodeURIComponent(escape(atob(s))));
 }
 
-function Preview({ type, kleur, logo, positie, techniek }: { type: string; kleur: number; logo: string | null; positie: string; techniek: string }) {
+/** Waar een borstlogo op een vooraanzicht-foto staat: links op het lichaam is rechts in beeld. */
+const FOTO_LOGO: Record<string, { left: string; top: string }> = {
+  'borst-links': { left: '59%', top: '27%' },
+  'borst-rechts': { left: '29%', top: '27%' },
+};
+
+function Preview({ type, kleur, logo, positie, techniek, foto }: { type: string; kleur: number; logo: string | null; positie: string; techniek: string; foto?: string | null }) {
   const k = kleuren[kleur];
+  const plek = FOTO_LOGO[positie];
+  // Een echt artikel gekozen: de productfoto met het logo erop. Rug en broek staan
+  // niet op een vooraanzicht, daar blijft de tekening.
+  if (foto && plek) {
+    return (
+      <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-lg bg-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={foto} alt="" className="h-full w-full object-contain" />
+        {logo && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logo} alt="Je logo" className="absolute w-[13%] object-contain" style={{ left: plek.left, top: plek.top, filter: techniek === 'borduren' ? 'contrast(1.05) saturate(0.95)' : undefined }} />
+        )}
+      </div>
+    );
+  }
   return (
     <div className="relative mx-auto aspect-square w-full">
       <Garment type={type} color={k.hex} light={k.licht} logo={logo} pos={positie} techniek={techniek} />
@@ -64,6 +85,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   portaal?: { onAanvraag: (p: { regels: { item_naam: string; kleur: string | null; aantal: number }[]; notitie: string }) => Promise<{ ok: boolean; error?: string }>; bedrijfsnaam?: string };
 }) {
   const [step, setStep] = useState(0);
+  const [vanProduct, setVanProduct] = useState<string | null>(null);
   const toonPrijs = !portaal && prijzen;
   const [branche, setBranche] = useState(defaultBranche);
   const [team, setTeam] = useState('');
@@ -71,7 +93,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   const [logoNaam, setLogoNaam] = useState<string | null>(null);
   const [techniek, setTechniek] = useState<'borduren' | 'bedrukken'>('borduren');
   const [defPositie, setDefPositie] = useState('borst-links');
-  const [draft, setDraft] = useState<{ type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string }>({ type: 'polo', kleur: 0, positie: 'borst-links', aantal: '' });
+  const [draft, setDraft] = useState<{ type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string; artikelFoto?: string | null }>({ type: 'polo', kleur: 0, positie: 'borst-links', aantal: '' });
   const [artikelen, setArtikelen] = useState<Artikel[]>([]);
   const [artikelenBezig, setArtikelenBezig] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
@@ -109,11 +131,20 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
       const ruw = sessionStorage.getItem('fb-pakket-proef');
       if (!ruw) return;
       sessionStorage.removeItem('fb-pakket-proef');
-      const p = JSON.parse(ruw) as { type?: string; kleur?: number; positie?: string; logo?: string | null };
+      const p = JSON.parse(ruw) as { type?: string; kleur?: number; positie?: string; logo?: string | null; artikelId?: string; artikelNaam?: string; artikelFoto?: string | null };
       if (typeof p.type === 'string' && typeof p.kleur === 'number' && kleuren[p.kleur]) {
-        setDraft((d) => ({ ...d, type: p.type as string, kleur: p.kleur as number, positie: typeof p.positie === 'string' ? p.positie : d.positie }));
-        // Meteen naar de stap met de kleding: daar staat het ontwerp dat de bezoeker net maakte.
-        setStep(2);
+        const artikel = typeof p.artikelId === 'string' && typeof p.artikelNaam === 'string'
+          ? { artikelId: p.artikelId, artikelNaam: p.artikelNaam, artikelFoto: typeof p.artikelFoto === 'string' ? p.artikelFoto : null }
+          : {};
+        setDraft((d) => ({ ...d, type: p.type as string, kleur: p.kleur as number, positie: typeof p.positie === 'string' ? p.positie : d.positie, ...artikel }));
+        if ('artikelId' in artikel) {
+          // Vanaf een productpagina: eerst het logo uploaden (stap 1), het artikel staat al klaar.
+          setVanProduct(artikel.artikelNaam ?? null);
+          setStep(1);
+        } else {
+          // Voorproefje van de homepage: meteen naar de stap met de kleding.
+          setStep(2);
+        }
       }
       if (typeof p.logo === 'string' && p.logo.startsWith('data:image/')) setLogo(p.logo);
     } catch {
@@ -192,13 +223,13 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     setLastAdded(null);
     setDraft((d) => {
       const valid = positiesVoor(id).some((p) => p.id === d.positie);
-      return { ...d, type: id, positie: valid ? d.positie : positiesVoor(id)[0].id, artikelId: undefined, artikelNaam: undefined };
+      return { ...d, type: id, positie: valid ? d.positie : positiesVoor(id)[0].id, artikelId: undefined, artikelNaam: undefined, artikelFoto: undefined };
     });
   }
   function addItem() {
     setItems((p) => [...p, { id: Date.now(), ...draft, formaat: standaardFormaatVoor(draft.positie) }]);
     setLastAdded(typeLabel(draft.type));
-    setDraft((d) => ({ ...d, aantal: '', artikelId: undefined, artikelNaam: undefined }));
+    setDraft((d) => ({ ...d, aantal: '', artikelId: undefined, artikelNaam: undefined, artikelFoto: undefined }));
   }
   function removeItem(id: number) { setItems((p) => p.filter((i) => i.id !== id)); }
   function toggleExtra(id: string) { setExtras((p) => ({ ...p, [id]: { on: !p[id]?.on, aantal: p[id]?.aantal ?? '' } })); }
@@ -496,8 +527,12 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               </div>
             </div>
             <div className="rounded-xl border border-line bg-mist p-6">
-              <Preview type={draft.type} kleur={draft.kleur} logo={logo} positie={defPositie} techniek={techniek} />
-              <p className="mt-3 text-center text-xs text-warm">Voorbeeld met je logo. In de volgende stap kies je de kledingstukken.</p>
+              <Preview type={draft.type} kleur={draft.kleur} logo={logo} positie={defPositie} techniek={techniek} foto={draft.artikelFoto} />
+              {vanProduct ? (
+                <p className="mt-3 text-center text-xs text-warm">Je ontwerpt met <span className="font-semibold text-ink-800">{vanProduct}</span>. Upload je logo; in de volgende stap voeg je dit artikel toe en kun je er meer kledingstukken bij zetten.</p>
+              ) : (
+                <p className="mt-3 text-center text-xs text-warm">Voorbeeld met je logo. In de volgende stap kies je de kledingstukken.</p>
+              )}
             </div>
           </div>
         )}
@@ -513,7 +548,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               </ol>
               <div className="relative mt-4 rounded-xl border border-line bg-mist p-4 [&>div]:max-w-[17rem]">
                 <span className="absolute right-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-ink-600 shadow-sm">{kant}</span>
-                <Preview type={draft.type} kleur={draft.kleur} logo={logo} positie={draft.positie} techniek={techniek} />
+                <Preview type={draft.type} kleur={draft.kleur} logo={logo} positie={draft.positie} techniek={techniek} foto={draft.artikelFoto} />
               </div>
               <p className="mt-5 text-sm font-semibold text-ink-800">Kledingstuk</p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -524,7 +559,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               <p className="mt-4 text-sm font-semibold text-ink-800">Kleur: <span className="text-warm">{kleuren[draft.kleur].name}</span></p>
               <div className="mt-2 flex flex-wrap gap-2.5">
                 {kleuren.map((k, i) => (
-                  <button key={k.name} type="button" aria-label={k.name} onClick={() => setDraft((d) => ({ ...d, kleur: i, artikelId: undefined, artikelNaam: undefined }))} className={`${swatch} ${i === draft.kleur ? 'border-amber-500 ring-2 ring-amber-200' : 'border-line'}`} style={{ background: k.hex }} />
+                  <button key={k.name} type="button" aria-label={k.name} onClick={() => setDraft((d) => ({ ...d, kleur: i, artikelId: undefined, artikelNaam: undefined, artikelFoto: undefined }))} className={`${swatch} ${i === draft.kleur ? 'border-amber-500 ring-2 ring-amber-200' : 'border-line'}`} style={{ background: k.hex }} />
                 ))}
               </div>
               {(artikelen.length > 0 || artikelenBezig) && (
@@ -542,7 +577,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
                           <button
                             key={a.id}
                             type="button"
-                            onClick={() => setDraft((d) => (aan ? { ...d, artikelId: undefined, artikelNaam: undefined } : { ...d, artikelId: a.id, artikelNaam: `${a.merk ? a.merk + ' ' : ''}${a.naam}` }))}
+                            onClick={() => setDraft((d) => (aan ? { ...d, artikelId: undefined, artikelNaam: undefined, artikelFoto: undefined } : { ...d, artikelId: a.id, artikelNaam: `${a.merk ? a.merk + ' ' : ''}${a.naam}`, artikelFoto: a.foto }))}
                             aria-pressed={aan}
                             className={`w-36 shrink-0 rounded-lg border-2 p-2 text-left transition ${aan ? 'border-amber-500 bg-amber-50' : 'border-line hover:border-ink-300'}`}
                           >
@@ -608,7 +643,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               <ul className="mt-3 space-y-3">
                 {items.map((i) => (
                   <li key={i.id} className="flex items-center gap-3 rounded-lg border border-line bg-white p-3">
-                    <div className="h-14 w-14 shrink-0 rounded bg-mist p-1"><Preview type={i.type} kleur={i.kleur} logo={logo} positie={i.positie} techniek={techniek} /></div>
+                    <div className="h-14 w-14 shrink-0 rounded bg-mist p-1"><Preview type={i.type} kleur={i.kleur} logo={logo} positie={i.positie} techniek={techniek} foto={i.artikelFoto} /></div>
                     <div className="min-w-0 grow text-sm">
                       <p className="font-bold text-ink-900">{typeLabel(i.type)}{i.aantal ? ` · ${i.aantal}x` : ''}</p>
                       <p className="text-warm">{kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}</p>
@@ -759,7 +794,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
           <div className="mt-3 grid grid-cols-3 gap-4">
             {items.map((i) => (
               <div key={i.id} className="rounded-lg border border-line p-2 text-center">
-                <div className="mx-auto aspect-square w-full max-w-[150px]"><Preview type={i.type} kleur={i.kleur} logo={logo} positie={i.positie} techniek={techniek} /></div>
+                <div className="mx-auto aspect-square w-full max-w-[150px]"><Preview type={i.type} kleur={i.kleur} logo={logo} positie={i.positie} techniek={techniek} foto={i.artikelFoto} /></div>
                 <p className="mt-1 text-[12px] font-bold text-ink-900">{typeLabel(i.type)}{i.aantal ? `, ${i.aantal}x` : ''}</p>
                 <p className="text-[11px] text-warm">{kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}</p>
               </div>

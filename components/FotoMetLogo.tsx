@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { logoPlek, meetVorm, voorgrondMasker, type FotoVorm, type Soort } from '@/lib/fotoVorm';
+import { logoPlek, meetFoto, type FotoVorm, type Soort } from '@/lib/fotoVorm';
 
 /**
  * Een echte productfoto met het logo van de klant erop, op de plek waar het
@@ -38,7 +38,7 @@ function meet(src: string, soort: Soort): Promise<FotoVorm | null> {
           if (!ctx) return klaar(null);
           ctx.drawImage(img, 0, 0, w, h);
           const data = ctx.getImageData(0, 0, w, h).data;
-          klaar(meetVorm(voorgrondMasker(data, w, h), w, h, soort));
+          klaar(meetFoto(data, w, h, soort));
         } catch {
           klaar(null);
         }
@@ -120,7 +120,7 @@ export function FotoMetLogo({
           />
         </span>
       )}
-      {toonSchuin && v && v.symmetrie < 0.8 && (
+      {toonSchuin && v && v.symmetrie < (soort === 'broek' ? 0.6 : 0.8) && (
         <span className="absolute inset-x-2 bottom-2 rounded bg-white/90 px-2 py-1 text-center text-[11px] text-warm">
           Schuin gefotografeerd. De exacte plek zie je op de drukproef.
         </span>

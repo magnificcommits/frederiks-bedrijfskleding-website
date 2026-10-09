@@ -34,29 +34,73 @@ export type FotoVorm = {
 
 const MIN_RUN = 2;
 
-/** Voorgrond: wat afwijkt van de achtergrondkleur (gemeten aan de rand), of niet-transparant is. */
-export function voorgrondMasker(data: Uint8ClampedArray, w: number, h: number): Uint8Array {
+/**
+ * Voorgrond bepalen door de achtergrond vanaf de rand te laten "vollopen": een
+ * pixel hoort bij de achtergrond als hij via kleine kleurstapjes met de rand
+ * verbonden is. Zo werkt het ook bij foto's met een grijs verloop (studio-
+ * vignet), waar een vaste achtergrondkleur het halve beeld als kledingstuk zag.
+ * De rand van een kledingstuk is altijd een grotere stap, daar stopt het.
+ * Bij een transparante foto telt gewoon de alfa.
+ */
+export function voorgrondMasker(data: Uint8ClampedArray, w: number, h: number, stap = 9): Uint8Array {
+  const n = w * h;
+  let transparantRand = 0;
+  let randTotaal = 0;
+  const randPixel = (p: number) => { randTotaal++; if (data[p * 4 + 3] < 20) transparantRand++; };
+  for (let x = 0; x < w; x++) { randPixel(x); randPixel((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { randPixel(y * w); randPixel(y * w + w - 1); }
+  const m = new Uint8Array(n);
+  if (transparantRand > randTotaal / 2) {
+    for (let p = 0; p < n; p++) if (data[p * 4 + 3] >= 40) m[p] = 1;
+    return m;
+  }
+  // Alles begint als voorgrond; de achtergrond loopt vanaf de rand vol.
+  m.fill(1);
+  const rij = new Int32Array(n);
+  let kop = 0;
+  let staart = 0;
+  const zaai = (p: number) => { if (m[p]) { m[p] = 0; rij[staart++] = p; } };
+  for (let x = 0; x < w; x++) { zaai(x); zaai((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { zaai(y * w); zaai(y * w + w - 1); }
+  const verschil = (a: number, b: number) =>
+    Math.abs(data[a * 4] - data[b * 4]) + Math.abs(data[a * 4 + 1] - data[b * 4 + 1]) + Math.abs(data[a * 4 + 2] - data[b * 4 + 2]);
+  while (kop < staart) {
+    const p = rij[kop++];
+    const x = p % w;
+    const buren = [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p >= w ? p - w : -1, p < n - w ? p + w : -1];
+    for (const q of buren) {
+      if (q < 0 || !m[q]) continue;
+      if (data[q * 4 + 3] < 40 || verschil(p, q) <= stap) { m[q] = 0; rij[staart++] = q; }
+    }
+  }
+  return m;
+}
+
+/**
+ * Terugval voor wit op wit: alles wat duidelijk afwijkt van de randkleur. Een wit
+ * shirt op een witte achtergrond heeft zachte randen waar het vollopen doorheen
+ * lekt; de schaduwen en naden vangt deze methode wel.
+ */
+export function voorgrondGlobaal(data: Uint8ClampedArray, w: number, h: number): Uint8Array {
   const rand: number[][] = [];
-  const pak = (x: number, y: number) => {
-    const i = (y * w + x) * 4;
-    rand.push([data[i], data[i + 1], data[i + 2], data[i + 3]]);
-  };
+  const pak = (x: number, y: number) => { const i = (y * w + x) * 4; rand.push([data[i], data[i + 1], data[i + 2]]); };
   for (let x = 0; x < w; x++) { pak(x, 0); pak(x, h - 1); }
   for (let y = 0; y < h; y++) { pak(0, y); pak(w - 1, y); }
-  const transparant = rand.filter((p) => p[3] < 20).length > rand.length / 2;
-  const mediaan = (k: number) => {
-    const s = rand.map((p) => p[k]).sort((a, b) => a - b);
-    return s[Math.floor(s.length / 2)];
-  };
+  const mediaan = (k: number) => { const s = rand.map((p) => p[k]).sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
   const bg = [mediaan(0), mediaan(1), mediaan(2)];
   const m = new Uint8Array(w * h);
   for (let i = 0, p = 0; p < w * h; p++, i += 4) {
     if (data[i + 3] < 40) continue;
-    if (transparant) { m[p] = 1; continue; }
-    const d = Math.abs(data[i] - bg[0]) + Math.abs(data[i + 1] - bg[1]) + Math.abs(data[i + 2] - bg[2]);
-    if (d > 30) m[p] = 1;
+    if (Math.abs(data[i] - bg[0]) + Math.abs(data[i + 1] - bg[1]) + Math.abs(data[i + 2] - bg[2]) > 30) m[p] = 1;
   }
   return m;
+}
+
+/** Meten met het vollopen, en bij wit op wit (niets bruikbaars gevonden) met de terugval. */
+export function meetFoto(data: Uint8ClampedArray, w: number, h: number, soort: Soort): FotoVorm {
+  const eerst = meetVorm(voorgrondMasker(data, w, h), w, h, soort);
+  const bruikbaar = soort === 'broek' ? !!eerst.pijpen : !!eerst.romp;
+  return bruikbaar ? eerst : meetVorm(voorgrondGlobaal(data, w, h), w, h, soort);
 }
 
 type Run = { van: number; tot: number };

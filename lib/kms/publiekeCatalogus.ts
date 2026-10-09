@@ -57,8 +57,25 @@ export type ArtikelRij = {
 export function typeVanArtikel(naam: string, categorie: string | null): string | null {
   if (categorie === 'Bodywarmers') return 'bodywarmer';
   if (categorie === 'Korte broeken') return null;
+  // Een fleecevest of -jack hoort bij de truien, ook als het in de categorie jassen staat.
+  if (categorie === 'Jassen' && /fleece/i.test(naam) && !/softshell|winter|parka/i.test(naam)) return 'sweater';
   return typeVanNaam(naam) ?? (categorie ? TYPE_PER_CATEGORIE[categorie] ?? null : null);
 }
+
+/**
+ * Wat het type het best laat zien komt voorop: bij "werkbroek" een echte
+ * werkbroek en niet een nette pantalon, bij "winterjas" een gevoerde jas en
+ * niet een fleecevest.
+ */
+const VOORKEUR: Record<string, RegExp> = {
+  werkbroek: /werkbroek|work|cargo|holster|canvas|stretch/i,
+  winterjas: /winter|parka|gevoerd|gewatteerd|thermo|isol|pilot|padded/i,
+  softshell: /softshell/i,
+  sweater: /sweat|hoodie|trui/i,
+};
+const MINDER: Record<string, RegExp> = {
+  werkbroek: /trouser|pantalon|chino|jog|tailored|service/i,
+};
 
 const isDames = (naam: string) => /dames|lady|ladies|women|woman/i.test(naam);
 
@@ -69,7 +86,7 @@ const isDames = (naam: string) => /dames|lady|ladies|women|woman/i.test(naam);
  */
 export function kiesVoorType(rijen: ArtikelRij[], type: string, kleurNaam?: string, limiet = 10): CatalogusArtikel[] {
   const gezien = new Set<string>();
-  const uit: (CatalogusArtikel & { dames: boolean })[] = [];
+  const uit: (CatalogusArtikel & { dames: boolean; rang: number })[] = [];
   for (const p of rijen) {
     if (typeVanArtikel(p.naam, p.categorie) !== type) continue;
     const sleutel = `${p.merk ?? ''}|${p.naam}`.toLowerCase();
@@ -88,23 +105,28 @@ export function kiesVoorType(rijen: ArtikelRij[], type: string, kleurNaam?: stri
     }
     if (!foto) continue;
     gezien.add(sleutel);
-    uit.push({ id: p.id, naam: p.naam, merk: p.merk, foto, kleur, kleurTreffer: !!kleurNaam, dames: isDames(p.naam) });
+    const rang = (VOORKEUR[type]?.test(p.naam) ? 0 : 1) + (MINDER[type]?.test(p.naam) ? 2 : 0);
+    uit.push({ id: p.id, naam: p.naam, merk: p.merk, foto, kleur, kleurTreffer: !!kleurNaam, dames: isDames(p.naam), rang });
   }
   // Herenmodellen en uniseks eerst, en de merken om en om, zodat de rij niet
   // tien varianten van hetzelfde merk laat zien.
-  const gesorteerd = uit.sort((a, b) => Number(a.dames) - Number(b.dames) || a.naam.localeCompare(b.naam, 'nl'));
-  const perMerk = new Map<string, typeof uit>();
+  const gesorteerd = uit.sort((a, b) => Number(a.dames) - Number(b.dames) || a.rang - b.rang || a.naam.localeCompare(b.naam, 'nl'));
+  // Per laag (heren/uniseks of dames, en hoe goed het bij het type past) de merken om en om.
+  const lagen = new Map<string, Map<string, typeof uit>>();
   for (const a of gesorteerd) {
-    const k = `${Number(a.dames)}|${a.merk ?? ''}`;
-    if (!perMerk.has(k)) perMerk.set(k, []);
-    perMerk.get(k)!.push(a);
+    const laag = `${Number(a.dames)}|${a.rang}`;
+    if (!lagen.has(laag)) lagen.set(laag, new Map());
+    const merken = lagen.get(laag)!;
+    const m = a.merk ?? '';
+    if (!merken.has(m)) merken.set(m, []);
+    merken.get(m)!.push(a);
   }
   const lijst: typeof uit = [];
-  for (const dames of [0, 1]) {
-    const groepen = [...perMerk].filter(([k]) => k.startsWith(`${dames}|`)).map(([, v]) => v);
+  for (const merken of lagen.values()) {
+    const groepen = [...merken.values()];
     for (let i = 0; groepen.some((g) => g[i]); i++) for (const g of groepen) if (g[i]) lijst.push(g[i]);
   }
-  return lijst.slice(0, limiet).map(({ dames: _d, ...a }) => a);
+  return lijst.slice(0, limiet).map(({ dames: _d, rang: _r, ...a }) => a);
 }
 
 export async function artikelenVoorType(type: string, kleurNaam?: string, limiet = 10): Promise<CatalogusArtikel[]> {

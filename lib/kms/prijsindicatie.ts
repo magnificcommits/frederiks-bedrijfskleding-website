@@ -25,8 +25,9 @@ export type PrijsData = {
 export function typeVanNaam(naam: string): string | null {
   const n = naam.toLowerCase();
   if (/polo/.test(n) && !/sweat|trui|knit/.test(n)) return 'polo';
+  // Eerst sweat: anders telt een "sweatshirt" als t-shirt.
+  if (/sweat|trui|hoodie|sweater|cardigan/.test(n)) return 'sweater';
   if (/t-?shirt/.test(n)) return 'tshirt';
-  if (/sweat|trui|hoodie|sweater/.test(n)) return 'sweater';
   if (/softshell/.test(n)) return 'softshell';
   if (/bodywarmer|gilet/.test(n)) return 'bodywarmer';
   if (/winterjas|parka|gevoerd/.test(n)) return 'winterjas';

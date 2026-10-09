@@ -21,6 +21,6 @@ export const bedrijf = {
   /** Betaaltermijn in dagen; ook gebruikt om de vervaldatum te berekenen. */
   betaaltermijnDagen: 15,
   betaalvoorwaarde:
-    'Wij verzoeken u vriendelijk het bedrag binnen 15 dagen over te maken onder vermelding ' +
-    'van factuurnummer en debiteurnummer. Op alle diensten zijn onze algemene voorwaarden van toepassing.',
+    'Wil je het bedrag binnen 15 dagen overmaken onder vermelding van het factuurnummer en ' +
+    'je debiteurnummer? Op al onze diensten zijn onze algemene voorwaarden van toepassing.',
 } as const;

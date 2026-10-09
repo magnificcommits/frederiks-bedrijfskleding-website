@@ -277,7 +277,7 @@ export default function FactuurDocument({ factuur }: { factuur: FactuurDocumentD
           <div className="rounded-md border-2 border-ink-900 px-5 py-4">
             <Label>Betaald</Label>
             <p className="mt-1 text-[14px] text-ink-900">
-              Deze factuur is betaald{factuur.betaaldatum ? <> op <strong>{datumLang(factuur.betaaldatum)}</strong></> : null}. Dank u wel.
+              Deze factuur is betaald{factuur.betaaldatum ? <> op <strong>{datumLang(factuur.betaaldatum)}</strong></> : null}. Bedankt!
             </p>
           </div>
         ) : teBetalen <= 0 ? (
@@ -309,7 +309,7 @@ export default function FactuurDocument({ factuur }: { factuur: FactuurDocumentD
             {qrTekst && (
               <figure className="w-[30mm] text-center">
                 <QrCode tekst={qrTekst} className="h-[30mm] w-[30mm]" />
-                <figcaption className="mt-1 text-[9.5px] leading-tight text-warm">Scan met de app van uw bank</figcaption>
+                <figcaption className="mt-1 text-[9.5px] leading-tight text-warm">Scan met de app van je bank</figcaption>
               </figure>
             )}
           </div>

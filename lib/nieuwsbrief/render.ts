@@ -76,7 +76,7 @@ export function mergeWaarden(ontvanger?: Ontvanger | null): MergeWaarden {
   return {
     naam: naam || 'relatie',
     voornaam: naam ? naam.split(/\s+/)[0] : 'relatie',
-    bedrijf: bedrijf || 'uw bedrijf',
+    bedrijf: bedrijf || 'je bedrijf',
     email: (ontvanger?.email ?? '').trim(),
   };
 }

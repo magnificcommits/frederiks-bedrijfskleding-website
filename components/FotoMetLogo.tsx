@@ -19,33 +19,36 @@ const metingen = new Map<string, Promise<FotoVorm | null>>();
 const viaEigenServer = (src: string, w: number) =>
   src.startsWith('/') || src.startsWith('data:') ? src : `/_next/image?url=${encodeURIComponent(src)}&w=${w}&q=75`;
 
+/**
+ * Beeld ophalen voor de meting. Via fetch en niet via een <img>: een <img> krijgt
+ * van de beeldserver AVIF, en die compressie vervaagt de randen van witte
+ * kleding op een lichte achtergrond zo sterk dat de meting ze mist.
+ */
+async function laadPixels(src: string): Promise<{ data: Uint8ClampedArray; w: number; h: number } | null> {
+  try {
+    const r = await fetch(viaEigenServer(src, 256), { headers: { Accept: 'image/jpeg,image/png;q=0.9,*/*;q=0.5' } });
+    if (!r.ok) return null;
+    const bm = await createImageBitmap(await r.blob());
+    const schaal = Math.min(1, 256 / Math.max(bm.width, bm.height));
+    const w = Math.max(1, Math.round(bm.width * schaal));
+    const h = Math.max(1, Math.round(bm.height * schaal));
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(bm, 0, 0, w, h);
+    return { data: ctx.getImageData(0, 0, w, h).data, w, h };
+  } catch {
+    return null;
+  }
+}
+
 function meet(src: string, soort: Soort): Promise<FotoVorm | null> {
   const sleutel = `${soort}|${src}`;
   let p = metingen.get(sleutel);
   if (!p) {
-    p = new Promise<FotoVorm | null>((klaar) => {
-      const img = new Image();
-      img.decoding = 'async';
-      img.onload = () => {
-        try {
-          const schaal = Math.min(1, 256 / Math.max(img.naturalWidth, img.naturalHeight));
-          const w = Math.max(1, Math.round(img.naturalWidth * schaal));
-          const h = Math.max(1, Math.round(img.naturalHeight * schaal));
-          const c = document.createElement('canvas');
-          c.width = w;
-          c.height = h;
-          const ctx = c.getContext('2d', { willReadFrequently: true });
-          if (!ctx) return klaar(null);
-          ctx.drawImage(img, 0, 0, w, h);
-          const data = ctx.getImageData(0, 0, w, h).data;
-          klaar(meetFoto(data, w, h, soort));
-        } catch {
-          klaar(null);
-        }
-      };
-      img.onerror = () => klaar(null);
-      img.src = viaEigenServer(src, 256);
-    });
+    p = laadPixels(src).then((px) => (px ? meetFoto(px.data, px.w, px.h, soort) : null)).catch(() => null);
     metingen.set(sleutel, p);
   }
   return p;

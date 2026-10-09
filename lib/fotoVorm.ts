@@ -102,7 +102,12 @@ export function voorgrondGlobaal(data: Uint8ClampedArray, w: number, h: number):
 export function meetFoto(data: Uint8ClampedArray, w: number, h: number, soort: Soort): FotoVorm {
   let masker = voorgrondMasker(data, w, h);
   let vorm = meetVorm(masker, w, h, soort);
-  if (!(soort === 'broek' ? vorm.pijpen : vorm.romp)) {
+  let deel = 0;
+  for (let i = 0; i < masker.length; i++) deel += masker[i];
+  deel /= masker.length;
+  // Te weinig voorgrond betekent dat het vollopen door een zachte rand het
+  // kledingstuk in is gelekt (wit op wit). Dan de terugval.
+  if (!(soort === 'broek' ? vorm.pijpen : vorm.romp) || deel < 0.12) {
     masker = voorgrondGlobaal(data, w, h);
     vorm = meetVorm(masker, w, h, soort);
   }

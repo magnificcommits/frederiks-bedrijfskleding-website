@@ -48,6 +48,7 @@ const SCHERMEN: Hit[] = [
   { type: 'Scherm', label: 'Retouren', sub: '', href: '/dashboard/retouren', woorden: 'retour ruilen terugsturen' },
   { type: 'Scherm', label: 'Klachten en vragen', sub: '', href: '/dashboard/klachten', woorden: 'klacht vraag service' },
   { type: 'Scherm', label: 'Afspraken', sub: 'Online geboekt via de website', href: '/dashboard/afspraken', woorden: 'afspraak boeking pasdag showroom adviesgesprek agenda' },
+  { type: 'Scherm', label: 'Beschikbaarheid', sub: 'Tijden open of dicht zetten', href: '/dashboard/afspraken/beschikbaarheid', woorden: 'vol dicht open vakantie vrij beschikbaar tijden blokkeren' },
   { type: 'Scherm', label: 'Reviews en NPS', sub: 'Tevredenheid na levering', href: '/dashboard/reviews', woorden: 'review nps tevredenheid beoordeling google' },
   { type: 'Scherm', label: 'Pakketten', sub: 'Startpakketten en pakketten', href: '/dashboard/pakketten', woorden: 'startpakket bundel' },
   { type: 'Scherm', label: 'Analyse', sub: '', href: '/dashboard/analyse', woorden: 'cijfers omzet grafiek' },

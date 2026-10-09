@@ -18,6 +18,7 @@ export const NAV_GROEPEN: NavGroep[] = [
     { href: '/dashboard', label: 'Overzicht' },
     { href: '/dashboard/taken', label: 'Taken en afspraken' },
     { href: '/dashboard/afspraken', label: 'Online afspraken' },
+    { href: '/dashboard/afspraken/beschikbaarheid', label: 'Beschikbaarheid' },
     { href: '/dashboard/meldingen', label: 'Meldingen' },
   ] },
   { titel: 'Verkoop', items: [
@@ -110,7 +111,7 @@ const EXTRA_LABELS: Record<string, string> = {
   '/dashboard/instellingen/prijzen': 'Prijsindicaties',
   '/dashboard/instellingen/api': 'API en HR-koppeling',
   '/dashboard/taken/instellingen': 'Instellingen',
-  '/dashboard/afspraken/instellingen': 'Beschikbaarheid',
+  '/dashboard/afspraken/instellingen': 'Vaste werktijden',
   '/dashboard/campagnes/instellingen': 'Instellingen',
   '/dashboard/sparen/instellingen': 'Instellingen',
   '/dashboard/sparen/klanten': 'Spaarders',

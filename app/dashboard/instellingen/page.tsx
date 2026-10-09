@@ -18,7 +18,7 @@ const INSTELLING_KAARTEN = [
   { titel: 'Service: retouren en klachten', tekst: 'Retourtermijn (ook per klant), voorwaarden, retouradres, retourredenen, reparaties, klachtcategorieën en streefreactietijden.', href: '/dashboard/instellingen/service', knop: 'Naar service' },
   { titel: 'API en HR-koppeling', tekst: 'Klanten laten hun HR-systeem nieuwe en vertrokken medewerkers doorgeven. Uitleg, voorbeelden en foutcodes; sleutels maak je per klant onder Koppelingen.', href: '/dashboard/instellingen/api', knop: 'Naar de uitleg' },
   { titel: 'Taken en afspraken', tekst: 'Statussen, personen en de dag- en weekoverzichten per mail.', href: '/dashboard/taken/instellingen', knop: 'Naar taken' },
-  { titel: 'Online afspraken', tekst: 'Wanneer klanten zelf een adviesgesprek, showroombezoek of pasdag kunnen boeken: werkdagen, tijdvakken, buffer, maximum per dag en vrije dagen.', href: '/dashboard/afspraken/instellingen', knop: 'Naar beschikbaarheid' },
+  { titel: 'Online afspraken', tekst: 'Wanneer klanten zelf een adviesgesprek, showroombezoek of pasdag kunnen boeken: werkdagen, tijdvakken, buffer, maximum per dag en vrije dagen.', href: '/dashboard/afspraken/instellingen', knop: 'Naar vaste werktijden' },
   { titel: 'Reviews en NPS', tekst: 'Tevredenheidsmail na levering aan of uit, na hoeveel dagen, en de Google-reviewlink voor klanten die een 9 of 10 geven.', href: '/dashboard/reviews', knop: 'Naar reviews' },
   { titel: 'Campagnes', tekst: 'Daglimiet voor mails, testadres, reviewlink en alles pauzeren.', href: '/dashboard/campagnes/instellingen', knop: 'Naar campagnes' },
   { titel: 'Sparen', tekst: 'Puntwaarde, vervaltermijn en de standaardinstellingen van het spaarprogramma.', href: '/dashboard/sparen/instellingen', knop: 'Naar sparen' },

@@ -74,6 +74,10 @@ export type Beschikbaarheid = {
   soorten: Record<AfspraakSoort, { actief: boolean; duurMin: number }>;
   /** In wiens agenda de afspraken komen (taak_personen.id). Leeg = Jessi of de eerste persoon. */
   persoonId: string | null;
+  /** Losse tijden die Jessi dichtzette, per dag: begintijden van blokjes van `stapMin` minuten. */
+  geslotenTijden: Record<string, string[]>;
+  /** Dagen die buiten de vaste werkdagen toch open zijn (bijvoorbeeld een zaterdag). */
+  extraDagen: string[];
 };
 
 export const STANDAARD_BESCHIKBAARHEID: Beschikbaarheid = {
@@ -94,6 +98,8 @@ export const STANDAARD_BESCHIKBAARHEID: Beschikbaarheid = {
     pasdag: { actief: true, duurMin: 120 },
   },
   persoonId: null,
+  geslotenTijden: {},
+  extraDagen: [],
 };
 
 const TIJD = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -142,6 +148,17 @@ export function normaliseerBeschikbaarheid(v: unknown): Beschikbaarheid {
 
   const persoonId = typeof o.persoonId === 'string' && /^[0-9a-f-]{36}$/i.test(o.persoonId) ? o.persoonId : null;
 
+  const ruwGesloten = (typeof o.geslotenTijden === 'object' && o.geslotenTijden ? o.geslotenTijden : {}) as Record<string, unknown>;
+  const geslotenTijden: Record<string, string[]> = {};
+  for (const [dag, tijden] of Object.entries(ruwGesloten).sort(([a], [b]) => a.localeCompare(b)).slice(-200)) {
+    if (!DATUM.test(dag) || !Array.isArray(tijden)) continue;
+    const t = [...new Set(tijden.map((x) => String(x ?? '')).filter((x) => TIJD.test(x)))].sort();
+    if (t.length) geslotenTijden[dag] = t;
+  }
+  const extraDagen = Array.isArray(o.extraDagen)
+    ? [...new Set((o.extraDagen as unknown[]).map((d) => String(d ?? '').trim()).filter((d) => DATUM.test(d)))].sort().slice(-200)
+    : [];
+
   return {
     werkdagen,
     tijdvakken: tijdvakken.length ? tijdvakken : s.tijdvakken,
@@ -153,6 +170,8 @@ export function normaliseerBeschikbaarheid(v: unknown): Beschikbaarheid {
     stapMin: getal(o.stapMin, 5, 120, s.stapMin),
     soorten,
     persoonId,
+    geslotenTijden,
+    extraDagen,
   };
 }
 

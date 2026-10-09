@@ -16,6 +16,19 @@ import { logoPlek, meetFoto, type FotoVorm, type Soort } from '@/lib/fotoVorm';
 
 const metingen = new Map<string, Promise<FotoVorm | null>>();
 
+/**
+ * Vaste maten voor foto's die we vaak tonen en waar de meting misgaat. De witte
+ * Snickers-polo (voorbeeld bij de logostap) staat op een grijze achtergrond met
+ * een lichte vlek in het midden; de schaduwkant van het shirt loopt daar in over
+ * en dan komt het logo te dicht bij de knoopsluiting. Met de hand opgemeten.
+ */
+const VASTE_VORMEN: { herken: RegExp; vorm: FotoVorm }[] = [
+  {
+    herken: /2718-0900\.jpg/i,
+    vorm: { breedte: 256, hoogte: 256, romp: { midden: 0.51, breedte: 0.45, schouder: 0.17, onder: 0.86 }, pijpen: null, symmetrie: 0.95, kleur: '#f2f2f2' },
+  },
+];
+
 const viaEigenServer = (src: string, w: number) =>
   src.startsWith('/') || src.startsWith('data:') ? src : `/_next/image?url=${encodeURIComponent(src)}&w=${w}&q=75`;
 
@@ -47,6 +60,11 @@ async function laadPixels(src: string): Promise<{ data: Uint8ClampedArray; w: nu
 function meet(src: string, soort: Soort): Promise<FotoVorm | null> {
   const sleutel = `${soort}|${src}`;
   let p = metingen.get(sleutel);
+  const vast = soort === 'boven' ? VASTE_VORMEN.find((v) => v.herken.test(src)) : undefined;
+  if (!p && vast) {
+    p = Promise.resolve(vast.vorm);
+    metingen.set(sleutel, p);
+  }
   if (!p) {
     p = laadPixels(src).then((px) => (px ? meetFoto(px.data, px.w, px.h, soort) : null)).catch(() => null);
     metingen.set(sleutel, p);

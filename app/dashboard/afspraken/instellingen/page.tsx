@@ -48,9 +48,12 @@ export default async function AfsprakenInstellingenPage({ searchParams }: { sear
       <div className="dash-kop flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link href="/dashboard/afspraken" className="knop-tekst" aria-label="Terug naar afspraken">‹ Afspraken</Link>
-          <h1 className="dash-h1">Beschikbaarheid voor online afspraken</h1>
+          <h1 className="dash-h1">Vaste werktijden voor online afspraken</h1>
         </div>
-        <a href="/afspraak" target="_blank" rel="noreferrer" className="knop-stil">Boekpagina bekijken</a>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/dashboard/afspraken/beschikbaarheid" className="knop-primair">Week open of dicht zetten</Link>
+          <a href="/afspraak" target="_blank" rel="noreferrer" className="knop-stil">Boekpagina bekijken</a>
+        </div>
       </div>
 
       {melding === 'opgeslagen' && (

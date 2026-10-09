@@ -150,12 +150,21 @@ export async function vrijeDagen(
     });
   }
 
+  // Tijden die Jessi zelf dichtzette, tellen als bezet (zonder buffer).
+  for (const [dag, tijden] of Object.entries(inst.geslotenTijden)) {
+    for (const t of tijden) {
+      const start = nlNaarDate(dag, t).getTime();
+      bezet.push({ start, eind: start + inst.stapMin * 60_000 });
+    }
+  }
+
   const geblokkeerd = new Set(inst.geblokkeerd);
+  const extra = new Set(inst.extraDagen);
   const duur = soortInst.duurMin * 60_000;
   const uit: VrijeDag[] = [];
 
   for (const dag of dagen) {
-    if (!inst.werkdagen.includes(weekdagVan(dag))) continue;
+    if (!inst.werkdagen.includes(weekdagVan(dag)) && !extra.has(dag)) continue;
     if (geblokkeerd.has(dag)) continue;
     if ((perDag.get(dag) ?? 0) >= inst.maxPerDag) continue;
     const tijden: string[] = [];

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
 import { logAudit } from '@/lib/kms/audit';
 import { zetAfspraakStatus } from '@/lib/afspraken/afspraken';
-import { zetBeschikbaarheid } from '@/lib/afspraken/beschikbaarheid';
+import { getBeschikbaarheid, zetBeschikbaarheid } from '@/lib/afspraken/beschikbaarheid';
 import { AFSPRAAK_SOORTEN, normaliseerBeschikbaarheid } from '@/lib/afspraken/soorten';
 import { isDatum, plusDagen } from '@/app/dashboard/taken/tijd';
 
@@ -67,9 +67,14 @@ export async function zetBeschikbaarheidActie(formData: FormData): Promise<void>
     soorten,
     persoonId: String(formData.get('persoonId') ?? '') || null,
   };
+  // Wat in de weekplanner is dichtgezet of extra open, blijft staan.
+  const huidig = await getBeschikbaarheid();
+  ruw.geslotenTijden = huidig.geslotenTijden;
+  ruw.extraDagen = huidig.extraDagen;
   const schoon = normaliseerBeschikbaarheid(ruw);
   const ok = await zetBeschikbaarheid(schoon);
   if (ok) await logAudit('afspraken_instellingen', { entiteit: 'instellingen', entiteitId: 'afspraken_beschikbaarheid', details: schoon as unknown as Record<string, unknown> });
   revalidatePath('/dashboard/afspraken/instellingen');
+  revalidatePath('/dashboard/afspraken/beschikbaarheid');
   redirect(`/dashboard/afspraken/instellingen?melding=${ok ? 'opgeslagen' : 'mislukt'}`);
 }

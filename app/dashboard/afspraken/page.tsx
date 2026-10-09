@@ -39,7 +39,7 @@ export default async function AfsprakenPage({ searchParams }: { searchParams: Pr
         acties={
           <>
             <Link href="/dashboard/taken?weergave=agenda" className="knop-stil">Naar de agenda</Link>
-            <Link href="/dashboard/afspraken/instellingen" className="knop-stil">Beschikbaarheid</Link>
+            <Link href="/dashboard/afspraken/beschikbaarheid" className="knop-primair">Beschikbaarheid aanpassen</Link>
             <a href="/afspraak" target="_blank" rel="noreferrer" className="knop-stil">Boekpagina bekijken</a>
           </>
         }

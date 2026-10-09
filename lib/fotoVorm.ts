@@ -30,6 +30,8 @@ export type FotoVorm = {
   pijpen: { links: { midden: number; breedte: number }; rechts: { midden: number; breedte: number }; hoogte: number } | null;
   /** 0-1: hoe gelijk de linker- en rechterhelft zijn. Onder de 0,8 is de foto schuin genomen. */
   symmetrie: number;
+  /** Hoofdkleur van het kledingstuk als #rrggbb (mediaan van de romp), voor de schets van de achterkant. */
+  kleur?: string;
 };
 
 const MIN_RUN = 2;
@@ -98,9 +100,34 @@ export function voorgrondGlobaal(data: Uint8ClampedArray, w: number, h: number):
 
 /** Meten met het vollopen, en bij wit op wit (niets bruikbaars gevonden) met de terugval. */
 export function meetFoto(data: Uint8ClampedArray, w: number, h: number, soort: Soort): FotoVorm {
-  const eerst = meetVorm(voorgrondMasker(data, w, h), w, h, soort);
-  const bruikbaar = soort === 'broek' ? !!eerst.pijpen : !!eerst.romp;
-  return bruikbaar ? eerst : meetVorm(voorgrondGlobaal(data, w, h), w, h, soort);
+  let masker = voorgrondMasker(data, w, h);
+  let vorm = meetVorm(masker, w, h, soort);
+  if (!(soort === 'broek' ? vorm.pijpen : vorm.romp)) {
+    masker = voorgrondGlobaal(data, w, h);
+    vorm = meetVorm(masker, w, h, soort);
+  }
+  return { ...vorm, kleur: hoofdkleur(data, masker, w, h, vorm) };
+}
+
+/** Mediaan van de voorgrondpixels in het midden van het kledingstuk: de stofkleur, zonder zakken en randen. */
+function hoofdkleur(data: Uint8ClampedArray, m: Uint8Array, w: number, h: number, v: FotoVorm): string | undefined {
+  const r: number[] = [];
+  const g: number[] = [];
+  const b: number[] = [];
+  const midden = (v.romp?.midden ?? 0.5) * w;
+  const breed = Math.max(4, (v.romp?.breedte ?? 0.3) * w * 0.5);
+  const boven = (v.romp?.schouder ?? 0.2) * h;
+  const onder = (v.romp?.onder ?? 0.9) * h;
+  for (let y = Math.round(boven + (onder - boven) * 0.3); y < onder - (onder - boven) * 0.2; y += 2) {
+    for (let x = Math.round(midden - breed / 2); x < midden + breed / 2; x += 2) {
+      const p = y * w + x;
+      if (x < 0 || x >= w || !m[p]) continue;
+      r.push(data[p * 4]); g.push(data[p * 4 + 1]); b.push(data[p * 4 + 2]);
+    }
+  }
+  if (r.length < 10) return undefined;
+  const hex = (v: number[]) => mediaanVan(v).toString(16).padStart(2, '0');
+  return `#${hex(r)}${hex(g)}${hex(b)}`;
 }
 
 type Run = { van: number; tot: number };

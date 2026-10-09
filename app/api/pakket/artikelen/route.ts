@@ -17,7 +17,8 @@ export async function GET(req: Request) {
   const type = (sp.get('type') ?? '').trim().slice(0, 60);
   const kleur = (sp.get('kleur') ?? '').trim().slice(0, 60) || undefined;
   if (!type) return NextResponse.json({ artikelen: [] });
-  const artikelen = await artikelenVoorType(type, kleur);
+  const n = Math.min(30, Math.max(1, Number(sp.get('n')) || 10));
+  const artikelen = await artikelenVoorType(type, kleur, n);
   return NextResponse.json(
     { artikelen },
     { headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=3600' } },

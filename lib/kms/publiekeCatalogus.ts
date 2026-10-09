@@ -23,6 +23,8 @@ const CATEGORIE_PER_TYPE: Record<string, string[]> = {
   winterjas: ['Jassen'],
   bodywarmer: ['Bodywarmers', 'Jassen'],
   werkbroek: ['Broeken'],
+  schoenen: ['Werkschoenen'],
+  accessoires: ['Accessoires'],
 };
 
 /** Standaardtype per categorie, voor artikelen waarvan de naam niets zegt ("Cordura Tech Vest"). */
@@ -56,6 +58,8 @@ export type ArtikelRij = {
 /** Kledingtype van een artikel: een bodywarmer blijft een bodywarmer, ook als er "softshell" in de naam staat. */
 export function typeVanArtikel(naam: string, categorie: string | null): string | null {
   if (categorie === 'Bodywarmers') return 'bodywarmer';
+  if (categorie === 'Werkschoenen') return 'schoenen';
+  if (categorie === 'Accessoires') return 'accessoires';
   if (categorie === 'Korte broeken') return null;
   // Een fleecevest of -jack hoort bij de truien, ook als het in de categorie jassen staat.
   if (categorie === 'Jassen' && /fleece/i.test(naam) && !/softshell|winter|parka/i.test(naam)) return 'sweater';

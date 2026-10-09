@@ -68,7 +68,7 @@ export const starterpakketten: Record<string, { type: string; kleur: number; pos
     { type: 'werkbroek', kleur: 0, positie: 'dijbeen-rechts', per: 2 },
     { type: 'polo', kleur: 1, positie: 'borst-links', per: 3 },
     { type: 'softshell', kleur: 2, positie: 'rug', per: 1 },
-    { type: 'bodywarmer', kleur: 7, positie: 'borst-rechts', per: 1 },
+    { type: 'bodywarmer', kleur: 7, positie: 'borst-links', per: 1 },
   ],
   'Horeca & food': [
     { type: 'polo', kleur: 0, positie: 'borst-links', per: 3 },
@@ -78,18 +78,18 @@ export const starterpakketten: Record<string, { type: string; kleur: number; pos
   'Zorg & salon': [
     { type: 'polo', kleur: 4, positie: 'borst-links', per: 3 },
     { type: 'tshirt', kleur: 3, positie: 'borst-links', per: 2 },
-    { type: 'softshell', kleur: 2, positie: 'borst-rechts', per: 1 },
+    { type: 'softshell', kleur: 2, positie: 'borst-links', per: 1 },
   ],
   'Agrarisch & groen': [
     { type: 'werkbroek', kleur: 2, positie: 'dijbeen-links', per: 2 },
     { type: 'tshirt', kleur: 5, positie: 'borst-links', per: 3 },
-    { type: 'bodywarmer', kleur: 5, positie: 'borst-rechts', per: 1 },
+    { type: 'bodywarmer', kleur: 5, positie: 'borst-links', per: 1 },
     { type: 'winterjas', kleur: 5, positie: 'rug', per: 1 },
   ],
   'Kantoor & retail': [
     { type: 'polo', kleur: 1, positie: 'borst-links', per: 3 },
     { type: 'softshell', kleur: 0, positie: 'borst-links', per: 1 },
-    { type: 'bodywarmer', kleur: 1, positie: 'borst-rechts', per: 1 },
+    { type: 'bodywarmer', kleur: 1, positie: 'borst-links', per: 1 },
   ],
   'Clubs & verenigingen': [
     { type: 'tshirt', kleur: 1, positie: 'borst-links', per: 2 },

@@ -128,3 +128,70 @@ export function FotoMetLogo({
     </div>
   );
 }
+
+/** Meting van een foto als hook, voor onderdelen die alleen de kleur of vorm nodig hebben. */
+export function useFotoVorm(src: string | null | undefined, type: string): FotoVorm | null {
+  const soort = soortVoorType(type);
+  const [vorm, setVorm] = useState<{ src: string; v: FotoVorm | null } | null>(null);
+  useEffect(() => {
+    if (!src) return;
+    let weg = false;
+    meet(src, soort).then((v) => { if (!weg) setVorm({ src, v }); });
+    return () => { weg = true; };
+  }, [src, soort]);
+  return src && vorm?.src === src ? vorm.v : null;
+}
+
+/** Is een kleur licht genoeg om er donkere lijnen op te tekenen? */
+export function isLicht(hex: string): boolean {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.72;
+}
+
+function laadBeeld(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((klaar) => {
+    const img = new Image();
+    img.onload = () => klaar(img);
+    img.onerror = () => klaar(null);
+    img.src = src;
+  });
+}
+
+/**
+ * Tekent een kledingstuk met logo op een wit vierkant canvas en geeft een PNG
+ * terug, voor de PDF en de mail. Met foto (voorkant): de echte foto met het logo
+ * op de gemeten plek. Anders tekent de aanroeper de schets zelf.
+ */
+export async function tekenFotoMetLogo(opts: { foto: string; type: string; positie: string; logo: string | null; maat?: number }): Promise<string | null> {
+  const maat = opts.maat ?? 640;
+  const [img, logoImg, v] = await Promise.all([
+    laadBeeld(viaEigenServer(opts.foto, 640)),
+    opts.logo ? laadBeeld(opts.logo) : Promise.resolve(null),
+    meet(opts.foto, soortVoorType(opts.type)),
+  ]);
+  if (!img) return null;
+  const c = document.createElement('canvas');
+  c.width = maat;
+  c.height = maat;
+  const ctx = c.getContext('2d');
+  if (!ctx) return null;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, maat, maat);
+  const a = img.naturalWidth / img.naturalHeight;
+  const bw = a >= 1 ? maat : maat * a;
+  const bh = a >= 1 ? maat / a : maat;
+  const ox = (maat - bw) / 2;
+  const oy = (maat - bh) / 2;
+  ctx.drawImage(img, ox, oy, bw, bh);
+  const plek = v ? logoPlek(v, opts.positie) : null;
+  if (logoImg && plek) {
+    const vakB = plek.breedte * bw;
+    const vakH = vakB * 0.8;
+    const s = Math.min(vakB / logoImg.naturalWidth, vakH / logoImg.naturalHeight);
+    const lw = logoImg.naturalWidth * s;
+    const lh = logoImg.naturalHeight * s;
+    ctx.drawImage(logoImg, ox + plek.x * bw - lw / 2, oy + plek.y * bh - lh / 2, lw, lh);
+  }
+  return c.toDataURL('image/jpeg', 0.9);
+}

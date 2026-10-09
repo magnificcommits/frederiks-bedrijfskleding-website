@@ -6,19 +6,21 @@ import { kleuren, kledingtypes, logoposities, broekposities, positiesVoor, teamg
 import { logoFormaten, oppervlakVan, logoCheck, standaardFormaatVoor, LOGO_MIN_CM2 } from '@/lib/fiscaal';
 import { branches } from '@/content/branches';
 import { Garment } from '@/components/Garments';
-import { FotoMetLogo } from '@/components/FotoMetLogo';
+import { FotoMetLogo, isLicht, tekenFotoMetLogo, useFotoVorm } from '@/components/FotoMetLogo';
+import { PakketExtra, extraRegels, type ExtraWaarde } from '@/components/PakketExtras';
+import { AantalKiezer } from '@/components/AantalKiezer';
 import { volledigeNaam } from '@/lib/offerteMand';
 import { getHerkomst, leesHerkomstVoorLead } from '@/lib/herkomst';
 import { site } from '@/content/site';
 
 type Status = 'idle' | 'sending' | 'ok' | 'error';
-type Item = { id: number; type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string; artikelFoto?: string | null; voorbeeldFoto?: string | null; formaat?: string };
+type Item = { id: number; type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string; artikelFoto?: string | null; voorbeeldFoto?: string | null; formaat?: string; per?: number };
 type Artikel = { id: string; naam: string; merk: string | null; foto: string | null; kleur: string | null; kleurTreffer: boolean };
 
 const extrasOpties = [
-  { id: 'schoenen', label: 'Veiligheidsschoenen' },
-  { id: 'accessoires', label: 'Accessoires (muts, handschoenen)' },
-];
+  { id: 'schoenen', label: 'Veiligheidsschoenen', type: 'schoenen' as const, uitleg: 'Kies een of meer modellen, of laat het aan Jessi. Zij adviseert de juiste veiligheidsklasse bij het passen.' },
+  { id: 'accessoires', label: 'Accessoires (muts, handschoenen)', type: 'accessoires' as const, uitleg: 'Kies wat je erbij wilt hebben. Petten en mutsen kunnen ook met je logo.' },
+]
 const totaalStappen = 4;
 const chip = 'min-h-[44px] cursor-pointer select-none rounded-lg border-2 px-4 py-2.5 text-sm font-semibold transition';
 const swatch = 'h-9 w-9 rounded-full border-2 transition';
@@ -42,9 +44,34 @@ function Preview({ type, kleur, logo, positie, techniek, foto, toonSchuin }: { t
   if (foto && positie !== 'rug') {
     return <FotoMetLogo src={foto} type={type} positie={positie} logo={logo} techniek={techniek} toonSchuin={toonSchuin} />;
   }
+  if (foto && positie === 'rug') {
+    return <RugVoorbeeld foto={foto} type={type} kleur={kleur} logo={logo} techniek={techniek} klein={!toonSchuin} />;
+  }
   return (
     <div className="relative mx-auto aspect-square w-full">
       <Garment type={type} color={k.hex} light={k.licht} logo={logo} pos={positie} techniek={techniek} />
+    </div>
+  );
+}
+
+/**
+ * Ruglogo bij een echt artikel. Leveranciers leveren alleen vooraanzichten; een
+ * achteraanzicht verzinnen we niet. We tekenen de achterkant in de echte kleur
+ * van het artikel (gemeten uit de foto) en laten de echte voorkant ernaast zien.
+ */
+function RugVoorbeeld({ foto, type, kleur, logo, techniek, klein }: { foto: string; type: string; kleur: number; logo: string | null; techniek: string; klein?: boolean }) {
+  const vorm = useFotoVorm(foto, type);
+  const hex = vorm?.kleur ?? kleuren[kleur].hex;
+  return (
+    <div className="relative mx-auto aspect-square w-full">
+      <Garment type={type} color={hex} light={isLicht(hex)} logo={logo} pos="rug" techniek={techniek} />
+      {!klein && (
+        <div className="absolute bottom-1 right-1 w-[30%] rounded-md border border-line bg-white p-1 shadow-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`/_next/image?url=${encodeURIComponent(foto)}&w=256&q=75`} alt="" className="aspect-square w-full object-contain" />
+          <span className="block text-center text-[10px] font-semibold text-warm">voorkant</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -86,6 +113,9 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   const [artikelen, setArtikelen] = useState<Artikel[]>([]);
   const [artikelenBezig, setArtikelenBezig] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
+  const [starterGeladen, setStarterGeladen] = useState(false);
+  const [witVoorbeeld, setWitVoorbeeld] = useState<string | null>(null);
+  const [pdfBezig, setPdfBezig] = useState(false);
   /** Indicatie voor het hele pakket: adviesprijs min standaardkorting plus geborduurd logo per stuk. */
   const indicatie = (() => {
     if (!prijzen || !items.length) return null;
@@ -100,7 +130,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     return afronden(som);
   })();
   const [lastAdded, setLastAdded] = useState<string | null>(null);
-  const [extras, setExtras] = useState<Record<string, { on: boolean; aantal: string }>>({});
+  const [extras, setExtras] = useState<Record<string, ExtraWaarde>>({});
   const [contact, setContact] = useState({ name: '', company: '', email: '', phone: '' });
   const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
@@ -175,6 +205,17 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     return () => { afgebroken = true; ctrl.abort(); clearTimeout(t); };
   }, [draft.type, draft.kleur]);
 
+  // Logostap: een wit echt artikel als ondergrond, daar is elk logo goed op te zien.
+  useEffect(() => {
+    if (vanProduct) return;
+    let weg = false;
+    fetch(`/api/pakket/artikelen?${new URLSearchParams({ type: draft.type, kleur: 'Wit', n: '1' })}`)
+      .then((r) => r.json() as Promise<{ artikelen?: Artikel[] }>)
+      .then((d) => { if (!weg) setWitVoorbeeld(d.artikelen?.[0]?.foto ?? null); })
+      .catch(() => { /* dan de schets */ });
+    return () => { weg = true; };
+  }, [draft.type, vanProduct]);
+
   const allePosities = [...logoposities, ...broekposities];
   /** Zolang er niets gekozen is, tonen we het eerste passende artikel als voorbeeld. */
   const voorbeeld = !draft.artikelId && !artikelenBezig ? artikelen[0] ?? null : null;
@@ -190,7 +231,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
       if (!p) return;
       const data = decodeState(p) as Partial<{
         branche: string; team: string; techniek: 'borduren' | 'bedrukken';
-        defPositie: string; items: Item[]; extras: Record<string, { on: boolean; aantal: string }>;
+        defPositie: string; items: Item[]; extras: Record<string, ExtraWaarde>;
       }>;
       if (typeof data.branche === 'string') setBranche(data.branche);
       if (typeof data.team === 'string') setTeam(data.team);
@@ -236,13 +277,13 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     setDraft((d) => ({ ...d, aantal: '', artikelId: undefined, artikelNaam: undefined, artikelFoto: undefined }));
   }
   function removeItem(id: number) { setItems((p) => p.filter((i) => i.id !== id)); }
-  function toggleExtra(id: string) { setExtras((p) => ({ ...p, [id]: { on: !p[id]?.on, aantal: p[id]?.aantal ?? '' } })); }
 
   function vulMetStarter() {
     if (!starter) return;
     const basis = Date.now();
     const n = teamAantal(team);
-    setItems(starter.map((s, k) => ({ id: basis + k, type: s.type, kleur: s.kleur, positie: s.positie, aantal: String(s.per * n), formaat: standaardFormaatVoor(s.positie) })));
+    setItems(starter.map((s, k) => ({ id: basis + k, type: s.type, kleur: s.kleur, positie: s.positie, aantal: String(s.per * n), per: s.per, formaat: standaardFormaatVoor(s.positie) })));
+    setStarterGeladen(true);
     setLastAdded(null);
     // Per stuk een echt artikel in die kleur als voorbeeldfoto erbij zoeken.
     starter.forEach(async (s, k) => {
@@ -270,7 +311,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     const kledingLijst = items.length
       ? items.map((i) => `- ${typeLabel(i.type)}, ${kleuren[i.kleur].name}, logo ${posLabel(i.positie).toLowerCase()} (${oppervlakVan(i.formaat)} cm²)${i.aantal ? `, ${i.aantal}x` : ''}${i.artikelNaam ? `, voorkeur: ${i.artikelNaam}` : ''}`).join('\n')
       : '- (nog geen kledingstukken toegevoegd)';
-    const extraLijst = extrasOpties.filter((e) => extras[e.id]?.on).map((e) => `- ${e.label}${extras[e.id].aantal ? ` (${extras[e.id].aantal}x)` : ''}`).join('\n');
+    const extraLijst = extrasOpties.flatMap((e) => extraRegels(e.label, extras[e.id])).map((r) => `- ${r.naam} (${r.aantal}x)`).join('\n');
     return [
       'Pakket samengesteld via de configurator.',
       `Branche: ${branche || 'niet opgegeven'}`,
@@ -298,20 +339,68 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     });
   }
 
-  /** Rendert het ontwerp (de kledingstukken met logo) tot één gebrande PNG, voor in de e-mail. */
+  /** Plaatje per kledingstuk: de echte foto met logo, of de schets (rug, of geen foto). */
+  async function maakStukBeelden(): Promise<(string | null)[]> {
+    return Promise.all(items.map(async (i) => {
+      const foto = i.artikelFoto ?? i.voorbeeldFoto;
+      if (foto && i.positie !== 'rug') {
+        const b = await tekenFotoMetLogo({ foto, type: i.type, positie: i.positie, logo });
+        if (b) return b;
+      }
+      const svg = document.querySelector(`#ontwerp-schetsen [data-stuk="${i.id}"] svg`);
+      const img = svg ? await svgNaarImage(svg as SVGSVGElement) : null;
+      if (!img) return null;
+      const c = document.createElement('canvas');
+      c.width = 640;
+      c.height = 640;
+      const ctx = c.getContext('2d');
+      if (!ctx) return null;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 640, 640);
+      const s = Math.min(600 / img.width, 600 / img.height);
+      ctx.drawImage(img, (640 - img.width * s) / 2, (640 - img.height * s) / 2, img.width * s, img.height * s);
+      return c.toDataURL('image/png');
+    }));
+  }
+
+  /** Elk beeld (ook SVG of WebP) als PNG, voor de PDF. */
+  function naarPng(src: string, max = 600): Promise<string | null> {
+    return new Promise((klaar) => {
+      const img = new Image();
+      img.onload = () => {
+        const s = Math.min(1, max / Math.max(img.naturalWidth || max, img.naturalHeight || max));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round((img.naturalWidth || max) * s));
+        c.height = Math.max(1, Math.round((img.naturalHeight || max) * s));
+        const ctx = c.getContext('2d');
+        if (!ctx) return klaar(null);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        klaar(c.toDataURL('image/png'));
+      };
+      img.onerror = () => klaar(null);
+      img.src = src;
+    });
+  }
+
+  /** Rendert het ontwerp tot één gebrande PNG, voor in de e-mail. */
   async function genereerOntwerpPng(): Promise<string | null> {
     try {
-      if (typeof document === 'undefined') return null;
-      const doc = document.getElementById('ontwerp-doc');
-      const svgs = doc ? Array.from(doc.querySelectorAll('svg')) : [];
-      if (svgs.length === 0) return null;
+      if (typeof document === 'undefined' || items.length === 0) return null;
+      const beelden = await maakStukBeelden();
+      const imgs = await Promise.all(beelden.map((b) => new Promise<HTMLImageElement | null>((klaar) => {
+        if (!b) return klaar(null);
+        const img = new Image();
+        img.onload = () => klaar(img);
+        img.onerror = () => klaar(null);
+        img.src = b;
+      })));
       const labels = items.map((i) => ({
         titel: `${typeLabel(i.type)}${i.aantal ? ` (${i.aantal}x)` : ''}`,
         sub: `${kleuren[i.kleur].name}, logo ${posLabel(i.positie).toLowerCase()}`,
       }));
-      const cols = Math.min(3, svgs.length);
+      const cols = Math.min(3, items.length);
       const cell = 230, pad = 28, headerH = 96, labelH = 52;
-      const rows = Math.ceil(svgs.length / cols);
+      const rows = Math.ceil(items.length / cols);
       const W = pad * 2 + cols * cell;
       const H = headerH + pad + rows * (cell + labelH);
       const scale = 2;
@@ -336,24 +425,75 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
       ctx.textAlign = 'right';
       ctx.fillText('Jouw werkkledingontwerp', W - pad, 52);
       ctx.textAlign = 'left';
-      const imgs = await Promise.all(svgs.map((s) => svgNaarImage(s as SVGSVGElement)));
       imgs.forEach((img, idx) => {
         const r = Math.floor(idx / cols), c = idx % cols;
         const x = pad + c * cell, y = headerH + pad + r * (cell + labelH);
         if (img) ctx.drawImage(img, x + 8, y, cell - 16, cell - 16);
         const m = labels[idx];
-        if (m) {
-          ctx.fillStyle = '#1c1c1c';
-          ctx.font = '700 14px Arial, sans-serif';
-          ctx.fillText(m.titel, x + 8, y + cell - 4);
-          ctx.fillStyle = '#52504e';
-          ctx.font = '12px Arial, sans-serif';
-          ctx.fillText(m.sub, x + 8, y + cell + 14);
-        }
+        ctx.fillStyle = '#1c1c1c';
+        ctx.font = '700 14px Arial, sans-serif';
+        ctx.fillText(m.titel, x + 8, y + cell - 4);
+        ctx.fillStyle = '#52504e';
+        ctx.font = '12px Arial, sans-serif';
+        ctx.fillText(m.sub, x + 8, y + cell + 14);
       });
-      return canvas.toDataURL('image/png');
+      return canvas.toDataURL('image/jpeg', 0.88);
     } catch {
       return null;
+    }
+  }
+
+  /** Het ontwerp als echte PDF downloaden: eigen opmaak, kaarten nooit afgebroken. */
+  async function downloadPdf() {
+    setPdfBezig(true);
+    try {
+      const [{ maakOntwerpPdf }, beelden, logoPng] = await Promise.all([
+        import('@/lib/ontwerpPdf'),
+        maakStukBeelden(),
+        logo ? naarPng(logo) : Promise.resolve(null),
+      ]);
+      const formaatLabel = (id?: string) => logoFormaten.find((f) => f.id === (id ?? 'standaard'))?.label.toLowerCase() ?? '';
+      const bytes = await maakOntwerpPdf({
+        datum: new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }),
+        branche: branche || null,
+        team: team ? `${team} medewerkers` : null,
+        techniek: techniek === 'borduren' ? 'Borduren' : 'Bedrukken',
+        logo: logoPng,
+        stukken: items.map((i, n) => ({
+          titel: `${typeLabel(i.type)}${i.aantal ? `, ${i.aantal} stuks` : ''}`,
+          regels: [
+            `Kleur: ${kleuren[i.kleur].name}`,
+            `Logo: ${posLabel(i.positie).toLowerCase()}, ${formaatLabel(i.formaat)}`,
+            i.artikelNaam ? `Artikel: ${i.artikelNaam}` : 'Artikel: Jessi stelt een passend model voor',
+          ],
+          beeld: beelden[n],
+        })),
+        aanvullend: extrasOpties.flatMap((e) => extraRegels(e.label, extras[e.id])).map((r) => `${r.naam}, ${r.aantal} stuks`),
+        prijs: toonPrijs && indicatie !== null
+          ? { bedrag: `ca. ${euro(indicatie)} excl. btw`, toelichting: 'Kleding met geborduurd logo, voor de aantallen hierboven. Eenmalig komen daar een borduurkaart en instelkosten bij. Je exacte prijs staat in de offerte.' }
+          : null,
+        contact: [contact.name, contact.company, contact.email, contact.phone].filter(Boolean).join(', ') || null,
+        verderUrl: buildResumeUrl(),
+        bedrijf: {
+          naam: 'Frederiks Bedrijfskleding',
+          adres: `${site.address.street}, ${site.address.city}`,
+          telefoon: site.phone,
+          email: site.email,
+          web: site.url,
+        },
+      });
+      const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Werkkledingontwerp-Frederiks.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch {
+      setError('De PDF maken lukte niet. Probeer het nog eens, of mail je ontwerp naar jezelf.');
+    } finally {
+      setPdfBezig(false);
     }
   }
 
@@ -363,10 +503,10 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
       kleur: kleuren[i.kleur].name,
       aantal: Math.max(1, parseInt(i.aantal || '1', 10) || 1),
     }));
-    const extra = extrasOpties.filter((e) => extras[e.id]?.on).map((e) => ({
-      item_naam: e.label,
+    const extra = extrasOpties.flatMap((e) => extraRegels(e.label, extras[e.id])).map((r) => ({
+      item_naam: r.naam,
       kleur: null,
-      aantal: Math.max(1, parseInt(extras[e.id].aantal || '1', 10) || 1),
+      aantal: r.aantal,
     }));
     return [...kleding, ...extra];
   }
@@ -380,11 +520,11 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
       aantal: Math.max(1, parseInt(i.aantal || '1', 10) || 1),
       opmerking: `logo ${posLabel(i.positie).toLowerCase()}, ${techniek}`,
     }));
-    const extra = extrasOpties.filter((e) => extras[e.id]?.on).map((e) => ({
-      product_id: null,
-      omschrijving: e.label,
+    const extra = extrasOpties.flatMap((e) => extraRegels(e.label, extras[e.id])).map((r) => ({
+      product_id: r.product_id,
+      omschrijving: r.naam,
       kleur: null,
-      aantal: Math.max(1, parseInt(extras[e.id].aantal || '1', 10) || 1),
+      aantal: r.aantal,
       opmerking: null,
     }));
     return [...kleding, ...extra];
@@ -472,8 +612,6 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
 
   return (
     <div className="mx-auto max-w-6xl">
-      {/* Bij printen verbergen we de wizard en tonen we het gebrande ontwerpdocument. */}
-      <style>{`@media print { @page { margin: 12mm; } .no-print { display: none !important; } }`}</style>
 
       {/* Voortgang: zelfde stappenbalk als het kledingadvies, met namen. Terug naar een eerdere stap kan door erop te klikken. */}
       <ol className="no-print grid grid-cols-4 overflow-hidden rounded-t-2xl bg-ink-900 print:hidden">
@@ -542,11 +680,11 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               </div>
             </div>
             <div className="rounded-xl border border-line bg-mist p-6">
-              <Preview type={draft.type} kleur={draft.kleur} logo={logo} positie={defPositie} techniek={techniek} foto={draft.artikelFoto ?? voorbeeld?.foto} toonSchuin />
+              <Preview type={draft.type} kleur={vanProduct ? draft.kleur : 4} logo={logo} positie={defPositie} techniek={techniek} foto={vanProduct ? draft.artikelFoto : witVoorbeeld} toonSchuin />
               {vanProduct ? (
                 <p className="mt-3 text-center text-xs text-warm">Je ontwerpt met <span className="font-semibold text-ink-800">{vanProduct}</span>. Upload je logo; in de volgende stap voeg je dit artikel toe en kun je er meer kledingstukken bij zetten.</p>
               ) : (
-                <p className="mt-3 text-center text-xs text-warm">Voorbeeld met je logo. In de volgende stap kies je de kledingstukken.</p>
+                <p className="mt-3 text-center text-xs text-warm">Voorbeeld op een witte {typeLabel(draft.type).toLowerCase()}: daarop zie je je logo het best. In de volgende stap kies je de kleding en de kleuren.</p>
               )}
             </div>
           </div>
@@ -654,15 +792,29 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Jouw pakket ({items.length})</p>
               {starter && items.length === 0 && (
-                <button type="button" onClick={vulMetStarter} className="mt-3 w-full rounded-lg border-2 border-amber-400 bg-amber-50 px-4 py-3 text-left text-sm font-semibold text-amber-800 transition hover:bg-amber-100">
-                  Basispakket voor {branche}, {teamAantal(team)} medewerkers{team ? '' : ' (pas aan bij stap 1)'}
-                  <span className="mt-0.5 block text-xs font-normal text-amber-700">
-                    Per medewerker: {starter.map((s) => `${s.per}x ${typeLabel(s.type).toLowerCase()}`).join(', ')}. Je past het daarna naar wens aan.
-                  </span>
+                <div className="mt-3 rounded-lg border-2 border-amber-400 bg-amber-50 p-4 text-sm">
+                  <p className="font-bold text-ink-900">Geen idee waar je moet beginnen?</p>
+                  <p className="mt-1 text-ink-800">
+                    Dit leveren we bij {branche.toLowerCase()} het vaakst, per medewerker:
+                  </p>
+                  <ul className="mt-2 space-y-0.5 text-ink-800">
+                    {starter.map((s, n) => (
+                      <li key={n}>{s.per}x {typeLabel(s.type).toLowerCase()} in {kleuren[s.kleur].name.toLowerCase()}, logo {posLabel(s.positie).toLowerCase()}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs text-warm">
+                    Met {teamAantal(team)} medewerkers{team ? ` (teamgrootte ${team})` : ' (pas de teamgrootte aan bij stap 1)'} rekenen we de aantallen voor je uit. Daarna pas je alles aan: aantallen, kleuren, stukken erbij of eraf.
+                  </p>
                   {toonPrijs && prijzen.perBranche[branche] && (
-                    <span className="mt-1 block text-xs font-bold text-amber-900">Vanaf ca. {euro(prijzen.perBranche[branche])} per medewerker, met logo, excl. btw</span>
+                    <p className="mt-1 text-xs font-bold text-amber-900">Vanaf ca. {euro(prijzen.perBranche[branche])} per medewerker, met logo, excl. btw</p>
                   )}
-                </button>
+                  <button type="button" onClick={vulMetStarter} className="btn-primary mt-3 w-full justify-center px-4 py-2 text-[13px]">Gebruik dit als startpunt</button>
+                </div>
+              )}
+              {starterGeladen && items.length > 0 && (
+                <p className="mt-3 rounded-lg bg-mist px-3 py-2 text-xs text-ink-800">
+                  Startvoorstel voor {branche.toLowerCase()}, {teamAantal(team)} medewerkers. Niets ligt vast: pas hieronder de aantallen aan of verwijder wat je niet nodig hebt. Jessi kijkt het samen met je na bij het passen.
+                </p>
               )}
               {items.length === 0 && (
                 <div className="mt-3 rounded-lg border border-line bg-mist p-4 text-sm text-warm">
@@ -674,12 +826,17 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
                   <li key={i.id} className="flex items-center gap-3 rounded-lg border border-line bg-white p-3">
                     <div className="h-14 w-14 shrink-0 rounded bg-mist p-1"><Preview type={i.type} kleur={i.kleur} logo={logo} positie={i.positie} techniek={techniek} foto={i.artikelFoto ?? i.voorbeeldFoto} /></div>
                     <div className="min-w-0 grow text-sm">
-                      <p className="font-bold text-ink-900">{typeLabel(i.type)}{i.aantal ? ` · ${i.aantal}x` : ''}</p>
-                      <p className="text-warm">{kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}</p>
+                      <p className="font-bold text-ink-900">{typeLabel(i.type)}</p>
+                      <p className="text-warm">{kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}{i.per ? ` · ${i.per} per medewerker` : ''}</p>
                       {i.artikelNaam && <p className="truncate text-xs font-semibold text-amber-700">{i.artikelNaam}</p>}
                       <LogoRegel formaat={i.formaat} onChange={(f) => zetFormaat(i.id, f)} />
                     </div>
-                    <button type="button" onClick={() => removeItem(i.id)} className="shrink-0 text-sm text-warm hover:text-amber-800">Verwijder</button>
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <div className="w-[7.5rem]">
+                        <AantalKiezer klein label={`Aantal ${typeLabel(i.type).toLowerCase()}`} waarde={parseInt(i.aantal || '0', 10) || 0} onChange={(n) => setItems((p) => p.map((x) => (x.id === i.id ? { ...x, aantal: n ? String(n) : '', per: undefined } : x)))} />
+                      </div>
+                      <button type="button" onClick={() => removeItem(i.id)} className="text-xs text-warm hover:text-amber-800">Verwijder</button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -692,16 +849,19 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
                 </p>
               )}
               <p className="mt-6 text-sm font-semibold text-ink-800">Aanvullend nodig?</p>
-              <p className="text-xs text-warm">Items zonder bedrukking, zoals schoenen.</p>
+              <p className="text-xs text-warm">Zonder logo, zoals veiligheidsschoenen.</p>
               <div className="mt-2 space-y-2">
                 {extrasOpties.map((e) => (
-                  <div key={e.id} className={`flex items-center gap-3 rounded-lg border-2 p-2.5 ${extras[e.id]?.on ? 'border-amber-500 bg-amber-50' : 'border-line'}`}>
-                    <label className="flex grow cursor-pointer items-center gap-2 text-sm font-semibold text-ink-900">
-                      <input type="checkbox" checked={!!extras[e.id]?.on} onChange={() => toggleExtra(e.id)} className="h-4 w-4 rounded border-line text-amber-500 focus:ring-amber-300" />
-                      {e.label}
-                    </label>
-                    {extras[e.id]?.on && <input type="number" min={0} value={extras[e.id].aantal} onChange={(ev) => setExtras((p) => ({ ...p, [e.id]: { on: true, aantal: ev.target.value } }))} placeholder="aantal" className="w-20 rounded-md border border-line px-2 py-1 text-sm" />}
-                  </div>
+                  <PakketExtra
+                    key={e.id}
+                    id={e.id}
+                    label={e.label}
+                    uitleg={e.uitleg}
+                    type={e.type}
+                    waarde={extras[e.id]}
+                    standaardAantal={teamAantal(team)}
+                    onChange={(w) => setExtras((p) => ({ ...p, [e.id]: w }))}
+                  />
                 ))}
               </div>
             </div>
@@ -720,7 +880,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               <p className="mt-4 text-xs font-bold uppercase tracking-wide text-ink-300 print:text-warm">Kledingstukken</p>
               <ul className="mt-2 space-y-1 text-sm text-ink-100 print:text-ink-800">
                 {items.length ? items.map((i) => <li key={i.id}>{typeLabel(i.type)}, {kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}{i.aantal ? `, ${i.aantal}x` : ''}</li>) : <li className="text-ink-400">Geen kledingstukken gekozen</li>}
-                {extrasOpties.filter((e) => extras[e.id]?.on).map((e) => <li key={e.id}>{e.label}{extras[e.id].aantal ? `, ${extras[e.id].aantal}x` : ''}</li>)}
+                {extrasOpties.flatMap((e) => extraRegels(e.label, extras[e.id])).map((r) => <li key={r.naam}>{r.naam}, {r.aantal}x</li>)}
               </ul>
               {toonPrijs && indicatie !== null && (
                 <div className="mt-4 rounded-lg bg-ink-800 px-4 py-3 print:bg-mist">
@@ -742,7 +902,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               <p className="mt-1 text-sm text-warm">Je ontwerp komt als concept binnen bij Frederiks{portaal.bedrijfsnaam ? ` voor ${portaal.bedrijfsnaam}` : ''}. We werken het uit tot producten, maten en een offerte, en nemen contact op.</p>
               {error && <p className="mt-3 text-sm font-medium text-amber-700" role="alert">{error}</p>}
               <button type="button" onClick={submitPortaal} disabled={status === 'sending'} className="btn-primary mt-4 w-full">{status === 'sending' ? 'Versturen' : 'Verstuur ontwerpaanvraag'}</button>
-              <button type="button" onClick={() => window.print()} className="btn-outline mt-3 w-full px-4 py-2 text-[13px]">Download samenvatting (PDF)</button>
+              <button type="button" onClick={downloadPdf} disabled={pdfBezig} className="btn-outline mt-3 w-full px-4 py-2 text-[13px]">{pdfBezig ? 'PDF maken…' : 'Download je ontwerp (PDF)'}</button>
             </div>
             ) : (
             <div className="no-print rounded-2xl border-2 border-amber-500 bg-white p-6 shadow-card">
@@ -762,9 +922,9 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               <button type="button" onClick={submit} disabled={status === 'sending'} className="btn-primary mt-4 w-full">{status === 'sending' ? 'Versturen' : 'Verstuur mijn pakket'}</button>
               <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
                 <button type="button" onClick={kopieerLink} className="btn-outline px-4 py-2 text-[13px]">{gedeeld ? 'Gekopieerd' : 'Kopieer deelbare link'}</button>
-                <button type="button" onClick={() => window.print()} className="btn-outline px-4 py-2 text-[13px]">Download samenvatting (PDF)</button>
+                <button type="button" onClick={downloadPdf} disabled={pdfBezig} className="btn-outline px-4 py-2 text-[13px]">{pdfBezig ? 'PDF maken…' : 'Download je ontwerp (PDF)'}</button>
               </div>
-              <p className="mt-2 text-xs text-warm">Bewaar je samenstelling of stuur de link naar een collega. De PDF maak je via je printervenster (kies daar &ldquo;Opslaan als PDF&rdquo;).</p>
+              <p className="mt-2 text-xs text-warm">Bewaar je ontwerp als PDF of stuur de link naar een collega.</p>
             </div>
             )}
           </div>
@@ -806,56 +966,13 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         </div>
       </div>
 
-      <div id="ontwerp-doc" className="hidden print:block" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as React.CSSProperties}>
-        <div className="flex items-end justify-between border-b-2 border-dashed border-amber-500 pb-3">
-          <div>
-            <p className="font-display text-2xl font-extrabold tracking-wide text-ink-900">FREDERIKS</p>
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-amber-700">Bedrijfskleding</p>
+      {/* Schetsen per kledingstuk (rug, of zonder foto), voor de PDF en de mail. Niet zichtbaar. */}
+      <div id="ontwerp-schetsen" aria-hidden="true" className="pointer-events-none fixed -left-[9999px] top-0 w-[240px] opacity-0">
+        {items.map((i) => (
+          <div key={i.id} data-stuk={i.id}>
+            <Preview type={i.type} kleur={i.kleur} logo={logo} positie={i.positie} techniek={techniek} foto={i.positie === 'rug' ? (i.artikelFoto ?? i.voorbeeldFoto) : null} />
           </div>
-          <div className="text-right text-xs text-warm">
-            <p className="font-semibold text-ink-900">Jouw werkkledingontwerp</p>
-            <p>{branche || 'Bedrijfskleding'}{team ? `, ${team}` : ''}</p>
-          </div>
-        </div>
-
-        <h2 className="mt-5 text-lg font-extrabold text-ink-900">Je samengestelde pakket</h2>
-        {items.length ? (
-          <div className="mt-3 grid grid-cols-3 gap-4">
-            {items.map((i) => (
-              <div key={i.id} className="rounded-lg border border-line p-2 text-center">
-                <div className="mx-auto aspect-square w-full max-w-[150px]"><Preview type={i.type} kleur={i.kleur} logo={logo} positie={i.positie} techniek={techniek} foto={i.artikelFoto ?? i.voorbeeldFoto} /></div>
-                <p className="mt-1 text-[12px] font-bold text-ink-900">{typeLabel(i.type)}{i.aantal ? `, ${i.aantal}x` : ''}</p>
-                <p className="text-[11px] text-warm">{kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-warm">Nog geen kledingstukken gekozen.</p>
-        )}
-
-        {extrasOpties.some((e) => extras[e.id]?.on) && (
-          <div className="mt-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Aanvullend</p>
-            <ul className="mt-1 text-sm text-ink-800">
-              {extrasOpties.filter((e) => extras[e.id]?.on).map((e) => <li key={e.id}>{e.label}{extras[e.id].aantal ? `, ${extras[e.id].aantal}x` : ''}</li>)}
-            </ul>
-          </div>
-        )}
-
-        <div className="mt-5 grid grid-cols-4 gap-3 border-t border-line pt-4 text-sm text-ink-800">
-          <p><span className="block text-[11px] uppercase tracking-wide text-warm">Branche</span>{branche || 'n.t.b.'}</p>
-          <p><span className="block text-[11px] uppercase tracking-wide text-warm">Team</span>{team || 'n.t.b.'}</p>
-          <p><span className="block text-[11px] uppercase tracking-wide text-warm">Techniek</span>{techniek === 'borduren' ? 'Borduren' : 'Bedrukken'}</p>
-          <p><span className="block text-[11px] uppercase tracking-wide text-warm">Logo</span>{logo ? 'aangeleverd' : 'volgt later'}</p>
-        </div>
-
-        <div className="mt-5 rounded-lg bg-ink-900 p-4 text-white" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' } as React.CSSProperties}>
-          <p className="text-sm font-extrabold text-amber-400">Vraag je offerte vrijblijvend aan</p>
-          <p className="mt-1 text-xs text-ink-100">We denken mee, kiezen samen de juiste maten en komen langs om te passen. Bel of mail {site.phone}, {site.email}.</p>
-        </div>
-        {(contact.name || contact.company || contact.email || contact.phone) && (
-          <p className="mt-3 text-xs text-warm">Jouw gegevens: {[contact.name, contact.company, contact.email, contact.phone].filter(Boolean).join(', ')}</p>
-        )}
+        ))}
       </div>
     </div>
   );

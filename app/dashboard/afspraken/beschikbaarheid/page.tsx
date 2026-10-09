@@ -19,7 +19,9 @@ export default async function BeschikbaarheidPage({ searchParams }: { searchPara
   await eisEigenaar();
   const { week } = await searchParams;
   const vandaag = vandaagNl();
-  const deze = maandagVan(vandaag);
+  // In het weekend is deze week voorbij: dan begin je bij de komende week.
+  const dag = new Date(`${vandaag}T12:00:00Z`).getUTCDay();
+  const deze = dag === 0 || dag === 6 ? maandagVan(plusDagen(vandaag, 2)) : maandagVan(vandaag);
   const maandag = week && isDatum(week) ? maandagVan(week) : deze;
   const planner = await laadPlanner(maandag, 7);
 

@@ -22,7 +22,8 @@ const BLOK_STIJL: Record<PlanBlok['status'], string> = {
   voorbij: 'border-transparent bg-mist/60 text-ink-300',
 };
 
-function dagStatus(d: PlanDag): { tekst: string; klasse: string } {
+function dagStatus(d: PlanDag, vandaag: string): { tekst: string; klasse: string } {
+  if (d.datum < vandaag) return { tekst: 'Voorbij', klasse: 'bg-mist text-ink-300' };
   if (d.dicht && !d.werkdag && !d.extraOpen) return { tekst: 'Geen werkdag', klasse: 'bg-mist text-warm' };
   if (d.dicht) return { tekst: 'Dicht', klasse: 'bg-ink-200 text-ink-800' };
   if (d.vol) return { tekst: `Vol (${d.geboekt})`, klasse: 'bg-amber-100 text-amber-900' };
@@ -170,7 +171,7 @@ export function BeschikbaarheidPlanner({
     );
   };
 
-  const DagKnoppen = ({ d }: { d: PlanDag }) => (
+  const DagKnoppen = ({ d }: { d: PlanDag }) => d.datum < vandaag ? null : (
     <div className="flex flex-wrap gap-1.5">
       {d.dicht ? (
         <button type="button" onClick={() => zetDag(d, 'open')} className="knop-stil px-2.5 py-1 text-xs">{d.werkdag ? 'Dag open' : 'Toch open'}</button>
@@ -209,7 +210,7 @@ export function BeschikbaarheidPlanner({
         <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1">
           {dagen.map((d) => {
             const k = dagKop(d.datum);
-            const s = dagStatus(d);
+            const s = dagStatus(d, vandaag);
             return (
               <button
                 key={d.datum}
@@ -245,7 +246,7 @@ export function BeschikbaarheidPlanner({
               <th className="w-14 border-b border-line" />
               {dagen.map((d) => {
                 const k = dagKop(d.datum);
-                const s = dagStatus(d);
+                const s = dagStatus(d, vandaag);
                 return (
                   <th key={d.datum} className={`border-b border-l border-line px-1.5 py-2 text-left align-top font-normal ${d.datum === vandaag ? 'bg-amber-50/60' : ''}`}>
                     <span className="block text-xs text-warm">{k.kort}</span>

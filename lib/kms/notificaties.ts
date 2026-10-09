@@ -1,5 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
-import { sendEmail, escapeHtml, emailLayout } from '@/lib/email';
+import { sendEmail, escapeHtml, emailGegevens, emailLayout } from '@/lib/email';
 import { isEmailConfigured } from '@/lib/env';
 import { site } from '@/content/site';
 
@@ -81,7 +81,29 @@ async function bestellerEmail(order: OrderRij): Promise<string | null> {
   return null;
 }
 
-const cel = 'padding:8px 12px;border:1px solid #e4e2e0;';
+const cel = 'padding:9px 8px 9px 0;border-bottom:1px solid #eeeceb;color:#1c1c1c;';
+const kopCel = 'padding:8px 8px 8px 0;border-bottom:2px solid #1c1c1c;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#1c1c1c;';
+
+/** HTML van de statusupdate aan de besteller. */
+export function statusMailHtml(d: { nummer: string; status: string; orderStatus: string | null; vervoerder: string | null; trackTrace: string | null }): string {
+  const { nummer, status } = d;
+  const verzending = d.orderStatus === 'verzonden' && (d.vervoerder || d.trackTrace);
+  return emailLayout({
+    heading: `Update over je bestelling ${nummer}`.trim(),
+    preheader: `Je bestelling ${nummer} heeft nu de status ${status}.`.trim(),
+    bodyHtml: `
+      <p style="margin:14px 0 0;">De status van je bestelling is bijgewerkt.</p>
+      ${emailGegevens([
+        ...(nummer ? [['Bestelling', escapeHtml(nummer)] as [string, string]] : []),
+        ['Nieuwe status', `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background-color:#fdf0e9;color:#b04318;font-size:13px;font-weight:700;">${escapeHtml(status)}</span>`],
+        ...(verzending && d.vervoerder ? [['Vervoerder', escapeHtml(d.vervoerder)] as [string, string]] : []),
+        ...(verzending && d.trackTrace ? [['Track en trace', `<strong>${escapeHtml(d.trackTrace)}</strong>`] as [string, string]] : []),
+      ])}
+      <p style="margin:18px 0 0;">Heb je een vraag over deze bestelling? Bel of WhatsApp gerust: <strong style="color:#1c1c1c;">${escapeHtml(site.phone)}</strong>.</p>
+      <p style="margin:20px 0 0;">Groet,<br/>Frederiks Bedrijfskleding</p>
+    `,
+  });
+}
 
 /** Statusupdate naar de besteller, met ordernummer, status en eventueel track en trace. */
 export async function stuurStatusMail(orderId: string): Promise<void> {
@@ -94,26 +116,47 @@ export async function stuurStatusMail(orderId: string): Promise<void> {
   const nummer = order.ordernummer != null ? `#${order.ordernummer}` : '';
   const status = leesbareStatus(order.status);
 
-  let extra = '';
-  if (order.status === 'verzonden' && (order.vervoerder || order.track_trace_code)) {
-    const regels: string[] = [];
-    if (order.vervoerder) regels.push(`<p style="margin:6px 0 0;"><strong style="color:#1c1c1c;">Vervoerder:</strong> ${escapeHtml(order.vervoerder)}</p>`);
-    if (order.track_trace_code) regels.push(`<p style="margin:6px 0 0;"><strong style="color:#1c1c1c;">Track en trace:</strong> ${escapeHtml(order.track_trace_code)}</p>`);
-    extra = regels.join('');
-  }
-
-  const html = emailLayout({
-    heading: `Update over je bestelling ${nummer}`.trim(),
-    preheader: `Je bestelling ${nummer} heeft nu de status ${status}.`.trim(),
-    bodyHtml: `
-      <p style="margin:0;">De status van je bestelling is bijgewerkt.</p>
-      <p style="margin:14px 0 0;"><strong style="color:#1c1c1c;">Nieuwe status:</strong> ${escapeHtml(status)}</p>
-      ${extra}
-      <p style="margin:16px 0 0;">Heb je een vraag over deze bestelling? Bel of WhatsApp gerust: <strong style="color:#1c1c1c;">${escapeHtml(site.phone)}</strong>.</p>
-    `,
-  });
+  const html = statusMailHtml({ nummer, status, orderStatus: order.status, vervoerder: order.vervoerder, trackTrace: order.track_trace_code });
 
   await sendEmail({ to: naar, subject: `Update bestelling ${nummer} · ${status}`.trim(), html }).catch(() => {});
+}
+
+/** HTML van de bestelmail aan een leverancier na goedkeuring. */
+export function leverancierBestelmailHtml(d: { leverancier: string | null; klantnaam: string; nummer: string; regels: Pick<RegelRij, 'item_naam' | 'maat' | 'kleur' | 'aantal'>[] }): string {
+  const { klantnaam, nummer } = d;
+  const rijen = d.regels
+    .map(
+      (r) =>
+        `<tr>
+          <td style="${cel}font-weight:700;">${escapeHtml(r.item_naam)}</td>
+          <td style="${cel}">${escapeHtml(r.maat ?? '')}</td>
+          <td style="${cel}">${escapeHtml(r.kleur ?? '')}</td>
+          <td style="${cel}padding-right:0;text-align:right;font-weight:700;">${escapeHtml(String(r.aantal))}</td>
+        </tr>`,
+    )
+    .join('');
+
+  return emailLayout({
+    heading: `Bestelling ${nummer}`.trim(),
+    preheader: `Bestelling ${nummer}${klantnaam ? ` voor ${klantnaam}` : ''}.`.trim(),
+    bodyHtml: `
+      <p style="margin:0;">Beste ${escapeHtml(d.leverancier ?? '')},</p>
+      <p style="margin:14px 0 0;">Graag bestellen wij de onderstaande artikelen${klantnaam ? ` voor onze klant ${escapeHtml(klantnaam)}` : ''}.</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:14px;margin:16px 0 0;">
+        <thead>
+          <tr>
+            <th align="left" style="${kopCel}">Artikel</th>
+            <th align="left" style="${kopCel}">Maat</th>
+            <th align="left" style="${kopCel}">Kleur</th>
+            <th align="right" style="${kopCel}padding-right:0;">Aantal</th>
+          </tr>
+        </thead>
+        <tbody>${rijen}</tbody>
+      </table>
+      <p style="margin:18px 0 0;">Onze referentie: <strong style="color:#1c1c1c;">${escapeHtml(nummer)}</strong>. Graag een bevestiging van de levertijd.</p>
+      <p style="margin:20px 0 0;">Met vriendelijke groet,<br/>Frederiks Bedrijfskleding</p>
+    `,
+  });
 }
 
 /** Bestelmail per leverancier na goedkeuring, met de regels en de klantnaam. */
@@ -170,38 +213,7 @@ export async function stuurLeverancierBestelmail(orderId: string): Promise<void>
     const lev = leveranciers.get(levId);
     if (!isEmail(lev?.email)) continue;
 
-    const rijen = levRegels
-      .map(
-        (r) =>
-          `<tr>
-            <td style="${cel}">${escapeHtml(r.item_naam)}</td>
-            <td style="${cel}">${escapeHtml(r.maat ?? '')}</td>
-            <td style="${cel}">${escapeHtml(r.kleur ?? '')}</td>
-            <td style="${cel}text-align:right;">${escapeHtml(String(r.aantal))}</td>
-          </tr>`,
-      )
-      .join('');
-
-    const html = emailLayout({
-      heading: `Bestelling ${nummer}`.trim(),
-      preheader: `Bestelling ${nummer}${klantnaam ? ` voor ${klantnaam}` : ''}.`.trim(),
-      bodyHtml: `
-        <p style="margin:0;">Beste ${escapeHtml(lev?.naam ?? '')},</p>
-        <p style="margin:14px 0 0;">Graag bestellen wij de onderstaande artikelen${klantnaam ? ` voor onze klant ${escapeHtml(klantnaam)}` : ''}.</p>
-        <table style="border-collapse:collapse;width:100%;font-size:14px;margin:14px 0;">
-          <thead>
-            <tr style="background-color:#f6f5f4;">
-              <th style="${cel}text-align:left;color:#1c1c1c;">Artikel</th>
-              <th style="${cel}text-align:left;color:#1c1c1c;">Maat</th>
-              <th style="${cel}text-align:left;color:#1c1c1c;">Kleur</th>
-              <th style="${cel}text-align:right;color:#1c1c1c;">Aantal</th>
-            </tr>
-          </thead>
-          <tbody>${rijen}</tbody>
-        </table>
-        <p style="margin:0;">Onze referentie: ${escapeHtml(nummer)}. Graag een bevestiging van de levertijd.</p>
-      `,
-    });
+    const html = leverancierBestelmailHtml({ leverancier: lev?.naam ?? null, klantnaam, nummer, regels: levRegels });
 
     await sendEmail({
       to: lev!.email!.trim(),

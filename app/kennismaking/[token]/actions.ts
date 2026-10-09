@@ -6,7 +6,8 @@ import { z } from 'zod';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { logAudit } from '@/lib/kms/audit';
 import { neemWebleadIn } from '@/lib/kms/leadInname';
-import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
+import { sendEmail } from '@/lib/email';
+import { pasdagBevestigingHtml, pasdagMeldingHtml, prospectAfgemeldHtml } from '@/lib/mailSjablonen';
 import { env } from '@/lib/env';
 import { publiekeLimiet, rateLimit } from '@/lib/ratelimit';
 import { site } from '@/content/site';
@@ -143,20 +144,7 @@ export async function pasdagAanvraagActie(_vorige: PasdagStaat, formData: FormDa
     to: meldAdres(env.notifyEmail),
     ...(d.email ? { replyTo: d.email } : {}),
     subject: `Pasdag-aanvraag: ${bedrijf}${d.telefoon ? ` (${d.telefoon})` : ''}`,
-    html: emailLayout({
-      heading: `${bedrijf} wil een pasdag`,
-      preheader: `${d.naam} vroeg een gratis pasdag aan via je brief.`,
-      bodyHtml: `
-        <p style="margin:0;">${escapeHtml(d.naam)} van <strong>${escapeHtml(bedrijf)}</strong> vroeg zojuist een gratis pasdag aan via de pagina uit je brief.</p>
-        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0 0;font-size:15px;">
-          <tr><td style="padding:2px 12px 2px 0;color:#828282;">Telefoon</td><td>${d.telefoon ? `<a href="tel:${escapeHtml(d.telefoon.replace(/[^0-9+]/g, ''))}" style="color:#1c1c1c;font-weight:700;">${escapeHtml(d.telefoon)}</a>` : '-'}</td></tr>
-          <tr><td style="padding:2px 12px 2px 0;color:#828282;">E-mail</td><td>${escapeHtml(d.email || '-')}</td></tr>
-          <tr><td style="padding:2px 12px 2px 0;color:#828282;">Medewerkers</td><td>${escapeHtml(d.aantal || '-')}</td></tr>
-        </table>
-        ${d.opmerking ? `<p style="margin:14px 0 0;"><strong>Voorkeur / opmerking</strong><br/>${escapeHtml(d.opmerking).replace(/\n/g, '<br/>')}</p>` : ''}
-        ${p ? `<p style="margin:18px 0 0;"><a href="${escapeHtml(dashboardProspectUrl(p.id))}" style="display:inline-block;background:#ec6726;color:#1c1c1c;font-weight:700;text-decoration:none;padding:10px 18px;border-radius:8px;">Open prospect</a></p>` : ''}
-      `,
-    }),
+    html: pasdagMeldingHtml({ bedrijf, naam: d.naam, telefoon: d.telefoon, email: d.email, aantal: d.aantal, opmerking: d.opmerking, prospectUrl: p ? dashboardProspectUrl(p.id) : null }),
   }).catch(() => ({ sent: false }));
 
   // 3. Bevestiging naar de aanvrager (als er een e-mailadres is).
@@ -164,16 +152,7 @@ export async function pasdagAanvraagActie(_vorige: PasdagStaat, formData: FormDa
     await sendEmail({
       to: d.email,
       subject: 'Je pasdag-aanvraag is binnen',
-      html: emailLayout({
-        heading: 'Bedankt, ik bel je snel',
-        preheader: 'Je aanvraag voor een gratis pasdag is binnen.',
-        bodyHtml: `
-          <p style="margin:0;">Hoi ${escapeHtml(d.naam)},</p>
-          <p style="margin:14px 0 0;">Leuk dat je een pasdag wilt plannen voor ${escapeHtml(bedrijf)}. Ik neem ${escapeHtml(site.beloftKort)} contact met je op om een moment te prikken.</p>
-          <p style="margin:14px 0 0;">Liever meteen schakelen? Bel of app me op <strong style="color:#1c1c1c;">${escapeHtml(site.phone)}</strong>.</p>
-          <p style="margin:18px 0 0;">Groet,<br/>Jessi Frederiks</p>
-        `,
-      }),
+      html: pasdagBevestigingHtml({ naam: d.naam, bedrijf }),
     }).catch(() => ({ sent: false }));
   }
 
@@ -201,10 +180,7 @@ export async function afmeldenActie(formData: FormData) {
         await sendEmail({
           to: meldAdres(env.notifyEmail),
           subject: `${p.bedrijfsnaam} heeft geen interesse`,
-          html: emailLayout({
-            heading: `${p.bedrijfsnaam} heeft zich afgemeld`,
-            bodyHtml: `<p style="margin:0;">Via de link "Geen interesse?" op hun pagina. Ze staan nu op afgemeld en krijgen geen brief meer.</p>`,
-          }),
+          html: prospectAfgemeldHtml(p.bedrijfsnaam),
         }).catch(() => ({ sent: false }));
         revalidatePath('/dashboard/prospects');
       }

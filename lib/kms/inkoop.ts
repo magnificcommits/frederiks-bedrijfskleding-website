@@ -852,19 +852,20 @@ type MailRegel = { merk: string | null; item_naam: string | null; maat: string |
 
 /** De bestelmail: een nette tabel met artikel, maat/kleur en aantal. */
 export function bestelmailHtml(naam: string | null, regels: MailRegel[], referentie?: string | null): string {
-  const cel = 'padding:6px 0;border-bottom:1px solid #eeeeee;';
+  const cel = 'padding:9px 8px 9px 0;border-bottom:1px solid #eeeceb;vertical-align:top;color:#1c1c1c;';
+  const kop = 'padding:8px 8px 8px 0;border-bottom:2px solid #1c1c1c;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#1c1c1c;';
   const rijenHtml = regels
     .map(
       (r) =>
-        `<tr><td style="${cel}">${escapeHtml(r.item_naam ?? '')}${r.merk ? ` (${escapeHtml(r.merk)})` : ''}</td><td style="${cel}">${escapeHtml([r.maat, r.kleur].filter(Boolean).join(', '))}</td><td style="${cel}text-align:right;">${r.aantal}</td></tr>`,
+        `<tr><td style="${cel}"><strong>${escapeHtml(r.item_naam ?? '')}</strong>${r.merk ? `<br/><span style="font-size:12px;color:#8a8785;">${escapeHtml(r.merk)}</span>` : ''}</td><td style="${cel}">${escapeHtml([r.maat, r.kleur].filter(Boolean).join(', '))}</td><td style="${cel}padding-right:0;text-align:right;font-weight:700;">${escapeHtml(r.aantal)}</td></tr>`,
     )
     .join('');
   return emailLayout({
     heading: 'Bestelling',
     preheader: 'Nieuwe bestelling van Frederiks Bedrijfskleding',
-    bodyHtml: `<p style="margin:0;">Beste ${escapeHtml(naam ?? 'leverancier')},</p><p style="margin:14px 0 0;">Graag onderstaande artikelen voor ons bestellen:</p>${
-      referentie ? `<p style="margin:6px 0 0;">Onze referentie: <strong>${escapeHtml(referentie)}</strong></p>` : ''
-    }<table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;"><thead><tr><th style="text-align:left;border-bottom:2px solid #1c1c1c;padding:6px 0;">Artikel</th><th style="text-align:left;border-bottom:2px solid #1c1c1c;padding:6px 0;">Maat/kleur</th><th style="text-align:right;border-bottom:2px solid #1c1c1c;padding:6px 0;">Aantal</th></tr></thead><tbody>${rijenHtml}</tbody></table><p style="margin:14px 0 0;">Graag een bevestiging met de verwachte leverdatum. Alvast bedankt.</p><p style="margin:8px 0 0;">Met vriendelijke groet, Frederiks Bedrijfskleding.</p>`,
+    bodyHtml: `<p style="margin:0;">Beste ${escapeHtml(naam ?? 'leverancier')},</p><p style="margin:14px 0 0;">Graag bestellen we de onderstaande artikelen.</p>${
+      referentie ? `<p style="margin:6px 0 0;">Onze referentie: <strong style="color:#1c1c1c;">${escapeHtml(referentie)}</strong></p>` : ''
+    }<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:16px 0 0;font-size:14px;"><thead><tr><th align="left" style="${kop}">Artikel</th><th align="left" style="${kop}">Maat, kleur</th><th align="right" style="${kop}padding-right:0;">Aantal</th></tr></thead><tbody>${rijenHtml}</tbody></table><p style="margin:18px 0 0;">Graag een bevestiging met de verwachte leverdatum. Alvast bedankt.</p><p style="margin:20px 0 0;">Met vriendelijke groet,<br/>Frederiks Bedrijfskleding</p>`,
   });
 }
 

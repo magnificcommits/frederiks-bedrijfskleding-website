@@ -7,6 +7,8 @@ import {
   leesMand,
   mandSleutel,
   totaalStuks,
+  verrijk,
+  type MandGegevens,
   voegToe as voegToeMand,
   werkBij as werkBijMand,
   type MandRegel,
@@ -115,6 +117,19 @@ export function OfferteSelectieProvider({ children }: { children: React.ReactNod
       /* vol quotum of geblokkeerd: dan werkt het mandje alleen op deze pagina */
     }
   }, [items, klaar]);
+
+  // Kleuren, maten en kleurfoto's één keer per bezoek bij de server ophalen. Zo
+  // klopt de keuzelijst ook voor regels die er al langer in staan.
+  const ids = useMemo(() => [...new Set(items.map((r) => r.productId))].sort().join(','), [items]);
+  useEffect(() => {
+    if (!klaar || !ids) return;
+    let weg = false;
+    fetch(`/api/assortiment/mand?ids=${ids}`)
+      .then((r) => r.json() as Promise<{ gegevens?: Record<string, MandGegevens> }>)
+      .then((d) => { if (!weg && d.gegevens) setItems((h) => verrijk(h, d.gegevens!)); })
+      .catch(() => { /* dan blijft het mandje zoals het was */ });
+    return () => { weg = true; };
+  }, [ids, klaar]);
 
   const voegToe = useCallback((regel: MandRegel) => setItems((h) => voegToeMand(h, regel)), []);
   const werkBij = useCallback<Ctx['werkBij']>((sleutel, patch) => setItems((h) => werkBijMand(h, sleutel, patch)), []);

@@ -811,6 +811,51 @@ export async function zetBoekhouderEmail(email: string): Promise<boolean> {
   return !error;
 }
 
+export type BoekhoudFactuur = { id: string; factuurnummer: string | null; bedrag_incl: number | null; factuurdatum: string | null; organisaties: { naam: string } | null };
+
+/** HTML van de mail aan de boekhouder met de geselecteerde facturen. */
+export function boekhouderMailHtml(rows: BoekhoudFactuur[]): string {
+  const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
+  const datum = (d: string | null) => {
+    if (!d) return '-';
+    try { return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' }); }
+    catch { return d; }
+  };
+
+  const rijenHtml = rows.map((r) => {
+    const klant = escapeHtml(r.organisaties?.naam ?? '-');
+    const nummer = escapeHtml(r.factuurnummer || 'concept');
+    const link = `${env.siteUrl}/dashboard/facturen/${r.id}`;
+    return `<tr>
+      <td style="padding:8px 10px;border-bottom:1px solid #e4e2e0;"><a href="${escapeHtml(link)}" style="color:#b04318;font-weight:700;text-decoration:none;">${nummer}</a></td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e4e2e0;">${klant}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e4e2e0;">${datum(r.factuurdatum)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e4e2e0;text-align:right;">${euro(Number(r.bedrag_incl) || 0)}</td>
+    </tr>`;
+  }).join('');
+
+  const bodyHtml = `
+    <p style="margin:14px 0 16px;">Hierbij ${rows.length === 1 ? 'de factuur' : `de ${rows.length} facturen`} ter verwerking. Klik op een factuurnummer om de factuur in te zien.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+      <thead>
+        <tr style="background-color:#f6f5f4;">
+          <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e4e2e0;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:#52504e;">Nummer</th>
+          <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e4e2e0;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:#52504e;">Klant</th>
+          <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e4e2e0;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:#52504e;">Datum</th>
+          <th style="padding:8px 10px;text-align:right;border-bottom:2px solid #e4e2e0;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:#52504e;">Bedrag incl.</th>
+        </tr>
+      </thead>
+      <tbody>${rijenHtml}</tbody>
+    </table>
+    <p style="margin:20px 0 0;">Met vriendelijke groet,<br/>Frederiks Bedrijfskleding</p>`;
+
+  return emailLayout({
+    heading: 'Facturen ter verwerking',
+    preheader: `${rows.length} ${rows.length === 1 ? 'factuur' : 'facturen'} ter verwerking`,
+    bodyHtml,
+  });
+}
+
 /**
  * Mailt de geselecteerde facturen in één e-mail naar de boekhouder, markeert ze
  * als gemaild (facturen.gemaild_op) en logt elke verzending in factuur_mail_log.
@@ -840,44 +885,7 @@ export async function mailFacturenNaarBoekhouder(ids: string[]): Promise<{ ok: b
   }[]) ?? [];
   if (rows.length === 0) return { ok: false, aantal: 0, error: 'Geen facturen gevonden.' };
 
-  const euro = (n: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n || 0);
-  const datum = (d: string | null) => {
-    if (!d) return '-';
-    try { return new Date(d).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' }); }
-    catch { return d; }
-  };
-
-  const rijenHtml = rows.map((r) => {
-    const klant = escapeHtml(r.organisaties?.naam ?? '-');
-    const nummer = escapeHtml(r.factuurnummer || 'concept');
-    const link = `${env.siteUrl}/dashboard/facturen/${r.id}`;
-    return `<tr>
-      <td style="padding:8px 10px;border-bottom:1px solid #e4e2e0;"><a href="${link}" style="color:#ec6726;font-weight:700;text-decoration:none;">${nummer}</a></td>
-      <td style="padding:8px 10px;border-bottom:1px solid #e4e2e0;">${klant}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #e4e2e0;">${datum(r.factuurdatum)}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #e4e2e0;text-align:right;">${euro(Number(r.bedrag_incl) || 0)}</td>
-    </tr>`;
-  }).join('');
-
-  const bodyHtml = `
-    <p style="margin:0 0 14px;">Hierbij ${rows.length === 1 ? 'de factuur' : `de ${rows.length} facturen`} ter verwerking. Klik op een factuurnummer om de factuur in te zien.</p>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
-      <thead>
-        <tr style="background-color:#f6f5f4;">
-          <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e4e2e0;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:#52504e;">Nummer</th>
-          <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e4e2e0;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:#52504e;">Klant</th>
-          <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e4e2e0;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:#52504e;">Datum</th>
-          <th style="padding:8px 10px;text-align:right;border-bottom:2px solid #e4e2e0;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:#52504e;">Bedrag incl.</th>
-        </tr>
-      </thead>
-      <tbody>${rijenHtml}</tbody>
-    </table>`;
-
-  const html = emailLayout({
-    heading: 'Facturen ter verwerking',
-    preheader: `${rows.length} ${rows.length === 1 ? 'factuur' : 'facturen'} ter verwerking`,
-    bodyHtml,
-  });
+  const html = boekhouderMailHtml(rows);
 
   try {
     await sendEmail({ to: boekhouder, subject: 'Facturen ter verwerking voor Frederiks Bedrijfskleding', html });

@@ -1,6 +1,7 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { kolomOntbreekt, metIdTerugval } from '@/lib/kms/kolomTerugval';
 import { site } from '@/content/site';
+import { emailGegevens, emailKader, emailKnop, emailLayout, escapeHtml } from '@/lib/email';
 
 /**
  * Data-access voor Service: Retouren en Klachten/Vragen (beheerkant), plus het
@@ -770,7 +771,7 @@ async function koppelAanRetour(id: string, kolom: 'vervolg_order_id' | 'creditfa
   await sb.from('retouren').update({ [kolom]: waarde }).eq('id', id); // faalt stil zonder migratie
 }
 
-function retourNaam(r: RetourMetLabels): string {
+function retourNaam(r: Pick<RetourMetLabels, 'retournummer' | 'ordernummer' | 'id'>): string {
   return r.retournummer ?? (r.ordernummer ? `bij order ${r.ordernummer}` : r.id.slice(0, 8));
 }
 
@@ -872,6 +873,30 @@ export async function maakRetourTaak(retourId: string, persoonId: string | null)
   return { taakId: res.id };
 }
 
+/** Mail aan de klant over de beslissing op een retour (alleen de HTML). */
+export type RetourMailGegevens = Pick<RetourMetLabels, 'id' | 'retournummer' | 'ordernummer' | 'beslissing' | 'status' | 'beslissing_notitie' | 'retouradres' | 'instructie'>;
+
+export function retourBeslissingMailHtml(r: RetourMailGegevens): string {
+  const beslissing = r.beslissing ? BESLISSING_LABEL[r.beslissing] : r.status;
+  const naam = retourNaam(r);
+  return emailLayout({
+    heading: r.beslissing === 'afkeuren' ? 'Je retour kunnen we niet aannemen' : 'Je retour is beoordeeld',
+    preheader: `Retour ${naam}: ${beslissing}`,
+    bodyHtml: `
+      <p style="margin:14px 0 0;">We hebben je retour bekeken. Dit is de uitkomst.</p>
+      ${emailGegevens([
+        ['Retour', `<strong>${escapeHtml(naam)}</strong>`],
+        ...(r.ordernummer ? [['Bestelling', escapeHtml(r.ordernummer)] as [string, string]] : []),
+        ['Beslissing', `<strong>${escapeHtml(beslissing)}</strong>`],
+      ])}
+      ${r.beslissing_notitie ? emailKader(escapeHtml(r.beslissing_notitie).replace(/\n/g, '<br/>')) : ''}
+      ${r.retouradres ? `<p style="margin:18px 0 0;"><strong style="color:#1c1c1c;">Retouradres</strong><br/>${escapeHtml(r.retouradres)}</p>` : ''}
+      ${r.instructie ? `<p style="margin:14px 0 0;"><strong style="color:#1c1c1c;">Zo stuur je het terug</strong><br/>${escapeHtml(r.instructie)}</p>` : ''}
+      <p style="margin:18px 0 0;">Vragen? Bel ${escapeHtml(site.phone)} of beantwoord deze mail.</p>
+      <p style="margin:20px 0 0;">Groet,<br/>Frederiks Bedrijfskleding</p>`,
+  });
+}
+
 /** Mail aan de klant over de beslissing. Geeft sent:false terug als mail (nog) niet is ingesteld. */
 export async function mailRetourBeslissing(retourId: string): Promise<{ sent: boolean; reden?: string }> {
   const r = await getRetour(retourId);
@@ -882,19 +907,9 @@ export async function mailRetourBeslissing(retourId: string): Promise<{ sent: bo
     naar = m?.email ?? null;
   }
   if (!naar) return { sent: false, reden: 'Geen e-mailadres bekend bij deze retour.' };
-  const { sendEmail, emailLayout, escapeHtml } = await import('@/lib/email');
+  const { sendEmail } = await import('@/lib/email');
   const beslissing = r.beslissing ? BESLISSING_LABEL[r.beslissing] : r.status;
-  const html = emailLayout({
-    heading: r.beslissing === 'afkeuren' ? 'Je retour kunnen we niet aannemen' : 'Je retour is beoordeeld',
-    preheader: `Retour ${retourNaam(r)}: ${beslissing}`,
-    bodyHtml: `
-      <p>Retour <strong>${escapeHtml(retourNaam(r))}</strong>${r.ordernummer ? `, bij bestelling ${escapeHtml(r.ordernummer)}` : ''}.</p>
-      <p>Beslissing: <strong>${escapeHtml(beslissing)}</strong>.</p>
-      ${r.beslissing_notitie ? `<p>${escapeHtml(r.beslissing_notitie)}</p>` : ''}
-      ${r.retouradres ? `<p><strong>Retouradres:</strong> ${escapeHtml(r.retouradres)}</p>` : ''}
-      ${r.instructie ? `<p><strong>Zo stuur je het terug:</strong> ${escapeHtml(r.instructie)}</p>` : ''}
-      <p>Vragen? Bel ${escapeHtml(site.phone)} of beantwoord deze mail.</p>`,
-  });
+  const html = retourBeslissingMailHtml(r);
   const res = await sendEmail({ to: naar, subject: `Retour ${retourNaam(r)}: ${beslissing}`, html, replyTo: site.email });
   return res.sent ? { sent: true } : { sent: false, reden: res.error };
 }
@@ -1188,6 +1203,22 @@ export async function voegKlachtBerichtToe(
   return { ok: true, berichtId: (data as { id: string } | null)?.id ?? null, zonderMigratie };
 }
 
+/** Antwoord op een vraag of klacht (alleen de HTML). */
+export function klachtAntwoordMailHtml(d: { soort: 'klacht' | 'vraag'; antwoord: string; omschrijving: string; portaalLink: string }): string {
+  const soortTekst = d.soort;
+  const antwoord = d.antwoord;
+  const link = d.portaalLink;
+  return emailLayout({
+    heading: `Antwoord op je ${soortTekst}`,
+    preheader: antwoord.slice(0, 90),
+    bodyHtml: `
+      <p style="margin:14px 0 0;color:#1c1c1c;">${escapeHtml(antwoord).replace(/\n/g, '<br/>')}</p>
+      <div style="margin:22px 0 0;padding:12px 16px;border-left:3px solid #e4e2e0;color:#8a8785;font-size:13px;line-height:1.5;">Je ${soortTekst}: &ldquo;${escapeHtml(d.omschrijving.slice(0, 300))}&rdquo;</div>
+      <p style="margin:18px 0 0;">Reageren kan door deze mail te beantwoorden, of in het klantportaal.</p>
+      ${emailKnop('Naar het klantportaal', link, { marge: '16px 0 0' })}`,
+  });
+}
+
 /** Mailt een antwoord naar de contactpersoon of werknemer van de klacht. */
 export async function mailKlachtAntwoord(klachtId: string, berichtId: string | null, antwoord: string): Promise<{ sent: boolean; reden?: string }> {
   const sb = kmsAdmin(); if (!sb) return { sent: false, reden: 'Database niet bereikbaar.' };
@@ -1204,18 +1235,11 @@ export async function mailKlachtAntwoord(klachtId: string, berichtId: string | n
     naar = m?.email ?? null;
   }
   if (!naar) return { sent: false, reden: 'Geen e-mailadres bekend bij deze vraag of klacht.' };
-  const { sendEmail, emailLayout, escapeHtml } = await import('@/lib/email');
+  const { sendEmail } = await import('@/lib/email');
   const { env } = await import('@/lib/env');
   const link = `${env.siteUrl.replace(/\/$/, '')}/portaal/klachten`;
   const soortTekst = rij.soort === 'klacht' ? 'klacht' : 'vraag';
-  const html = emailLayout({
-    heading: `Antwoord op je ${soortTekst}`,
-    preheader: antwoord.slice(0, 90),
-    bodyHtml: `
-      <p>${escapeHtml(antwoord).replace(/\n/g, '<br/>')}</p>
-      <p style="margin-top:18px;color:#8a8784;font-size:13px;">Je ${soortTekst}: &ldquo;${escapeHtml(String(rij.omschrijving ?? '').slice(0, 300))}&rdquo;</p>
-      <p>Je kunt reageren door deze mail te beantwoorden of in het <a href="${escapeHtml(link)}">klantportaal</a>.</p>`,
-  });
+  const html = klachtAntwoordMailHtml({ soort: soortTekst, antwoord, omschrijving: String(rij.omschrijving ?? ''), portaalLink: link });
   const res = await sendEmail({ to: naar, subject: `Antwoord op je ${soortTekst}`, html, replyTo: site.email });
   if (res.sent && berichtId) await sb.from('klacht_berichten').update({ gemaild_op: new Date().toISOString() }).eq('id', berichtId);
   return res.sent ? { sent: true } : { sent: false, reden: res.error };

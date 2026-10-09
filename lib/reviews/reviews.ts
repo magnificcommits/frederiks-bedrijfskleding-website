@@ -154,10 +154,10 @@ async function ontvangerVoorOrder(o: OrderRij): Promise<{ ontvanger: Ontvanger |
   return { ontvanger, bedrijf: orgRij?.naam ?? null, branche: orgRij?.branche ?? null };
 }
 
-function npsMailHtml(r: { token: string; naam: string | null; ordernummer: number | null; email: string }): string {
+export function npsMailHtml(r: { token: string; naam: string | null; ordernummer: number | null; email: string }): string {
   const voornaam = (r.naam ?? '').trim().split(/\s+/)[0];
   const cel = (n: number) =>
-    `<td align="center" style="padding:2px;"><a href="${escapeHtml(beoordelingUrl(r.token, n))}" style="display:block;width:38px;line-height:38px;border:1px solid #e4e2e0;border-radius:6px;background-color:${
+    `<td align="center" width="9%" style="padding:2px;"><a href="${escapeHtml(beoordelingUrl(r.token, n))}" style="display:block;max-width:40px;line-height:38px;border:1px solid #e4e2e0;border-radius:6px;background-color:${
       n >= 9 ? '#fdf0e9' : '#ffffff'
     };color:#1c1c1c;font-weight:700;font-size:15px;text-decoration:none;text-align:center;">${n}</a></td>`;
   return emailLayout({
@@ -167,13 +167,13 @@ function npsMailHtml(r: { token: string; naam: string | null; ordernummer: numbe
       <p style="margin:0;">${voornaam ? `Hoi ${escapeHtml(voornaam)},` : 'Hoi,'}</p>
       <p style="margin:14px 0 0;">Je bestelling${r.ordernummer ? ` #${r.ordernummer}` : ''} is sinds kort binnen. Ik ben benieuwd hoe het bevalt: de kleding, het passen, de levering. Hoe tevreden ben je over Frederiks?</p>
       <p style="margin:14px 0 6px;font-weight:700;color:#1c1c1c;">Klik op een cijfer:</p>
-      <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:separate;"><tr>${Array.from({ length: 11 }, (_, n) => cel(n)).join('')}</tr></table>
-      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:462px;margin-top:4px;"><tr>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:484px;border-collapse:separate;table-layout:fixed;"><tr>${Array.from({ length: 11 }, (_, n) => cel(n)).join('')}</tr></table>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:484px;margin-top:4px;"><tr>
         <td style="font-size:12px;color:#8a8785;">0 = helemaal niet</td>
         <td align="right" style="font-size:12px;color:#8a8785;">10 = heel tevreden</td>
       </tr></table>
       <p style="margin:18px 0 0;">Daarna mag je er iets bij schrijven, maar dat hoeft niet. Ging er iets mis? Zeg het gerust, dan los ik het op.</p>
-      <p style="margin:18px 0 0;">Groet,<br/>Jessi Frederiks<br/>${escapeHtml(site.phone)}</p>
+      <p style="margin:22px 0 0;">Groet,<br/>Jessi Frederiks<br/>${escapeHtml(site.phone)}</p>
       <p style="margin:22px 0 0;font-size:12px;color:#8a8785;">Liever geen mails meer van ons? <a href="${escapeHtml(afmeldUrl(r.email))}" style="color:#8a8785;">Afmelden</a>.</p>
     `,
   });

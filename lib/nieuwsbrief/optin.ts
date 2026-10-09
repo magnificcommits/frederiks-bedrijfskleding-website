@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { env } from '@/lib/env';
 import { site } from '@/content/site';
-import { emailLayout, escapeHtml, sendEmail } from '@/lib/email';
+import { emailKnop, emailLayout, escapeHtml, sendEmail } from '@/lib/email';
 
 /**
  * Double opt-in voor de nieuwsbrief (AVG). Een aanmelding via de site is pas
@@ -36,19 +36,23 @@ export function bevestigUrl(token: string): string {
   return `${env.siteUrl.replace(/\/$/, '')}/nieuwsbrief/bevestigen?t=${encodeURIComponent(token)}`;
 }
 
-async function stuurBevestiging(email: string, naam: string | null, token: string): Promise<boolean> {
+export function optinMailHtml(naam: string | null, token: string): string {
   const voornaam = (naam ?? '').trim().split(/\s+/)[0];
-  const html = emailLayout({
+  return emailLayout({
     heading: 'Klopt dit adres?',
     preheader: 'Eén klik en je staat op de lijst voor de nieuwsbrief.',
     bodyHtml: `
       <p style="margin:0;">${voornaam ? `Hoi ${escapeHtml(voornaam)},` : 'Hoi,'}</p>
       <p style="margin:14px 0 0;">Je hebt je aangemeld voor de nieuwsbrief van Frederiks Bedrijfskleding. Bevestig even dat dit jouw adres is, dan zetten we je op de lijst.</p>
-      <p style="margin:18px 0 0;"><a href="${escapeHtml(bevestigUrl(token))}" style="display:inline-block;background-color:#ec6726;color:#ffffff;font-weight:700;text-decoration:none;padding:11px 18px;border-radius:8px;">Ja, schrijf me in</a></p>
-      <p style="margin:18px 0 0;">Heb je je niet aangemeld? Dan hoef je niets te doen. Zonder bevestiging sturen we je niets.</p>
-      <p style="margin:18px 0 0;">Groet,<br/>Jessi Frederiks</p>
+      ${emailKnop('Ja, schrijf me in', bevestigUrl(token))}
+      <p style="margin:22px 0 0;">Heb je je niet aangemeld? Dan hoef je niets te doen. Zonder bevestiging sturen we je niets.</p>
+      <p style="margin:20px 0 0;">Groet,<br/>Jessi Frederiks</p>
     `,
   });
+}
+
+async function stuurBevestiging(email: string, naam: string | null, token: string): Promise<boolean> {
+  const html = optinMailHtml(naam, token);
   const res = await sendEmail({ to: email, replyTo: site.email, subject: 'Bevestig je aanmelding voor de nieuwsbrief', html }).catch(() => ({ sent: false }));
   return res.sent;
 }

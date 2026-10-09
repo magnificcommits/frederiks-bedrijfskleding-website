@@ -17,7 +17,8 @@ import {
   type DrukproefArtikel,
   type DrukproefKleur,
 } from '@/lib/kms/drukproeven';
-import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
+import { sendEmail } from '@/lib/email';
+import { drukproefVerstuurHtml } from '@/lib/mailSjablonen';
 import { env, isEmailConfigured } from '@/lib/env';
 import { normaliseerOntwerp, veiligeAfbeeldingUrl, plaatsingTekst, type Ontwerp } from './ontwerp';
 import { veiligTerugPad } from './terug';
@@ -262,19 +263,10 @@ export async function verstuurDrukproefActie(formData: FormData) {
   const link = `${env.siteUrl}/drukproef/${dp.token}`;
   const o = normaliseerOntwerp(dp.ontwerp);
   const plekken = o ? [...o.voor, ...o.achter].map(plaatsingTekst).filter(Boolean) : [];
-  const plekkenHtml = plekken.length
-    ? `<ul style="margin:12px 0 0;padding-left:18px;">${plekken.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul>`
-    : '';
   const uitkomst = await sendEmail({
     to: email,
-    subject: 'Je drukproef ter goedkeuring - Frederiks Bedrijfskleding',
-    html: emailLayout({
-      heading: 'Bekijk en keur je drukproef',
-      preheader: 'We hebben een drukproef voor je klaargezet.',
-      bodyHtml: `<p style="margin:0;">We hebben een drukproef voor <strong style="color:#1c1c1c;">${escapeHtml(dp.naam)}</strong> klaargezet. Bekijk hoe je logo op de kleding komt en keur de proef goed of geef je opmerkingen door.</p>${plekkenHtml}
-<p style="margin:18px 0;"><a href="${link}" style="display:inline-block;background:#ec6726;color:#ffffff;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:8px;">Drukproef bekijken</a></p>
-<p style="margin:0;font-size:13px;color:#52504e;">Werkt de knop niet? Open dan deze link:<br/>${escapeHtml(link)}</p>`,
-    }),
+    subject: 'Je drukproef ter goedkeuring bij Frederiks Bedrijfskleding',
+    html: drukproefVerstuurHtml({ naam: dp.naam, link, plekken }),
   }).catch(() => ({ sent: false as const, error: 'onbekend' }));
 
   if (!uitkomst.sent) redirect(bestemming(terug, orgId, 'dp', 'mail_fout'));

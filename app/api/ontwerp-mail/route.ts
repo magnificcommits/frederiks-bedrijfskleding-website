@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { sendEmail, escapeHtml, emailLayout } from '@/lib/email';
+import { sendEmail } from '@/lib/email';
+import { ONTWERP_CID, ontwerpKlantHtml, ontwerpMeldingHtml } from '@/lib/mailSjablonen';
 import { env, isLeadsDbConfigured } from '@/lib/env';
 import { publiekeLimiet, clientIp } from '@/lib/ratelimit';
 import { eigenSiteUrl, logoBijlage } from '@/lib/bijlagen';
@@ -49,19 +50,23 @@ export async function POST(req: Request) {
   // bevatten) en nooit een zelfgekozen extensie.
   const logo = logoBijlage(d.logo, d.logoNaam, { svgToegestaan: false });
   if (logo) attachments.push(logo);
+  let ontwerpPng: string | null = null;
   if (d.ontwerp) {
     const mo = /^data:image\/png;base64,(.+)$/i.exec(d.ontwerp);
-    if (mo) attachments.push({ filename: 'Jouw-ontwerp-Frederiks.png', content: mo[1] });
+    if (mo) {
+      ontwerpPng = mo[1];
+      attachments.push({ filename: 'Jouw-ontwerp-Frederiks.png', content: ontwerpPng });
+    }
   }
 
-  const berichtHtml = escapeHtml(d.bericht ?? '').replace(/\n/g, '<br>');
   // Alleen een hervat-link op de eigen site toestaan (geen open redirect in de mail).
   // startsWith(site.url) liet ook https://<onze-site>.evil.nl door: vergelijk de origin.
-  const veiligeResume = escapeHtml(eigenSiteUrl(d.resumeUrl, site.url));
+  const veiligeResume = eigenSiteUrl(d.resumeUrl, site.url);
 
   // Warme lead in het KMS: lead, gekozen kleding als regels, logo in de logobibliotheek
   // en een opvolgtaak. Geen concept-offerte: de bezoeker heeft nog niets aangevraagd.
   const herkomst = schoneHerkomst(d.herkomst);
+  const regels = schoneRegels(d.regels);
   const inname = await neemWebleadIn({
     lead: {
       name: d.name || 'Onbekend (ontwerp gemaild)',
@@ -75,7 +80,7 @@ export async function POST(req: Request) {
       bron_kanaal: 'configurator',
       ...herkomst,
     },
-    regels: schoneRegels(d.regels),
+    regels,
     logo: d.logo ? { dataUrl: d.logo, naam: d.logoNaam || null } : null,
     opties: { offerte: false },
   }).catch((e): WebleadUitkomst => {
@@ -91,35 +96,16 @@ export async function POST(req: Request) {
     replyTo: d.email,
     attachments,
     subject: `${dbFout ? 'LET OP, niet in het KMS: ' : ''}Ontwerp gemaild via de configurator (nog niet afgerond)`,
-    html: `
-      ${dbFout ? `<p style="padding:10px 12px;background:#fdecea;border:1px solid #f5c2c0;color:#8a1c14;"><strong>Deze lead staat niet in het KMS.</strong> Opslaan lukte niet${inname.fout ? ` (${escapeHtml(inname.fout)})` : ''}. Voer hem met de hand in bij Leads.</p>` : ''}
-      ${kmsLink ? `<p><a href="${kmsLink}">Open in het KMS</a></p>` : ''}
-      <h3>Ontwerp gemaild via de pakketsamensteller</h3>
-      <p>Deze bezoeker heeft zichzelf het ontwerp gemaild, maar nog geen offerte aangevraagd. Een mooi moment om proactief te bellen of mailen.</p>
-      <p><strong>E-mail:</strong> ${escapeHtml(d.email)}</p>
-      <p><strong>Naam:</strong> ${escapeHtml(d.name ?? '')}</p>
-      <p><strong>Herkomst:</strong> ${escapeHtml(d.bron ?? '')}</p>
-      <p><strong>Ontwerp:</strong><br>${berichtHtml}</p>
-    `,
+    html: ontwerpMeldingHtml({ dbFout, fout: inname.fout, kmsLink, email: d.email, name: d.name, bron: d.bron, bericht: d.bericht, heeftOntwerp: Boolean(ontwerpPng) }),
   }).catch(() => ({ sent: false }));
 
-  // Het ontwerp plus hervat-link naar de bezoeker.
+  // Het ontwerp plus hervat-link naar de bezoeker. Dezelfde bijlagen, maar de
+  // ontwerp-PNG krijgt een content-id zodat hij ook in de mail zelf te zien is.
   await sendEmail({
     to: d.email,
-    attachments,
+    attachments: attachments.map((a) => (ontwerpPng && a.content === ontwerpPng ? { ...a, contentId: ONTWERP_CID } : a)),
     subject: 'Je samengestelde pakket bij Frederiks Bedrijfskleding',
-    html: emailLayout({
-      heading: 'Je samengestelde pakket',
-      preheader: 'Ga verder waar je gebleven was en vraag je offerte vrijblijvend aan.',
-      bodyHtml: `
-        <p style="margin:0;">${d.name ? `Beste ${escapeHtml(d.name)},` : 'Hallo,'}</p>
-        <p style="margin:14px 0 0;">Hier is het pakket dat je hebt samengesteld. Wil je verder of het als offerte aanvragen? We denken vrijblijvend mee en komen langs om te passen.</p>
-        <div style="margin:16px 0;padding:14px 16px;background-color:#f6f5f4;border-radius:10px;color:#1c1c1c;font-size:14px;line-height:1.6;">${berichtHtml}</div>
-        ${d.ontwerp ? `<p style="margin:14px 0 0;">Je volledige ontwerp met je logo op de kleding zie je in de bijgevoegde afbeelding.</p>` : ''}
-        ${veiligeResume ? `<p style="margin:14px 0 0;"><a href="${veiligeResume}" style="display:inline-block;background-color:#ec6726;color:#ffffff;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:8px;">Ga verder met je ontwerp</a></p>` : ''}
-        <p style="margin:16px 0 0;">Liever even bellen of WhatsAppen? <strong style="color:#1c1c1c;">${escapeHtml(site.phone)}</strong>.</p>
-      `,
-    }),
+    html: ontwerpKlantHtml({ name: d.name, bericht: d.bericht, resumeUrl: veiligeResume, heeftOntwerp: Boolean(ontwerpPng), regels }),
   }).catch(() => {});
 
   return NextResponse.json({ ok: true });

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { sendEmail, escapeHtml, emailLayout } from '@/lib/email';
+import { sendEmail } from '@/lib/email';
+import { leadBevestigingHtml, leadMeldingHtml } from '@/lib/mailSjablonen';
 import { env } from '@/lib/env';
 import { publiekeLimiet, clientIp } from '@/lib/ratelimit';
 import { logoBijlage } from '@/lib/bijlagen';
@@ -80,11 +81,6 @@ export async function POST(req: Request) {
   });
   const dbFout = isLeadsDbConfigured && !inname.opgeslagen;
   const kmsLink = inname.id ? `${env.siteUrl.replace(/\/$/, '')}/dashboard/leads/${inname.id}` : null;
-  const regelsHtml = regels.length
-    ? `<p><strong>Gekozen artikelen:</strong></p><ul>${regels
-        .map((r) => `<li>${escapeHtml([r.omschrijving, r.kleur, r.maat ? `maat ${r.maat}` : null, r.aantal ? `${r.aantal}x` : null].filter(Boolean).join(', '))}${r.opmerking ? ` <em>(${escapeHtml(r.opmerking)})</em>` : ''}</li>`)
-        .join('')}</ul>`
-    : '';
 
   // Logo uit de configurator: als bijlage meesturen naar Frederiks.
   const attachments: { filename: string; content: string }[] = [];
@@ -102,23 +98,26 @@ export async function POST(req: Request) {
     replyTo: d.email,
     attachments,
     subject: `${dbFout ? 'LET OP, niet in het KMS: ' : ''}Nieuwe offerte-/adviesaanvraag${d.company ? ` voor ${d.company}` : ''}`,
-    html: `
-      ${dbFout ? `<p style="padding:10px 12px;background:#fdecea;border:1px solid #f5c2c0;color:#8a1c14;"><strong>Deze aanvraag staat niet in het KMS.</strong> Opslaan in de database lukte niet${inname.fout ? ` (${escapeHtml(inname.fout)})` : ''}. Voer hem met de hand in bij Leads, anders valt hij buiten de opvolging.</p>` : ''}
-      ${!dbFout && inname.waarschuwingen.length ? `<p style="padding:10px 12px;background:#fff6e5;border:1px solid #f3d9a4;">Staat in het KMS, maar: ${escapeHtml(inname.waarschuwingen.join(' '))}</p>` : ''}
-      <h3>Nieuwe aanvraag via de website</h3>
-      ${kmsLink ? `<p><a href="${kmsLink}">Open in het KMS</a>${inname.taak ? ` · taak voor ${escapeHtml(inname.taak.persoon ?? 'het team')} op ${escapeHtml(inname.taak.datum)} ${escapeHtml(inname.taak.tijd)}` : ''}${inname.offerte ? ` · concept-offerte ${inname.offerte.nummer ?? ''} klaargezet` : ''}</p>` : ''}
-      <p><strong>Ingang:</strong> ${escapeHtml(BRON_KANAAL_LABEL[kanaal])}</p>
-      <p><strong>Naam:</strong> ${escapeHtml(d.name)}</p>
-      <p><strong>Bedrijf:</strong> ${escapeHtml(d.company ?? '')}</p>
-      <p><strong>E-mail:</strong> ${escapeHtml(d.email)}</p>
-      <p><strong>Telefoon:</strong> ${escapeHtml(d.phone ?? '')}</p>
-      <p><strong>Branche:</strong> ${escapeHtml(d.branche ?? '')}</p>
-      <p><strong>Aantal medewerkers:</strong> ${escapeHtml(d.aantal ?? '')}</p>
-      <p><strong>Herkomst:</strong> ${escapeHtml(d.bron ?? '')}</p>
-      ${herkomst.landingspagina ? `<p><strong>Eerste pagina:</strong> ${escapeHtml(herkomst.landingspagina)}${herkomst.paginas_bekeken ? ` · ${herkomst.paginas_bekeken} pagina's bekeken` : ''}</p>` : ''}
-      <p><strong>Bericht:</strong><br>${escapeHtml(d.bericht ?? '').replace(/\n/g, '<br>')}</p>
-      ${regelsHtml}
-    `,
+    html: leadMeldingHtml({
+      dbFout,
+      fout: inname.fout,
+      waarschuwingen: inname.waarschuwingen,
+      kmsLink,
+      taak: inname.taak,
+      offerte: inname.offerte,
+      ingang: BRON_KANAAL_LABEL[kanaal],
+      name: d.name,
+      company: d.company,
+      email: d.email,
+      phone: d.phone,
+      branche: d.branche,
+      aantal: d.aantal,
+      bron: d.bron,
+      landingspagina: herkomst.landingspagina,
+      paginasBekeken: herkomst.paginas_bekeken,
+      bericht: d.bericht,
+      regels,
+    }),
   }).catch((e) => ({ sent: false, error: e instanceof Error ? e.message : 'onbekend' }));
 
   // Niet opgeslagen en niet gemaild: dan is de aanvraag echt nergens. Zeg dat eerlijk.
@@ -134,15 +133,7 @@ export async function POST(req: Request) {
   const bevestiging = await sendEmail({
     to: d.email,
     subject: 'Bedankt voor je aanvraag bij Frederiks Bedrijfskleding',
-    html: emailLayout({
-      heading: 'Bedankt voor je aanvraag',
-      preheader: 'We nemen zo snel mogelijk persoonlijk contact met je op.',
-      bodyHtml: `
-        <p style="margin:0;">Beste ${escapeHtml(d.name)},</p>
-        <p style="margin:14px 0 0;">Bedankt voor je bericht aan Frederiks Bedrijfskleding. We nemen zo snel mogelijk persoonlijk contact met je op om je wensen door te nemen en passend advies te geven.</p>
-        <p style="margin:14px 0 0;">Heb je een dringende vraag? Bel of WhatsApp gerust: <strong style="color:#1c1c1c;">${escapeHtml(site.phone)}</strong>.</p>
-      `,
-    }),
+    html: leadBevestigingHtml(d.name),
   }).catch(() => ({ sent: false }));
 
   return NextResponse.json({ ok: true, emailed: sent.sent, bevestigd: bevestiging.sent, opgeslagen: inname.opgeslagen });

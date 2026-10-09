@@ -1,6 +1,6 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { env, isEmailConfigured } from '@/lib/env';
-import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
+import { sendEmail, emailKnop, emailLayout, escapeHtml } from '@/lib/email';
 import { listTaakPersonen, type TaakPersoon } from '@/lib/kms/taakPersonen';
 import { listTaakStatussen } from '@/lib/kms/taakStatussen';
 import {
@@ -73,7 +73,7 @@ function dashboardUrl(): string {
 type KleurOpzoek = (werkstatus: string | null) => { bg: string; tekst: string };
 
 function knop(tekst: string, href: string): string {
-  return `<p style="margin:24px 0 0;"><a href="${escapeHtml(href)}" style="display:inline-block;background-color:#ec6726;color:#1c1c1c;text-decoration:none;font-weight:700;font-size:15px;padding:12px 22px;border-radius:8px;">${escapeHtml(tekst)}</a></p>`;
+  return emailKnop(tekst, href, { marge: '24px 0 0' });
 }
 
 function kortTekst(s: string | null, max = 160): string {
@@ -86,10 +86,10 @@ function taakRegel(t: MeldTaak, kleur: KleurOpzoek, metDatum = false): string {
   const tijd = tijdKort(t.tijd);
   const eind = tijdKort(t.eind_tijd);
   const wanneer = metDatum
-    ? tijdvak(t.vervaldatum, t.tijd, afspraak ? t.eind_tijd : null)
+    ? tijdvak(t.vervaldatum, t.tijd, afspraak ? t.eind_tijd : null).replace(/\s*[\u2013\u2014]\s*/g, '-')
     : tijd
       ? afspraak && eind
-        ? `${tijd}–${eind}`
+        ? `${tijd}-${eind}`
         : tijd
       : afspraak
         ? 'Hele dag'
@@ -217,9 +217,10 @@ export function bouwWeekoverzicht(
   };
 }
 
-function bouwHerinnering(t: MeldTaak, vandaag: string): { onderwerp: string; html: string } {
+export function bouwHerinnering(t: MeldTaak, vandaag: string): { onderwerp: string; html: string } {
   const afspraak = t.soort === 'afspraak';
-  const wanneer = tijdvak(t.vervaldatum, t.tijd, afspraak ? t.eind_tijd : null, vandaag);
+  // tijdvak() zet een gedachtestreepje tussen begin en eind; in de mail schrijven we het uit.
+  const wanneer = tijdvak(t.vervaldatum, t.tijd, afspraak ? t.eind_tijd : null, vandaag).replace(/\s*[\u2013\u2014]\s*/g, ' tot ');
   const regels = [
     wanneer ? `<p style="margin:0;"><strong>${afspraak ? 'Wanneer' : 'Gepland'}:</strong> ${escapeHtml(wanneer)}</p>` : '',
     t.organisaties?.naam ? `<p style="margin:6px 0 0;"><strong>Klant:</strong> ${escapeHtml(t.organisaties.naam)}</p>` : '',

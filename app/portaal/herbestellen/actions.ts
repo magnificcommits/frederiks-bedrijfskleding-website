@@ -1,7 +1,8 @@
 'use server';
 import { redirect } from 'next/navigation';
 import { getPortaalUser, getMijnOrganisatie, getKledinglijn, getMedewerkers, maakBestelling } from '@/lib/portaal/queries';
-import { sendEmail, escapeHtml } from '@/lib/email';
+import { sendEmail } from '@/lib/email';
+import { herbestellingMeldingHtml } from '@/lib/mailSjablonen';
 import { env } from '@/lib/env';
 
 export async function vraagHerbestelling(formData: FormData) {
@@ -32,17 +33,10 @@ export async function vraagHerbestelling(formData: FormData) {
   const res = await maakBestelling(org.id, door, notitie, regels, { medewerkerId: voor || null, medewerkerNaam, waarde: waarde || null });
   if (!res.ok) redirect('/portaal/herbestellen?fout=1');
 
-  const lijst = regels.map((r) => `- ${r.item_naam}${r.maat ? ` (maat ${r.maat})` : ''}: ${r.aantal}x`).join('<br>');
   await sendEmail({
     to: env.notifyEmail,
     subject: `Nieuwe herbestelling via portaal: ${org.naam}`,
-    html: `<h3>Nieuwe herbestelling via het klantportaal</h3>
-      <p><strong>Bedrijf:</strong> ${escapeHtml(org.naam)}</p>
-      <p><strong>Door:</strong> ${escapeHtml(door)}</p>
-      ${medewerkerNaam ? `<p><strong>Voor medewerker:</strong> ${escapeHtml(medewerkerNaam)}</p>` : ''}
-      <p><strong>Geschatte waarde:</strong> &euro; ${waarde.toFixed(2)}</p>
-      <p><strong>Regels:</strong><br>${lijst}</p>
-      ${notitie ? `<p><strong>Opmerking:</strong> ${escapeHtml(notitie)}</p>` : ''}`,
+    html: herbestellingMeldingHtml({ organisatie: org.naam, door, medewerkerNaam, waarde, regels, notitie }),
   }).catch(() => {});
 
   redirect('/portaal/bestellingen?ok=1');

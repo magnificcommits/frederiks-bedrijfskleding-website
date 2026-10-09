@@ -6,12 +6,14 @@ import { kleuren, kledingtypes, logoposities, broekposities, positiesVoor, teamg
 import { logoFormaten, oppervlakVan, logoCheck, standaardFormaatVoor, LOGO_MIN_CM2 } from '@/lib/fiscaal';
 import { branches } from '@/content/branches';
 import { Garment } from '@/components/Garments';
+import { FotoMetLogo } from '@/components/FotoMetLogo';
+import { volledigeNaam } from '@/lib/offerteMand';
 import { getHerkomst, leesHerkomstVoorLead } from '@/lib/herkomst';
 import { site } from '@/content/site';
 
 type Status = 'idle' | 'sending' | 'ok' | 'error';
-type Item = { id: number; type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string; artikelFoto?: string | null; formaat?: string };
-type Artikel = { id: string; naam: string; merk: string | null; foto: string | null; kleurTreffer: boolean };
+type Item = { id: number; type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string; artikelFoto?: string | null; voorbeeldFoto?: string | null; formaat?: string };
+type Artikel = { id: string; naam: string; merk: string | null; foto: string | null; kleur: string | null; kleurTreffer: boolean };
 
 const extrasOpties = [
   { id: 'schoenen', label: 'Veiligheidsschoenen' },
@@ -30,28 +32,15 @@ function decodeState(s: string): unknown {
   return JSON.parse(decodeURIComponent(escape(atob(s))));
 }
 
-/** Waar een borstlogo op een vooraanzicht-foto staat: links op het lichaam is rechts in beeld. */
-const FOTO_LOGO: Record<string, { left: string; top: string }> = {
-  'borst-links': { left: '59%', top: '27%' },
-  'borst-rechts': { left: '29%', top: '27%' },
-};
-
-function Preview({ type, kleur, logo, positie, techniek, foto }: { type: string; kleur: number; logo: string | null; positie: string; techniek: string; foto?: string | null }) {
+/**
+ * Voorbeeld van een kledingstuk met logo. Met een foto: het echte artikel met het
+ * logo op de opgemeten plek (borst of pijp). Zonder foto, of voor een ruglogo
+ * (de foto's zijn vooraanzichten): de tekening in de gekozen kleur.
+ */
+function Preview({ type, kleur, logo, positie, techniek, foto, toonSchuin }: { type: string; kleur: number; logo: string | null; positie: string; techniek: string; foto?: string | null; toonSchuin?: boolean }) {
   const k = kleuren[kleur];
-  const plek = FOTO_LOGO[positie];
-  // Een echt artikel gekozen: de productfoto met het logo erop. Rug en broek staan
-  // niet op een vooraanzicht, daar blijft de tekening.
-  if (foto && plek) {
-    return (
-      <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-lg bg-white">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={foto} alt="" className="h-full w-full object-contain" />
-        {logo && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={logo} alt="Je logo" className="absolute w-[13%] object-contain" style={{ left: plek.left, top: plek.top, filter: techniek === 'borduren' ? 'contrast(1.05) saturate(0.95)' : undefined }} />
-        )}
-      </div>
-    );
+  if (foto && positie !== 'rug') {
+    return <FotoMetLogo src={foto} type={type} positie={positie} logo={logo} techniek={techniek} toonSchuin={toonSchuin} />;
   }
   return (
     <div className="relative mx-auto aspect-square w-full">
@@ -93,7 +82,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   const [logoNaam, setLogoNaam] = useState<string | null>(null);
   const [techniek, setTechniek] = useState<'borduren' | 'bedrukken'>('borduren');
   const [defPositie, setDefPositie] = useState('borst-links');
-  const [draft, setDraft] = useState<{ type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string; artikelFoto?: string | null }>({ type: 'polo', kleur: 0, positie: 'borst-links', aantal: '' });
+  const [draft, setDraft] = useState<{ type: string; kleur: number; positie: string; aantal: string; artikelId?: string; artikelNaam?: string; artikelFoto?: string | null; artikelKleur?: number }>({ type: 'polo', kleur: 0, positie: 'borst-links', aantal: '' });
   const [artikelen, setArtikelen] = useState<Artikel[]>([]);
   const [artikelenBezig, setArtikelenBezig] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
@@ -134,7 +123,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
       const p = JSON.parse(ruw) as { type?: string; kleur?: number; positie?: string; logo?: string | null; artikelId?: string; artikelNaam?: string; artikelFoto?: string | null };
       if (typeof p.type === 'string' && typeof p.kleur === 'number' && kleuren[p.kleur]) {
         const artikel = typeof p.artikelId === 'string' && typeof p.artikelNaam === 'string'
-          ? { artikelId: p.artikelId, artikelNaam: p.artikelNaam, artikelFoto: typeof p.artikelFoto === 'string' ? p.artikelFoto : null }
+          ? { artikelId: p.artikelId, artikelNaam: p.artikelNaam, artikelFoto: typeof p.artikelFoto === 'string' ? p.artikelFoto : null, artikelKleur: p.kleur }
           : {};
         setDraft((d) => ({ ...d, type: p.type as string, kleur: p.kleur as number, positie: typeof p.positie === 'string' ? p.positie : d.positie, ...artikel }));
         if ('artikelId' in artikel) {
@@ -164,7 +153,19 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
         const q = new URLSearchParams({ type: draft.type, kleur: kleuren[draft.kleur].name });
         const res = await fetch(`/api/pakket/artikelen?${q}`, { signal: ctrl.signal });
         const data = (await res.json()) as { artikelen: Artikel[] };
-        if (!afgebroken) setArtikelen(data.artikelen ?? []);
+        if (afgebroken) return;
+        const lijst = data.artikelen ?? [];
+        setArtikelen(lijst);
+        // Gekozen artikel bij een andere kleur: de foto in die kleur tonen. Heeft het
+        // artikel die kleur niet, dan vervalt de keuze (anders zie je een zwarte jas
+        // terwijl je marineblauw koos).
+        setDraft((d) => {
+          if (!d.artikelId) return d;
+          const zelfde = lijst.find((a) => a.id === d.artikelId);
+          if (zelfde) return { ...d, artikelFoto: zelfde.foto ?? d.artikelFoto, artikelKleur: d.kleur };
+          if (d.artikelKleur !== d.kleur) return { ...d, artikelId: undefined, artikelNaam: undefined, artikelFoto: undefined, artikelKleur: undefined };
+          return d;
+        });
       } catch {
         if (!afgebroken) setArtikelen([]);
       } finally {
@@ -175,6 +176,8 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
   }, [draft.type, draft.kleur]);
 
   const allePosities = [...logoposities, ...broekposities];
+  /** Zolang er niets gekozen is, tonen we het eerste passende artikel als voorbeeld. */
+  const voorbeeld = !draft.artikelId && !artikelenBezig ? artikelen[0] ?? null : null;
   const typeLabel = (id: string) => kledingtypes.find((t) => t.id === id)?.label ?? id;
   const posLabel = (id: string) => allePosities.find((p) => p.id === id)?.label ?? id;
   const starter = starterpakketten[branche];
@@ -227,7 +230,8 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     });
   }
   function addItem() {
-    setItems((p) => [...p, { id: Date.now(), ...draft, formaat: standaardFormaatVoor(draft.positie) }]);
+    const { artikelKleur: _k, ...stuk } = draft;
+    setItems((p) => [...p, { id: Date.now(), ...stuk, voorbeeldFoto: draft.artikelFoto ? null : voorbeeld?.foto ?? null, formaat: standaardFormaatVoor(draft.positie) }]);
     setLastAdded(typeLabel(draft.type));
     setDraft((d) => ({ ...d, aantal: '', artikelId: undefined, artikelNaam: undefined, artikelFoto: undefined }));
   }
@@ -240,6 +244,17 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
     const n = teamAantal(team);
     setItems(starter.map((s, k) => ({ id: basis + k, type: s.type, kleur: s.kleur, positie: s.positie, aantal: String(s.per * n), formaat: standaardFormaatVoor(s.positie) })));
     setLastAdded(null);
+    // Per stuk een echt artikel in die kleur als voorbeeldfoto erbij zoeken.
+    starter.forEach(async (s, k) => {
+      try {
+        const q = new URLSearchParams({ type: s.type, kleur: kleuren[s.kleur].name });
+        const data = (await (await fetch(`/api/pakket/artikelen?${q}`)).json()) as { artikelen: Artikel[] };
+        const foto = data.artikelen?.[0]?.foto;
+        if (foto) setItems((p) => p.map((i) => (i.id === basis + k ? { ...i, voorbeeldFoto: foto } : i)));
+      } catch {
+        /* dan blijft de tekening staan */
+      }
+    });
   }
   function zetFormaat(id: number, formaat: string) {
     setItems((p) => p.map((i) => (i.id === id ? { ...i, formaat } : i)));
@@ -527,7 +542,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               </div>
             </div>
             <div className="rounded-xl border border-line bg-mist p-6">
-              <Preview type={draft.type} kleur={draft.kleur} logo={logo} positie={defPositie} techniek={techniek} foto={draft.artikelFoto} />
+              <Preview type={draft.type} kleur={draft.kleur} logo={logo} positie={defPositie} techniek={techniek} foto={draft.artikelFoto ?? voorbeeld?.foto} toonSchuin />
               {vanProduct ? (
                 <p className="mt-3 text-center text-xs text-warm">Je ontwerpt met <span className="font-semibold text-ink-800">{vanProduct}</span>. Upload je logo; in de volgende stap voeg je dit artikel toe en kun je er meer kledingstukken bij zetten.</p>
               ) : (
@@ -548,8 +563,16 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               </ol>
               <div className="relative mt-4 rounded-xl border border-line bg-mist p-4 [&>div]:max-w-[17rem]">
                 <span className="absolute right-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-ink-600 shadow-sm">{kant}</span>
-                <Preview type={draft.type} kleur={draft.kleur} logo={logo} positie={draft.positie} techniek={techniek} foto={draft.artikelFoto} />
+                <Preview type={draft.type} kleur={draft.kleur} logo={logo} positie={draft.positie} techniek={techniek} foto={draft.artikelFoto ?? voorbeeld?.foto} toonSchuin />
               </div>
+              <p className="mt-2 min-h-[1.25rem] text-xs text-warm">
+                {draft.artikelId && draft.artikelNaam
+                  ? <>Gekozen: <span className="font-semibold text-ink-800">{draft.artikelNaam}</span></>
+                  : voorbeeld
+                    ? <>Voorbeeld: {volledigeNaam(voorbeeld.merk, voorbeeld.naam)}{voorbeeld.kleur ? `, ${voorbeeld.kleur.toLowerCase()}` : ''}. Kies hieronder je eigen model, of laat het aan ons.</>
+                    : null}
+                {draft.positie === 'rug' && (draft.artikelId || voorbeeld) ? ' Het ruglogo zie je op een schets van de achterkant.' : ''}
+              </p>
               <p className="mt-5 text-sm font-semibold text-ink-800">Kledingstuk</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {kledingtypes.map((t) => (
@@ -559,7 +582,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               <p className="mt-4 text-sm font-semibold text-ink-800">Kleur: <span className="text-warm">{kleuren[draft.kleur].name}</span></p>
               <div className="mt-2 flex flex-wrap gap-2.5">
                 {kleuren.map((k, i) => (
-                  <button key={k.name} type="button" aria-label={k.name} onClick={() => setDraft((d) => ({ ...d, kleur: i, artikelId: undefined, artikelNaam: undefined, artikelFoto: undefined }))} className={`${swatch} ${i === draft.kleur ? 'border-amber-500 ring-2 ring-amber-200' : 'border-line'}`} style={{ background: k.hex }} />
+                  <button key={k.name} type="button" aria-label={k.name} onClick={() => setDraft((d) => ({ ...d, kleur: i }))} className={`${swatch} ${i === draft.kleur ? 'border-amber-500 ring-2 ring-amber-200' : 'border-line'}`} style={{ background: k.hex }} />
                 ))}
               </div>
               {(artikelen.length > 0 || artikelenBezig) && (
@@ -577,7 +600,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
                           <button
                             key={a.id}
                             type="button"
-                            onClick={() => setDraft((d) => (aan ? { ...d, artikelId: undefined, artikelNaam: undefined, artikelFoto: undefined } : { ...d, artikelId: a.id, artikelNaam: `${a.merk ? a.merk + ' ' : ''}${a.naam}`, artikelFoto: a.foto }))}
+                            onClick={() => setDraft((d) => (aan ? { ...d, artikelId: undefined, artikelNaam: undefined, artikelFoto: undefined, artikelKleur: undefined } : { ...d, artikelId: a.id, artikelNaam: volledigeNaam(a.merk, a.naam), artikelFoto: a.foto, artikelKleur: d.kleur }))}
                             aria-pressed={aan}
                             className={`w-36 shrink-0 rounded-lg border-2 p-2 text-left transition ${aan ? 'border-amber-500 bg-amber-50' : 'border-line hover:border-ink-300'}`}
                           >
@@ -591,6 +614,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
                             </span>
                             {a.merk && <span className="mt-1.5 block text-[10px] font-bold uppercase tracking-wide text-amber-700">{a.merk}</span>}
                             <span className="block text-xs font-semibold leading-tight text-ink-900">{a.naam}</span>
+                            {a.kleur && <span className="mt-0.5 block text-[11px] text-warm">{a.kleur}</span>}
                           </button>
                         );
                       })}
@@ -600,6 +624,11 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
                     Kies je niets, dan zoeken wij er een passend artikel bij. De prijs krijg je in je offerte, inclusief staffel en bedrukking.
                   </p>
                 </div>
+              )}
+              {!artikelenBezig && artikelen.length === 0 && (
+                <p className="mt-4 rounded-md bg-mist px-3 py-2 text-sm text-warm">
+                  We hebben geen {typeLabel(draft.type).toLowerCase()} in {kleuren[draft.kleur].name.toLowerCase()} met een foto in de webcatalogus, daarom zie je een schets. Kies een andere kleur, of vraag het gewoon aan: we zoeken een passend model voor je.
+                </p>
               )}
 
               <div className="mt-4 flex flex-wrap items-end gap-4">
@@ -643,7 +672,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
               <ul className="mt-3 space-y-3">
                 {items.map((i) => (
                   <li key={i.id} className="flex items-center gap-3 rounded-lg border border-line bg-white p-3">
-                    <div className="h-14 w-14 shrink-0 rounded bg-mist p-1"><Preview type={i.type} kleur={i.kleur} logo={logo} positie={i.positie} techniek={techniek} foto={i.artikelFoto} /></div>
+                    <div className="h-14 w-14 shrink-0 rounded bg-mist p-1"><Preview type={i.type} kleur={i.kleur} logo={logo} positie={i.positie} techniek={techniek} foto={i.artikelFoto ?? i.voorbeeldFoto} /></div>
                     <div className="min-w-0 grow text-sm">
                       <p className="font-bold text-ink-900">{typeLabel(i.type)}{i.aantal ? ` · ${i.aantal}x` : ''}</p>
                       <p className="text-warm">{kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}</p>
@@ -794,7 +823,7 @@ export function PakketConfigurator({ defaultBranche = '', initialLogo = null, po
           <div className="mt-3 grid grid-cols-3 gap-4">
             {items.map((i) => (
               <div key={i.id} className="rounded-lg border border-line p-2 text-center">
-                <div className="mx-auto aspect-square w-full max-w-[150px]"><Preview type={i.type} kleur={i.kleur} logo={logo} positie={i.positie} techniek={techniek} foto={i.artikelFoto} /></div>
+                <div className="mx-auto aspect-square w-full max-w-[150px]"><Preview type={i.type} kleur={i.kleur} logo={logo} positie={i.positie} techniek={techniek} foto={i.artikelFoto ?? i.voorbeeldFoto} /></div>
                 <p className="mt-1 text-[12px] font-bold text-ink-900">{typeLabel(i.type)}{i.aantal ? `, ${i.aantal}x` : ''}</p>
                 <p className="text-[11px] text-warm">{kleuren[i.kleur].name}, logo {posLabel(i.positie).toLowerCase()}</p>
               </div>

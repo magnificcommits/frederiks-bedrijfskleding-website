@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { kmsAdmin } from '@/lib/kms/adminClient';
-import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
+import { sendEmail, emailGegevens, emailKader, emailKnop, emailLayout, escapeHtml } from '@/lib/email';
 import { env } from '@/lib/env';
 import { site } from '@/content/site';
 
@@ -99,6 +99,69 @@ export async function retourtermijnDagen(): Promise<number> {
   return Number.isFinite(n) && n > 0 ? n : 30;
 }
 
+/* ------------------------------------------------------------------ */
+/* Mails (alleen de HTML, zodat ze ook in een test te bekijken zijn)    */
+/* ------------------------------------------------------------------ */
+
+type RetourMailRegel = { aantal: number | string; item_naam: string; maat?: string | null; kleur?: string | null; reden: string };
+
+/** De teruggemelde artikelen: aantal en naam vet, maat/kleur en reden eronder. */
+function retourRegelHtml(regels: RetourMailRegel[]): string {
+  const rijen = regels
+    .map(
+      (r) => `<tr><td style="padding:10px 0;border-bottom:1px solid #eeeceb;">
+  <div style="font-size:14px;font-weight:700;color:#1c1c1c;">${escapeHtml(r.aantal)}× ${escapeHtml(r.item_naam)}</div>
+  <div style="margin-top:2px;font-size:13px;color:#52504e;">${[r.maat || r.kleur ? escapeHtml([r.maat, r.kleur].filter(Boolean).join(', ')) : '', `Reden: ${escapeHtml(r.reden)}`].filter(Boolean).join(' &middot; ')}</div>
+</td></tr>`,
+    )
+    .join('');
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;border-collapse:collapse;border-top:2px solid #1c1c1c;">${rijen}</table>`;
+}
+
+export function retourLinkMailHtml(d: { ordernummer: string | number; link: string; dagen: number }): string {
+  return emailLayout({
+    heading: 'Je retourlink staat klaar',
+    preheader: `Bestelling ${d.ordernummer}: de link is ${d.dagen} dagen geldig.`,
+    bodyHtml: `
+        <p style="margin:14px 0 0;">Via de knop hieronder kies je welke artikelen uit bestelling <strong style="color:#1c1c1c;">${escapeHtml(d.ordernummer)}</strong> je wilt terugsturen en hoe je dat wilt doen.</p>
+        ${emailKnop('Retour aanmelden', d.link)}
+        <p style="margin:20px 0 0;font-size:13px;color:#8a8785;">De link is ${escapeHtml(d.dagen)} dagen geldig en hoort alleen bij deze bestelling. Heb je hem niet aangevraagd, dan hoef je niets te doen.</p>
+        <p style="margin:14px 0 0;">Liever even bellen? <strong style="color:#1c1c1c;">${escapeHtml(site.phone)}</strong>.</p>
+        <p style="margin:20px 0 0;">Groet,<br/>Frederiks Bedrijfskleding</p>`,
+  });
+}
+
+export function retourBevestigingMailHtml(d: { retournummer: string | null; ordernummer: string | number | null; regels: RetourMailRegel[]; methode: { label: string; uitleg: string }; volgLink: string }): string {
+  return emailLayout({
+    heading: 'We hebben je retour binnen',
+    preheader: `Retournummer ${d.retournummer ?? ''}`.trim(),
+    bodyHtml: `
+        <p style="margin:14px 0 0;">Retournummer <strong style="color:#1c1c1c;">${escapeHtml(d.retournummer ?? '-')}</strong>, bij bestelling ${escapeHtml(d.ordernummer ?? '-')}.</p>
+        ${retourRegelHtml(d.regels)}
+        ${emailKader(`<strong>${escapeHtml(d.methode.label)}</strong><br/>${escapeHtml(d.methode.uitleg)}`)}
+        <p style="margin:18px 0 0;">We kijken ernaar en laten binnen één werkdag weten hoe we het oppakken. De status volg je hier:</p>
+        ${emailKnop('Status bekijken', d.volgLink, { marge: '16px 0 0' })}
+        <p style="margin:22px 0 0;">Groet,<br/>Frederiks Bedrijfskleding</p>`,
+  });
+}
+
+export function retourMeldingHtml(d: { retournummer: string | null; organisatie: string | null; ordernummer: string | number | null; email: string; regels: RetourMailRegel[]; samenvatting: string }): string {
+  return emailLayout({
+    heading: `Retour ${d.retournummer ?? ''}`.trim(),
+    preheader: `${d.organisatie ?? 'Onbekende organisatie'}, order ${d.ordernummer ?? '-'}`,
+    bodyHtml: `
+          <p style="margin:14px 0 0;">Er is een retour aangemeld via het retourportaal.</p>
+          ${emailGegevens([
+            ['Klant', `<strong>${escapeHtml(d.organisatie ?? 'Onbekende organisatie')}</strong>`],
+            ['Order', escapeHtml(d.ordernummer ?? '-')],
+            ['E-mail', `<a href="mailto:${escapeHtml(d.email)}" style="color:#1c1c1c;">${escapeHtml(d.email)}</a>`],
+          ])}
+          ${retourRegelHtml(d.regels)}
+          ${d.samenvatting ? emailKader(escapeHtml(d.samenvatting)) : ''}
+          <p style="margin:18px 0 0;">Afhandelen in het dashboard onder Retouren.</p>`,
+  });
+}
+
 /**
  * Stap 1. Zoekt de bestelling en controleert of het opgegeven e-mailadres eraan
  * hangt. Zo ja: token wegschrijven en de link mailen. Het resultaat verraadt nooit
@@ -162,15 +225,7 @@ export async function startRetour(ordernummerRuw: string, emailRuw: string): Pro
   await sendEmail({
     to: email,
     subject: `Retour aanmelden voor bestelling ${o.ordernummer}`,
-    html: emailLayout({
-      heading: 'Je retourlink staat klaar',
-      preheader: `Bestelling ${o.ordernummer} · geldig tot ${TOKEN_DAGEN} dagen`,
-      bodyHtml: `
-        <p>Via onderstaande knop kies je welke artikelen uit bestelling <strong>${escapeHtml(o.ordernummer)}</strong> je wilt terugsturen en hoe je dat wilt doen.</p>
-        <p style="margin:26px 0;"><a href="${link}" style="display:inline-block;background:#ec6726;color:#1c1c1c;font-weight:700;text-decoration:none;padding:14px 26px;border-radius:6px;">Retour aanmelden</a></p>
-        <p style="font-size:13px;">De link is ${TOKEN_DAGEN} dagen geldig en hoort alleen bij deze bestelling. Heb je hem niet aangevraagd, dan hoef je niets te doen.</p>
-        <p style="font-size:13px;">Liever even bellen? ${escapeHtml(site.phone)}.</p>`,
-    }),
+    html: retourLinkMailHtml({ ordernummer: o.ordernummer, link, dagen: TOKEN_DAGEN }),
   });
 }
 
@@ -325,24 +380,12 @@ export async function verwerkRetour(
     .update({ gebruikt_op: new Date().toISOString(), retour_id: (nieuw as { id: string }).id })
     .eq('token', token);
 
-  const regelHtml = geldig
-    .map((r) => `<li>${escapeHtml(r.aantal)}× ${escapeHtml(r.item_naam)}${r.maat || r.kleur ? ` (${escapeHtml([r.maat, r.kleur].filter(Boolean).join(' / '))})` : ''} — ${escapeHtml(r.reden)}</li>`)
-    .join('');
   const volgLink = `${env.siteUrl.replace(/\/$/, '')}/retour/${token}`;
 
   await sendEmail({
     to: sessie.email,
     subject: `Retour ${retournummer ?? ''} aangemeld`,
-    html: emailLayout({
-      heading: 'We hebben je retour binnen',
-      preheader: `Retournummer ${retournummer ?? ''}`,
-      bodyHtml: `
-        <p>Retournummer <strong>${escapeHtml(retournummer ?? '-')}</strong>, bij bestelling ${escapeHtml(sessie.ordernummer ?? '-')}.</p>
-        <ul>${regelHtml}</ul>
-        <p><strong>${escapeHtml(gekozenMethode.label)}</strong><br/>${escapeHtml(gekozenMethode.uitleg)}</p>
-        <p>We kijken ernaar en laten binnen één werkdag weten hoe we het oppakken. De status volg je hier:</p>
-        <p style="margin:22px 0;"><a href="${volgLink}" style="display:inline-block;background:#ec6726;color:#1c1c1c;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:6px;">Status bekijken</a></p>`,
-    }),
+    html: retourBevestigingMailHtml({ retournummer: retournummer ?? null, ordernummer: sessie.ordernummer ?? null, regels: geldig, methode: gekozenMethode, volgLink }),
   });
 
   if (env.notifyEmail) {
@@ -350,14 +393,7 @@ export async function verwerkRetour(
       to: env.notifyEmail,
       replyTo: sessie.email,
       subject: `Nieuwe retour ${retournummer ?? ''} · order ${sessie.ordernummer ?? '-'}`,
-      html: emailLayout({
-        heading: `Retour ${retournummer ?? ''}`,
-        bodyHtml: `
-          <p><strong>${escapeHtml(sessie.organisatie ?? 'Onbekende organisatie')}</strong> · order ${escapeHtml(sessie.ordernummer ?? '-')} · ${escapeHtml(sessie.email)}</p>
-          <ul>${regelHtml}</ul>
-          <p>${escapeHtml(samenvatting)}</p>
-          <p>Afhandelen in het dashboard onder Retouren.</p>`,
-      }),
+      html: retourMeldingHtml({ retournummer: retournummer ?? null, organisatie: sessie.organisatie ?? null, ordernummer: sessie.ordernummer ?? null, email: sessie.email, regels: geldig, samenvatting }),
     });
   }
 

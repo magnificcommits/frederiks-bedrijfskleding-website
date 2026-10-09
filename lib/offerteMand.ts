@@ -21,6 +21,8 @@ export type MandRegel = {
   /** Keuzemogelijkheden, zodat je ook op de offertepagina nog kunt wijzigen. */
   kleuren: string[];
   maten: string[];
+  /** Foto per kleur, zodat het mandje de foto in de gekozen kleur laat zien. */
+  kleurFotos?: Record<string, string>;
   kleur: string | null;
   /** Aantal per maat; alleen maten met een aantal > 0. */
   aantallen: Record<string, number>;
@@ -88,7 +90,7 @@ export function voegToe(mand: MandRegel[], nieuw: MandRegel): MandRegel[] {
 }
 
 /** Een regel wijzigen. Verandert de kleur naar een kleur die al in het mandje staat, dan worden ze samengevoegd. */
-export function werkBij(mand: MandRegel[], sleutel: string, patch: Partial<Pick<MandRegel, 'kleur' | 'aantallen' | 'aantalZonderMaat' | 'logo'>>): MandRegel[] {
+export function werkBij(mand: MandRegel[], sleutel: string, patch: Partial<Pick<MandRegel, 'kleur' | 'aantallen' | 'aantalZonderMaat' | 'logo' | 'foto'>>): MandRegel[] {
   const oud = mand.find((r) => r.sleutel === sleutel);
   if (!oud) return mand;
   const nieuw: MandRegel = {
@@ -166,6 +168,9 @@ export function leesMand(ruw: unknown): MandRegel[] {
       foto: typeof x.foto === 'string' ? x.foto : null,
       kleuren: lijst(x.kleuren),
       maten: lijst(x.maten),
+      kleurFotos: x.kleurFotos && typeof x.kleurFotos === 'object'
+        ? Object.fromEntries(Object.entries(x.kleurFotos as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === 'string'))
+        : undefined,
       kleur,
       aantallen: schoneAantallen((x.aantallen as Record<string, unknown>) ?? {}),
       aantalZonderMaat: schoonAantal(x.aantalZonderMaat),
@@ -173,4 +178,26 @@ export function leesMand(ruw: unknown): MandRegel[] {
     });
   }
   return uit;
+}
+
+export type MandGegevens = { kleuren: string[]; maten: string[]; kleurFotos: Record<string, string> };
+
+/**
+ * Kleuren, maten en kleurfoto's van de server in het mandje zetten. Oudere
+ * regels (uit de selectie van voor het mandje) hadden die niet, waardoor je op
+ * de offertepagina geen kleur kon kiezen. Een gekozen kleur die niet meer
+ * bestaat, blijft staan; die ziet Jessi dan in de aanvraag.
+ */
+export function verrijk(mand: MandRegel[], gegevens: Record<string, MandGegevens>): MandRegel[] {
+  let veranderd = false;
+  const uit = mand.map((r) => {
+    const g = gegevens[r.productId];
+    if (!g) return r;
+    const zelfde = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+    if (zelfde(r.kleuren, g.kleuren) && zelfde(r.maten, g.maten) && JSON.stringify(r.kleurFotos ?? {}) === JSON.stringify(g.kleurFotos)) return r;
+    veranderd = true;
+    const foto = (r.kleur && g.kleurFotos[r.kleur]) || r.foto;
+    return { ...r, kleuren: g.kleuren, maten: g.maten, kleurFotos: g.kleurFotos, foto };
+  });
+  return veranderd ? uit : mand;
 }

@@ -1,4 +1,4 @@
-import { emailLayout, escapeHtml, sendEmail } from '@/lib/email';
+import { emailGegevens, emailKnop, emailLayout, escapeHtml, sendEmail } from '@/lib/email';
 import { env } from '@/lib/env';
 import { site } from '@/content/site';
 import { datumLang, nlDelen } from '@/app/dashboard/taken/tijd';
@@ -48,7 +48,7 @@ function eindTijd(eind: Date): string {
 }
 
 function knop(tekst: string, href: string): string {
-  return `<a href="${escapeHtml(href)}" style="display:inline-block;background-color:#ec6726;color:#ffffff;font-weight:700;text-decoration:none;padding:11px 18px;border-radius:8px;">${escapeHtml(tekst)}</a>`;
+  return emailKnop(tekst, href, { marge: '20px 0 0' });
 }
 
 function waarTekst(a: MailAfspraak): string {
@@ -97,9 +97,9 @@ function details(a: MailAfspraak): string {
     </table>`;
 }
 
-export async function mailBevestiging(a: MailAfspraak, verzet = false): Promise<boolean> {
+export function bevestigingMailHtml(a: MailAfspraak, verzet = false): string {
   const info = SOORT_INFO[a.soort];
-  const html = emailLayout({
+  return emailLayout({
     heading: verzet ? 'Je afspraak is verzet' : 'Je afspraak staat',
     preheader: `${info.label} op ${momentTekst(a.start)}.`,
     bodyHtml: `
@@ -108,10 +108,15 @@ export async function mailBevestiging(a: MailAfspraak, verzet = false): Promise<
       ${details(a)}
       <p style="margin:16px 0 0;">${escapeHtml(watNuTekst(a.soort))}</p>
       <p style="margin:16px 0 0;">In de bijlage zit de afspraak voor je agenda. Komt het toch niet uit? Verzet of annuleer hem met de knop hieronder.</p>
-      <p style="margin:18px 0 0;">${knop('Verzetten of annuleren', beheerUrl(a.token))}</p>
-      <p style="margin:18px 0 0;">Tot dan!<br/>Jessi Frederiks<br/>${escapeHtml(site.phone)}</p>
+      ${knop('Verzetten of annuleren', beheerUrl(a.token))}
+      <p style="margin:22px 0 0;">Tot dan!<br/>Jessi Frederiks<br/>${escapeHtml(site.phone)}</p>
     `,
   });
+}
+
+export async function mailBevestiging(a: MailAfspraak, verzet = false): Promise<boolean> {
+  const info = SOORT_INFO[a.soort];
+  const html = bevestigingMailHtml(a, verzet);
   const res = await sendEmail({
     to: a.email,
     replyTo: site.email,
@@ -122,9 +127,9 @@ export async function mailBevestiging(a: MailAfspraak, verzet = false): Promise<
   return res.sent;
 }
 
-export async function mailHerinnering(a: MailAfspraak): Promise<boolean> {
+export function herinneringMailHtml(a: MailAfspraak): string {
   const info = SOORT_INFO[a.soort];
-  const html = emailLayout({
+  return emailLayout({
     heading: 'Morgen zien of spreken we elkaar',
     preheader: `${info.label} morgen om ${nlDelen(a.start).tijd}.`,
     bodyHtml: `
@@ -132,10 +137,15 @@ export async function mailHerinnering(a: MailAfspraak): Promise<boolean> {
       <p style="margin:14px 0 0;">Even een geheugensteuntje voor morgen:</p>
       ${details(a)}
       <p style="margin:16px 0 0;">${escapeHtml(watNuTekst(a.soort))}</p>
-      <p style="margin:18px 0 0;">${knop('Verzetten of annuleren', beheerUrl(a.token))}</p>
-      <p style="margin:18px 0 0;">Groet,<br/>Jessi Frederiks<br/>${escapeHtml(site.phone)}</p>
+      ${knop('Verzetten of annuleren', beheerUrl(a.token))}
+      <p style="margin:22px 0 0;">Groet,<br/>Jessi Frederiks<br/>${escapeHtml(site.phone)}</p>
     `,
   });
+}
+
+export async function mailHerinnering(a: MailAfspraak): Promise<boolean> {
+  const info = SOORT_INFO[a.soort];
+  const html = herinneringMailHtml(a);
   const res = await sendEmail({
     to: a.email,
     replyTo: site.email,
@@ -145,9 +155,9 @@ export async function mailHerinnering(a: MailAfspraak): Promise<boolean> {
   return res.sent;
 }
 
-export async function mailAnnulering(a: MailAfspraak, doorKlant: boolean): Promise<boolean> {
+export function annuleringMailHtml(a: MailAfspraak, doorKlant: boolean): string {
   const info = SOORT_INFO[a.soort];
-  const html = emailLayout({
+  return emailLayout({
     heading: 'Je afspraak is geannuleerd',
     preheader: `${info.label} op ${momentTekst(a.start)} gaat niet door.`,
     bodyHtml: `
@@ -157,10 +167,16 @@ export async function mailAnnulering(a: MailAfspraak, doorKlant: boolean): Promi
           ? `Je hebt de afspraak van ${escapeHtml(momentTekst(a.start))} geannuleerd. Hij is uit onze agenda gehaald.`
           : `De afspraak van ${escapeHtml(momentTekst(a.start))} kan helaas niet doorgaan. Jessi neemt contact met je op voor een nieuw moment.`
       }</p>
-      <p style="margin:14px 0 0;">Wil je toch een ander moment? Dat prik je zo: ${knop('Nieuwe afspraak maken', `${basis()}/afspraak`)}</p>
-      <p style="margin:18px 0 0;">Groet,<br/>Jessi Frederiks<br/>${escapeHtml(site.phone)}</p>
+      <p style="margin:14px 0 0;">Wil je toch een ander moment? Dat prik je zo:</p>
+      ${knop('Nieuwe afspraak maken', `${basis()}/afspraak`)}
+      <p style="margin:22px 0 0;">Groet,<br/>Jessi Frederiks<br/>${escapeHtml(site.phone)}</p>
     `,
   });
+}
+
+export async function mailAnnulering(a: MailAfspraak, doorKlant: boolean): Promise<boolean> {
+  const info = SOORT_INFO[a.soort];
+  const html = annuleringMailHtml(a, doorKlant);
   const res = await sendEmail({
     to: a.email,
     replyTo: site.email,
@@ -172,30 +188,38 @@ export async function mailAnnulering(a: MailAfspraak, doorKlant: boolean): Promi
 }
 
 /** Seintje aan Jessi (meldadres) bij een nieuwe, verzette of geannuleerde afspraak. */
+export function afspraakMeldingHtml(a: MailAfspraak, wat: 'nieuw' | 'verzet' | 'geannuleerd', oudeStart?: Date): string {
+  const info = SOORT_INFO[a.soort];
+  const kop = wat === 'nieuw' ? 'Nieuwe afspraak via de website' : wat === 'verzet' ? 'Afspraak verzet door de klant' : 'Afspraak geannuleerd door de klant';
+  return emailLayout({
+    heading: kop,
+    preheader: `${info.label}, ${momentTekst(a.start)}, ${a.bedrijf || a.naam}`,
+    bodyHtml: `
+      ${emailGegevens([
+        ['Soort', escapeHtml(info.label)],
+        ['Wanneer', escapeHtml(`${momentTekst(a.start)} tot ${eindTijd(a.eind)}`)],
+        ...(oudeStart ? [['Was', `<span style="text-decoration:line-through;color:#8a8785;">${escapeHtml(momentTekst(oudeStart))}</span>`] as [string, string]] : []),
+        ...(a.locatie ? [['Waar', escapeHtml(a.locatie)] as [string, string]] : []),
+        ['Naam', escapeHtml(a.naam)],
+        ...(a.bedrijf ? [['Bedrijf', escapeHtml(a.bedrijf)] as [string, string]] : []),
+        ['E-mail', `<a href="mailto:${escapeHtml(a.email)}" style="color:#1c1c1c;">${escapeHtml(a.email)}</a>`],
+        ...(a.telefoon ? [['Telefoon', `<a href="tel:${escapeHtml(a.telefoon.replace(/[^0-9+]/g, ''))}" style="color:#1c1c1c;font-weight:700;text-decoration:none;">${escapeHtml(a.telefoon)}</a>`] as [string, string]] : []),
+        ...(a.aantal_medewerkers ? [['Medewerkers', escapeHtml(a.aantal_medewerkers)] as [string, string]] : []),
+        ...(a.branche ? [['Branche', escapeHtml(a.branche)] as [string, string]] : []),
+        ...(a.bron ? [['Herkomst', escapeHtml(a.bron)] as [string, string]] : []),
+      ])}
+      ${a.opmerking ? `<p style="margin:18px 0 0;"><strong style="color:#1c1c1c;">Opmerking</strong></p><div style="margin:6px 0 0;padding:12px 16px;background-color:#f6f5f4;border-radius:10px;color:#1c1c1c;font-size:14px;">${escapeHtml(a.opmerking).replace(/\n/g, '<br/>')}</div>` : ''}
+      ${knop('Open de afspraken', `${basis()}/dashboard/afspraken`)}
+    `,
+  });
+}
+
 export async function mailJessi(a: MailAfspraak, wat: 'nieuw' | 'verzet' | 'geannuleerd', oudeStart?: Date): Promise<boolean> {
   const info = SOORT_INFO[a.soort];
   const kop = wat === 'nieuw' ? 'Nieuwe afspraak via de website' : wat === 'verzet' ? 'Afspraak verzet door de klant' : 'Afspraak geannuleerd door de klant';
   const regel = (label: string, waarde: string | null) =>
     waarde ? `<p style="margin:6px 0 0;"><strong style="color:#1c1c1c;">${label}:</strong> ${escapeHtml(waarde)}</p>` : '';
-  const html = emailLayout({
-    heading: kop,
-    preheader: `${info.label}, ${momentTekst(a.start)}, ${a.bedrijf || a.naam}`,
-    bodyHtml: `
-      ${regel('Soort', info.label)}
-      ${regel('Wanneer', `${momentTekst(a.start)} tot ${eindTijd(a.eind)}`)}
-      ${oudeStart ? regel('Was', momentTekst(oudeStart)) : ''}
-      ${regel('Waar', a.locatie)}
-      ${regel('Naam', a.naam)}
-      ${regel('Bedrijf', a.bedrijf)}
-      ${regel('E-mail', a.email)}
-      ${regel('Telefoon', a.telefoon)}
-      ${regel('Medewerkers', a.aantal_medewerkers)}
-      ${regel('Branche', a.branche)}
-      ${a.opmerking ? `<p style="margin:10px 0 0;"><strong style="color:#1c1c1c;">Opmerking:</strong><br/>${escapeHtml(a.opmerking).replace(/\n/g, '<br/>')}</p>` : ''}
-      ${regel('Herkomst', a.bron)}
-      <p style="margin:18px 0 0;">${knop('Open de afspraken', `${basis()}/dashboard/afspraken`)}</p>
-    `,
-  });
+  const html = afspraakMeldingHtml(a, wat, oudeStart);
   const res = await sendEmail({
     to: env.notifyEmail,
     replyTo: a.email,

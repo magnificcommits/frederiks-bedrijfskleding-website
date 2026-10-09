@@ -145,7 +145,7 @@ function sorteerMaten(maten: string[]): string[] {
  * Kleurnamen opschonen. De leveranciersdata bevat codes als "9504 - navy\black"
  * en "marine/zwart 1620"; die willen bezoekers niet zien.
  */
-function schoneKleur(v: string): string {
+export function schoneKleur(v: string): string {
   // Eerst de vaste lijst: "0404 - Black\Black" wordt "Zwart", "9504 - Navy\Black" wordt "Marine/zwart".
   const u = normaliseerKleur(v);
   if (u.naam && (u.zeker || u.nieuw)) return u.naam;
@@ -318,4 +318,32 @@ export async function alleProductPaden(): Promise<{ categorie: string; slug: str
   return producten
     .filter((p) => p.categorieSlug)
     .map((p) => ({ categorie: p.categorieSlug as string, slug: p.slug }));
+}
+
+/**
+ * Kleuren, maten en kleurfoto's voor de artikelen in een offertemandje. Alleen
+ * publieke catalogusvelden; geen prijzen of voorraad.
+ */
+export async function mandGegevens(ids: string[]): Promise<Record<string, { kleuren: string[]; maten: string[]; kleurFotos: Record<string, string> }>> {
+  const sb = kmsAdmin();
+  if (!sb || !ids.length) return {};
+  const { data } = await sb
+    .from('producten')
+    .select(`${VELDEN}, product_varianten(maat, kleur), product_kleur_afbeeldingen(kleur, afbeelding_url)`)
+    .eq('actief', true)
+    .in('id', ids);
+  type MetFotos = Rij & { product_kleur_afbeeldingen?: { kleur: string | null; afbeelding_url: string | null }[] | null };
+  const uit: Record<string, { kleuren: string[]; maten: string[]; kleurFotos: Record<string, string> }> = {};
+  for (const r of (data as MetFotos[]) ?? []) {
+    const p = naarProduct(r);
+    const kleurFotos: Record<string, string> = {};
+    for (const k of r.product_kleur_afbeeldingen ?? []) {
+      const url = (k.afbeelding_url ?? '').trim();
+      if (!k.kleur || !isFotoUrl(url)) continue;
+      const naam = schoneKleur(k.kleur);
+      if (!kleurFotos[naam]) kleurFotos[naam] = url;
+    }
+    uit[r.id] = { kleuren: p.kleuren, maten: p.maten, kleurFotos };
+  }
+  return uit;
 }

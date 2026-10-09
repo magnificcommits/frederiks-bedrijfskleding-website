@@ -1,4 +1,4 @@
-import { escapeHtml } from '@/lib/email';
+import { emailKnop, escapeHtml } from '@/lib/email';
 import { env } from '@/lib/env';
 import { bedrijf } from '@/content/bedrijf';
 import { formatEuro } from '@/lib/format';
@@ -51,9 +51,9 @@ export function documentMailLayout({ soort, nummer, preheader, bodyHtml }: { soo
   const logo = `${documentBasisUrl()}/documenten/frederiks-logo-mail.png`;
   return `
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${MIST};margin:0;padding:24px 12px;font-family:${FONT};">
-  <tr><td align="center">
-    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background-color:#ffffff;border:1px solid ${LIJN};border-radius:14px;overflow:hidden;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${MIST};margin:0;font-family:${FONT};">
+  <tr><td align="center" style="padding:24px 10px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid ${LIJN};border-radius:14px;overflow:hidden;">
       <tr><td style="padding:28px 32px 0;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
           <tr>
@@ -82,11 +82,9 @@ export function documentMailLayout({ soort, nummer, preheader, bodyHtml }: { soo
 </table>`;
 }
 
-/** Knop die ook in Outlook een knop blijft. */
+/** Knop die ook in Outlook een knop blijft (zelfde knop als in de andere mails). */
 function knop(tekst: string, href: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 0;"><tr><td bgcolor="${INK}" style="border-radius:8px;background-color:${INK};">
-    <a href="${escapeHtml(href)}" style="display:inline-block;padding:12px 22px;font-family:${FONT};font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">${escapeHtml(tekst)}</a>
-  </td></tr></table>`;
+  return emailKnop(tekst, href, { marge: '24px 0 0' });
 }
 
 type MailRegel = {
@@ -225,7 +223,7 @@ export function factuurMailHtml(f: FactuurMailData): string {
     f.status === 'betaald'
       ? `<div style="margin:20px 0 0;padding:14px 18px;border:2px solid ${INK};border-radius:8px;">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:${ORANJE_DONKER};">Betaald</div>
-          <div style="margin-top:4px;font-size:15px;color:${INK};">Deze factuur is al betaald${f.betaaldatum ? ` op ${escapeHtml(datumLang(f.betaaldatum))}` : ''}. Dank u wel.</div>
+          <div style="margin-top:4px;font-size:15px;color:${INK};">Deze factuur is al betaald${f.betaaldatum ? ` op ${escapeHtml(datumLang(f.betaaldatum))}` : ''}. Bedankt!</div>
         </div>`
       : `<div style="margin:20px 0 0;padding:16px 20px;border:2px solid ${INK};border-radius:8px;">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:${ORANJE_DONKER};">Te betalen</div>

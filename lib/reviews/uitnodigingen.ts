@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { env } from '@/lib/env';
 import { site } from '@/content/site';
-import { emailLayout, escapeHtml, sendEmail } from '@/lib/email';
+import { emailKnop, emailLayout, escapeHtml, sendEmail } from '@/lib/email';
 import { afmeldUrl } from '@/lib/kms/campagneAfmelden';
 import { NPS_ORDERSTATUSSEN } from '@/lib/reviews/npsStatussen';
 import { getReviewInstellingen } from '@/lib/reviews/reviews';
@@ -161,7 +161,7 @@ function basis(): string {
 
 export const klikUrl = (token: string) => `${basis()}/r/${encodeURIComponent(token)}`;
 
-function mailHtml(r: { token: string; naam: string | null; email: string }): string {
+export function mailHtml(r: { token: string; naam: string | null; email: string }): string {
   const voornaam = (r.naam ?? '').trim().split(/\s+/)[0];
   return emailLayout({
     heading: 'Wil je iets over ons vertellen?',
@@ -169,8 +169,8 @@ function mailHtml(r: { token: string; naam: string | null; email: string }): str
     bodyHtml: `
       <p style="margin:0;">${voornaam ? `Hoi ${escapeHtml(voornaam)},` : 'Hoi,'}</p>
       <p style="margin:14px 0 0;">Fijn dat we jullie bedrijfskleding mochten verzorgen. Andere ondernemers in de regio kiezen hun leverancier vaak op basis van reviews op Google. Zou je in een paar zinnen willen vertellen hoe het je beviel?</p>
-      <p style="margin:22px 0;"><a href="${escapeHtml(klikUrl(r.token))}" style="display:inline-block;background-color:#ec6726;color:#1c1c1c;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:8px;">Schrijf een review op Google</a></p>
-      <p style="margin:0;">Ging er iets niet goed? Laat het me dan liever direct weten, dan los ik het op.</p>
+      ${emailKnop('Schrijf een review op Google', klikUrl(r.token))}
+      <p style="margin:22px 0 0;">Ging er iets niet goed? Laat het me dan liever direct weten, dan los ik het op.</p>
       <p style="margin:18px 0 0;">Dank je wel,<br/>Jessi Frederiks<br/>${escapeHtml(site.phone)}</p>
       <p style="margin:22px 0 0;font-size:12px;color:#8a8785;">Liever geen mails meer van ons? <a href="${escapeHtml(afmeldUrl(r.email))}" style="color:#8a8785;">Afmelden</a>.</p>
     `,

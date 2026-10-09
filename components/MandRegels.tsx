@@ -59,7 +59,10 @@ export function MandRegels() {
                     {r.kleuren.length > 0 ? (
                       <select
                         value={r.kleur ?? ''}
-                        onChange={(e) => werkBij(r.sleutel, { kleur: e.target.value || null })}
+                        onChange={(e) => {
+                          const k = e.target.value || null;
+                          werkBij(r.sleutel, { kleur: k, foto: (k && r.kleurFotos?.[k]) || r.foto });
+                        }}
                         aria-label={`Kleur voor ${naam}`}
                         className={`${veld} ${r.kleur ? '' : 'border-amber-300'}`}
                       >
@@ -67,13 +70,7 @@ export function MandRegels() {
                         {r.kleuren.map((k) => <option key={k} value={k}>{k}</option>)}
                       </select>
                     ) : (
-                      <input
-                        value={r.kleur ?? ''}
-                        onChange={(e) => werkBij(r.sleutel, { kleur: e.target.value.slice(0, 60) || null })}
-                        placeholder="Kleur"
-                        aria-label={`Kleur voor ${naam}`}
-                        className={`${veld} w-36`}
-                      />
+                      <span className="inline-flex min-h-[36px] items-center text-sm text-warm">Kleur: in overleg</span>
                     )}
                     <select
                       value={r.logo ?? ''}
@@ -113,7 +110,11 @@ export function MandRegels() {
                   </div>
                 )}
                 <p className="mt-1.5 text-xs text-warm">
-                  {stuks(r) > 0 ? `${stuks(r)} stuks` : 'Aantallen nog open, mag ook.'}
+                  {stuks(r) > 0 ? (
+                    <><span className="font-semibold text-ink-900">{stuks(r)}</span> stuks</>
+                  ) : (
+                    'Nog geen aantallen? Vul in wat je weet. De rest stemmen we samen af, eventueel na het passen.'
+                  )}
                 </p>
               </div>
             </li>
@@ -121,7 +122,7 @@ export function MandRegels() {
         })}
       </ul>
       <p className="mt-3 text-xs text-warm">
-        Kleur, maten en logo mag je openlaten. We rekenen alles door in één voorstel, met jouw staffel en bedrukking erbij.
+        Weet je kleur, maten of logo nog niet? Laat ze open. We rekenen alles door in één voorstel, met jouw staffel en bedrukking erbij.
       </p>
     </div>
   );

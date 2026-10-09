@@ -1,5 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
-import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
+import { sendEmail, emailGegevens, emailKader, emailLayout, escapeHtml } from '@/lib/email';
 import { voegFactuurregelToe } from '@/lib/kms/facturen';
 import { maakTaak } from '@/lib/kms/taken';
 import { MIGRATIE_MELDING, getBeloning, getSpaarInstellingenUitgebreid, listRegels, loyaliteitActief, ontbreekt } from '@/lib/kms/sparenData';
@@ -159,6 +159,23 @@ export async function vervalAanbrenging(id: string): Promise<boolean> {
 // Inwisselen
 // ---------------------------------------------------------------------------
 
+/** Melding aan Frederiks: een klant vraagt via het portaal een beloning aan. */
+export function spaarAanvraagMeldingHtml(d: { naam: string; omschrijving: string; punten: number; kortingEuro: number; door: string; notitie: string | null }): string {
+  return emailLayout({
+    heading: 'Nieuwe spaaraanvraag',
+    preheader: `${d.naam} wil ${d.omschrijving} inwisselen`,
+    bodyHtml: `<p style="margin:14px 0 0;"><strong style="color:#1c1c1c;">${escapeHtml(d.naam)}</strong> heeft via het portaal een beloning aangevraagd.</p>
+${emailGegevens([
+  ['Beloning', escapeHtml(d.omschrijving)],
+  ['Punten', escapeHtml(d.punten.toLocaleString('nl-NL'))],
+  ['Waarde', escapeHtml(euro(d.kortingEuro))],
+  ['Aangevraagd door', escapeHtml(d.door)],
+])}
+${d.notitie ? emailKader(`<strong>Toelichting:</strong> ${escapeHtml(d.notitie)}`) : ''}
+<p style="margin:18px 0 0;">Keur de aanvraag goed of af in het dashboard onder Sparen, Inwisselingen.</p>`,
+  });
+}
+
 export async function vraagInwisselingAan(input: {
   orgId: string;
   beloningId: string | null;
@@ -236,14 +253,7 @@ export async function vraagInwisselingAan(input: {
 
   if (input.bron === 'portaal') {
     const { naam } = await orgNaam(input.orgId);
-    const html = emailLayout({
-      heading: 'Nieuwe spaaraanvraag',
-      preheader: `${naam} wil ${omschrijving} inwisselen`,
-      bodyHtml: `<p><strong>${escapeHtml(naam)}</strong> heeft via het portaal een beloning aangevraagd.</p>
-<p>Beloning: ${escapeHtml(omschrijving)}<br/>Punten: ${punten.toLocaleString('nl-NL')}<br/>Waarde: ${escapeHtml(euro(kortingEuro))}<br/>Aangevraagd door: ${escapeHtml(input.door)}</p>
-${input.notitie ? `<p>Toelichting: ${escapeHtml(input.notitie)}</p>` : ''}
-<p>Keur de aanvraag goed of af in het dashboard onder Sparen, Inwisselingen.</p>`,
-    });
+    const html = spaarAanvraagMeldingHtml({ naam, omschrijving, punten, kortingEuro, door: input.door, notitie: input.notitie ?? null });
     // Mail is een extraatje: lukt het niet (Resend nog niet ingesteld), dan staat de aanvraag gewoon in het dashboard.
     await sendEmail({ to: inst.meldingEmail, subject: `Spaaraanvraag van ${naam}`, html }).catch(() => ({ sent: false }));
   } else if (input.directGoedkeuren) {
@@ -310,6 +320,18 @@ async function koppelOpvolging(inwisselId: string, voorkeur: 'auto' | 'taak' | '
   return '';
 }
 
+/** Mail aan de klant: spaarbeloning goedgekeurd of afgewezen. */
+export function spaarBesluitMailHtml(d: { goedgekeurd: boolean; naam: string; wat: string; reden: string; punten: number }): string {
+  const groet = '<p style="margin:20px 0 0;">Groet,<br/>Jessi</p>';
+  return emailLayout({
+    heading: d.goedgekeurd ? 'Je spaarbeloning is goedgekeurd' : 'Over je spaaraanvraag',
+    preheader: d.wat,
+    bodyHtml: d.goedgekeurd
+      ? `<p style="margin:14px 0 0;">Goed nieuws voor ${escapeHtml(d.naam)}. Je aanvraag voor <strong style="color:#1c1c1c;">${escapeHtml(d.wat)}</strong> is goedgekeurd. Wij regelen de rest en laten het weten als het verwerkt is.</p>${groet}`
+      : `<p style="margin:14px 0 0;">Je aanvraag voor <strong style="color:#1c1c1c;">${escapeHtml(d.wat)}</strong> hebben we helaas niet goedgekeurd.</p>${emailKader(`<strong>Reden:</strong> ${escapeHtml(d.reden)}`)}<p style="margin:16px 0 0;">De ${d.punten.toLocaleString('nl-NL')} punten staan weer op jullie saldo. Vragen? Bel of mail ons gerust.</p>${groet}`,
+  });
+}
+
 export async function zetInwisselStatus(
   id: string,
   status: InwisselStatus,
@@ -359,14 +381,7 @@ export async function zetInwisselStatus(
     const naar = r.aangevraagd_door && r.aangevraagd_door.includes('@') ? r.aangevraagd_door : email;
     if (naar) {
       const wat = r.beloning_naam || r.omschrijving || 'je spaarbeloning';
-      const html = emailLayout({
-        heading: status === 'goedgekeurd' ? 'Je spaarbeloning is goedgekeurd' : 'Over je spaaraanvraag',
-        preheader: wat,
-        bodyHtml:
-          status === 'goedgekeurd'
-            ? `<p>Goed nieuws voor ${escapeHtml(naam)}. Je aanvraag voor <strong>${escapeHtml(wat)}</strong> is goedgekeurd. Wij regelen de rest en laten het weten als het verwerkt is.</p><p>Groet, Jessi</p>`
-            : `<p>Je aanvraag voor <strong>${escapeHtml(wat)}</strong> hebben we helaas niet goedgekeurd.</p><p>Reden: ${escapeHtml(opties.reden ?? '')}</p><p>De ${Number(r.punten).toLocaleString('nl-NL')} punten staan weer op jullie saldo. Vragen? Bel of mail ons gerust.</p><p>Groet, Jessi</p>`,
-      });
+      const html = spaarBesluitMailHtml({ goedgekeurd: status === 'goedgekeurd', naam, wat, reden: opties.reden ?? '', punten: Number(r.punten) });
       const m = await sendEmail({ to: naar, subject: status === 'goedgekeurd' ? 'Spaarbeloning goedgekeurd' : 'Over je spaaraanvraag', html }).catch(() => ({ sent: false }));
       melding += m.sent ? ' Klant is gemaild.' : ' Mail is niet verstuurd (e-mail nog niet ingesteld).';
     } else {
@@ -380,6 +395,35 @@ export async function zetInwisselStatus(
 // Saldo-overzicht mailen
 // ---------------------------------------------------------------------------
 
+/** Saldo-overzicht voor de klant. */
+export function spaaroverzichtMailHtml(d: {
+  naam: string;
+  saldo: number;
+  euroWaarde: number;
+  niveau: string | null;
+  voordelen: string[];
+  volgendNiveau: string | null;
+  nogTeGaan: string;
+  vervaltBinnenkort: number;
+  vervaltOp: string | null;
+}): string {
+  return emailLayout({
+    heading: 'Jullie spaaroverzicht',
+    preheader: `${d.saldo.toLocaleString('nl-NL')} punten, ${euro(d.euroWaarde)}`,
+    bodyHtml: `<p style="margin:0;">Hallo ${escapeHtml(d.naam)},</p>
+<p style="margin:14px 0 0;">Zo staat het met jullie spaarpunten.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;"><tr><td style="padding:16px 18px;border:2px solid #1c1c1c;border-radius:10px;">
+  <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#b04318;">Jullie saldo</div>
+  <div style="margin-top:2px;font-size:26px;font-weight:800;color:#1c1c1c;line-height:1.25;">${d.saldo.toLocaleString('nl-NL')} punten</div>
+  <div style="font-size:14px;color:#1c1c1c;">goed voor ${escapeHtml(euro(d.euroWaarde))}</div>
+</td></tr></table>
+${d.niveau ? `<p style="margin:16px 0 0;">Niveau: <strong style="color:#1c1c1c;">${escapeHtml(d.niveau)}</strong>${d.voordelen.length ? `. Daarbij hoort: ${escapeHtml(d.voordelen.join(', '))}.` : '.'}</p>` : ''}
+${d.volgendNiveau ? `<p style="margin:8px 0 0;">Nog ${escapeHtml(d.nogTeGaan)} tot niveau ${escapeHtml(d.volgendNiveau)}.</p>` : ''}
+${d.vervaltBinnenkort > 0 && d.vervaltOp ? emailKader(`<strong>Let op:</strong> ${d.vervaltBinnenkort.toLocaleString('nl-NL')} punten vervallen op ${new Date(d.vervaltOp).toLocaleDateString('nl-NL')} als je ze niet gebruikt.`, 'let-op') : ''}
+<p style="margin:16px 0 0;">In het klantportaal zie je de beloningen en kun je ze aanvragen.</p><p style="margin:20px 0 0;">Groet,<br/>Jessi</p>`,
+  });
+}
+
 export async function mailSpaaroverzicht(orgId: string): Promise<Uitkomst> {
   const { naam, email } = await orgNaam(orgId);
   if (!email) return { ok: false, fout: 'Deze klant heeft geen algemeen e-mailadres of factuuradres.' };
@@ -390,15 +434,16 @@ export async function mailSpaaroverzicht(orgId: string): Promise<Uitkomst> {
       ? `${Math.ceil(stand.niveau.nogTeGaan).toLocaleString('nl-NL')} punten`
       : `${euro(stand.niveau.nogTeGaan)} aan bestellingen`;
   const voordelen = niveauVoordelen(stand.niveau.huidig);
-  const html = emailLayout({
-    heading: 'Jullie spaaroverzicht',
-    preheader: `${stand.saldo.toLocaleString('nl-NL')} punten, ${euro(stand.euroWaarde)}`,
-    bodyHtml: `<p>Hallo ${escapeHtml(naam)},</p>
-<p>Jullie hebben op dit moment <strong>${stand.saldo.toLocaleString('nl-NL')} punten</strong> gespaard, goed voor ${escapeHtml(euro(stand.euroWaarde))}.</p>
-${stand.niveau.huidig ? `<p>Niveau: <strong>${escapeHtml(stand.niveau.huidig.naam)}</strong>${voordelen.length ? `. Daarbij hoort: ${escapeHtml(voordelen.join(', '))}.` : '.'}</p>` : ''}
-${stand.niveau.volgende ? `<p>Nog ${escapeHtml(nogTeGaan)} tot niveau ${escapeHtml(stand.niveau.volgende.naam)}.</p>` : ''}
-${stand.vervaltBinnenkort > 0 && stand.vervaltOp ? `<p>Let op: ${stand.vervaltBinnenkort.toLocaleString('nl-NL')} punten vervallen op ${new Date(stand.vervaltOp).toLocaleDateString('nl-NL')} als je ze niet gebruikt.</p>` : ''}
-<p>In het klantportaal zie je de beloningen en kun je ze aanvragen.</p><p>Groet, Jessi</p>`,
+  const html = spaaroverzichtMailHtml({
+    naam,
+    saldo: stand.saldo,
+    euroWaarde: stand.euroWaarde,
+    niveau: stand.niveau.huidig?.naam ?? null,
+    voordelen,
+    volgendNiveau: stand.niveau.volgende?.naam ?? null,
+    nogTeGaan,
+    vervaltBinnenkort: stand.vervaltBinnenkort,
+    vervaltOp: stand.vervaltOp ?? null,
   });
   const m = await sendEmail({ to: email, subject: 'Jullie spaaroverzicht bij Frederiks', html }).catch(() => ({ sent: false, error: 'Mislukt' }));
   if (!m.sent) return { ok: false, fout: 'De mail is niet verstuurd: e-mail is nog niet ingesteld (Resend).' };

@@ -6,7 +6,8 @@ import { getMijnToegang } from '@/lib/portaal/team';
 import { getServerSupabase } from '@/lib/portaal/supabaseServer';
 import { verwerkDrukproefGoedkeuring } from '@/lib/kms/drukproeven';
 import { eisRijen } from '@/lib/dbFout';
-import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
+import { sendEmail } from '@/lib/email';
+import { drukproefBesluitPortaalHtml } from '@/lib/mailSjablonen';
 import { env } from '@/lib/env';
 
 /**
@@ -60,14 +61,7 @@ export async function beslisDrukproefPortaalActie(formData: FormData) {
   await sendEmail({
     to: env.notifyEmail,
     subject: `${heading} in het portaal: ${naam}`,
-    html: emailLayout({
-      heading,
-      preheader: `${toegang.email ?? 'Een klant'} heeft gereageerd op een drukproef.`,
-      bodyHtml: `
-        <p style="margin:0;">${escapeHtml(toegang.email ?? 'Een klant')} heeft drukproef <strong>${escapeHtml(naam)}</strong> ${akkoord ? 'goedgekeurd' : 'afgekeurd'} in het klantportaal.</p>
-        ${opmerking ? `<p style="margin:12px 0 0;"><strong>Opmerking:</strong><br/>${escapeHtml(opmerking)}</p>` : ''}
-      `,
-    }),
+    html: drukproefBesluitPortaalHtml({ akkoord, wie: toegang.email ?? null, naam, opmerking: opmerking || null }),
   }).catch(() => {});
 
   await logPortaal('drukproef_beoordeeld');

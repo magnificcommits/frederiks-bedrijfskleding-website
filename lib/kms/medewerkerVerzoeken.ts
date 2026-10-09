@@ -50,6 +50,15 @@ export async function aantalWachtVerzoeken(): Promise<number> {
   return count ?? 0;
 }
 
+/** HTML van het bericht aan een werknemer over een verwerkt verzoek. */
+export function medewerkerBerichtHtml(tekst: string): string {
+  return emailLayout({
+    heading: 'Bericht over je bedrijfskleding',
+    preheader: tekst,
+    bodyHtml: `<p style="margin:14px 0 0;color:#1c1c1c;">${escapeHtml(tekst)}</p><p style="margin:18px 0 0;">Vragen? Bel <strong style="color:#1c1c1c;">${escapeHtml(site.phone)}</strong> of mail naar ${escapeHtml(site.email)}.</p><p style="margin:20px 0 0;">Groet,<br/>Frederiks Bedrijfskleding</p>`,
+  });
+}
+
 async function meldNaarMedewerker(sb: SbAdmin, orgId: string, medewerkerId: string | null, email: string | null, tekst: string): Promise<void> {
   if (medewerkerId) {
     await sb.from('portaal_meldingen').insert({ organisatie_id: orgId, medewerker_id: medewerkerId, tekst });
@@ -58,11 +67,7 @@ async function meldNaarMedewerker(sb: SbAdmin, orgId: string, medewerkerId: stri
     await sendEmail({
       to: email.trim(),
       subject: 'Bericht van Frederiks Bedrijfskleding',
-      html: emailLayout({
-        heading: 'Bericht over je bedrijfskleding',
-        preheader: tekst,
-        bodyHtml: `<p style="margin:0;">${escapeHtml(tekst)}</p><p style="margin:14px 0 0;">Vragen? Bel of mail <strong style="color:#1c1c1c;">${escapeHtml(site.phone)}</strong>.</p>`,
-      }),
+      html: medewerkerBerichtHtml(tekst),
     }).catch(() => {});
   }
 }

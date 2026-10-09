@@ -3,7 +3,8 @@ import { getServerSupabase } from '@/lib/portaal/supabaseServer';
 import { getPortaalUser, getMijnOrganisatie } from '@/lib/portaal/queries';
 import { getMijnToegang } from '@/lib/portaal/team';
 import { getHuisstijl } from '@/lib/portaal/huisstijl';
-import { sendEmail, escapeHtml } from '@/lib/email';
+import { sendEmail } from '@/lib/email';
+import { ontwerpaanvraagMeldingHtml } from '@/lib/mailSjablonen';
 import { env } from '@/lib/env';
 import { getVertaler } from '@/lib/i18n/portaal/server';
 
@@ -60,16 +61,10 @@ export async function maakOntwerpAanvraag(
 
   // Notificatie naar Frederiks (best effort; faalt de aanvraag nooit).
   const huisstijl = await getHuisstijl().catch(() => null);
-  const lijst = regels.map((r) => `- ${escapeHtml(r.item_naam)}${r.kleur ? `, ${escapeHtml(r.kleur)}` : ''}: ${r.aantal}x`).join('<br>');
   await sendEmail({
     to: env.notifyEmail,
     subject: `Nieuwe ontwerpaanvraag via portaal: ${org.naam}`,
-    html: `<h3>Ontwerpaanvraag via de pakketsamensteller (klantportaal)</h3>
-      <p><strong>Bedrijf:</strong> ${escapeHtml(org.naam)}</p>
-      <p><strong>Door:</strong> ${escapeHtml(door)}</p>
-      ${huisstijl?.logoUrl ? `<p><strong>Logo:</strong> <a href="${escapeHtml(huisstijl.logoUrl)}">${escapeHtml(huisstijl.logoUrl)}</a></p>` : ''}
-      <p><strong>Onderdelen:</strong><br>${lijst}</p>
-      <p>De concept-order staat klaar in het dashboard om uit te werken tot producten, maten en een offerte.</p>`,
+    html: ontwerpaanvraagMeldingHtml({ organisatie: org.naam, door, logoUrl: huisstijl?.logoUrl ?? null, regels }),
   }).catch(() => {});
 
   return { ok: true };

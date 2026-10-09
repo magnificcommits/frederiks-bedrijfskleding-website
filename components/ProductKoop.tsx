@@ -103,6 +103,7 @@ export function ProductKoop({
       foto: (kleur && kleurFotos[kleur]) || p.foto,
       kleuren: p.kleuren,
       maten: p.maten,
+      kleurFotos,
       kleur,
       aantallen,
       aantalZonderMaat: zonderMaat,

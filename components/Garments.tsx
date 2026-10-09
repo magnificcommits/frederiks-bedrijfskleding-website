@@ -34,14 +34,16 @@ export function viewFor(pos: string): 'front' | 'back' {
 
 /** Bounding box (in viewBox-eenheden, 0-240 x 0-260) voor het logo per kledingstuk en positie. */
 export function logoBox(type: string, pos: string) {
+  // Links en rechts zijn die van de drager: op een vooraanzicht staat "borst
+  // links" dus rechts in beeld, net als op de productfoto's.
   if (type === 'werkbroek') {
     return pos === 'dijbeen-rechts'
-      ? { x: 132, y: 104, w: 30, h: 24 }
-      : { x: 78, y: 104, w: 30, h: 24 };
+      ? { x: 78, y: 104, w: 30, h: 24 }
+      : { x: 132, y: 104, w: 30, h: 24 };
   }
   if (pos === 'rug') return { x: 74, y: 84, w: 92, h: 78 };
-  if (pos === 'borst-rechts') return { x: 138, y: 86, w: 36, h: 27 };
-  return { x: 66, y: 86, w: 36, h: 27 };
+  if (pos === 'borst-rechts') return { x: 66, y: 86, w: 36, h: 27 };
+  return { x: 138, y: 86, w: 36, h: 27 };
 }
 
 export function Garment({

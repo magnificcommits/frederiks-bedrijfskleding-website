@@ -338,7 +338,7 @@ export async function geefPortaalToegang(
  */
 /** Onderwerp en HTML van de uitnodiging. Los, zodat het KMS hem als voorbeeld kan tonen. */
 export async function portaalUitnodigingMail(email: string, naam: string | null, klant: string | null): Promise<{ subject: string; html: string; inlog: string }> {
-  const [{ emailLayout, escapeHtml }, { site }, { appUrl }] = await Promise.all([import('@/lib/email'), import('@/content/site'), import('@/lib/appUrl')]);
+  const [{ emailKnop, emailLayout, escapeHtml }, { site }, { appUrl }] = await Promise.all([import('@/lib/email'), import('@/content/site'), import('@/lib/appUrl')]);
   const inlog = `${appUrl()}/portaal/login`;
   return {
     inlog,
@@ -349,20 +349,21 @@ export async function portaalUitnodigingMail(email: string, naam: string | null,
       bodyHtml: `
         <p style="margin:0;">${naam ? `Hallo ${escapeHtml(naam)},` : 'Hallo,'}</p>
         <p style="margin:14px 0 0;">Je hebt toegang gekregen tot het klantportaal van Frederiks Bedrijfskleding${klant ? ` voor <strong>${escapeHtml(klant)}</strong>` : ''}. Daar bestel je kleding binnen je budget, volg je bestellingen en keur je drukproeven goed.</p>
-        <p style="margin:22px 0;"><a href="${escapeHtml(inlog)}" style="display:inline-block;background:#f06a20;color:#111;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:8px;">Naar het portaal</a></p>
-        <p style="margin:0;"><strong>Zo log je in:</strong></p>
+        ${emailKnop('Naar het portaal', inlog)}
+        <p style="margin:24px 0 0;"><strong style="color:#1c1c1c;">Zo log je in</strong></p>
         <ol style="margin:6px 0 0;padding-left:20px;">
           <li>Vul op de inlogpagina dit e-mailadres in: <strong>${escapeHtml(email)}</strong>.</li>
           <li>Je krijgt direct een mail met een inloglink en een code.</li>
           <li>Klik op de link, of typ de code over. Een wachtwoord is niet nodig.</li>
         </ol>
-        <div style="margin:18px 0 0;padding:14px 16px;border:1px solid #e5e2dc;border-radius:10px;background:#faf8f5;">
-          <p style="margin:0;"><strong>Zet het portaal als app op je telefoon</strong></p>
+        <div style="margin:20px 0 0;padding:14px 16px;border:1px solid #e4e2e0;border-radius:10px;background-color:#f6f5f4;">
+          <p style="margin:0;"><strong style="color:#1c1c1c;">Zet het portaal als app op je telefoon</strong></p>
           <p style="margin:6px 0 0;"><strong>iPhone:</strong> open het portaal in Safari, tik op het Deel-icoon (vierkantje met pijl omhoog) en kies <em>Zet op beginscherm</em>.</p>
           <p style="margin:4px 0 0;"><strong>Android:</strong> open het portaal in Chrome, tik op de drie puntjes en kies <em>App installeren</em>.</p>
-          <p style="margin:6px 0 0;">Daarna open je het met één tik, net als een gewone app. <a href="${escapeHtml(`${appUrl()}/portaal/app`)}" style="color:#b4520f;">Stap voor stap uitgelegd</a></p>
+          <p style="margin:6px 0 0;">Daarna open je het met één tik, net als een gewone app. <a href="${escapeHtml(`${appUrl()}/portaal/app`)}" style="color:#b04318;">Stap voor stap uitgelegd</a></p>
         </div>
-        <p style="margin:14px 0 0;">Vragen? Bel of app gerust: <strong>${escapeHtml(site.phone)}</strong>.</p>
+        <p style="margin:18px 0 0;">Vragen? Bel of app gerust: <strong style="color:#1c1c1c;">${escapeHtml(site.phone)}</strong>.</p>
+        <p style="margin:20px 0 0;">Groet,<br/>Jessi Frederiks</p>
       `,
     }),
   };

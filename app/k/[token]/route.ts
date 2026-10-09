@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { kmsAdmin, dashAuthed } from '@/lib/kms/adminClient';
 import { env } from '@/lib/env';
-import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
+import { sendEmail } from '@/lib/email';
+import { briefGescandHtml } from '@/lib/mailSjablonen';
 import { meldAdres } from '@/content/kennismaking';
 import {
   dashboardProspectUrl,
@@ -112,21 +113,19 @@ async function verwerkScan(sb: NonNullable<ReturnType<typeof kmsAdmin>>, p: Pros
   );
 
   const tel = p.telefoon?.trim();
-  const telLink = tel ? `tel:${tel.replace(/[^0-9+]/g, '')}` : '';
   await sendEmail({
     to: meldAdres(env.notifyEmail),
     subject: `${p.bedrijfsnaam} heeft net je brief gescand${tel ? ` (${tel})` : ''}`,
-    html: emailLayout({
-      heading: `${p.bedrijfsnaam} heeft net je brief gescand`,
-      preheader: tel ? `Bel ze nu het nog vers is: ${tel}` : 'Ze kijken nu naar hun persoonlijke pagina.',
-      bodyHtml: `
-        <p style="margin:0;">Zojuist (${escapeHtml(tijdNL(nu))}) is de QR-code op je brief gescand. Ze kijken nu naar de pagina met hun eigen logo op de kleding.</p>
-        <p style="margin:16px 0 0;font-size:18px;font-weight:700;color:#1c1c1c;">${tel ? `<a href="${escapeHtml(telLink)}" style="color:#1c1c1c;">${escapeHtml(tel)}</a>` : 'Geen telefoonnummer bekend'}</p>
-        <p style="margin:8px 0 0;">${[p.plaats, p.branche].filter(Boolean).map(escapeHtml).join(' &middot; ')}${p.website ? `<br/><a href="${escapeHtml(websiteHref(p.website))}" style="color:#b04318;">${escapeHtml(p.website)}</a>` : ''}</p>
-        <p style="margin:18px 0 0;">Er staat een beltaak voor morgen klaar. Bellen terwijl het nog vers is werkt het best.</p>
-        <p style="margin:18px 0 0;"><a href="${escapeHtml(dashboardProspectUrl(p.id))}" style="display:inline-block;background:#ec6726;color:#1c1c1c;font-weight:700;text-decoration:none;padding:10px 18px;border-radius:8px;">Open prospect</a>
-        &nbsp; <a href="${escapeHtml(kennismakingUrl(p.token))}" style="color:#b04318;">Bekijk wat zij zien</a></p>
-      `,
+    html: briefGescandHtml({
+      bedrijf: p.bedrijfsnaam,
+      tijd: tijdNL(nu),
+      telefoon: tel,
+      plaats: p.plaats,
+      branche: p.branche,
+      website: p.website,
+      websiteHref: p.website ? websiteHref(p.website) : null,
+      prospectUrl: dashboardProspectUrl(p.id),
+      kennismakingUrl: kennismakingUrl(p.token),
     }),
   }).catch(() => ({ sent: false }));
 }

@@ -250,6 +250,8 @@ export const en: Woordenboek = {
     codeFout: 'This code is wrong or has expired. Check the digits, or request a new email.',
     checkMail: 'Check your inbox.',
     mailGestuurd: 'We have sent an email to {email}. Tap the link in the email to log in.',
+    appMailGestuurd: 'We have emailed a code to {email}. Do not tap the button in the email: it opens the browser, not the app.',
+    appCodeLabel: 'Enter the code from the email',
     codeLabel: 'Or enter the code from the email',
     codeUitleg: 'Using the portal as an app on your phone? Enter the code and you will be logged in to the app directly.',
     bezigInloggen: 'Logging in',

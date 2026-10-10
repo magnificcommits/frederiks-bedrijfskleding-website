@@ -261,6 +261,8 @@ export const nl = {
     codeFout: 'Deze code klopt niet of is verlopen. Controleer de cijfers, of vraag een nieuwe mail aan.',
     checkMail: 'Check je mailbox.',
     mailGestuurd: 'We hebben een mail gestuurd naar {email}. Tik op de link in de mail om in te loggen.',
+    appMailGestuurd: 'We hebben een code gemaild naar {email}. Tik niet op de knop in de mail: die opent de browser, niet de app.',
+    appCodeLabel: 'Vul de code uit de mail in',
     codeLabel: 'Of vul de code uit de mail in',
     codeUitleg: 'Gebruik je het portaal als app op je telefoon? Vul dan de code in, dan log je direct in de app in.',
     bezigInloggen: 'Bezig met inloggen',

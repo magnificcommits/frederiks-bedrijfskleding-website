@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { createPortalBrowserClient } from '@/lib/portaal/supabaseBrowser';
 import { useVertaler } from '@/lib/i18n/portaal/client';
 import SsoKnoppen from '@/components/auth/SsoKnoppen';
+import { isStandalone } from '@/lib/pwa/installatie';
 
 export default function PortaalLogin() {
   const { t, rijk } = useVertaler();
@@ -13,6 +14,9 @@ export default function PortaalLogin() {
   const [code, setCode] = useState('');
   const [codeFout, setCodeFout] = useState('');
   const [codeBezig, setCodeBezig] = useState(false);
+  // Als app: de link in de mail opent de browser, dus daar is de code de enige weg.
+  const [app, setApp] = useState(false);
+  useEffect(() => { setApp(isStandalone()); }, []);
 
   useEffect(() => {
     const fout = new URLSearchParams(window.location.search).get('fout');
@@ -89,16 +93,17 @@ export default function PortaalLogin() {
           <>
             <div className="mt-5 rounded-md bg-green-100 px-4 py-3 text-sm text-green-800">
               <p className="font-semibold">{t('login.checkMail')}</p>
-              <p className="mt-1">{rijk('login.mailGestuurd', { email: <span className="break-all font-medium">{email}</span> })}</p>
+              <p className="mt-1">{rijk(app ? 'login.appMailGestuurd' : 'login.mailGestuurd', { email: <span className="break-all font-medium">{email}</span> })}</p>
             </div>
             <form onSubmit={verifieer} className="mt-5 border-t border-line pt-5">
-              <label htmlFor="otp-code" className="block text-sm font-semibold text-ink-900">{t('login.codeLabel')}</label>
-              <p className="mt-1 text-xs text-warm">{t('login.codeUitleg')}</p>
+              <label htmlFor="otp-code" className="block text-sm font-semibold text-ink-900">{t(app ? 'login.appCodeLabel' : 'login.codeLabel')}</label>
+              {!app && <p className="mt-1 text-xs text-warm">{t('login.codeUitleg')}</p>}
               <input
                 id="otp-code"
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
+                autoFocus={app}
                 pattern="[0-9 ]*"
                 maxLength={12}
                 value={code}

@@ -250,6 +250,8 @@ export const de: Woordenboek = {
     codeFout: 'Dieser Code stimmt nicht oder ist abgelaufen. Prüfe die Ziffern oder fordere eine neue Mail an.',
     checkMail: 'Schau in dein Postfach.',
     mailGestuurd: 'Wir haben eine Mail an {email} geschickt. Tippe auf den Link in der Mail, um dich anzumelden.',
+    appMailGestuurd: 'Wir haben einen Code an {email} geschickt. Tippe nicht auf den Button in der Mail: Er öffnet den Browser, nicht die App.',
+    appCodeLabel: 'Gib den Code aus der Mail ein',
     codeLabel: 'Oder gib den Code aus der Mail ein',
     codeUitleg: 'Nutzt du das Portal als App auf dem Handy? Dann gib den Code ein, so meldest du dich direkt in der App an.',
     bezigInloggen: 'Anmeldung läuft',

@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { isStandalone } from '@/lib/pwa/installatie';
 import { createPortalBrowserClient } from '@/lib/portaal/supabaseBrowser';
 import { controleerLinkAanvraag } from '@/app/dashboard/actions';
 import { verifieerAdminCode } from '@/app/dashboard/auth/codeActions';
@@ -13,6 +14,10 @@ export default function AdminLoginForm() {
   const [code, setCode] = useState('');
   const [codeFout, setCodeFout] = useState('');
   const [codeBezig, setCodeBezig] = useState(false);
+  // Als app: de link in de mail opent de browser en logt je daar in, niet in de app.
+  // Daarom vraagt de app om een code en is de code daarna de enige weg.
+  const [app, setApp] = useState(false);
+  useEffect(() => { setApp(isStandalone()); }, []);
 
   /** Inloggen met de code uit de mail: werkt ook in het KMS als app op de iPhone. */
   async function verifieer(e: React.FormEvent) {
@@ -66,16 +71,21 @@ export default function AdminLoginForm() {
       <div>
         <div className="rounded-md bg-green-100 px-4 py-3 text-sm text-green-800">
           <p className="font-semibold">Check je mailbox.</p>
-          <p className="mt-1">We hebben een inloglink gestuurd naar <span className="break-all font-medium">{email}</span>.</p>
+          {app ? (
+            <p className="mt-1">We hebben een code gemaild naar <span className="break-all font-medium">{email}</span>. Tik niet op de knop in de mail: die opent de browser, niet de app.</p>
+          ) : (
+            <p className="mt-1">We hebben een inloglink gestuurd naar <span className="break-all font-medium">{email}</span>.</p>
+          )}
         </div>
         <form onSubmit={verifieer} className="mt-4">
-          <label htmlFor="kms-otp-code" className="block text-sm font-semibold text-ink-900">Of vul de code uit de mail in</label>
-          <p className="mt-1 text-xs text-warm">Nodig als je het KMS als app op je iPhone gebruikt.</p>
+          <label htmlFor="kms-otp-code" className="block text-sm font-semibold text-ink-900">{app ? 'Vul de code uit de mail in' : 'Of vul de code uit de mail in'}</label>
+          {!app && <p className="mt-1 text-xs text-warm">Nodig als je het KMS als app op je telefoon gebruikt.</p>}
           <input
             id="kms-otp-code"
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
+            autoFocus={app}
             pattern="[0-9 ]*"
             maxLength={12}
             value={code}
@@ -97,7 +107,7 @@ export default function AdminLoginForm() {
       <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="naam@frederiks.nl" autoComplete="email"
         className="w-full rounded-md border border-line bg-white px-4 py-3 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" />
       {error && <p className="mt-3 text-sm font-medium text-amber-700">{error}</p>}
-      <button type="submit" disabled={bezig} className="btn-primary mt-3 w-full">{bezig ? 'Versturen' : 'Inloggen met e-maillink'}</button>
+      <button type="submit" disabled={bezig} className="btn-primary mt-3 w-full">{bezig ? 'Versturen' : app ? 'Stuur mij een inlogcode' : 'Inloggen met e-maillink'}</button>
     </form>
     </>
   );

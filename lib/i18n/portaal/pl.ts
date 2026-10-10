@@ -258,6 +258,8 @@ export const pl: Woordenboek = {
     codeFout: 'Ten kod jest błędny albo wygasł. Sprawdź cyfry lub poproś o nowy e-mail.',
     checkMail: 'Sprawdź skrzynkę pocztową.',
     mailGestuurd: 'Wysłaliśmy wiadomość na adres {email}. Dotknij linku w e-mailu, aby się zalogować.',
+    appMailGestuurd: 'Wysłaliśmy kod na adres {email}. Nie dotykaj przycisku w e-mailu: otwiera on przeglądarkę, a nie aplikację.',
+    appCodeLabel: 'Wpisz kod z e-maila',
     codeLabel: 'Albo wpisz kod z e-maila',
     codeUitleg: 'Korzystasz z portalu jako aplikacji w telefonie? Wpisz kod, a zalogujesz się od razu w aplikacji.',
     bezigInloggen: 'Logowanie…',

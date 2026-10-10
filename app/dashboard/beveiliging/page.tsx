@@ -45,7 +45,7 @@ export default async function BeveiligingPagina({
         <h1 className="dash-h1">Beveiliging</h1>
         <Link href="/dashboard" className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar dashboard</Link>
       </div>
-      <p className="mt-2 text-sm text-warm">Hier stel je in hoe je veilig inlogt. Je blijft maximaal 8 uur ingelogd; daarna log je opnieuw in.</p>
+      <p className="mt-2 text-sm text-warm">Hier stel je in hoe je veilig inlogt. In de browser blijf je maximaal 8 uur ingelogd. In het KMS als app op je telefoon blijf je ingelogd tot je zelf uitlogt (maximaal 180 dagen).</p>
 
       {ok === 'ontkoppeld' && (
         <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">De authenticator-app is ontkoppeld.</p>
@@ -106,7 +106,9 @@ export default async function BeveiligingPagina({
             {status.status === 'ok' && (
               <li>
                 Ingelogd met je eigen account <span className="font-semibold">{status.email}</span> sinds {tijd(status.inlogtijd * 1000)}.
-                Je wordt automatisch uitgelogd om {tijd((status.inlogtijd + SESSIE_DUUR_SEC) * 1000)}.
+                {status.duur > SESSIE_DUUR_SEC
+                  ? <>Op deze telefoon blijf je ingelogd tot je zelf uitlogt (uiterlijk {new Date((status.inlogtijd + status.duur) * 1000).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Amsterdam' })}).</>
+                  : <>Je wordt automatisch uitgelogd om {tijd((status.inlogtijd + status.duur) * 1000)}.</>}
               </li>
             )}
             {wachtwoord && <li>Ingelogd met het gedeelde wachtwoord (maximaal 8 uur geldig).</li>}

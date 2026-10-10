@@ -25,7 +25,7 @@ export default function AdminLoginForm() {
     setCodeFout('');
     setCodeBezig(true);
     try {
-      const r = await verifieerAdminCode(email, code);
+      const r = await verifieerAdminCode(email, code, app);
       if (r.ok) {
         window.location.replace(r.naar);
         return;

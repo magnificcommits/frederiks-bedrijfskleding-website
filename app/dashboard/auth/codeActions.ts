@@ -8,12 +8,14 @@ import { ipUitHeaders, loginGeblokkeerd, registreerMisluktePoging } from '@/lib/
  * Inloggen in het KMS met de code uit de inlogmail in plaats van met de link.
  * Nodig voor het KMS als app op de iPhone: de link opent Safari, en Safari deelt
  * zijn cookies niet met de geïnstalleerde app. Doet verder hetzelfde als
- * /dashboard/auth/callback: eigen sessiecookie (8 uur) en zo nodig door naar 2FA.
+ * /dashboard/auth/callback: eigen sessiecookie (8 uur, in de app 180 dagen) en zo nodig door naar 2FA.
  * Maximaal 5 foute codes per e-mailadres en 10 per IP-adres per 15 minuten.
  */
 export async function verifieerAdminCode(
   emailRuw: string,
   codeRuw: string,
+  /** Inloggen vanuit het KMS als app: dan blijf je ingelogd (zie APP_SESSIE_DUUR_SEC). */
+  app = false,
 ): Promise<{ ok: true; naar: string } | { ok: false; fout: string }> {
   const email = String(emailRuw ?? '').toLowerCase().trim().slice(0, 254);
   const token = String(codeRuw ?? '').replace(/\D/g, '').slice(0, 10);
@@ -35,8 +37,9 @@ export async function verifieerAdminCode(
     return { ok: false, fout: 'Deze code klopt niet of is verlopen. Controleer de cijfers, of vraag een nieuwe mail aan.' };
   }
 
-  const sessieToken = maakAdminSessieToken(data.user.id);
-  if (sessieToken) (await cookies()).set(ADMIN_SESSIE_COOKIE, sessieToken, sessieCookieOpties());
+  const alsApp = app === true;
+  const sessieToken = maakAdminSessieToken(data.user.id, alsApp);
+  if (sessieToken) (await cookies()).set(ADMIN_SESSIE_COOKIE, sessieToken, sessieCookieOpties(alsApp));
 
   const heeftFactor = (data.user.factors ?? []).some((f) => f.status === 'verified');
   return { ok: true, naar: heeftFactor ? '/dashboard/auth/2fa' : '/dashboard' };

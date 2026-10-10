@@ -22,8 +22,15 @@ import { getServerSupabase } from '@/lib/portaal/supabaseServer';
  */
 export const DASH_COOKIE = 'fb_dash';
 export const ADMIN_SESSIE_COOKIE = 'fb_admin_sessie';
-/** Maximale sessieduur voor beide inlogmanieren: 8 uur. */
+/** Maximale sessieduur voor beide inlogmanieren in de browser: 8 uur. */
 export const SESSIE_DUUR_SEC = 8 * 60 * 60;
+/**
+ * In het KMS als app op de telefoon blijf je ingelogd, zoals bij elke andere app:
+ * 180 dagen, of tot je zelf uitlogt. De telefoon zelf zit achter Face ID of een
+ * pincode. Is een telefoon kwijt, zet dan het account op inactief onder Beheer:
+ * dan is de toegang direct weg.
+ */
+export const APP_SESSIE_DUUR_SEC = 180 * 24 * 60 * 60;
 /** Toegestane klokafwijking bij het controleren van tijdstempels. */
 const KLOK_MARGE_SEC = 60;
 
@@ -96,36 +103,44 @@ function dashTokenGeldig(token: string | undefined): boolean {
   return handtekeningKlopt('dash', `v1.${delen[1]}`, delen[2]);
 }
 
-/** Token voor de Supabase-adminsessie: v1.<inlogtijd>.<gebruikers-id>.<handtekening>. */
-export function maakAdminSessieToken(userId: string): string | null {
+/**
+ * Token voor de Supabase-adminsessie.
+ *   browser: v1.<inlogtijd>.<gebruikers-id>.<handtekening>         (8 uur)
+ *   app:     v2.<inlogtijd>.<gebruikers-id>.app.<handtekening>     (180 dagen)
+ * Het soort zit in de ondertekende inhoud, dus een browsertoken kan niet tot app-token worden omgebouwd.
+ */
+export function maakAdminSessieToken(userId: string, app = false): string | null {
   if (!userId || userId.includes('.')) return null;
-  const inhoud = `v1.${nuSec()}.${userId}`;
+  const inhoud = app ? `v2.${nuSec()}.${userId}.app` : `v1.${nuSec()}.${userId}`;
   const sig = onderteken('admin', inhoud);
   return sig ? `${inhoud}.${sig}` : null;
 }
 
-/** Geeft de inlogtijd (unix-seconden) terug als het token geldig is voor deze gebruiker, anders null. */
-function adminSessieInlogtijd(token: string | undefined, userId: string): number | null {
+/** Inlogtijd en sessieduur als het token geldig is voor deze gebruiker, anders null. */
+export function adminSessieUitToken(token: string | undefined, userId: string): { inlogtijd: number; duur: number } | null {
   if (!token) return null;
   const delen = token.split('.');
-  if (delen.length !== 4 || delen[0] !== 'v1') return null;
+  const app = delen.length === 5 && delen[0] === 'v2' && delen[3] === 'app';
+  if (!app && !(delen.length === 4 && delen[0] === 'v1')) return null;
   const inlogtijd = Number(delen[1]);
   if (!Number.isInteger(inlogtijd)) return null;
+  const duur = app ? APP_SESSIE_DUUR_SEC : SESSIE_DUUR_SEC;
   const nu = nuSec();
-  if (inlogtijd > nu + KLOK_MARGE_SEC || nu - inlogtijd >= SESSIE_DUUR_SEC) return null;
+  if (inlogtijd > nu + KLOK_MARGE_SEC || nu - inlogtijd >= duur) return null;
   if (delen[2] !== userId) return null;
-  if (!handtekeningKlopt('admin', `v1.${delen[1]}.${delen[2]}`, delen[3])) return null;
-  return inlogtijd;
+  const inhoud = delen.slice(0, -1).join('.');
+  if (!handtekeningKlopt('admin', inhoud, delen[delen.length - 1])) return null;
+  return { inlogtijd, duur };
 }
 
-/** Cookie-instellingen voor beide sessiecookies. */
-export function sessieCookieOpties() {
+/** Cookie-instellingen voor de sessiecookies; in de app geldt de lange duur. */
+export function sessieCookieOpties(app = false) {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
     path: '/',
-    maxAge: SESSIE_DUUR_SEC,
+    maxAge: app ? APP_SESSIE_DUUR_SEC : SESSIE_DUUR_SEC,
   };
 }
 
@@ -163,7 +178,7 @@ export type AdminSessieStatus =
   /** Beheerder met tweestapsverificatie die de code nog moet invoeren. */
   | { status: '2fa-nodig'; email: string; userId: string; inlogtijd: number }
   /** Volledig ingelogd. */
-  | { status: 'ok'; email: string; userId: string; inlogtijd: number; admin: HuidigeAdmin; tweeStapAan: boolean };
+  | { status: 'ok'; email: string; userId: string; inlogtijd: number; duur: number; admin: HuidigeAdmin; tweeStapAan: boolean };
 
 /**
  * Bepaalt in één keer (per request gecachet) de status van de Supabase-adminsessie:
@@ -187,8 +202,9 @@ export const adminSessieStatus = cache(async (): Promise<AdminSessieStatus> => {
       .maybeSingle();
     if (error || !data || !data.actief) return { status: 'geen-admin', email };
 
-    const inlogtijd = adminSessieInlogtijd((await cookies()).get(ADMIN_SESSIE_COOKIE)?.value, user.id);
-    if (inlogtijd === null) return { status: 'verlopen', email, userId: user.id };
+    const sessie = adminSessieUitToken((await cookies()).get(ADMIN_SESSIE_COOKIE)?.value, user.id);
+    if (sessie === null) return { status: 'verlopen', email, userId: user.id };
+    const { inlogtijd, duur } = sessie;
 
     // Zekerheidsniveau. getUser() hierboven heeft het access token bij Supabase
     // gecontroleerd, dus de aal-claim uit hetzelfde token is betrouwbaar.
@@ -203,6 +219,7 @@ export const adminSessieStatus = cache(async (): Promise<AdminSessieStatus> => {
       email,
       userId: user.id,
       inlogtijd,
+      duur,
       admin: { email: data.email, naam: data.naam ?? null, rol: data.rol },
       tweeStapAan,
     };

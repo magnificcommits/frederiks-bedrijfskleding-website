@@ -40,3 +40,11 @@ Volg `project-standards/core/`.
   concrete tekst; geen generieke AI-look.
 - Vóór livegang: `core/GO_LIVE_CHECKLIST.md` + `core/SEO_AEO.md` +
   `core/ACCESSIBILITY.md` + `core/MEASUREMENT.md`.
+
+## Database-beveiliging (Supabase, vaste regel)
+Elke nieuwe tabel krijgt in dezelfde migratie ALTER TABLE ... ENABLE ROW LEVEL SECURITY. Views krijgen security_invoker = true. Na elke migratie draai je de beveiligingsadviseur van Supabase en los je ERROR en WARN op voordat je verder gaat.
+
+Aanvullend, uit de controle van 14 okt 2026:
+- Hulpfuncties voor RLS-policies (current_org, current_rol, current_medewerker_id) staan in het schema `private`, niet in `public`. Nieuwe hulpfuncties ook daar, met EXECUTE alleen voor authenticated en service_role.
+- Tabellen zonder policy zijn bedoeld: het KMS leest en schrijft ze alleen op de server met de servicesleutel (kmsAdmin). Het klantportaal gebruikt de sessie van de klant en raakt alleen tabellen met een policy per organisatie.
+- Bewust open gelaten: pg_net staat in `public` (verplaatsen kan alleen met DROP; geen objecten in public) en de bucket `media` is publiek (productfoto's; drukproeven en logo's alleen via link met willekeurige naam).

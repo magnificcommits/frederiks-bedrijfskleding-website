@@ -1,12 +1,14 @@
 'use server';
 import { cookies } from 'next/headers';
 import { getServerSupabase } from '@/lib/portaal/supabaseServer';
+import { kmsAdmin } from '@/lib/kms/adminClient';
 import { isTaal, TAAL_COOKIE, TAAL_COOKIE_MAXAGE, type Taal } from './kern';
 
 /**
- * Slaat de taal op bij de ingelogde portaalgebruiker, via de database-functie
- * zet_mijn_portaal_taal (security definer, wijzigt alleen de eigen rij en alleen
- * de kolom taal). Niet ingelogd of nog geen migratie: stil overslaan.
+ * Slaat de taal op bij de ingelogde portaalgebruiker. De sessie bepaalt wie dat is
+ * (getUser controleert het token bij Supabase); daarna schrijft de server met de
+ * servicesleutel alleen de kolom taal van die ene rij. De klant zelf kan via de
+ * API niets meer aanroepen (beveiligingscontrole 14 okt 2026). Niet ingelogd: stil overslaan.
  */
 async function bewaarBijGebruiker(taal: Taal, alleenAlsLeeg: boolean) {
   try {
@@ -14,7 +16,11 @@ async function bewaarBijGebruiker(taal: Taal, alleenAlsLeeg: boolean) {
     if (!sb) return;
     const { data: auth } = await sb.auth.getUser();
     if (!auth.user?.email) return;
-    await sb.rpc('zet_mijn_portaal_taal', { p_taal: taal, p_alleen_als_leeg: alleenAlsLeeg });
+    const admin = kmsAdmin();
+    if (!admin) return;
+    let q = admin.from('portaal_gebruikers').update({ taal }).eq('email', auth.user.email.toLowerCase().trim());
+    if (alleenAlsLeeg) q = q.is('taal', null);
+    await q;
   } catch {
     // De cookie is leidend; de database is een gemak voor andere apparaten.
   }

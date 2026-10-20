@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ContactKnop } from '@/components/ContactPopup';
 import Image from 'next/image';
 import Link from 'next/link';
 import { PageHero } from '@/components/PageHero';
@@ -61,7 +62,7 @@ export default function WerkschoenenPage() {
               ))}
             </ul>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link href="/kledingadvies" className="btn-primary" data-cta="schoenadvies">Vraag pasadvies aan</Link>
+              <ContactKnop className="btn-primary" bron="werkschoenen">Vraag pasadvies</ContactKnop>
               <a href={`tel:${site.phoneIntl}`} className="btn-secondary">Bel {site.phone}</a>
             </div>
           </div>
@@ -80,7 +81,7 @@ export default function WerkschoenenPage() {
             </div>
           ))}
         </div>
-        <p className="mt-6 text-sm text-warm">Onze schoenen voldoen aan EN ISO 20345:2022. Twijfel je over de juiste klasse? <Link href="/kennisbank/veiligheidsklasse-werkschoenen-kiezen" className="font-semibold text-amber-700 hover:underline">Lees ons artikel over schoenklassen</Link> of <Link href="/kledingadvies" className="font-semibold text-amber-700 hover:underline">vraag advies aan</Link>.</p>
+        <p className="mt-6 text-sm text-warm">Onze schoenen voldoen aan EN ISO 20345:2022. Twijfel je over de juiste klasse? <Link href="/kennisbank/veiligheidsklasse-werkschoenen-kiezen" className="font-semibold text-amber-700 hover:underline">Lees ons artikel over schoenklassen</Link> of <ContactKnop className="font-semibold text-amber-700 hover:underline" bron="werkschoenen-tekst">vraag advies</ContactKnop>.</p>
       </section>
 
       <section className="border-y border-line bg-mist">
@@ -90,7 +91,7 @@ export default function WerkschoenenPage() {
             <li className="rounded-xl border-l-2 border-amber-500 bg-white p-6 shadow-soft">
               <span className="font-display text-2xl font-extrabold text-amber-500">1</span>
               <h3 className="mt-2 text-base font-bold text-ink-900">Vraag gratis advies aan</h3>
-              <p className="mt-2 text-sm text-warm">Vertel ons over je werk. {site.owner.split(' ')[0]} neemt binnen 24 uur persoonlijk contact op.</p>
+              <p className="mt-2 text-sm text-warm">Vertel ons over je werk. {site.owner.split(' ')[0]} denkt persoonlijk met je mee.</p>
             </li>
             <li className="rounded-xl border-l-2 border-amber-500 bg-white p-6 shadow-soft">
               <span className="font-display text-2xl font-extrabold text-amber-500">2</span>
@@ -105,7 +106,7 @@ export default function WerkschoenenPage() {
           </ol>
           <p className="mt-6 max-w-2xl text-warm">Je offerte is vrijblijvend en op maat. We kiezen wat past bij je werk en denken mee over je budget, zodat je niet betaalt voor bescherming die je niet gebruikt.</p>
           <div className="mt-6">
-            <Link href="/kledingadvies" className="btn-primary">Vraag gratis kledingadvies aan</Link>
+            <ContactKnop className="btn-primary" bron="werkschoenen-onder">Vraag kledingadvies</ContactKnop>
           </div>
         </div>
       </section>

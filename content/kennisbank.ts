@@ -93,7 +93,7 @@ export const artikelen: Artikel[] = [
         'Bij bedrukken brengen we het logo aan met transfer of zeefdruk. Dat geeft scherpe lijnen en veel kleur, ook bij ingewikkelde logo’s, en is voordelig bij grotere aantallen. Een goede druk gaat lang mee, al is borduren op de zwaarste werkkleding nog net iets duurzamer.',
       ]},
       { h: 'Wat wij adviseren', p: [
-        'Voor een polo of jas met klantcontact kiezen we meestal borduren. Voor t-shirts, een kleurrijk sponsorlogo of een grote oplage is bedrukken vaak slimmer. Omdat we het in eigen huis doen, schakelen we snel en zie je vooraf hoe het eruit komt te zien. Lever je logo het liefst aan als vectorbestand (AI, EPS of PDF).',
+        'Voor een polo of jas met klantcontact kiezen we meestal borduren. Voor t-shirts, een kleurrijk sponsorlogo of een grote oplage is bedrukken vaak slimmer. Bedrukken doen we in eigen huis, borduren via onze vaste partner. Wij regelen allebei en je ziet vooraf hoe het eruit komt te zien. Lever je logo het liefst aan als vectorbestand (AI, EPS of PDF).',
       ]},
     ],
     relatedBranche: 'kantoor-en-retail',
@@ -545,7 +545,7 @@ export const artikelen: Artikel[] = [
         'Voor de meeste MKB-bedrijven in de Achterhoek, met teams van vijf tot vijftig mensen en een mix van buitenwerk, werkplaats en klantcontact, levert die combinatie de minste fouten en het minste gedoe op.',
       ]},
       { h: 'Zeven punten om op te letten', p: [
-        '1. Komt de leverancier bij je passen, of moet je team naar een showroom? 2. Wordt het logo in eigen huis bedrukt of geborduurd, en krijg je vooraf een drukproef? 3. Kent de adviseur de normen die voor jouw werk gelden, zoals EN ISO 20345 voor schoenen en EN ISO 20471 voor hi-vis? 4. Wordt je vaste kledinglijn vastgelegd, zodat nabestellen zonder opnieuw kiezen kan? 5. Is er één vast aanspreekpunt? 6. Hoe snel komt er een reactie op een vraag? 7. Kun je online zien wie wat heeft gekregen en wat het kost?',
+        '1. Komt de leverancier bij je passen, of moet je team naar een showroom? 2. Regelt de leverancier het bedrukken of borduren voor je, en krijg je vooraf een drukproef? 3. Kent de adviseur de normen die voor jouw werk gelden, zoals EN ISO 20345 voor schoenen en EN ISO 20471 voor hi-vis? 4. Wordt je vaste kledinglijn vastgelegd, zodat nabestellen zonder opnieuw kiezen kan? 5. Is er één vast aanspreekpunt? 6. Hoe snel komt er een reactie op een vraag? 7. Kun je online zien wie wat heeft gekregen en wat het kost?',
       ]},
       { h: 'Waarom afstand ertoe doet', p: [
         'Een leverancier in de buurt komt makkelijker langs voor een nieuwe medewerker, een maat die niet past of een spoedje voor een klus. Frederiks Bedrijfskleding zit in de Brouwersmolen in Hengelo (Gld) en werkt vooral in een straal van 24 kilometer: van Zutphen en Lochem tot Doetinchem, Dieren en Groenlo.',

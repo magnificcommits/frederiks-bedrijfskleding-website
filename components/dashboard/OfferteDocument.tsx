@@ -110,7 +110,7 @@ export function naarDocumentData(o: OfferteDocumentData): OfferteDocumentData {
 const VERVOLG = [
   { titel: 'Akkoord', tekst: 'Teken hiernaast, of laat het ons even weten.' },
   { titel: 'Passen op locatie', tekst: 'We passen bij jullie op de zaak, zodat elke maat klopt.' },
-  { titel: 'Logo aanbrengen', tekst: 'Bedrukt of geborduurd, in eigen huis.' },
+  { titel: 'Logo aanbrengen', tekst: 'Bedrukt in eigen huis of geborduurd door onze vaste partner.' },
   { titel: 'Levering', tekst: 'Alles compleet geleverd. Nabestellen kan daarna in een paar dagen.' },
 ];
 

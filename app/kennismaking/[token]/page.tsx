@@ -66,7 +66,7 @@ async function logLinkBezoek(prospectId: string, token: string) {
 
 const stappen = [
   { t: 'Pasdag bij jullie op de zaak', d: 'Ik kom langs met pasmodellen in alle maten. Iedereen past tussen het werk door, ik noteer de maten. Duurt meestal een uur of twee.' },
-  { t: 'Jullie logo erop', d: 'Borduren of bedrukken doen we in eigen huis in Hengelo. Geen goed bestand van het logo? Dan maken we dat in orde. Je krijgt eerst een drukproef.' },
+  { t: 'Jullie logo erop', d: 'Bedrukken doen we in eigen huis in Hengelo, borduren via onze vaste partner. Geen goed bestand van het logo? Dan maken we dat in orde. Je krijgt eerst een drukproef.' },
   { t: 'Geleverd per medewerker', d: 'Alles komt gesorteerd op naam binnen. Geen gedoe met dozen uitzoeken op maandagochtend.' },
   { t: 'Nabestellen in jullie portaal', d: 'Nieuwe collega of kapotte broek? Bestellen gaat via jullie eigen portaal, met de maten en het logo al klaar.' },
 ];

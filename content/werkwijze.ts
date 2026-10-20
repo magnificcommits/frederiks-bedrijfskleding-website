@@ -13,7 +13,7 @@ export const werkwijze = [
   {
     nr: '03',
     title: 'Passen en bedrukken',
-    text: 'We passen op locatie, ook in grote maten. Het logo brengen we in eigen huis aan, bedrukt of geborduurd. Zo houden we de kwaliteit en de snelheid in eigen hand.',
+    text: 'We passen op locatie, ook in grote maten. Het logo bedrukken we in eigen huis of laten we borduren door onze vaste partner. Jij hebt één aanspreekpunt en ziet vooraf een drukproef.',
   },
   {
     nr: '04',

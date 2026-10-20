@@ -135,7 +135,7 @@ export const verdieping: BrancheVerdieping | null = {
       probleem:
         'In een salon of kleine praktijk is kleding onderdeel van het gevoel dat een klant krijgt. Een verwassen en versleten tuniek straalt weinig uit.',
       aanpak:
-        'We borduren een subtiel logo in eigen huis, maken een drukproef voor je akkoord geeft en houden de stijl rustig, zodat de set na vele wasbeurten er nog netjes uitziet.',
+        'We laten een subtiel logo borduren door onze vaste partner, maken een drukproef voor je akkoord geeft en houden de stijl rustig, zodat de set na vele wasbeurten er nog netjes uitziet.',
     },
   ],
   veranderingen: [

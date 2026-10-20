@@ -113,7 +113,7 @@ export const verdieping: BrancheVerdieping | null = {
     {
       titel: 'Een logo op multinorm is geen gewone bedrukking',
       probleem: 'Op vlamvertragende en antistatische kleding mag je niet zomaar een transfer of borduursel zetten. Verkeerd materiaal kan branden of de afvoer van statische lading verstoren, en dan klopt de certificering niet meer.',
-      aanpak: 'We gebruiken voor deze kleding materiaal dat daarvoor geschikt is en plaatsen het logo alleen op de plekken die de fabrikant vrijgeeft. Bedrukken en borduren doen we in eigen huis in Hengelo, dus we weten wat er op jouw kleding zit. Voor de productie zie je een drukproef.',
+      aanpak: 'We gebruiken voor deze kleding materiaal dat daarvoor geschikt is en plaatsen het logo alleen op de plekken die de fabrikant vrijgeeft. Bedrukken doen we in eigen huis in Hengelo, borduren via onze vaste partner. Wij regelen allebei, dus we weten wat er op jouw kleding zit. Voor de productie zie je een drukproef.',
     },
   ],
   veranderingen: [

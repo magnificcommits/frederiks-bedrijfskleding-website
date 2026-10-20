@@ -3,8 +3,8 @@ import { site } from '@/content/site';
 import { CtaKnoppen } from '@/components/CtaKnoppen';
 
 /**
- * Hero met de dienstbelofte boven de vouw: binnen 24 uur een offerte en passen
- * op locatie.
+ * Hero met de tekst uit Jessi's werkdocument (20 okt 2026): van passen tot
+ * personaliseren, zonder harde termijnbelofte.
  *
  * INDELING. De hero heeft bewust een ánder raster dan de rest van de pagina.
  * Eerder stond de tekst in `container-x` (gecentreerd, max 1152 px) terwijl de
@@ -32,17 +32,15 @@ export function Hero() {
           <div className="max-w-[36rem]">
             <p className="eyebrow text-amber-400">Bedrijfskleding in de Achterhoek · sinds {site.foundedYear}</p>
             <h1 className="mt-5 text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[3.5rem]">
-              Binnen 24 uur een offerte.<br className="hidden sm:inline" />{' '}
-              Passen doen we <span className="text-amber-500">bij jou op de zaak</span>
+              Bedrijfskleding.<br className="hidden sm:inline" />{' '}
+              Van <span className="text-amber-500">passen tot personaliseren</span>.
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-ink-100">
-              Geen webshop waar je het zelf uitzoekt. Je krijgt {voornaam}, die je bedrijf leert kennen,
-              langskomt om iedereen te laten passen en je logo in eigen huis aanbrengt.
+              Persoonlijk advies, een zorgvuldig samengesteld kledingassortiment en jouw bedrijfslogo
+              professioneel verwerkt. Van de eerste kennismaking tot de levering regelen wij het hele traject.
+              Met één vast aanspreekpunt en aandacht voor jouw bedrijf.
             </p>
 
-            {/* Eén primaire actie (offerte) en één zachte (eerst praten). Het
-                kledingportaal had hier de tweede knop, maar dat is pas relevant
-                als je al klant bent; het heeft verderop een eigen sectie. */}
             <CtaKnoppen plek="hero" donker className="mt-8" />
 
             <p className="mt-6 text-sm text-ink-100" data-plek="hero">

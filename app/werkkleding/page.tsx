@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ContactKnop } from '@/components/ContactPopup';
 import Link from 'next/link';
 import Image from 'next/image';
 import { PageHero } from '@/components/PageHero';
@@ -80,7 +81,7 @@ export default function WerkkledingPage() {
           Geen kleine lettertjes, gewoon een eerlijk voorstel.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-4">
-          <Link href="/kledingadvies" className="btn-primary">Vraag kledingadvies aan</Link>
+          <ContactKnop className="btn-primary" bron="werkkleding">Vraag kledingadvies</ContactKnop>
           <span className="text-sm text-warm">
             Of bel{' '}
             <a href={`tel:${site.phoneIntl}`} className="font-semibold text-amber-700 underline underline-offset-2">{site.phone}</a>

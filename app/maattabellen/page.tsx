@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ContactKnop } from '@/components/ContactPopup';
 import Link from 'next/link';
 import { PageHero } from '@/components/PageHero';
 import { CtaBand } from '@/components/CtaBand';
@@ -35,7 +36,7 @@ export default function MaattabellenPage() {
             <div className="paneel-donker p-5 sm:p-6">
               <p className="font-display text-lg font-extrabold text-white">Liever zeker weten dat het past?</p>
               <p className="mt-1 text-sm text-ink-200">We komen langs met pasmodellen, ook in grote maten.</p>
-              <Link href="/afspraak?soort=pasdag" className="btn-primary mt-4 w-full" data-cta="afspraak">Plan een pasdag</Link>
+              <ContactKnop className="btn-primary mt-4 w-full" bron="maattabellen">Plan samen een pasmoment</ContactKnop>
             </div>
           </div>
 

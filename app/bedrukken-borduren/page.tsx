@@ -14,7 +14,7 @@ import { LogoPrijzen } from '@/components/LogoPrijzen';
 export const metadata: Metadata = {
   title: 'Bedrukken en borduren',
   description:
-    'Je logo op werkkleding, vanaf één stuk. Borduren, transferdruk, zeefdruk en emblemen naast elkaar vergeleken, gedaan in eigen huis in Hengelo Gld. Altijd eerst een drukproef ter goedkeuring.',
+    'Je logo op werkkleding, vanaf één stuk. Borduren, transferdruk, zeefdruk en emblemen naast elkaar vergeleken, van ontwerp tot afwerking geregeld vanuit Hengelo Gld. Altijd eerst een drukproef ter goedkeuring.',
   alternates: { canonical: '/bedrukken-borduren' },
 };
 
@@ -82,9 +82,9 @@ export default async function BedrukkenBordurenPage() {
       />
 
       <PageHero
-        eyebrow="In eigen huis, in Hengelo Gld"
+        eyebrow="Van ontwerp tot afwerking"
         title="Je logo gaat erop, vanaf één stuk"
-        intro="Borduren, transferdruk, zeefdruk en emblemen, gedaan aan de Kruisbergseweg in Hengelo Gld. Eerst een drukproef, dan de serie."
+        intro="Borduren, transferdruk, zeefdruk en emblemen: wij regelen het. Bedrukken doen we zelf aan de Kruisbergseweg in Hengelo Gld, borduren via onze vaste partner. Eerst een drukproef, dan de serie."
       />
 
       <section className="container-x py-10">

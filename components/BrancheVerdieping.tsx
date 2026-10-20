@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ContactKnop } from '@/components/ContactPopup';
 import type { BrancheVerdieping as V } from '@/content/branche-verdieping';
 import { LeesVerder } from '@/components/MeerTonen';
 
@@ -21,7 +22,7 @@ const Pijl = () => (
  * AI-zoekers lezen alles mee; de bezoeker ziet eerst alleen de kern. Was ruim
  * 2.000 woorden zichtbaar per pagina.
  */
-export function BrancheVerdieping({ v, label, pakketHref }: { v: V; label: string; pakketHref: string }) {
+export function BrancheVerdieping({ v, label }: { v: V; label: string; pakketHref?: string }) {
   return (
     <>
       {/* De branche in de regio */}
@@ -68,14 +69,13 @@ export function BrancheVerdieping({ v, label, pakketHref }: { v: V; label: strin
                     <div><dt className="inline font-semibold text-ink-900">Normen: </dt><dd className="inline text-ink-700">{f.normen}</dd></div>
                     <div><dt className="inline font-semibold text-ink-900">Sets: </dt><dd className="inline text-ink-700">{f.sets}</dd></div>
                   </dl>
-                  {f.vakgebied && <Link href={`/voor/${f.vakgebied}`} className="mt-2 inline-flex min-h-[40px] items-center text-sm font-semibold text-amber-700 underline underline-offset-2">Meer over {f.functie.toLowerCase()}</Link>}
                 </div>
               </details>
             ))}
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href={pakketHref} className="btn-primary" data-cta="verdieping-pakket">Maak er een pakket van</Link>
+            <ContactKnop className="btn-primary" bron="verdieping">Bespreek je pakket</ContactKnop>
             <Link href="/normen" className="btn-secondary">Alle normen uitgelegd</Link>
           </div>
         </div>
@@ -136,9 +136,6 @@ export function BrancheVerdieping({ v, label, pakketHref }: { v: V; label: strin
                 </details>
               ))}
             </div>
-            <Link href="/pakket-samenstellen#onbelast" className="mt-5 inline-flex min-h-[44px] items-center font-semibold text-amber-400 underline underline-offset-2 hover:text-amber-300">
-              Reken uit wat onbelast verstrekken je team scheelt
-            </Link>
           </div>
         </div>
       </section>

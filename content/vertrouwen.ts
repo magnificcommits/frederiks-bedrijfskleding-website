@@ -34,7 +34,7 @@ export const verschilMetWebshop: { onderwerp: string; webshop: string; wij: stri
   {
     onderwerp: 'Logo',
     webshop: 'Uitbesteed, vaak weken wachten en weinig zicht op de kwaliteit.',
-    wij: 'Bedrukken en borduren in eigen huis in Hengelo. Je ziet eerst een drukproef.',
+    wij: 'Bedrukken in eigen huis in Hengelo, borduren via een vaste partner. Je ziet eerst een drukproef.',
   },
   {
     onderwerp: 'Contact',

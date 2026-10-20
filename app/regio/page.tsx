@@ -25,7 +25,7 @@ export default function RegioIndex() {
     <>
       <JsonLd data={breadcrumbJsonLd([{ name: 'Home', url: site.url }, { name: 'Regio', url: `${site.url}/regio` }])} />
       <PageHero eyebrow="Werkgebied" title={`Bedrijfskleding binnen ${KERNSTRAAL_KM} km van Hengelo (Gld)`}
-        intro={`Onze showroom en bedrukkerij zitten in de Brouwersmolen in Hengelo (Gld). Binnen ${KERNSTRAAL_KM} kilometer zijn we het vaakst te vinden, van Zutphen tot Doetinchem en van Dieren tot Groenlo. Overal met dezelfde aanpak: we komen langs om te passen en brengen het logo in eigen huis aan.`} />
+        intro={`Onze showroom en bedrukkerij zitten in de Brouwersmolen in Hengelo (Gld). Binnen ${KERNSTRAAL_KM} kilometer zijn we het vaakst te vinden, van Zutphen tot Doetinchem en van Dieren tot Groenlo. Overal met dezelfde aanpak: we komen langs om te passen en regelen het logo, bedrukt of geborduurd.`} />
       <section className="container-x sec-md">
         <h2 className="kop-2">{`Binnen ${KERNSTRAAL_KM} km: ons kernwerkgebied`}</h2>
         <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">

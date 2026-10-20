@@ -30,13 +30,13 @@ export default function PortaalKnop({ className }: { className?: string }) {
   if (ingelogd) {
     return (
       <Link href="/portaal" className={className}>
-        Naar mijn portaal
+        Mijn portaal
       </Link>
     );
   }
   return (
     <Link href="/portaal/login" className={className}>
-      Inloggen
+      Mijn portaal
     </Link>
   );
 }

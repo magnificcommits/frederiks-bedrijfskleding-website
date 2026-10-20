@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ContactKnop } from '@/components/ContactPopup';
 import Link from 'next/link';
 import { Reviews } from '@/components/Reviews';
 import { CtaBand } from '@/components/CtaBand';
@@ -43,7 +44,7 @@ export default function ReferentiesPage() {
         <Reviews />
         <div className="container-x pb-16 text-center">
           <p className="text-ink-200">Ook zo geholpen worden?{' '}
-            <Link href="/kledingadvies" className="font-semibold text-amber-400 hover:underline">Vraag gratis kledingadvies aan</Link>.
+            <ContactKnop className="font-semibold text-amber-400 hover:underline" bron="referenties">Neem contact op</ContactKnop>.
           </p>
         </div>
       </section>

@@ -88,6 +88,18 @@ export const PROFIELEN: Record<string, AssortimentProfiel> = {
     niet: `${GEEN_VAKMAN}|koksjas|antibacteri|dames-t-shirt|fleecevest|polytricot|jack day|jas met afneembare|fleece bodywarmer`,
     voorkeur: 't-shirt|polo|sweater|hoodie|softshell',
   },
+  'branche:schoonmaak-en-facilitair': {
+    categorieen: ['t-shirts-en-polos', 'broeken', 'truien-en-vesten', 'jassen', 'werkschoenen'],
+    wel: 'tricorp|snickers|u-power',
+    niet: `${GEEN_VAKMAN}|koksjas|lasjas|vlamvertragend`,
+    voorkeur: 'polo|werkbroek|softshell',
+  },
+  'branche:sport-en-promotie': {
+    categorieen: ['t-shirts-en-polos', 'truien-en-vesten', 'jassen'],
+    wel: 'wk. designed to work|kariban',
+    niet: `${GEEN_VAKMAN}|koksjas|antibacteri`,
+    voorkeur: 't-shirt|sweater|hoodie',
+  },
 
   // ---------- Vakgebieden (/voor/...) ----------
   'vak:bouw-en-aannemers': {

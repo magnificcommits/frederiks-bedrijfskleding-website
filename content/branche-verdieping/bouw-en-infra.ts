@@ -105,7 +105,7 @@ export const verdieping: BrancheVerdieping | null = {
     {
       titel: 'Logo en reflectiestrepen komen elkaar in de weg',
       probleem: 'Op hi-vis hoort het logo niet over de reflecterende banden te komen en de minimale vlakken van de norm moeten intact blijven. Een logo dat verkeerd is geplaatst, kan een goed hesje afkeuren.',
-      aanpak: 'We bepalen de plaats van het logo bij het ontwerp en laten je voor de productie een drukproef zien. Op de borst, rug of mouw, buiten de banden. Bedrukken en borduren doen we in eigen huis, dus de plaatsing blijft onder ons eigen oog.',
+      aanpak: 'We bepalen de plaats van het logo bij het ontwerp en laten je voor de productie een drukproef zien. Op de borst, rug of mouw, buiten de banden. Bedrukken doen we in eigen huis, borduren via onze vaste partner. Elke drukproef controleren we zelf, dus de plaatsing blijft onder ons eigen oog.',
     },
     {
       titel: 'Regen, kou en hitte op één werkplek',

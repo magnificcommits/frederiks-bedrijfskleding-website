@@ -11,7 +11,7 @@ import { contactpersoon } from '@/content/vertrouwen';
 export function JessiPaneel({
   kop = 'Je krijgt Jessi zelf',
   tekst = 'Geen keuzemenu en geen ticketnummer. Jessi leest je aanvraag, belt je terug en komt zelf langs om te passen.',
-  punten = ['Reactie binnen 24 uur, op werkdagen', 'Passen bij jou op de zaak', 'Bedrukken en borduren in eigen huis'],
+  punten = ['Persoonlijk advies', 'Passen op locatie of in de showroom', 'Bedrukken en borduren geregeld'],
   plek,
   afspraak = true,
   className = '',

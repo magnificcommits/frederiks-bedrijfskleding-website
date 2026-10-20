@@ -43,7 +43,7 @@ const VERHAAL = [
     label: 'Aanpak',
     kop: 'Eén aanspreekpunt, van advies tot nalevering',
     tekst:
-      'Ik luister naar wat je nodig hebt en denk mee. Je krijgt mij, niet elke keer een ander. Ik kom langs om te passen, stel samen met je een pakket samen dat klopt, en regel het bedrukken en borduren in eigen huis. Ook grote maten en een snelle nalevering horen daarbij.',
+      'Ik luister naar wat je nodig hebt en denk mee. Je krijgt mij, niet elke keer een ander. Ik kom langs om te passen, stel samen met je een pakket samen dat klopt, en regel het bedrukken en borduren, van ontwerp tot afwerking. Ook grote maten en een snelle nalevering horen daarbij.',
   },
 ];
 
@@ -57,7 +57,7 @@ export default async function OverOnsPage() {
     { waarde: `Sinds ${site.foundedYear}`, label: 'in Hengelo Gld' },
     { waarde: '1801', label: 'bouwjaar van de molen waar we zitten' },
     { waarde: `${merken.length} merken`, label: `${totaal} artikelen om uit te kiezen` },
-    { waarde: 'In eigen huis', label: 'bedrukken en borduren, geen tussenpartij' },
+    { waarde: 'Bedrukken & borduren', label: 'van ontwerp tot afwerking geregeld' },
   ];
 
   return (
@@ -145,7 +145,7 @@ export default async function OverOnsPage() {
             </div>
             <div className="mt-4 grid grid-cols-2 gap-4">
               <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-line">
-                <Image src="/Bedrijfskleding-bedrukken-en-borduren.jpg" alt="Logo borduren in eigen huis"
+                <Image src="/Bedrijfskleding-bedrukken-en-borduren.jpg" alt="Logo op bedrijfskleding"
                   fill sizes="17rem" className="object-cover" />
               </div>
               <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-line">

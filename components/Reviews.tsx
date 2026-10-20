@@ -59,7 +59,7 @@ export async function Reviews({ limit }: { limit?: number }) {
         sterren: Math.max(1, Math.round(r.score / 2)),
         cijfer: r.score,
       }))
-    : vasteReviews.map((r) => ({ key: r.author, auteur: r.author, sub: null, tekst: r.text, sterren: r.rating, cijfer: null }));
+    : vasteReviews.map((r) => ({ key: r.author, auteur: r.author, sub: r.naam ?? null, tekst: r.text, sterren: r.rating, cijfer: null }));
   const lijst = limit ? kaarten.slice(0, limit) : kaarten;
 
   // Gemiddelde over alle beantwoorde beoordelingen; onder de vijf tonen we er geen.

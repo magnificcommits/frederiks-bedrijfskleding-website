@@ -140,7 +140,7 @@ const basisVakgebieden: Vakgebied[] = [
     veelgesteld: [
       {
         q: 'Kunnen we het logo van onze opdrachtgever ook op de kleding krijgen?',
-        a: 'Dat kan, en het gebeurt vaker bij langere projecten. We houden dan een aparte set apart voor dat werk, zodat je eigen lijn intact blijft. Het borduren en bedrukken doen we in eigen huis in Hengelo Gld, dus je ziet vooraf een proef.',
+        a: 'Dat kan, en het gebeurt vaker bij langere projecten. We houden dan een aparte set apart voor dat werk, zodat je eigen lijn intact blijft. Bedrukken doen we in eigen huis in Hengelo Gld, borduren via onze vaste partner. Je ziet vooraf een proef.',
       },
       {
         q: 'Wat is het verschil tussen klasse 2 en klasse 3 hi-vis?',
@@ -252,7 +252,7 @@ const basisVakgebieden: Vakgebied[] = [
       },
       {
         q: 'Gaat het logo door de beschermende werking van de kleding heen?',
-        a: 'Alleen als het verkeerd wordt aangebracht. Op multinormkleding gebruiken we gecertificeerd materiaal en de juiste techniek, op de plekken die de fabrikant vrijgeeft. Wij doen dat in eigen huis, dus we weten precies wat er op jouw kleding is gebeurd.',
+        a: 'Alleen als het verkeerd wordt aangebracht. Op multinormkleding gebruiken we gecertificeerd materiaal en de juiste techniek, op de plekken die de fabrikant vrijgeeft. Wij regelen dat en controleren elke drukproef zelf, dus we weten precies wat er op jouw kleding gebeurt.',
       },
     ],
   },
@@ -315,7 +315,7 @@ const basisVakgebieden: Vakgebied[] = [
     titel: 'Werkkleding voor transport en logistiek in de Achterhoek',
     eyebrow: 'Transport en logistiek',
     metaDescription:
-      'Werkkleding voor transportbedrijven, chauffeurs en magazijnpersoneel in de Achterhoek en de Liemers. Hi-vis jassen, bodywarmers en vriescelkleding. Passen op het terrein, logo in eigen huis.',
+      'Werkkleding voor transportbedrijven, chauffeurs en magazijnpersoneel in de Achterhoek en de Liemers. Hi-vis jassen, bodywarmers en vriescelkleding. Passen op het terrein, logo erop geregeld.',
     intro:
       'De hele dag in en uit de cabine: warme cabine, koud laadperron, regen op de laadklep. Op het terrein rijden heftrucks en trekkers, en de chauffeur die jou niet ziet, zie jij ook niet. Staat er een koelcel of een vrieshuis in het spel, dan komt daar nog een compleet ander klimaat bij.',
     waaromAnders: [

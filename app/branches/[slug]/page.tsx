@@ -14,7 +14,7 @@ import { Uitklap } from '@/components/Uitklap';
 import { JsonLd } from '@/components/JsonLd';
 import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd } from '@/lib/jsonld';
 import { CtaKnoppen } from '@/components/CtaKnoppen';
-import { BrancheArtikelen } from '@/components/BrancheArtikelen';
+import { ContactKnop } from '@/components/ContactPopup';
 import { BrancheVerdieping } from '@/components/BrancheVerdieping';
 import { vakkenVanBranche } from '@/content/vakgebieden';
 import { verdiepingBySlug } from '@/content/branche-verdieping';
@@ -121,17 +121,7 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
             <div className="sticky top-28 space-y-4">
               <div className="rounded-2xl border-2 border-amber-500 bg-white p-6 shadow-card">
                 <h2 className="font-display text-xl font-extrabold text-ink-900">Kleding voor {b.navLabel.toLowerCase()}</h2>
-                <p className="mt-2 text-sm text-warm">Vertel wat je zoekt. We reageren binnen 24 uur (werkdagen) en komen langs om te passen.</p>
-                {vanaf && starter && (
-                  <Link href={`/pakket-samenstellen?branche=${encodeURIComponent(b.navLabel)}`} className="mt-4 block rounded-xl bg-amber-50 p-4 transition hover:bg-amber-100">
-                    <span className="block text-xs font-bold uppercase tracking-[0.14em] text-amber-700">Startpakket</span>
-                    <span className="mt-1 block font-display text-2xl font-extrabold text-ink-900">vanaf ca. {euro(vanaf)}</span>
-                    <span className="block text-sm text-ink-800">per medewerker, met geborduurd logo, excl. btw</span>
-                    <span className="mt-2 block text-xs text-warm">
-                      {starter.map((s) => `${s.per}x ${(kledingtypes.find((k) => k.id === s.type)?.label ?? s.type).toLowerCase()}`).join(', ')}. Stel je eigen pakket samen &rarr;
-                    </span>
-                  </Link>
-                )}
+                <p className="mt-2 text-sm text-warm">Vertel wat je zoekt. We denken mee en komen graag langs om te passen.</p>
                 <CtaKnoppen
                   plek="branche-zijbalk"
                   vol
@@ -141,11 +131,7 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
                   afspraakHref={`/afspraak?branche=${encodeURIComponent(b.navLabel)}`}
                 />
                 <p className="mt-4 border-t border-line pt-4 text-sm text-warm" data-plek="branche-zijbalk">
-                  <Link href={`/pakket-samenstellen?branche=${encodeURIComponent(b.navLabel)}`} className="font-semibold text-amber-700 underline-offset-2 hover:underline" data-cta="pakket">
-                    Zelf je pakket samenstellen
-                  </Link>
-                  <br />
-                  of bel <a href={`tel:${site.phoneIntl}`} className="font-semibold text-ink-900">{site.phone}</a>
+                  Of bel <a href={`tel:${site.phoneIntl}`} className="font-semibold text-ink-900">{site.phone}</a>
                 </p>
               </div>
               {b.voorbeeld && (
@@ -206,14 +192,12 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
                 <Image src={b.gallery[0]} alt={`${b.name} bij Frederiks Bedrijfskleding`} fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
               </div>
               <div className="flex flex-col justify-center p-6 sm:p-10" data-plek="branche-foto">
-                <h2 className="font-display text-2xl font-extrabold text-white">Zie je logo meteen op de kleding</h2>
+                <h2 className="font-display text-2xl font-extrabold text-white">Samen het juiste pakket kiezen</h2>
                 <p className="mt-3 max-w-[48ch] text-ink-200">
-                  Kies een kledingstuk en een kleur, zet je logo erop en vraag het pakket in één klik als offerte aan.
+                  In de showroom of bij jou op locatie stellen we samen de kleding samen die bij jouw werk past, met je logo erop.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <Link href={`/pakket-samenstellen?branche=${encodeURIComponent(b.navLabel)}`} className="btn-primary" data-cta="pakket">
-                    Stel je pakket samen
-                  </Link>
+                  <ContactKnop className="btn-primary" bron="branche-foto">Neem contact op</ContactKnop>
                   <a href={`tel:${site.phoneIntl}`} className="btn border-2 border-white/60 text-white hover:border-white hover:bg-white hover:text-ink-900" data-cta="telefoon">
                     Bel {site.phone}
                   </a>
@@ -232,31 +216,9 @@ export default async function BranchePage({ params }: { params: Promise<{ slug: 
         </section>
       )}
 
-      <BrancheArtikelen
-        brancheSlug={b.slug}
-        titel={`Uit ons assortiment voor ${b.navLabel.toLowerCase()}`}
-        intro="Een greep uit de catalogus. Bij het passen kijken we wat bij jouw werk past; dit is een startpunt, geen vaste lijst."
-      />
 
       <Werkwijze />
 
-      {vakken.length > 0 && (
-        <section className="container-x sec-md">
-          <h2 className="kop-2">Per vak binnen {b.navLabel.toLowerCase()}</h2>
-          <p className="mt-2 max-w-2xl text-warm">Elk vak vraagt iets anders van de kleding. Hier lees je per beroep wat er speelt, welke normen gelden en wat we meestal leveren.</p>
-          <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {vakken.map((x) => (
-              <li key={x.slug}>
-                <Link href={`/voor/${x.slug}`} className="group flex h-full flex-col rounded-xl border-2 border-ink-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-ink-900 hover:shadow-card">
-                  <span className="font-display text-lg font-extrabold text-ink-900">{x.naam}</span>
-                  <span className="mt-2 line-clamp-3 text-sm text-warm">{x.intro}</span>
-                  <span className="mt-auto pt-3 text-sm font-semibold text-amber-700 group-hover:underline">Werkkleding voor {x.naam.toLowerCase()}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       <Faq items={faq} title={`Veelgestelde vragen over ${b.navLabel.toLowerCase()}`} />
 

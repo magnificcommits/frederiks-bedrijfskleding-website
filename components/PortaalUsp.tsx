@@ -8,10 +8,10 @@ import { listPubliekeProducten, type PubliekProduct } from '@/lib/kms/catalogus'
  * afbeeldingen). Linkt door naar de volledige /kledingbeheer-pagina.
  */
 const punten = [
-  { t: 'Eigen bestelomgeving per medewerker', d: 'Iedereen ziet alleen het toegestane assortiment, met de eigen maat al ingevuld.' },
-  { t: 'Budget en goedkeuring', d: 'Stel een budget per persoon in en laat bestellingen waar nodig eerst goedkeuren.' },
-  { t: 'Maten al vastgelegd', d: 'Nabestellen gaat met een paar klikken. De juiste maat staat klaar.' },
-  { t: 'Grip met rapportages', d: 'Verbruik en budget per medewerker, afdeling en vestiging in één oogopslag.' },
+  { t: 'Eigen kledingassortiment', d: 'Medewerkers zien alleen de kleding die voor hen beschikbaar is.' },
+  { t: 'Maten vastgelegd', d: 'De juiste maten staan klaar voor toekomstige bestellingen.' },
+  { t: 'Budgetten en goedkeuring', d: 'Bepaal wie wat mag bestellen en stel budgetten in.' },
+  { t: 'Overzicht en rapportages', d: 'Inzicht in bestellingen en uitgaven per medewerker.' },
 ];
 
 /**
@@ -40,11 +40,11 @@ export async function PortaalUsp() {
       <div className="container-x sec-md">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-500">Inbegrepen bij je bedrijfskleding</p>
-            <h2 className="mt-3 kop-2">Je eigen online kledingbeheer, gratis erbij</h2>
+            <h2 className="kop-2">Je eigen online kledingportaal. Gratis bij je bedrijfskleding.</h2>
             <p className="mt-4 text-lg text-ink-100">
-              Neem je je kleding bij Frederiks af, dan krijg je er een compleet bestelportaal bij. Je medewerkers
-              bestellen zelf binnen budget, jij houdt overzicht. Geen losse mailtjes en lijstjes meer.
+              Met ons online kledingportaal beheer je eenvoudig de bedrijfskleding van je medewerkers. Iedereen
+              bestelt uit het eigen assortiment, terwijl jij overzicht houdt over bestellingen, maten en budgetten.
+              Je bepaalt zelf of je gebruik wilt maken van deze service.
             </p>
             <div className="mt-6 grid grid-cols-1 gap-x-8 gap-y-3 sm:mt-8 sm:grid-cols-2 sm:gap-y-5">
               {punten.map((p) => (
@@ -57,19 +57,9 @@ export async function PortaalUsp() {
                 </div>
               ))}
             </div>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/kledingbeheer" className="btn-primary">Ontdek het kledingbeheer</Link>
-              <Link
-                href="/kledingbeheer/demo"
-                className="inline-flex items-center rounded-md border border-ink-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-ink-800"
-              >
-                Bekijk hoe het werkt
-              </Link>
+            <div className="mt-8">
+              <Link href="/kledingbeheer" className="btn-primary">Ontdek het kledingportaal</Link>
             </div>
-            <p className="mt-4 flex items-center gap-2 text-sm text-ink-200">
-              <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-amber-500" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="5.5" y="2" width="9" height="16" rx="2" /><path d="M9 15h2" strokeLinecap="round" /></svg>
-              Werkt ook als app: zet het portaal op het beginscherm van je telefoon.
-            </p>
           </div>
 
           {/* Voorbeeldscherm pas vanaf desktop; op de telefoon is de demo-knop sterker. */}

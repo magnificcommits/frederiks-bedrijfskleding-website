@@ -12,7 +12,8 @@ import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { ConsentBanner } from '@/components/ConsentBanner';
 import { HerkomstTracker } from '@/components/HerkomstTracker';
 import { JsonLd } from '@/components/JsonLd';
-import { OfferteSelectieProvider, OfferteBalk } from '@/components/OfferteSelectie';
+import { OfferteSelectieProvider } from '@/components/OfferteSelectie';
+import { ContactPopup } from '@/components/ContactPopup';
 import { localBusinessJsonLd, personJsonLd } from '@/lib/jsonld';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' });
@@ -59,11 +60,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ChromeGate><MobileActionBar /></ChromeGate>
           {/* Ruimte voor de mobiele actiebalk; niet in het KMS en het portaal, daar staat die balk niet. */}
           <ChromeGate><div className="h-14 lg:hidden" aria-hidden="true" /></ChromeGate>
-          {/* Verschijnt pas zodra er artikelen gekozen zijn. */}
-          <OfferteBalk />
         </OfferteSelectieProvider>
         {/* Niet in het KMS en het portaal: daar lag de zwevende knop over knoppen en tabellen. */}
         <ChromeGate><WhatsAppButton /></ChromeGate>
+        <ContactPopup />
         <Analytics />
         <ConsentBanner />
         <HerkomstTracker />

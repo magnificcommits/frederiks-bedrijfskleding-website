@@ -22,7 +22,7 @@ export const klantenserviceFaq: ServiceFaqItem[] = [
   },
   {
     q: 'Doen jullie het bedrukken en borduren zelf?',
-    a: 'Ja, dat doen we in eigen huis. Daardoor houden we grip op de kwaliteit en de planning, en kunnen we snel schakelen als er een nieuwe collega bij komt of je logo verandert. Lever je logo het liefst als vectorbestand aan (AI, EPS of PDF). Heb je dat niet, dan kijken we samen naar de beste oplossing.',
+    a: 'Bedrukken doen we in eigen huis in Hengelo. Borduren laten we doen door onze vaste partner, en dat regelen wij voor je. Zo heb je één aanspreekpunt, ook als er een nieuwe collega bij komt of je logo verandert. Lever je logo het liefst als vectorbestand aan (AI, EPS of PDF). Heb je dat niet, dan kijken we samen naar de beste oplossing.',
   },
   {
     q: 'Wat doet het klantportaal precies?',

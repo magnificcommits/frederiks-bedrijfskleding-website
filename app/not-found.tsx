@@ -20,7 +20,7 @@ export default function NotFound() {
         <ul className="flex flex-wrap justify-center gap-2">
           {[
             { href: '/', label: 'Home' },
-            { href: '/assortiment', label: 'Assortiment' },
+            { href: '/werkkleding', label: 'Werkkleding' },
             { href: '/werkkleding', label: 'Werkkleding' },
             { href: '/werkschoenen', label: 'Werkschoenen' },
             { href: '/bedrukken-borduren', label: 'Bedrukken en borduren' },

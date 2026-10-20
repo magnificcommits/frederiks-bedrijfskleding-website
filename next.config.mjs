@@ -60,12 +60,16 @@ const nextConfig = {
       'zorg-en-beauty': 'zorg-en-salon',
       'agri-en-milieu': 'agrarisch-en-groen',
       representatief: 'kantoor-en-retail',
-      'sport-en-promotie': 'clubs-en-verenigingen',
     };
     const vakOud = { 'installatie-en-techniek': 'elektro-en-servicetechniek', 'horeca-en-food': 'keuken-en-bediening' };
     return [
       ...Object.entries(oud).map(([van, naar]) => ({ source: `/branches/${van}`, destination: `/branches/${naar}`, permanent: true })),
-      ...Object.entries(vakOud).map(([van, naar]) => ({ source: `/voor/${van}`, destination: `/voor/${naar}`, permanent: true })),
+      // Werkdocument Jessi (20 okt 2026): geen openbare catalogus, geen
+      // formulieren, geen online agenda. Tijdelijk (307), zodat we het kunnen
+      // terugdraaien zonder dat zoekmachines het voorgoed onthouden.
+      ...['/assortiment', '/assortiment/:pad*', '/merk', '/merk/:pad*'].map((source) => ({ source, destination: '/werkkleding', permanent: false })),
+      ...['/voor', '/voor/:pad*'].map((source) => ({ source, destination: '/branches', permanent: false })),
+      ...['/offerte', '/kledingadvies', '/pakket-samenstellen', '/afspraak'].map((source) => ({ source, destination: '/contact', permanent: false })),
     ];
   },
   async headers() {

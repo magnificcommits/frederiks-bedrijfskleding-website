@@ -1,42 +1,28 @@
 import { site } from '@/content/site';
-import { catalogusOverzicht } from '@/lib/kms/catalogus';
 
 /**
- * Smalle bewijsbalk direct onder de hero: vier harde punten die de belofte boven
- * de vouw onderbouwen.
+ * Smalle balk direct onder de hero met vier sterke punten. Geen reactietermijn
+ * en geen artikelaantallen meer: Jessi belooft geen vaste termijn en de site
+ * heeft geen openbare catalogus (werkdocument 20 okt 2026).
  *
- * Twee dingen bewust anders dan eerst:
- *
- *  1. Het aantal merken en artikelen komt uit de catalogus, niet uit een vaste
- *     tekst. Er stond "11 merken, ruim 500 artikelen" terwijl er inmiddels 13
- *     merken en 428 artikelen op de site staan. Een tegenstrijdig getal kost een
- *     bedrijf dat het van vertrouwen moet hebben meer dan een lelijke sectie.
- *     De pagina draait op ISR, dus dit is één query per uur, geen per pageview.
- *
- *  2. Het aantal beoordelingen staat er niet meer bij. 5,0 uit 8 reviews leest
- *     als "acht", niet als "vijf sterren". Zodra het er twintig of meer zijn,
- *     zet je het aantal er weer bij - dan werkt het juist vóór je.
+ * Bedrukken doet Frederiks zelf; borduren gaat via een vaste partner. Daarom
+ * staat er "wij regelen alles" en niet "in eigen huis".
  */
-export async function BewijsBalk() {
-  const { merken, totaal } = await catalogusOverzicht();
-
+export function BewijsBalk() {
+  const score = site.rating.value.toFixed(1).replace('.', ',');
   const punten = [
-    {
-      waarde: `${site.rating.value.toFixed(1).replace('.', ',')}★`,
-      label: 'op Google',
-      srOnly: `${site.rating.value.toFixed(1).replace('.', ',')} van 5 sterren`,
-    },
-    { waarde: '< 24 uur', label: 'reactietijd op elke aanvraag, op werkdagen' },
-    { waarde: `${merken.length} merken`, label: `${totaal} artikelen om uit te kiezen` },
-    { waarde: 'In eigen huis', label: 'bedrukken en borduren in Hengelo Gld' },
+    { waarde: `${score}★`, label: 'op Google', srOnly: `${score} van 5 sterren` },
+    { waarde: 'Eén aanspreekpunt', label: 'van eerste kennismaking tot nazorg' },
+    { waarde: 'Passen', label: 'bij jou op locatie of in onze showroom' },
+    { waarde: 'Bedrukken & borduren', label: 'van ontwerp tot afwerking, wij regelen alles' },
   ];
 
   return (
-    <section className="bg-ink-900 text-white" aria-label="Waar we op afgerekend mogen worden">
+    <section className="bg-ink-900 text-white" aria-label="Wat je van ons kunt verwachten">
       <div className="container-x grid grid-cols-2 gap-x-6 gap-y-8 border-t border-white/10 py-10 sm:py-12 lg:grid-cols-4">
         {punten.map((p) => (
           <div key={p.label} className="border-l-2 border-amber-500 pl-4">
-            <p className="font-display text-2xl font-extrabold leading-none text-white sm:text-3xl">
+            <p className="font-display text-xl font-extrabold leading-tight text-white sm:text-2xl">
               {p.srOnly ? <span className="sr-only">{p.srOnly}</span> : null}
               <span aria-hidden={p.srOnly ? true : undefined}>{p.waarde}</span>
             </p>

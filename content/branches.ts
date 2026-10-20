@@ -51,11 +51,11 @@ export const branches: Branche[] = [
       { title: 'Werkbroeken die meegaan', text: 'Kniezakken met inschuifbare kussens, stevig dubbeldoek op de slijtplekken en een snit waarin je de hele dag kunt werken. Holsterzakken voor wie ze gebruikt, een gladde voorkant voor wie niet achter alles blijft haken.' },
       { title: 'Hi-vis volgens de norm', text: 'Voor werk langs de weg leveren we kleding in klasse 2 of 3 volgens EN ISO 20471. We zeggen je vooraf welke klasse je nodig hebt, afhankelijk van de snelheid van het verkeer en of je overdag of in het donker werkt.' },
       { title: 'Veiligheidsschoenen die passen', text: 'S3 voor buiten en nat werk, met doorstapbescherming tegen spijkers en een stalen of composiet neus. Passen doe je bij ons, want een halve maat verkeerd voel je na acht uur op een steiger.' },
-      { title: 'Logo dat blijft zitten', text: 'Bedrukt of geborduurd in eigen huis, zo aangebracht dat het de wasmachine en het werk overleeft. Op de borst, de rug of de mouw, in de positie die jij wilt.' },
+      { title: 'Logo dat blijft zitten', text: 'Bedrukt in eigen huis of geborduurd door onze vaste partner, zo aangebracht dat het de wasmachine en het werk overleeft. Op de borst, de rug of de mouw, in de positie die jij wilt.' },
     ],
     items: ['Werkbroeken', 'Werkjassen en softshells', 'Hi-vis kleding', 'T-shirts en polo’s', 'Veiligheidsschoenen', 'Bodywarmers'],
     normen: ['EN ISO 20471 (hi-vis)', 'EN ISO 20345 (veiligheidsschoenen, S1 tot S3)'],
-    voorbeeld: { quote: 'Jessi heeft ons zeer goed geholpen met de aanschaf van onze werkkleding. Ook keuze in grote maten. De bedrukking van de logo’s is slijtvast en de kleding van prima kwaliteit.', author: 'Overbeek Bouw' },
+    voorbeeld: { quote: 'Jessi heeft ons zeer goed geholpen met de aanschaf van onze werk kleding! Ze zorgde ervoor dat ze ook keuze had in grote maten! De bedrukking van de logo’s is slijtvast en kleding van prima kwaliteit.', author: 'Overbeek Bouw' },
     brands: ['Snickers Workwear', 'FHB', 'Blåkläder', 'Hydrowear', 'Tricorp', 'U-Power', 'Grisport'],
     gallery: ['/veiligheidsschoenen-achterhoek-1.jpg', '/Bedrijfskleding-bedrukken-en-borduren.jpg'],
     faq: [
@@ -87,7 +87,7 @@ export const branches: Branche[] = [
     ],
     items: ['Werkbroeken met kniezakken', 'Polo’s en T-shirts', 'Softshells en jassen', 'Vlamboogkleding', 'ESD- en veiligheidsschoenen', 'Sweaters en bodywarmers'],
     normen: ['IEC 61482 (vlamboog)', 'EN 1149-5 (antistatisch)', 'EN 14404 (kniebescherming)', 'EN ISO 20345 (veiligheidsschoenen)'],
-    voorbeeld: { quote: 'Vanaf het eerste moment merkte ik dat er geluisterd werd naar wat ik nodig had. Binnen een paar dagen een duidelijke offerte en een week later lag alles klaar.', author: 'Elektrotechniek Achterhoek' },
+    voorbeeld: { quote: 'Wij zijn altijd super tevreden met de service! Jessi is niet alleen snel en vakkundig in het uitzoeken en leveren van onze bedrijfskleding, maar ook ontzettend spontaan en prettig in contact. Echt een aanrader!', author: 'Elektrotechniek Achterhoek' },
     brands: ['Snickers Workwear', 'Fristads', 'Hydrowear', 'U-Power', 'Tricorp', 'FHB'],
     gallery: ['/veiligheidsschoenen-achterhoek-1.jpg', '/Bedrijfskleding-bedrukken-en-borduren.jpg'],
     faq: [
@@ -120,7 +120,7 @@ export const branches: Branche[] = [
     ],
     items: ['Werkbroeken', 'Multinorm en laskleding', 'Overalls', 'Softshell- en winterjassen', 'Hi-vis kleding', 'Polo’s en sweaters', 'Veiligheidsschoenen en ESD-schoenen'],
     normen: ['EN ISO 11612 (hitte en vlammen)', 'EN ISO 11611 (lassen)', 'EN 1149-5 (antistatisch)', 'EN ISO 20471 (hi-vis)', 'EN ISO 20345 (veiligheidsschoenen)'],
-    voorbeeld: { quote: 'Wij zijn altijd super tevreden met de service. Jessi is snel en vakkundig in het uitzoeken en leveren van onze bedrijfskleding, en prettig in contact.', author: 'Bouwbedrijf Goossens Melgers' }, // Was "Een transportbedrijf uit de regio", maar dit citaat komt uit de review van Goossens Melgers (content/reviews.ts). Nooit een citaat aan een andere afzender toeschrijven.
+    voorbeeld: { quote: 'Wij zijn altijd super tevreden met de service! Jessi is niet alleen snel en vakkundig in het uitzoeken en leveren van onze bedrijfskleding, maar ook ontzettend spontaan en prettig in contact. Echt een aanrader!', author: 'Getra Transport' },
     brands: ['Hydrowear', 'Fristads', 'Snickers Workwear', 'Tricorp', 'U-Power'],
     gallery: ['/Bedrijfskleding-bedrukken-en-borduren.jpg'],
     faq: [
@@ -152,7 +152,7 @@ export const branches: Branche[] = [
       { title: 'Logo dat de was overleeft', text: 'Meestal geborduurd, zodat het ook na tientallen wasbeurten op hoge temperatuur strak blijft.' },
     ],
     items: ['Koksbuizen', 'Schorten', 'Overhemden en blouses', 'Gilets en vesten', 'Polo’s', 'Antislip werkschoenen'],
-    voorbeeld: { quote: 'Wij hebben werkjassen besteld en zijn hier heel tevreden over. Warm, goede kwaliteit, goede service en mooie logo’s. Echt een aanrader.', author: 'Café-zaal De Jongens' },
+    voorbeeld: { quote: 'Wij hebben nu diverse keren bedrukte bedrijfskleding besteld en zijn zeer tevreden over de kwaliteit van de kleding en de bedrukking. We zijn zeer professioneel geholpen met paskleding en de snelle levering. Top gedaan!!', author: 'Café-zaal De Jongens' },
     brands: ['Xirtrum', 'WK. Designed To Work', 'Mi-piace', 'Brook Taverner'],
     gallery: ['/Horeca-en-hospitality-achterhoek.jpg'],
     faq: [
@@ -183,7 +183,7 @@ export const branches: Branche[] = [
       { title: 'Consistente uitstraling', text: 'We houden kleur, model en logo gelijk over het hele team en leggen het vast, zodat het er als een geheel uitziet en blijft.' },
     ],
     items: ['Overhemden en blouses', 'Pantalons en rokken', 'Colberts en blazers', 'Polo’s', 'Truien en vesten', 'Softshells en bodywarmers'],
-    voorbeeld: { quote: 'Sinds enige tijd gebruiken wij de werkkleding van Frederiks. Onze ervaring is heel goed en aan te bevelen. Topservice en kwaliteit.', author: 'BZV Zonwering' },
+    voorbeeld: { quote: 'Goed overleg met Jessi. Kleding mooi en netjes bedrukt, snelle levering en goede kwaliteit. Leuk en fijn geholpen ook, echt een topper!', author: 'BZV Zonwering' },
     brands: ['Brook Taverner', 'Mi-piace', 'TQ Amsterdam', 'Xirtrum', 'WK. Designed To Work'],
     gallery: ['/Representatie-werkkleding-achterhoek-leverancier.jpg'],
     faq: [
@@ -212,7 +212,7 @@ export const branches: Branche[] = [
       { title: 'Schoenen en laarzen', text: 'Van veiligheidsschoenen tot laarzen, afgestemd op nat en zwaar terrein, de stal of het land.' },
     ],
     items: ['Overalls', 'Tuinbroeken', 'Winterjassen', 'Bodywarmers', 'Veiligheidsschoenen en laarzen'],
-    voorbeeld: { quote: 'We kopen al jaren onze bedrijfskleding bij Jessi. Ruime collectie, en als het er niet is bestelt ze een pasmaat. Ze denkt mee en kijkt naar de mogelijkheden.', author: 'All Waves' },
+    voorbeeld: { quote: 'Wij zijn zeer tevreden over de geleverde bedrijfskleding voor ons bedrijf. De werkbroeken zijn van uitstekende kwaliteit en praktisch in gebruik.', author: 'Massen Knippers' },
     brands: ['FHB', 'Snickers Workwear', 'Hydrowear', 'Grisport', 'Pfanner'],
     faq: [
       { q: 'Hebben jullie kleding die echt droog houdt bij regen?', a: 'Ja, we leveren waterdichte en ademende jassen, zodat je droog blijft zonder dat je erin staat te zweten.' },
@@ -222,7 +222,7 @@ export const branches: Branche[] = [
   {
     slug: 'zorg-en-salon',
     name: 'Bedrijfskleding voor zorg en salons',
-    navLabel: 'Zorg & salon',
+    navLabel: 'Zorg & beauty',
     metaTitle: 'Zorgkleding en salonkleding met logo in de Achterhoek',
     metaDescription:
       'Kleding voor praktijken, thuiszorg, kappers en salons in de Achterhoek: zorgbroeken, polo’s, blouses en tunieken die heet gewassen mogen worden.',
@@ -271,15 +271,79 @@ export const branches: Branche[] = [
     ],
     items: ['T-shirts', 'Hoodies en sweaters', 'Trainingsjassen', 'Caps en accessoires'],
     brands: ['WK. Designed To Work', 'Kariban'],
-    hoofdmenu: false,
     faq: [
       { q: 'Kunnen jullie ook namen en nummers op de rug zetten?', a: 'Ja, we verzorgen namen, nummers en sponsoren. Bij meerdere namen denken we mee over een overzichtelijke opzet.' },
       { q: 'Doen jullie ook kleine oplagen voor één team?', a: 'Zeker. Of het nu om één team gaat of een hele vereniging, we kiezen een druktechniek die bij de oplage past zodat het ook voor een kleine bestelling betaalbaar blijft.' },
+    ],
+  },
+  {
+    slug: 'schoonmaak-en-facilitair',
+    name: 'Werkkleding voor schoonmaak en facilitair',
+    navLabel: 'Schoonmaak & facilitair',
+    metaTitle: 'Werkkleding schoonmaak en facilitair in de Achterhoek',
+    metaDescription:
+      'Werkkleding voor schoonmaakbedrijven, facilitaire diensten en huismeesters in de Achterhoek. Praktisch, goed wasbaar en herkenbaar met jouw logo.',
+    // Tijdelijke foto; Jessi levert passende beelden aan.
+    image: '/Bedrijfskleding-Achterhoek.jpg',
+    heroIntro: 'Kleding die tegen een stootje en een hete was kan, en waarin je team er bij de klant verzorgd uitziet.',
+    body: [
+      'Schoonmakers en facilitaire medewerkers zijn de hele dag in beweging, vaak bij klanten op locatie. De kleding moet ruim zitten, goed wasbaar zijn en er na tientallen wasbeurten nog netjes uitzien. Daar kiezen we op.',
+      'Herkenbaarheid telt: bij een klant op kantoor of in een zorginstelling wil je dat iedereen ziet bij welk bedrijf je hoort. Met je logo op de borst of de rug regel je dat in één keer.',
+      'Werken je mensen in ploegen of op verschillende locaties, dan helpt een vaste kledinglijn. Nabestellen gaat dan eenvoudig, ook via ons online kledingportaal.',
+    ],
+    levering: [
+      { title: 'Praktische werkkleding', text: 'Werkbroeken, polo’s en jassen die ruim zitten en goed tegen wassen kunnen.' },
+      { title: 'Herkenbaar met je logo', text: 'Je logo bedrukt of geborduurd, zodat je team bij de klant direct herkenbaar is.' },
+      { title: 'Veilige schoenen', text: 'Antislipschoenen voor natte vloeren en werkschoenen voor wie veel staat en loopt.' },
+    ],
+    items: ['Werkbroeken', 'Polo’s en T-shirts', 'Softshells en jassen', 'Werkschoenen'],
+    brands: ['Tricorp', 'Snickers Workwear', 'U-Power'],
+    faq: [
+      { q: 'Kan de kleding op hoge temperatuur gewassen worden?', a: 'Dat verschilt per artikel. We adviseren kleding die past bij hoe jullie wassen, zodat het logo en de stof lang meegaan.' },
+    ],
+  },
+  {
+    slug: 'sport-en-promotie',
+    name: 'Sport- en promotiekleding met logo',
+    navLabel: 'Sport & promotie',
+    metaTitle: 'Sportkleding en promotiekleding met logo in de Achterhoek',
+    metaDescription:
+      'Sportkleding en promotietextiel met logo voor teams, evenementen en acties in de Achterhoek. Shirts, hoodies, caps en tassen, in kleine en grote oplagen.',
+    // Tijdelijke foto; Jessi levert passende beelden aan.
+    image: '/Promotionele-sportkleding-Achterhoek.jpg',
+    fit: 'contain',
+    heroIntro: 'Opvallen op het veld, op een beurs of tijdens je evenement. Met kleding en artikelen in jouw stijl.',
+    body: [
+      'Voor sportteams, personal trainers en sportscholen leveren we functionele kleding die tegen zweet en de was kan, met je logo of naam erop.',
+      'Organiseer je een evenement, beurs of actie? Dan regelen we shirts, hoodies, caps en tassen in één herkenbare stijl. Ook voor een kleine oplage.',
+      'We denken mee over de techniek: wat lang mooi blijft op sportkleding, en wat voordelig is voor een eenmalige actie.',
+    ],
+    levering: [
+      { title: 'Sportkleding met logo', text: 'Ademende shirts, trainingsjassen en hoodies voor teams en sportscholen.' },
+      { title: 'Promotietextiel', text: 'Shirts, caps en tassen voor evenementen, beurzen en acties.' },
+      { title: 'Elke oplage', text: 'Van een handvol stuks tot een grote actie, met een techniek die bij de oplage past.' },
+    ],
+    items: ['Sportshirts', 'Hoodies en sweaters', 'Trainingsjassen', 'Caps en tassen'],
+    brands: ['WK. Designed To Work', 'Kariban'],
+    faq: [
+      { q: 'Is er een minimale oplage?', a: 'Nee, we kijken per aanvraag wat er kan. Bij een kleine oplage kiezen we een techniek die betaalbaar blijft.' },
     ],
   },
 ];
 
 /** Branches in het hoofdmenu en de branchetegels. */
 export const hoofdBranches = branches.filter((b) => b.hoofdmenu !== false);
+
+/** De zes branches op de homepage, in Jessi's volgorde (werkdocument 20 okt 2026). */
+export const homeBranches = [
+  'bouw-en-infra', 'installatie-en-techniek', 'industrie-en-logistiek',
+  'agrarisch-en-groen', 'clubs-en-verenigingen', 'horeca-en-food',
+].map((slug) => branches.find((b) => b.slug === slug)!).filter(Boolean);
+
+/** Volgorde op de overzichtspagina: eerst de zes van de homepage, dan de rest. */
+export const alleBranchesOverzicht = [
+  ...homeBranches,
+  ...['kantoor-en-retail', 'zorg-en-salon', 'schoonmaak-en-facilitair', 'sport-en-promotie'].map((slug) => branches.find((b) => b.slug === slug)!).filter(Boolean),
+];
 
 export const branchesBySlug = Object.fromEntries(branches.map((b) => [b.slug, b]));

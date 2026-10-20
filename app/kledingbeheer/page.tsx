@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ContactKnop } from '@/components/ContactPopup';
 import Link from 'next/link';
 import { PageHero } from '@/components/PageHero';
 import { PortaalDemo, PortaalFragmenten } from '@/components/PortaalDemo';
@@ -179,7 +180,7 @@ export default function KledingbeheerPage() {
         intro="Wie heeft wat, wie is nieuw, past het binnen budget. In het kledingportaal bestellen je collega’s zelf, binnen jouw functies, budgetten en maten. Jij kijkt alleen nog naar wat jouw akkoord nodig heeft."
         acties={
           <div className="flex flex-wrap gap-3" data-plek="kledingbeheer-hero">
-            <Link href="/afspraak" className="btn-primary" data-cta="afspraak">Laat het mij zien in 15 minuten</Link>
+            <ContactKnop className="btn-primary" bron="kledingbeheer">Laat het me zien</ContactKnop>
             <Link href="/kledingbeheer/demo" className="btn border-2 border-white/70 text-white hover:border-white hover:bg-white hover:text-ink-900" data-cta="demo">Bekijk eerst het portaal</Link>
           </div>
         }

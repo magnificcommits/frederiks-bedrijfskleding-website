@@ -8,17 +8,17 @@ export const site = {
   owner: 'Jessi Frederiks',
   tagline: 'Bedrijfskleding met persoonlijke aandacht',
   description:
-    'Frederiks Bedrijfskleding in Hengelo (Gld) levert werkkleding, veiligheidsschoenen en maatwerk voor bedrijven in de Achterhoek. Persoonlijk advies, passen op locatie en eigen bedrukken en borduren.',
+    'Frederiks Bedrijfskleding in Hengelo (Gld) levert werkkleding, veiligheidsschoenen en maatwerk voor bedrijven in de Achterhoek. Persoonlijk advies, passen op locatie en je logo erop, bedrukt of geborduurd.',
   foundedYear: 2020,
   url: 'https://www.frederiksbedrijfskleding.nl',
   email: 'info@frederiksbedrijfskleding.nl',
   phone: '06 15 21 50 29',
   phoneIntl: '+31615215029',
   whatsapp: '+31615215029',
-  rating: { value: 5.0, count: 8 },
+  rating: { value: 5.0, count: 11 },
   /** Eén formulering voor de reactietijd; overal vandaan lezen, nergens overtypen. */
-  belofte: 'Binnen 24 uur reactie, op werkdagen',
-  beloftKort: 'binnen 24 uur',
+  belofte: 'Persoonlijk antwoord van Jessi',
+  beloftKort: 'persoonlijk',
   address: {
     street: 'Kruisbergseweg 9',
     postalCode: '7255 AG',
@@ -43,7 +43,7 @@ export const site = {
   usps: [
     { title: 'Eén vast aanspreekpunt', text: 'Persoonlijk contact met iemand die jouw bedrijf kent. Niet elke keer een ander.' },
     { title: 'Passen op locatie', text: 'Wij komen bij je langs voor maatadvies. Zo raak je geen werktijd kwijt aan een showroom.' },
-    { title: 'Eigen bedrukken en borduren', text: 'Jouw logo strak en slijtvast aangebracht, in eigen huis. Dus snel en met grip op de kwaliteit.' },
+    { title: 'Bedrukken en borduren geregeld', text: 'Jouw logo strak en slijtvast aangebracht. Bedrukken doen we in eigen huis, borduren via onze vaste partner. Jij hebt één aanspreekpunt.' },
     { title: 'Alles onder één dak', text: 'Van advies en maatvoering tot bedrukken en nalevering. Je regelt het op één plek.' },
   ],
   brands: [

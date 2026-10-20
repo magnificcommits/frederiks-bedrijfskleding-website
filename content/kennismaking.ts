@@ -210,7 +210,7 @@ export const LANDING_INTRO = [
 /** Standaard brieftekst. Merge-velden: {{bedrijf}} {{contactpersoon}} {{plaats}} {{branche}}. */
 export const STANDAARD_BRIEFTEKST = `Beste {{contactpersoon}},
 
-Mijn naam is Jessi Frederiks. Vanuit Hengelo lever ik werkkleding aan bedrijven in de Achterhoek, met het logo erop geborduurd of bedrukt in eigen huis.
+Mijn naam is Jessi Frederiks. Vanuit Hengelo lever ik werkkleding aan bedrijven in de Achterhoek, met het logo erop. Bedrukken doen we in eigen huis, borduren via een vaste partner.
 
 Ik heb alvast gekeken hoe het team van {{bedrijf}} erbij kan lopen. Scan de QR-code hieronder met je telefoon. Dan zie je jullie eigen logo op een paar artikelen die ik voor jullie heb uitgezocht, met een eerlijke prijsindicatie erbij.
 

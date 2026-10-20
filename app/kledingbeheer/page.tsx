@@ -119,7 +119,7 @@ const vergelijking = [
   },
   {
     nu: 'Zelf uitzoeken hoe je zoiets opzet en bijhoudt.',
-    straks: 'Wij richten het in. Binnen vier weken staat jouw versie klaar.',
+    straks: 'Wij richten het samen met je in, met jullie eigen assortiment en maten.',
     i: iconen.agenda,
   },
 ];

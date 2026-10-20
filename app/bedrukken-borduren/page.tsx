@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ContactKnop } from '@/components/ContactPopup';
 import Link from 'next/link';
 import { PageHero } from '@/components/PageHero';
 import { MethodeKaarten, MethodeTabel, LogoPositieTekening } from '@/components/MethodeKaarten';
@@ -111,7 +112,7 @@ export default async function BedrukkenBordurenPage() {
           </div>
 
           <p className="mt-4 text-sm text-warm">
-            Aantallen en levertijden zijn indicatief: stof en voorraad bepalen mee.
+            Aantallen zijn indicatief: stof en voorraad bepalen mee.
           </p>
         </div>
       </section>
@@ -195,18 +196,13 @@ export default async function BedrukkenBordurenPage() {
         <div className="container-x sec-md">
           <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-[1.4fr_1fr]">
             <div>
-              <h2 className="kop-2">Zet je logo live op de kleding</h2>
+              <h2 className="kop-2">Benieuwd hoe jouw logo eruitziet?</h2>
               <p className="mt-3 max-w-2xl text-warm">
-Upload je logo in de pakketsamensteller en zie het meteen op het kledingstuk staan.
+Stuur je logo mee, dan krijg je een voorstel met de positie van je logo op de kleding.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 lg:justify-end">
-              <Link href="/pakket-samenstellen" className="btn-primary">
-                Stel je pakket samen
-              </Link>
-              <Link href="/contact" className="btn-outline">
-                Even overleggen
-              </Link>
+              <ContactKnop className="btn-primary" bron="bedrukken-borduren">Neem contact op</ContactKnop>
             </div>
           </div>
         </div>

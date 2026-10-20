@@ -128,7 +128,6 @@ export default async function NormPagina({ params }: { params: Promise<{ slug: s
 
   const url = `${site.url}/normen/${n.slug}`;
   const koppen = n.tabelKoppen ?? ['Klasse', 'Eis', 'Wanneer je die nodig hebt'];
-  const { lijst, metNorm } = await productenBijNorm(n);
   const anderen = normen.filter((x) => x.slug !== n.slug && x.categorie === n.categorie).slice(0, 3);
   const isZichtbaarheid = n.categorie === 'zichtbaarheid';
 
@@ -267,44 +266,6 @@ export default async function NormPagina({ params }: { params: Promise<{ slug: s
       </section>
 
       {/* Artikelen uit het echte assortiment. */}
-      {lijst.length > 0 && (
-        <section className="border-y border-line bg-mist">
-          <div className="container-x sec-md">
-            <h2 className="kop-2">
-              {n.categorie === 'schoenen' ? 'Schoenen' : 'Kleding'} die bij {n.code} hoort
-            </h2>
-            <p className="mt-3 max-w-2xl text-warm">
-              {`Artikelen uit ons assortiment die volgens ${n.code} getest zijn. Welke klasse of code op het label staat, lees je op de productpagina.`}
-            </p>
-
-            <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              {lijst.map((p) => (
-                <ProductKaart key={p.id} p={naarKaart(p)} />
-              ))}
-            </div>
-
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              {n.productCategorieSlugs.map((c) => (
-                <Link
-                  key={c}
-                  href={`/assortiment/${c}`}
-                  className="rounded-md border border-line bg-white px-3 py-1.5 text-sm font-semibold text-ink-700 hover:border-amber-400"
-                >
-                  Alle {c.replace(/-en-/g, ' en ').replace(/-/g, ' ')}
-                </Link>
-              ))}
-            </div>
-
-            <p className="mt-6 text-sm text-warm">
-              Prijzen staan niet online. Klanten zien hun eigen prijzen in het{' '}
-              <Link href="/portaal" className="font-semibold text-amber-700 underline underline-offset-2">
-                klantportaal
-              </Link>
-              ; vraag anders een offerte aan.
-            </p>
-          </div>
-        </section>
-      )}
 
       {anderen.length > 0 && (
         <section className="container-x sec-md">

@@ -18,7 +18,7 @@ export const klantenserviceFaq: ServiceFaqItem[] = [
   },
   {
     q: 'Wat is de levertijd en hoe gaat de bezorging?',
-    a: 'Dat hangt af van wat je bestelt. Voorraadartikelen zonder bedrukking zijn er meestal binnen een week, kleding die we bedrukken of borduren duurt wat langer omdat het door onze eigen werkplaats gaat. Bij je bestelling spreken we een realistische datum af, en zodra we die niet halen hoor je dat van ons en niet andersom. We bezorgen in de Achterhoek en omgeving, en brengen het waar het kan gewoon zelf langs.',
+    a: 'Dat hangt af van wat je bestelt. Voorraadartikelen zonder bedrukking zijn er doorgaans sneller dan kleding met een logo, want die wordt eerst bedrukt of geborduurd. Bij je bestelling spreken we een realistische datum af, en zodra we die niet halen hoor je dat van ons en niet andersom. We bezorgen in de Achterhoek en omgeving, en brengen het waar het kan gewoon zelf langs.',
   },
   {
     q: 'Doen jullie het bedrukken en borduren zelf?',
@@ -74,8 +74,7 @@ export const levering = {
   intro:
     'We spreken bij elke bestelling een realistische leverdatum af en houden je op de hoogte.',
   punten: [
-    'Voorraadartikelen zonder bedrukking zijn er meestal binnen een week.',
-    'Bedrukte of geborduurde kleding duurt wat langer, omdat die door onze eigen werkplaats gaat.',
+    'Voorraadartikelen zonder bedrukking zijn er doorgaans sneller dan kleding met een logo.',
     'Loopt er iets uit? Dan hoor je dat van ons, met een nieuwe datum.',
     'In de Achterhoek en omgeving bezorgen we waar het kan zelf.',
   ],

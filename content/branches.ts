@@ -61,7 +61,7 @@ export const branches: Branche[] = [
     faq: [
       { q: 'Voldoet de hi-vis kleding aan de RWS-eisen?', a: 'Ja. Voor werk langs de weg leveren we kleding die voldoet aan EN ISO 20471 en de geldende RWS-eisen. We bepalen samen welke klasse bij jouw werk hoort.' },
       { q: 'Kunnen jullie grote maten leveren?', a: 'Zeker. We hebben een ruim maatbereik en bestellen indien nodig een pasmaat, zodat iedereen op de ploeg goed zit.' },
-      { q: 'Hoe snel kan een nieuwe medewerker zijn kleding hebben?', a: 'Als je lijn bij ons vastligt, regelen we een nieuwe set meestal binnen een paar werkdagen, inclusief logo.' },
+      { q: 'Hoe snel kan een nieuwe medewerker zijn kleding hebben?', a: 'Als je lijn bij ons vastligt, bestel je voor een nieuwe medewerker eenvoudig dezelfde set, inclusief logo.' },
     ],
   },
   {
@@ -93,7 +93,7 @@ export const branches: Branche[] = [
     faq: [
       { q: 'Welke vlamboogklasse heb ik nodig?', a: 'Dat hangt af van de installatie waaraan je werkt: hoe hoger de kortsluitstroom, hoe hoger de klasse. Klasse 1 is getest bij 4 kA, klasse 2 bij 7 kA. Neem de risicoanalyse mee of vraag het je leidinggevende; wij zoeken er de juiste kleding bij.' },
       { q: 'Wat is het verschil tussen antistatisch en ESD?', a: 'Antistatische kleding en schoenen voorkomen vonken door opgebouwde lading. ESD gaat een stap verder en voert de lading gecontroleerd af, zodat je gevoelige elektronica niet beschadigt. Voor werk aan printplaten, omvormers en laadpalen is ESD de betere keuze.' },
-      { q: 'Kunnen jullie een vaste set per monteur vastleggen?', a: 'Ja. We leggen per functie vast wat iemand krijgt, met maat en logo. Komt er een monteur bij, dan bestel je zijn set in het portaal en ligt hij er meestal binnen een paar werkdagen.' },
+      { q: 'Kunnen jullie een vaste set per monteur vastleggen?', a: 'Ja. We leggen per functie vast wat iemand krijgt, met maat en logo. Komt er een monteur bij, dan bestel je zijn set in het portaal en wij regelen de rest.' },
     ],
   },
   {
@@ -124,7 +124,7 @@ export const branches: Branche[] = [
     brands: ['Hydrowear', 'Fristads', 'Snickers Workwear', 'Tricorp', 'U-Power'],
     gallery: ['/Bedrijfskleding-bedrukken-en-borduren.jpg'],
     faq: [
-      { q: 'Kunnen jullie snel nabestellen voor een nieuwe chauffeur?', a: 'Ja. Je lijn ligt bij ons vast, dus we leveren dezelfde set inclusief logo meestal binnen een paar dagen.' },
+      { q: 'Kunnen jullie snel nabestellen voor een nieuwe chauffeur?', a: 'Ja. Je lijn ligt bij ons vast, dus we leveren eenvoudig dezelfde set, inclusief logo.' },
       { q: 'Leveren jullie ook gevoerde winterkleding?', a: 'Zeker, van bodywarmers tot gevoerde softshells en winterjassen, geschikt voor werk in en rond de loods.' },
       { q: 'Hebben jullie vlamvertragende kleding voor lassers?', a: 'Ja. We leveren multinorm kleding die voldoet aan EN ISO 11612 en EN ISO 11611, vaak ook antistatisch. Welke klasse je nodig hebt hangt af van het laswerk; dat bekijken we samen.' },
     ],

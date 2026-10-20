@@ -69,7 +69,7 @@ const nextConfig = {
       // terugdraaien zonder dat zoekmachines het voorgoed onthouden.
       ...['/assortiment', '/assortiment/:pad*', '/merk', '/merk/:pad*'].map((source) => ({ source, destination: '/werkkleding', permanent: false })),
       ...['/voor', '/voor/:pad*'].map((source) => ({ source, destination: '/branches', permanent: false })),
-      ...['/offerte', '/kledingadvies', '/pakket-samenstellen', '/afspraak'].map((source) => ({ source, destination: '/contact', permanent: false })),
+      ...['/offerte', '/kledingadvies', '/pakket-samenstellen', '/afspraak', '/klantenservice'].map((source) => ({ source, destination: '/contact', permanent: false })),
     ];
   },
   async headers() {

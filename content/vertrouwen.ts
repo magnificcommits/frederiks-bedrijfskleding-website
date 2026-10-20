@@ -60,7 +60,7 @@ export const zekerheden: { titel: string; tekst: string; href?: string }[] = [
   {
     titel: 'Garantie op de uitvoering',
     tekst: 'Laat een naad los of bladdert je logo af terwijl je het wasvoorschrift volgde? Dan herstellen of vervangen we het.',
-    href: '/klantenservice#garantie',
+    href: '/klantenservice/retourneren',
   },
   {
     titel: 'Ruilen kan',

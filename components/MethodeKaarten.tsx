@@ -103,7 +103,6 @@ function IconNiet() {
  */
 const DATAPUNTEN: { label: string; waarde: (m: Methode) => string }[] = [
   { label: 'Vanaf', waarde: (m) => m.vanafAantal },
-  { label: 'Levertijd', waarde: (m) => m.levertijd },
   { label: 'Sterkte', waarde: (m) => m.sterkte },
   { label: 'Geschikt voor', waarde: (m) => m.geschiktVoor },
 ];
@@ -152,7 +151,7 @@ export function MethodeTabel() {
   return (
     <div className="overflow-x-auto rounded-lg border border-line bg-white shadow-card">
       <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-        <caption className="sr-only">De vier decoratietechnieken vergeleken op aantal, levertijd, sterkte en geschiktheid</caption>
+        <caption className="sr-only">De vier decoratietechnieken vergeleken op aantal, sterkte en geschiktheid</caption>
         <thead>
           <tr className="border-b border-line bg-mist">
             <th scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">

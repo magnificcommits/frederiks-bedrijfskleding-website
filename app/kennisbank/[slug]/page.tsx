@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { ContactKnop } from '@/components/ContactPopup';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { artikelen, artikelenBySlug } from '@/content/kennisbank';
@@ -82,7 +83,7 @@ export default async function ArtikelPage({ params }: { params: Promise<{ slug: 
             <div className="rounded-xl border-2 border-amber-500 bg-white p-6 shadow-card">
               <h2 className="text-lg font-extrabold text-ink-900">Vraag advies aan {site.owner.split(' ')[0]}</h2>
               <p className="mt-2 text-sm text-warm">Liever even sparren over jouw situatie? We denken vrijblijvend mee en komen langs om te passen.</p>
-              <Link href="/kledingadvies" className="btn-primary mt-4 w-full">Gratis kledingadvies</Link>
+              <ContactKnop className="btn-primary mt-4 w-full" bron="kennisbank">Neem contact op</ContactKnop>
               <a href={`tel:${site.phoneIntl}`} className="btn-outline mt-2 w-full">Bel {site.phone}</a>
             </div>
             {branche && (

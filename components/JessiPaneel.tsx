@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { ContactKnop } from '@/components/ContactPopup';
 import Link from 'next/link';
 import { site } from '@/content/site';
 import { contactpersoon } from '@/content/vertrouwen';
@@ -56,9 +57,9 @@ export function JessiPaneel({
         </ul>
         <div className="mt-5 grid grid-cols-1 gap-2 border-t border-white/15 pt-5 sm:grid-cols-2 lg:grid-cols-1">
           {afspraak && (
-            <Link href="/afspraak" className="btn bg-amber-500 px-4 text-ink-900 hover:bg-amber-400" data-cta="afspraak">
-              Plan zelf een afspraak
-            </Link>
+            <ContactKnop className="btn bg-amber-500 px-4 text-ink-900 hover:bg-amber-400" bron="jessi-paneel">
+              Neem contact op
+            </ContactKnop>
           )}
           <a href={`tel:${site.phoneIntl}`} className="btn bg-white px-4 text-ink-900 hover:bg-amber-400" data-cta="telefoon">
             Bel {voornaam}: {site.phone}

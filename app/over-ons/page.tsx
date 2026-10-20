@@ -126,8 +126,8 @@ export default async function OverOnsPage() {
               </ul>
               <p className="mt-4 max-w-[58ch] text-sm text-warm">
                 De meeste klanten zitten in de bouw.{' '}
-                <Link href="/voor" className="font-semibold text-amber-700 underline underline-offset-2">
-                  Bekijk wat er per vakgebied speelt
+                <Link href="/branches" className="font-semibold text-amber-700 underline underline-offset-2">
+                  Bekijk alle branches
                 </Link>
                 .
               </p>

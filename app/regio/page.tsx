@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ContactKnop } from '@/components/ContactPopup';
 import Link from 'next/link';
 import { plaatsen, KERNSTRAAL_KM } from '@/content/plaatsen';
 import { branches } from '@/content/branches';
@@ -52,7 +53,7 @@ export default function RegioIndex() {
           ))}
         </div>
         <p className="mt-3 text-sm text-warm">Afstanden zijn hemelsbreed gemeten vanaf de Brouwersmolen, rijtijden bij normaal verkeer.</p>
-        <p className="mt-6 max-w-[60ch] text-warm">Staat jouw plaats er niet bij? We werken in de hele regio. <Link href="/kledingadvies" className="font-semibold text-amber-700 hover:underline">Vraag gerust advies aan</Link>.</p>
+        <p className="mt-6 max-w-[60ch] text-warm">Staat jouw plaats er niet bij? We werken in de hele regio. <ContactKnop className="font-semibold text-amber-700 hover:underline" bron="regio-overzicht">Neem gerust contact op</ContactKnop>.</p>
 
         <h2 className="mt-14 kop-2">Of kies je branche</h2>
         <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">

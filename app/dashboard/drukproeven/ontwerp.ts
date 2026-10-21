@@ -30,9 +30,25 @@ export type Plaatsing = {
 
 export type Zijde = 'voor' | 'achter';
 
-export type Ontwerp = { voor: Plaatsing[]; achter: Plaatsing[] };
+/**
+ * Extra aanzicht naast voor- en achterkant (Jessi, 21 okt 2026), bijvoorbeeld een
+ * zijaanzicht voor een logo op de mouw. Met een eigen foto en eigen logo's.
+ */
+export type ExtraAanzicht = {
+  id: string;
+  /** Bijv. "Linker mouw" of "Zijkant". */
+  naam: string;
+  afbeelding_url: string | null;
+  plaatsingen: Plaatsing[];
+};
+
+export type Ontwerp = { voor: Plaatsing[]; achter: Plaatsing[]; extra?: ExtraAanzicht[] };
+
+/** Een tabblad in de editor: voor, achter of het id van een extra aanzicht. */
+export type Kant = string;
 
 export const LEEG_ONTWERP: Ontwerp = { voor: [], achter: [] };
+export const MAX_EXTRA_AANZICHTEN = 4;
 
 export const MAX_PLAATSINGEN_PER_ZIJDE = 20;
 export const MIN_BREEDTE = 1;
@@ -114,8 +130,42 @@ export function normaliseerOntwerp(ruw: unknown): Ontwerp | null {
       .map(normaliseerPlaatsing)
       .filter((p): p is Plaatsing => Boolean(p))
       .slice(0, MAX_PLAATSINGEN_PER_ZIJDE);
-  if (!Array.isArray(r.voor) && !Array.isArray(r.achter)) return null;
-  return { voor: lijst(r.voor), achter: lijst(r.achter) };
+  if (!Array.isArray(r.voor) && !Array.isArray(r.achter) && !Array.isArray(r.extra)) return null;
+  const uit: Ontwerp = { voor: lijst(r.voor), achter: lijst(r.achter) };
+  const extra = (Array.isArray(r.extra) ? r.extra : [])
+    .map((e): ExtraAanzicht | null => {
+      if (!e || typeof e !== 'object') return null;
+      const x = e as Record<string, unknown>;
+      return {
+        id: typeof x.id === 'string' && x.id.trim() ? x.id.trim().slice(0, 40) : nieuweId(),
+        naam: tekst(x.naam, 40) ?? 'Zijaanzicht',
+        afbeelding_url: veiligeAfbeeldingUrl(x.afbeelding_url),
+        plaatsingen: lijst(x.plaatsingen),
+      };
+    })
+    .filter((e): e is ExtraAanzicht => Boolean(e))
+    .slice(0, MAX_EXTRA_AANZICHTEN);
+  if (extra.length) uit.extra = extra;
+  return uit;
+}
+
+/** Alle logo's van het ontwerp: voor, achter en de extra aanzichten. */
+export function allePlaatsingen(o: Ontwerp): Plaatsing[] {
+  return [...o.voor, ...o.achter, ...(o.extra ?? []).flatMap((e) => e.plaatsingen)];
+}
+
+/** De logo's van één tabblad. */
+export function lagenVan(o: Ontwerp, kant: Kant): Plaatsing[] {
+  if (kant === 'voor') return o.voor;
+  if (kant === 'achter') return o.achter;
+  return o.extra?.find((e) => e.id === kant)?.plaatsingen ?? [];
+}
+
+/** Nieuw ontwerp met de logo's van één tabblad aangepast. */
+export function metLagen(o: Ontwerp, kant: Kant, f: (lagen: Plaatsing[]) => Plaatsing[]): Ontwerp {
+  if (kant === 'voor') return { ...o, voor: f(o.voor) };
+  if (kant === 'achter') return { ...o, achter: f(o.achter) };
+  return { ...o, extra: (o.extra ?? []).map((e) => (e.id === kant ? { ...e, plaatsingen: f(e.plaatsingen) } : e)) };
 }
 
 /** CSS voor één logo op de foto. Editor en weergave gebruiken exact deze stijl. */
@@ -155,10 +205,18 @@ export const VOORINSTELLINGEN: Voorinstelling[] = [
   { label: 'Rechter kuit', zijde: 'achter', x: 64, y: 78, breedte: 14 },
 ];
 
-export function standaardPlek(zijde: Zijde): Voorinstelling {
+/** Snelkeuzes op een zijaanzicht: de mouw staat dan meestal midden in beeld. */
+export const VOORINSTELLINGEN_ZIJ: Omit<Voorinstelling, 'zijde'>[] = [
+  { label: 'Linker mouw', x: 50, y: 32, breedte: 18 },
+  { label: 'Rechter mouw', x: 50, y: 32, breedte: 18 },
+  { label: 'Zijkant', x: 50, y: 50, breedte: 20 },
+];
+
+export function standaardPlek(zijde: Kant): Omit<Voorinstelling, 'zijde'> {
+  if (zijde !== 'voor' && zijde !== 'achter') return VOORINSTELLINGEN_ZIJ[0];
   return VOORINSTELLINGEN.find((v) => v.zijde === zijde) ?? VOORINSTELLINGEN[0];
 }
 
 export function heeftPlaatsingen(o: Ontwerp | null | undefined): boolean {
-  return Boolean(o && (o.voor.length > 0 || o.achter.length > 0));
+  return Boolean(o && allePlaatsingen(o).length > 0);
 }

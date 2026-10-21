@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { LOGO_MIN_CM2, logoCheck } from '@/lib/fiscaal';
-import type { Ontwerp } from './ontwerp';
+import { allePlaatsingen, type Ontwerp } from './ontwerp';
 
 /**
  * Telt het logo-oppervlak van alle plaatsingen op het kledingstuk op (voor en achter)
@@ -9,7 +9,7 @@ import type { Ontwerp } from './ontwerp';
  * van het logobestand, de breedte uit het veld "Breedte in het echt".
  */
 export function LogoOnbelast({ ontwerp }: { ontwerp: Ontwerp }) {
-  const alle = useMemo(() => [...ontwerp.voor, ...ontwerp.achter], [ontwerp]);
+  const alle = useMemo(() => allePlaatsingen(ontwerp), [ontwerp]);
   const urls = useMemo(() => [...new Set(alle.map((p) => p.logo_url))].join('\n'), [alle]);
   const [verhouding, setVerhouding] = useState<Record<string, number>>({});
 

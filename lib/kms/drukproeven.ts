@@ -53,6 +53,8 @@ export type Drukproef = {
   ontwerp?: unknown;
   /** Moment van (laatste keer) versturen; na migratie 20261004_productie_logos_werkbonnen. */
   verstuurd_op?: string | null;
+  /** Alleen voor ons (tabel drukproef_productie, nooit naar de klant). Komt op de werkbon. */
+  productie_instructie?: string | null;
 };
 
 export type DrukproefMetKlant = Drukproef & { organisatie_naam: string | null };
@@ -72,7 +74,28 @@ export type DrukproefVelden = {
   achter_afbeelding_url?: string | null;
   ontwerp?: unknown;
   status?: string;
+  productie_instructie?: string | null;
 };
+
+/** Interne productie-instructies per drukproef (tabel drukproef_productie, alleen server). */
+async function productieInstructies(ids: string[]): Promise<Map<string, string>> {
+  const uit = new Map<string, string>();
+  const sb = kmsAdmin(); if (!sb || ids.length === 0) return uit;
+  const { data, error } = await sb.from('drukproef_productie').select('drukproef_id, instructie').in('drukproef_id', ids);
+  if (error) return uit; // tabel nog niet aangemaakt: gewoon zonder
+  for (const r of (data as { drukproef_id: string; instructie: string | null }[]) ?? []) if (r.instructie) uit.set(r.drukproef_id, r.instructie);
+  return uit;
+}
+
+async function zetProductieInstructie(id: string, tekst: string | null | undefined): Promise<void> {
+  const sb = kmsAdmin(); if (!sb) return;
+  const t = String(tekst ?? '').trim().slice(0, 2000);
+  if (!t) {
+    await sb.from('drukproef_productie').delete().eq('drukproef_id', id);
+    return;
+  }
+  await sb.from('drukproef_productie').upsert({ drukproef_id: id, instructie: t, bijgewerkt_op: new Date().toISOString() }, { onConflict: 'drukproef_id' });
+}
 
 export async function listDrukproevenVoorKlant(orgId: string): Promise<Drukproef[]> {
   const sb = kmsAdmin(); if (!sb) return [];
@@ -80,11 +103,73 @@ export async function listDrukproevenVoorKlant(orgId: string): Promise<Drukproef
   return (data as Drukproef[]) ?? [];
 }
 
-/** De drukproeven die aan een order hangen (voor de drukproef-sectie op de order). */
-export async function listDrukproevenVoorOrder(orderId: string): Promise<Drukproef[]> {
+export type OrderDrukproef = Drukproef & {
+  /** Niet aan deze order gemaakt, maar een eerder goedgekeurde proef van hetzelfde artikel (Jessi, 21 okt). */
+  automatisch?: boolean;
+};
+
+function zelfdeKleurTekst(a: string | null | undefined, b: string | null | undefined): boolean {
+  const n = (s: string | null | undefined) => String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return !n(a) || !n(b) || n(a) === n(b);
+}
+
+/**
+ * Bij welke drukproef hoort een orderregel: zelfde artikel en (als beide bekend)
+ * zelfde kleur. Goedgekeurd gaat voor, daarna de nieuwste.
+ */
+export function drukproefVoorRegel<T extends Drukproef>(
+  regel: { product_id: string | null; kleur: string | null },
+  proeven: T[],
+): T | null {
+  if (!regel.product_id) return null;
+  const passend = proeven.filter((p) => p.product_id === regel.product_id && zelfdeKleurTekst(p.product_kleur, regel.kleur));
+  if (passend.length === 0) return null;
+  return (
+    [...passend].sort((a, b) => {
+      const g = Number(b.status === 'goedgekeurd') - Number(a.status === 'goedgekeurd');
+      return g !== 0 ? g : String(b.behandeld_op ?? b.created_at).localeCompare(String(a.behandeld_op ?? a.created_at));
+    })[0] ?? null
+  );
+}
+
+/**
+ * De drukproeven van een order: de proeven die aan de order zijn gemaakt, plus de
+ * al goedgekeurde proeven van dezelfde klant voor de artikelen op de order
+ * (Jessi, 21 okt: "automatisch gekoppeld"). Die laatste worden niet aan de order
+ * vastgezet, zodat ze ook bij een volgende order weer meekomen.
+ */
+export async function listDrukproevenVoorOrder(orderId: string): Promise<OrderDrukproef[]> {
   const sb = kmsAdmin(); if (!sb) return [];
-  const { data } = await sb.from('drukproeven').select('*').eq('order_id', orderId).order('created_at', { ascending: false });
-  return (data as Drukproef[]) ?? [];
+  const [{ data }, { data: orderData }, { data: regelData }] = await Promise.all([
+    sb.from('drukproeven').select('*').eq('order_id', orderId).order('created_at', { ascending: false }),
+    sb.from('orders').select('organisatie_id').eq('id', orderId).maybeSingle(),
+    sb.from('orderregels').select('product_id, kleur').eq('order_id', orderId),
+  ]);
+  const eigen = ((data as Drukproef[]) ?? []).map((p) => ({ ...p, automatisch: false }));
+  const orgId = (orderData as { organisatie_id: string | null } | null)?.organisatie_id ?? null;
+  const regels = ((regelData as { product_id: string | null; kleur: string | null }[]) ?? []).filter((r) => r.product_id);
+
+  const extra: OrderDrukproef[] = [];
+  if (orgId && regels.length) {
+    const productIds = [...new Set(regels.map((r) => r.product_id as string))];
+    const { data: kandidaten } = await sb
+      .from('drukproeven')
+      .select('*')
+      .eq('organisatie_id', orgId)
+      .eq('status', 'goedgekeurd')
+      .in('product_id', productIds)
+      .order('created_at', { ascending: false });
+    const lijst = ((kandidaten as Drukproef[]) ?? []).filter((p) => p.order_id !== orderId);
+    for (const r of regels) {
+      // Heeft de order zelf al een proef voor dit artikel, dan die.
+      if (drukproefVoorRegel(r, eigen)) continue;
+      const p = drukproefVoorRegel(r, lijst);
+      if (p && !extra.some((x) => x.id === p.id)) extra.push({ ...p, automatisch: true });
+    }
+  }
+  const alle = [...eigen, ...extra];
+  const instructies = await productieInstructies(alle.map((p) => p.id));
+  return alle.map((p) => ({ ...p, productie_instructie: instructies.get(p.id) ?? null }));
 }
 
 /**
@@ -142,7 +227,8 @@ export async function getDrukproef(id: string): Promise<DrukproefMetKlant | null
   if (!data) return null;
   const r = data as unknown as Drukproef & { organisaties: { naam: string } | null };
   const { organisaties, ...rest } = r;
-  return { ...rest, organisatie_naam: organisaties?.naam ?? null };
+  const instructies = await productieInstructies([rest.id]);
+  return { ...rest, organisatie_naam: organisaties?.naam ?? null, productie_instructie: instructies.get(rest.id) ?? null };
 }
 
 export async function maakDrukproef(orgId: string, v: DrukproefVelden): Promise<string | null> {
@@ -156,7 +242,7 @@ export async function maakDrukproef(orgId: string, v: DrukproefVelden): Promise<
       order_id: v.order_id ?? null,
       type: v.type ?? 'tshirt',
       kleur: Number.isFinite(Number(v.kleur)) ? Math.round(Number(v.kleur)) : 0,
-      techniek: v.techniek ?? 'borduren',
+      techniek: v.techniek ?? 'bedrukken',
       positie: v.positie ?? 'borst-links',
       logo_url: v.logo_url ?? null,
       afbeelding_url: v.afbeelding_url ?? null,
@@ -169,7 +255,9 @@ export async function maakDrukproef(orgId: string, v: DrukproefVelden): Promise<
     .select('id')
     .single();
   if (error || !data) return null;
-  return (data as { id: string }).id;
+  const id = (data as { id: string }).id;
+  if (v.productie_instructie) await zetProductieInstructie(id, v.productie_instructie);
+  return id;
 }
 
 export async function werkDrukproef(id: string, v: DrukproefVelden): Promise<boolean> {
@@ -193,6 +281,7 @@ export async function werkDrukproef(id: string, v: DrukproefVelden): Promise<boo
     if (v.status === 'concept') patch.behandeld_op = null;
   }
   const { error } = await sb.from('drukproeven').update(patch).eq('id', id);
+  if (!error && v.productie_instructie !== undefined) await zetProductieInstructie(id, v.productie_instructie);
   return !error;
 }
 
@@ -228,7 +317,8 @@ export async function getDrukproefViaToken(token: string): Promise<DrukproefMetK
   if (!data) return null;
   const r = data as unknown as Drukproef & { organisaties: { naam: string } | null };
   const { organisaties, ...rest } = r;
-  return { ...rest, organisatie_naam: organisaties?.naam ?? null };
+  const instructies = await productieInstructies([rest.id]);
+  return { ...rest, organisatie_naam: organisaties?.naam ?? null, productie_instructie: instructies.get(rest.id) ?? null };
 }
 
 /**

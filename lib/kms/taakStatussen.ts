@@ -322,6 +322,8 @@ export async function zetTaakStatusActief(id: string, actief: boolean): Promise<
   if (!huidig) return { ok: false, fout: 'Status niet gevonden.' };
   if (!actief && huidig.sleutel && VASTE_SLEUTELS.includes(huidig.sleutel))
     return { ok: false, fout: 'Deze status is nodig voor elke taak en kan niet uit.' };
+  if (!actief && (huidig.sleutel?.startsWith('order_') || huidig.sleutel === 'nog_bestellen'))
+    return { ok: false, fout: 'Dit is een orderstatus. Ordertaken lopen gelijk met de order, dus hij kan niet uit. Hernoemen mag wel.' };
   const { error } = await sb.from('taak_statussen').update({ actief }).eq('id', id);
   return error ? { ok: false, fout: 'Opslaan is niet gelukt.' } : { ok: true };
 }

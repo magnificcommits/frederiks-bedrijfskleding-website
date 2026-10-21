@@ -1,5 +1,6 @@
 'use client';
 
+import { kortingVoorMerk, type MerkKortingen } from '@/lib/kortingPerMerk';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { ZoekArtikel, ZoekKleur } from '@/lib/kms/productZoeker';
 import { zoekArtikelenActie, haalKleurenActie, voegRegel } from './actions';
@@ -34,18 +35,24 @@ function omschrijvingVoor(a: ZoekArtikel, kleur: string, maat: string): string {
 export default function FactuurRegelToevoegen({
   factuurId,
   organisatieId,
-  klantKorting,
+  klantKorting: algemeneKorting,
+  merkKortingen = {},
 }: {
   factuurId: string;
   organisatieId: string | null;
   /** Kortingspercentage van de klant (webshop), alleen als hint; wordt niet automatisch toegepast. */
   klantKorting: number | null;
+  /** Korting per merk voor deze klant (gaat voor de klantkorting). */
+  merkKortingen?: MerkKortingen;
 }) {
   const [zoek, setZoek] = useState('');
   const [resultaten, setResultaten] = useState<ZoekArtikel[]>([]);
   const [meer, setMeer] = useState(false);
   const [zoekStand, setZoekStand] = useState<'laden' | 'klaar' | 'mislukt'>('laden');
   const [artikel, setArtikel] = useState<ZoekArtikel | null>(null);
+  // Korting die bij dit artikel hoort: merkkorting als die er is, anders de klantkorting.
+  const kortingNu = kortingVoorMerk(merkKortingen, artikel?.merk, algemeneKorting);
+  const klantKorting = kortingNu > 0 || (artikel?.merk && merkKortingen[artikel.merk.trim().toLowerCase()] != null) ? kortingNu : null;
   const [vrijeRegel, setVrijeRegel] = useState(false);
   const [kleuren, setKleuren] = useState<ZoekKleur[]>([]);
   const [kleurStand, setKleurStand] = useState<'geen' | 'laden' | 'klaar'>('geen');
@@ -360,7 +367,7 @@ export default function FactuurRegelToevoegen({
             </div>
             {klantKorting != null && leesGetal(korting) !== klantKorting && (
               <p className="veld-hint">
-                Deze klant heeft {getalTekst(klantKorting)}% korting in de webshop.{' '}
+                Deze klant heeft {getalTekst(klantKorting)}% korting{artikel?.merk && merkKortingen[artikel.merk.trim().toLowerCase()] != null ? ` op ${artikel.merk}` : ''} in de webshop.{' '}
                 <button type="button" onClick={() => setKorting(getalTekst(klantKorting))} className="font-semibold text-amber-700 hover:text-amber-800">
                   Ook hier toepassen
                 </button>

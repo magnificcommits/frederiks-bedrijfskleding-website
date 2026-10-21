@@ -1,4 +1,5 @@
 'use server';
+import { kortingVoorMerk } from '@/lib/kortingPerMerk';
 import { logPortaal } from '@/lib/portaal/activiteit';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -84,7 +85,7 @@ export async function plaatsBestelling(formData: FormData) {
       kleur: match.variant.kleur,
       aantal,
       // Stukprijs is de nettoprijs na klantkorting; zo kloppen order.bedrag en de factuur automatisch.
-      stukprijs: nettoPrijs(lijstprijs(match.variant.verkoopprijs, match.variant.meerprijs), org.korting_pct),
+      stukprijs: nettoPrijs(lijstprijs(match.variant.verkoopprijs, match.variant.meerprijs), kortingVoorMerk(org.merk_kortingen, match.product.merk, org.korting_pct)),
     });
   }
   if (regels.length === 0) redirect('/portaal/webshop?leeg=1');

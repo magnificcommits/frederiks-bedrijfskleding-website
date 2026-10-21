@@ -381,6 +381,7 @@ export default async function Webshop({
         gekozenMedewerkerId={gekozen?.id ?? null}
         verstrekkingen={verstrekkingPerProduct}
         kortingPct={org.korting_pct}
+        merkKortingen={org.merk_kortingen}
         kleurAfbeeldingen={kleurAfbeeldingen}
         favorieten={favorieten}
         herhaalRegels={herhaalRegels}

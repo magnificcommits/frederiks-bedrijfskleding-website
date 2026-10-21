@@ -1,4 +1,5 @@
 'use client';
+import { kortingVoorMerk, type MerkKortingen } from '@/lib/kortingPerMerk';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { plaatsBestelling, toggleFavorietActie } from './actions';
@@ -48,6 +49,8 @@ type Props = {
   gekozenMedewerkerId?: string | null;
   verstrekkingen: Record<string, VerstrekkingInfo>;
   kortingPct: number | null;
+  /** Korting per merk voor deze klant; gaat voor kortingPct (Jessi, 21 okt). */
+  merkKortingen?: MerkKortingen;
   kleurAfbeeldingen: Record<string, Record<string, string>>;
   favorieten: string[];
   /** Regels van een eerdere order die via "Bestel opnieuw" voorgevuld moeten worden. */
@@ -93,6 +96,7 @@ export default function WebshopClient({
   gekozenMedewerkerId = null,
   verstrekkingen,
   kortingPct,
+  merkKortingen = {},
   kleurAfbeeldingen,
   favorieten,
   herhaalRegels,
@@ -107,11 +111,15 @@ export default function WebshopClient({
   const favorietenSet = new Set(favorieten);
 
   // Klantkorting van de organisatie; leeg of 0 betekent gewoon de lijstprijs.
+  // Per merk kan een eigen korting gelden; die gaat voor.
   const korting = Number(kortingPct) || 0;
-  const heeftKorting = korting > 0;
-  // Nettoprijs van een variant na klantkorting (op de lijstprijs verkoopprijs + meerprijs).
+  const merkPerProduct = useMemo(() => new Map(producten.map((p) => [p.id, p.merk ?? null])), [producten]);
+  const kortingVan = (productId: string) => kortingVoorMerk(merkKortingen, merkPerProduct.get(productId), kortingPct);
+  const heeftMerkKorting = Object.keys(merkKortingen).length > 0;
+  const heeftKorting = korting > 0 && !heeftMerkKorting;
+  // Nettoprijs van een variant na korting (op de lijstprijs verkoopprijs + meerprijs).
   const variantNetto = (v: WebshopProduct['varianten'][number]) =>
-    nettoPrijs(lijstprijs(v.verkoopprijs, v.meerprijs), korting);
+    nettoPrijs(lijstprijs(v.verkoopprijs, v.meerprijs), kortingVan(v.product_id));
 
   // Per product de begin-keuze: de voorkeursmaat-variant als die bestaat, anders de eerste variant.
   const beginKeuze = useMemo(() => {
@@ -245,7 +253,8 @@ export default function WebshopClient({
       som += item.aantal * prijs;
     }
     return som;
-  }, [mand, variantIndex, verstrekkingen, korting]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- variantNetto hangt af van de kortingen hieronder
+  }, [mand, variantIndex, verstrekkingen, kortingPct, merkKortingen]);
 
   const overBudget =
     budgetActief && !buitenBudgetToegestaan && resterendBudget != null && budgetTotaal > resterendBudget;
@@ -331,9 +340,9 @@ export default function WebshopClient({
                   <p className="mt-1 text-sm text-warm">
                     {[p.merk, p.categorie].filter(Boolean).join(' · ') || t('algemeen.geenDetails')}
                   </p>
-                  {heeftKorting && (
+                  {kortingVan(p.id) > 0 && (
                     <p className="mt-2 inline-block rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                      {t('webshop.klantkorting', { pct: korting })}
+                      {t('webshop.klantkorting', { pct: kortingVan(p.id) })}
                     </p>
                   )}
                   {(() => {

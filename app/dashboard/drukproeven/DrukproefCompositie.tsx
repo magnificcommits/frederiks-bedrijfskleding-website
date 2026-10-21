@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- productfoto's en logo's komen van wisselende bronnen; next/image past hier niet */
 import type { ReactNode, Ref } from 'react';
-import { plaatsingStijl, plaatsingTekst, type Ontwerp, type Plaatsing, type Zijde } from './ontwerp';
+import { allePlaatsingen, plaatsingStijl, plaatsingTekst, type Ontwerp, type Plaatsing, type Zijde } from './ontwerp';
 
 /**
  * De drukproef zoals de klant en de drukkerij hem zien: voor- en achterkant naast
@@ -33,7 +33,7 @@ const KLEUR_EXACT = { WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact'
 export function nummering(ontwerp: Ontwerp): Map<string, number> {
   const uit = new Map<string, number>();
   let n = 0;
-  for (const p of [...ontwerp.voor, ...ontwerp.achter]) {
+  for (const p of allePlaatsingen(ontwerp)) {
     if (plaatsingTekst(p)) uit.set(p.id, ++n);
   }
   return uit;
@@ -114,10 +114,13 @@ const ZIJDE_NAAM: Record<Zijde, string> = { voor: 'Voorkant', achter: 'Achterkan
 
 /** De genummerde maatvoering onder de proef. */
 export function Maatvoering({ ontwerp, nummers }: { ontwerp: Ontwerp; nummers: Map<string, number> }) {
-  const regels = (['voor', 'achter'] as Zijde[]).flatMap((zijde) =>
-    ontwerp[zijde]
-      .filter((p) => nummers.has(p.id))
-      .map((p) => ({ p, zijde, nummer: nummers.get(p.id) as number })),
+  const kanten: { naam: string; lagen: Plaatsing[] }[] = [
+    { naam: ZIJDE_NAAM.voor, lagen: ontwerp.voor },
+    { naam: ZIJDE_NAAM.achter, lagen: ontwerp.achter },
+    ...(ontwerp.extra ?? []).map((e) => ({ naam: e.naam, lagen: e.plaatsingen })),
+  ];
+  const regels = kanten.flatMap(({ naam, lagen }) =>
+    lagen.filter((p) => nummers.has(p.id)).map((p) => ({ p, zijde: naam, nummer: nummers.get(p.id) as number })),
   );
   if (regels.length === 0) return null;
   return (
@@ -131,7 +134,7 @@ export function Maatvoering({ ontwerp, nummers }: { ontwerp: Ontwerp; nummers: M
             {nummer}
           </span>
           <span>
-            <span className="font-semibold text-ink-900">{ZIJDE_NAAM[zijde]}</span> · {plaatsingTekst(p)}
+            <span className="font-semibold text-ink-900">{zijde}</span> · {plaatsingTekst(p)}
           </span>
         </li>
       ))}
@@ -157,25 +160,31 @@ export default function DrukproefCompositie({
   titel?: string;
 }) {
   const nummers = maatvoering ? nummering(ontwerp) : undefined;
-  const zijden: Zijde[] = [];
-  if (voorUrl || ontwerp.voor.length > 0 || (!achterUrl && ontwerp.achter.length === 0)) zijden.push('voor');
-  if (achterUrl || ontwerp.achter.length > 0) zijden.push('achter');
+  const zijden: { sleutel: string; naam: string; url: string | null; lagen: Plaatsing[] }[] = [];
+  if (voorUrl || ontwerp.voor.length > 0 || (!achterUrl && ontwerp.achter.length === 0 && !ontwerp.extra?.length))
+    zijden.push({ sleutel: 'voor', naam: ZIJDE_NAAM.voor, url: voorUrl, lagen: ontwerp.voor });
+  if (achterUrl || ontwerp.achter.length > 0) zijden.push({ sleutel: 'achter', naam: ZIJDE_NAAM.achter, url: achterUrl, lagen: ontwerp.achter });
+  // Extra aanzichten (zijkant, mouw) met hun eigen foto.
+  for (const e of ontwerp.extra ?? []) {
+    if (e.afbeelding_url || e.plaatsingen.length) zijden.push({ sleutel: e.id, naam: e.naam, url: e.afbeelding_url, lagen: e.plaatsingen });
+  }
   const klein = formaat === 'mini';
+  const kolommen = zijden.length >= 3 ? 'grid-cols-2 md:grid-cols-3' : zijden.length === 2 ? 'grid-cols-2' : 'grid-cols-1';
 
   return (
     <div className="drukproef-compositie">
-      <div className={`grid gap-4 ${zijden.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-        {zijden.map((zijde) => (
-          <figure key={zijde} className="min-w-0">
+      <div className={`grid gap-4 ${kolommen}`}>
+        {zijden.map((z) => (
+          <figure key={z.sleutel} className="min-w-0">
             <figcaption className={`mb-2 text-center font-semibold uppercase tracking-wide text-warm ${klein ? 'text-[10px]' : 'text-xs'}`}>
-              {ZIJDE_NAAM[zijde]}
+              {z.naam}
             </figcaption>
             <ZijdeBeeld
-              afbeeldingUrl={zijde === 'voor' ? voorUrl : achterUrl}
-              plaatsingen={ontwerp[zijde]}
+              afbeeldingUrl={z.url}
+              plaatsingen={z.lagen}
               nummers={nummers}
               formaat={formaat}
-              alt={`${ZIJDE_NAAM[zijde]}${titel ? ` van ${titel}` : ''}`}
+              alt={`${z.naam}${titel ? ` van ${titel}` : ''}`}
             />
           </figure>
         ))}

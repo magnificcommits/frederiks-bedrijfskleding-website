@@ -21,6 +21,7 @@ import TaakModal, { type ModalOpen } from './TaakModal';
 import AgendaWeek from './AgendaWeek';
 import {
   StatusPill,
+  statussenVoorTaak,
   PersoonChip,
   BronBadge,
   GroeiTekst,
@@ -683,7 +684,7 @@ export default function TakenWeergave(props: Props) {
           </td>
           <td className="!py-3 !align-top">{wanneerCel(t)}</td>
           <td className="!py-2.5 !align-top">
-            <StatusPill waarde={t.werkstatus} statussen={statussen} onKies={(w) => bewaar(t, { werkstatus: w }, { werkstatus: w })} />
+            <StatusPill waarde={t.werkstatus} statussen={statussenVoorTaak(statussen, t.bron)} onKies={(w) => bewaar(t, { werkstatus: w }, { werkstatus: w })} />
           </td>
           <td className="!py-2 !align-top">
             <PersoonChip
@@ -754,7 +755,7 @@ export default function TakenWeergave(props: Props) {
             />
           </div>
           <div className="mt-2 flex items-center justify-between gap-2">
-            <StatusPill waarde={t.werkstatus} statussen={statussen} onKies={(w) => bewaar(t, { werkstatus: w }, { werkstatus: w })} />
+            <StatusPill waarde={t.werkstatus} statussen={statussenVoorTaak(statussen, t.bron)} onKies={(w) => bewaar(t, { werkstatus: w }, { werkstatus: w })} />
             <button type="button" onClick={() => verwijder(t)} className="rounded-md px-2 py-1.5 text-[13px] font-semibold text-red-700 hover:bg-red-50">
               Verwijderen
             </button>

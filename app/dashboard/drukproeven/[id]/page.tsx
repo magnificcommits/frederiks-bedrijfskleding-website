@@ -75,6 +75,7 @@ export default async function DrukproefBewerkenPage({ params, searchParams }: { 
             // Bij oude proeven was 'kleur' de kleur van het getekende shirt, geen aantal drukkleuren.
             drukkleuren: ontwerp ? dp.kleur : 0,
             omschrijving: dp.omschrijving ?? '',
+            productie_instructie: dp.productie_instructie ?? '',
             oudeMaker: !ontwerp,
           }}
         />

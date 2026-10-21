@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PasdagGegevens } from '@/lib/kms/werknemers';
 import { slaPasdagOpActie } from './actions';
+import { isNvtMaat, NVT_MAAT } from '@/lib/maatNvt';
 
 type PasWerknemer = {
   id: string;
@@ -48,15 +49,20 @@ export default function PasdagMaten({
   const [alleenOpen, setAlleenOpen] = useState(false);
 
   const telling = useMemo(() => {
-    const uit: Record<string, { ingevuld: number; totaal: number }> = {};
+    const uit: Record<string, { ingevuld: number; totaal: number; artikelen: number }> = {};
     for (const w of werknemers) {
       const sleutels = gegevens.perWerknemer[w.id] ?? [];
       const maten = gegevens.maten[w.id] ?? {};
-      const ingevuld = sleutels.filter((s) => {
+      // NVT: draagt hij niet, telt niet mee als ontbrekende maat (Jessi, 21 okt).
+      const vanToepassing = sleutels.filter((s) => {
+        const a = gegevens.artikelen[s];
+        return !(a && isNvtMaat(maten[a.product_id]?.maat));
+      });
+      const ingevuld = vanToepassing.filter((s) => {
         const a = gegevens.artikelen[s];
         return Boolean(a && maten[a.product_id]?.maat);
       }).length;
-      uit[w.id] = { ingevuld, totaal: sleutels.length };
+      uit[w.id] = { ingevuld, totaal: vanToepassing.length, artikelen: sleutels.length };
     }
     return uit;
   }, [werknemers, gegevens]);
@@ -67,7 +73,7 @@ export default function PasdagMaten({
       if (term && !`${w.naam} ${w.afdeling ?? ''}`.toLowerCase().includes(term)) return false;
       if (alleenOpen) {
         const t = telling[w.id];
-        if (t && t.totaal > 0 && t.ingevuld >= t.totaal) return false;
+        if (t && t.artikelen > 0 && t.ingevuld >= t.totaal) return false;
       }
       return true;
     });
@@ -120,9 +126,9 @@ export default function PasdagMaten({
 
       <ul className="mt-4 flex flex-col gap-2">
         {zichtbaar.map((w) => {
-          const t = telling[w.id] ?? { ingevuld: 0, totaal: 0 };
+          const t = telling[w.id] ?? { ingevuld: 0, totaal: 0, artikelen: 0 };
           const open = openId === w.id;
-          const klaar = t.totaal > 0 && t.ingevuld >= t.totaal;
+          const klaar = t.artikelen > 0 && t.ingevuld >= t.totaal;
           return (
             <li key={w.id} id={`pas-${w.id}`} className={`panel ${open ? 'border-amber-300' : ''}`}>
               <button
@@ -136,7 +142,7 @@ export default function PasdagMaten({
                   <span className="block text-[13px] text-warm">{w.afdeling ? `Afdeling ${w.afdeling}` : 'Geen afdeling'}</span>
                 </span>
                 <span className="flex items-center gap-3">
-                  {t.totaal === 0 ? (
+                  {t.artikelen === 0 ? (
                     <span className="badge-rust">geen artikelen</span>
                   ) : klaar ? (
                     <span className="badge-klaar">alle maten ingevuld</span>
@@ -297,19 +303,20 @@ function WerknemerMaten({
                         >
                           <option value="">Kies maat</option>
                           {/* Een eerder genoteerde maat die niet meer bestaat, blijft zichtbaar. */}
-                          {r.maat && !a.maten.includes(r.maat) && <option value={r.maat}>{r.maat}</option>}
+                          {r.maat && !isNvtMaat(r.maat) && !a.maten.includes(r.maat) && <option value={r.maat}>{r.maat}</option>}
                           {a.maten.map((m) => (
                             <option key={m} value={m}>
                               {m}
                             </option>
                           ))}
+                          <option value={NVT_MAAT}>NVT (draagt dit niet)</option>
                         </select>
                       ) : (
                         <input
                           id={`maat-${werknemer.id}-${s}`}
                           value={r.maat}
                           onChange={(e) => zet(s, 'maat', e.target.value)}
-                          placeholder="Maat"
+                          placeholder="Maat of NVT"
                           className="veld py-2 text-[15px]"
                         />
                       )}

@@ -23,10 +23,16 @@ import {
   plaatsingTekst,
   standaardPlek,
   VOORINSTELLINGEN,
+  VOORINSTELLINGEN_ZIJ,
   MAX_PLAATSINGEN_PER_ZIJDE,
+  MAX_EXTRA_AANZICHTEN,
+  allePlaatsingen,
+  lagenVan,
+  metLagen,
+  type ExtraAanzicht,
+  type Kant,
   type Ontwerp,
   type Plaatsing,
-  type Zijde,
 } from './ontwerp';
 import { LogoOnbelast } from './LogoOnbelast';
 import { bewaarDrukproefActie, kleurenActie, zoekArtikelenActie } from './actions';
@@ -52,6 +58,8 @@ export type BestaandeDrukproef = {
   techniek: string;
   drukkleuren: number;
   omschrijving: string;
+  /** Alleen voor ons, komt op de werkbon. */
+  productie_instructie?: string;
   /** Oude proef zonder ontwerp: we bouwen hem opnieuw op. */
   oudeMaker: boolean;
 };
@@ -60,7 +68,7 @@ type UploadAntwoord = { ok: true; url: string; naam: string; inBibliotheek?: boo
 type Sleep = {
   soort: 'verplaats' | 'schaal' | 'draai';
   id: string;
-  zijde: Zijde;
+  zijde: Kant;
   rect: DOMRect;
   startX: number;
   startY: number;
@@ -68,7 +76,7 @@ type Sleep = {
   startAfstand: number;
 };
 
-const ZIJDE_NAAM: Record<Zijde, string> = { voor: 'Voorkant', achter: 'Achterkant' };
+const VASTE_NAAM: Record<string, string> = { voor: 'Voorkant', achter: 'Achterkant' };
 const MAX_MB = 10;
 const VERKLEIN_BOVEN = 4 * 1024 * 1024;
 const SNAP_MARGE = 1.2; // procent van de fotobreedte
@@ -238,11 +246,21 @@ export default function DrukproefEditor({
 
   // --- Ontwerp ---
   const [ontwerp, setOntwerp] = useState<Ontwerp>(bestaand?.ontwerp ?? { voor: [], achter: [] });
-  const [zijde, setZijde] = useState<Zijde>('voor');
+  const [zijde, setZijde] = useState<Kant>('voor');
+  const extraAanzichten = ontwerp.extra ?? [];
+  const actiefExtra = extraAanzichten.find((e) => e.id === zijde) ?? null;
+  const naamVan = (k: Kant) => VASTE_NAAM[k] ?? extraAanzichten.find((e) => e.id === k)?.naam ?? 'Aanzicht';
   const [geselecteerd, setGeselecteerd] = useState<string | null>(null);
   const [uitlijnhulp, setUitlijnhulp] = useState(true);
   const [gids, setGids] = useState(false);
   const [kanOngedaan, setKanOngedaan] = useState(false);
+  // Wat er bewaard en getoond wordt: alleen kanten met een foto.
+  const zichtbaarOntwerp = useMemo<Ontwerp>(() => {
+    const o: Ontwerp = { voor: voorUrl ? ontwerp.voor : [], achter: achterUrl ? ontwerp.achter : [] };
+    const extra = (ontwerp.extra ?? []).filter((e) => e.afbeelding_url);
+    if (extra.length) o.extra = extra;
+    return o;
+  }, [ontwerp, voorUrl, achterUrl]);
   const ontwerpRef = useRef(ontwerp);
   const geschiedenis = useRef<Ontwerp[]>([]);
   const sleepRef = useRef<Sleep | null>(null);
@@ -257,15 +275,17 @@ export default function DrukproefEditor({
   // --- Logo's ---
   const [logos, setLogos] = useState<DrukproefLogo[]>(beginLogos);
   const [bewaarInBibliotheek, setBewaarInBibliotheek] = useState(true);
-  const [uploadBezig, setUploadBezig] = useState<null | 'logo' | 'voorkant' | 'achterkant'>(null);
+  const [uploadBezig, setUploadBezig] = useState<null | 'logo' | 'voorkant' | 'achterkant' | 'extra'>(null);
 
   // --- Gegevens ---
   const beginNaam = bestaand?.naam ?? '';
   const [naam, setNaam] = useState(beginNaam);
   const [naamAuto, setNaamAuto] = useState(!bestaand);
-  const [techniek, setTechniek] = useState(bestaand?.techniek === 'bedrukken' ? 'bedrukken' : 'borduren');
+  // Jessi (21 okt): bedrukken is de standaard, borduren blijft te kiezen.
+  const [techniek, setTechniek] = useState(bestaand?.techniek === 'borduren' ? 'borduren' : 'bedrukken');
   const [drukkleuren, setDrukkleuren] = useState<string>(bestaand?.drukkleuren ? String(bestaand.drukkleuren) : '');
   const [omschrijving, setOmschrijving] = useState(bestaand?.omschrijving ?? '');
+  const [productieInstructie, setProductieInstructie] = useState(bestaand?.productie_instructie ?? '');
 
   const [melding, setMelding] = useState<string | null>(null);
   const [opslaan, startOpslaan] = useTransition();
@@ -364,13 +384,14 @@ export default function DrukproefEditor({
     const vorige = geschiedenis.current.pop();
     if (vorige) {
       setOntwerp(vorige);
-      if (geselecteerd && ![...vorige.voor, ...vorige.achter].some((p) => p.id === geselecteerd)) setGeselecteerd(null);
+      if (geselecteerd && !allePlaatsingen(vorige).some((p) => p.id === geselecteerd)) setGeselecteerd(null);
+      if (zijde !== 'voor' && zijde !== 'achter' && !(vorige.extra ?? []).some((e) => e.id === zijde)) setZijde('voor');
     }
     setKanOngedaan(geschiedenis.current.length > 0);
   }
 
-  const wijzig = useCallback((z: Zijde, id: string, patch: Partial<Plaatsing>) => {
-    setOntwerp((o) => ({ ...o, [z]: o[z].map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
+  const wijzig = useCallback((z: Kant, id: string, patch: Partial<Plaatsing>) => {
+    setOntwerp((o) => metLagen(o, z, (l) => l.map((p) => (p.id === id ? { ...p, ...patch } : p))));
   }, []);
 
   /** Wijziging vanuit een knop of veld: eerst een stap bewaren voor ongedaan maken. */
@@ -380,39 +401,39 @@ export default function DrukproefEditor({
   }
 
   function voegLogoToe(url: string) {
-    if (ontwerp[zijde].length >= MAX_PLAATSINGEN_PER_ZIJDE) {
+    if (lagenVan(ontwerp, zijde).length >= MAX_PLAATSINGEN_PER_ZIJDE) {
       setMelding(`Er passen maximaal ${MAX_PLAATSINGEN_PER_ZIJDE} logo's op één kant.`);
       return;
     }
     bewaarStap();
     const plek = standaardPlek(zijde);
     const nieuw: Plaatsing = { id: nieuweId(), logo_url: url, x: plek.x, y: plek.y, breedte: plek.breedte, rotatie: 0, label: plek.label };
-    setOntwerp((o) => ({ ...o, [zijde]: [...o[zijde], nieuw] }));
+    setOntwerp((o) => metLagen(o, zijde, (l) => [...l, nieuw]));
     setGeselecteerd(nieuw.id);
     setMelding(null);
   }
 
   function verwijder(id: string) {
     bewaarStap();
-    setOntwerp((o) => ({ ...o, [zijde]: o[zijde].filter((p) => p.id !== id) }));
+    setOntwerp((o) => metLagen(o, zijde, (l) => l.filter((p) => p.id !== id)));
     setGeselecteerd(null);
   }
 
   function dupliceer(p: Plaatsing) {
-    if (ontwerp[zijde].length >= MAX_PLAATSINGEN_PER_ZIJDE) return;
+    if (lagenVan(ontwerp, zijde).length >= MAX_PLAATSINGEN_PER_ZIJDE) return;
     bewaarStap();
     const kopie: Plaatsing = { ...p, id: nieuweId(), x: rond(begrens(p.x + 4, 0, 100)), y: rond(begrens(p.y + 4, 0, 100)) };
-    setOntwerp((o) => ({ ...o, [zijde]: [...o[zijde], kopie] }));
+    setOntwerp((o) => metLagen(o, zijde, (l) => [...l, kopie]));
     setGeselecteerd(kopie.id);
   }
 
   function naarAndereKant(p: Plaatsing) {
-    const andere: Zijde = zijde === 'voor' ? 'achter' : 'voor';
-    if (ontwerp[andere].length >= MAX_PLAATSINGEN_PER_ZIJDE) return;
+    const andere: Kant = zijde === 'voor' ? 'achter' : 'voor';
+    if (lagenVan(ontwerp, andere).length >= MAX_PLAATSINGEN_PER_ZIJDE) return;
     bewaarStap();
     const plek = standaardPlek(andere);
     const kopie: Plaatsing = { ...p, id: nieuweId(), x: plek.x, y: plek.y, breedte: plek.breedte, rotatie: 0, label: plek.label, breedte_cm: undefined, toelichting: undefined };
-    setOntwerp((o) => ({ ...o, [andere]: [...o[andere], kopie] }));
+    setOntwerp((o) => metLagen(o, andere, (l) => [...l, kopie]));
     if (andere === 'achter' && achterKeuze === 'geen') setAchterKeuze('zelfde');
     setZijde(andere);
     setGeselecteerd(kopie.id);
@@ -504,7 +525,7 @@ export default function DrukproefEditor({
       ongedaanMaken();
       return;
     }
-    const p = ontwerp[zijde].find((q) => q.id === geselecteerd);
+    const p = lagenVan(ontwerp, zijde).find((q) => q.id === geselecteerd);
     if (!p) return;
     const stap = e.shiftKey ? 2 : 0.5;
     const pijlen: Record<string, [number, number]> = { ArrowLeft: [-stap, 0], ArrowRight: [stap, 0], ArrowUp: [0, -stap], ArrowDown: [0, stap] };
@@ -535,6 +556,47 @@ export default function DrukproefEditor({
     const naamZonderExt = r.naam.replace(/\.[^.]+$/, '') || 'Nieuw logo';
     setLogos((l) => [...l, { id: `upload-${nieuweId()}`, naam: naamZonderExt, url: r.url }]);
     voegLogoToe(r.url);
+  }
+
+  /* ---------------- Extra aanzichten (zijkant, mouw) ---------------- */
+
+  function voegAanzichtToe() {
+    if (extraAanzichten.length >= MAX_EXTRA_AANZICHTEN) return;
+    bewaarStap();
+    const nieuw: ExtraAanzicht = { id: `x${nieuweId()}`, naam: extraAanzichten.length === 0 ? 'Zijaanzicht' : `Aanzicht ${extraAanzichten.length + 3}`, afbeelding_url: null, plaatsingen: [] };
+    setOntwerp((o) => ({ ...o, extra: [...(o.extra ?? []), nieuw] }));
+    setZijde(nieuw.id);
+    setGeselecteerd(null);
+  }
+
+  function wijzigAanzicht(id: string, patch: Partial<Omit<ExtraAanzicht, 'id' | 'plaatsingen'>>) {
+    gewijzigd.current = true;
+    setOntwerp((o) => ({ ...o, extra: (o.extra ?? []).map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
+  }
+
+  function verwijderAanzicht(id: string) {
+    bewaarStap();
+    setOntwerp((o) => {
+      const extra = (o.extra ?? []).filter((e) => e.id !== id);
+      const uit: Ontwerp = { voor: o.voor, achter: o.achter };
+      if (extra.length) uit.extra = extra;
+      return uit;
+    });
+    setZijde('voor');
+    setGeselecteerd(null);
+  }
+
+  async function uploadFotoAanzicht(f: File, id: string) {
+    setUploadBezig('extra');
+    setMelding(null);
+    // Zelfde opslag als een eigen achterkantfoto.
+    const r = await upload(f, 'achterkant');
+    setUploadBezig(null);
+    if (!r.ok) {
+      setMelding(r.melding);
+      return;
+    }
+    wijzigAanzicht(id, { afbeelding_url: r.url });
   }
 
   async function uploadFoto(f: File, soort: 'voorkant' | 'achterkant') {
@@ -568,12 +630,12 @@ export default function DrukproefEditor({
       setMelding('Kies eerst een kledingstuk of upload een foto (stap 1).');
       return;
     }
-    if (ontwerp.voor.length + ontwerp.achter.length === 0) {
+    if (allePlaatsingen(ontwerp).length === 0) {
       setMelding('Zet minstens één logo op het kledingstuk (stap 2).');
       return;
     }
     // Logo's op een kant zonder foto tellen niet mee.
-    const teBewaren: Ontwerp = { voor: voorUrl ? ontwerp.voor : [], achter: achterUrl ? ontwerp.achter : [] };
+    const teBewaren = zichtbaarOntwerp;
     startOpslaan(async () => {
       gewijzigd.current = false;
       const r = await bewaarDrukproefActie({
@@ -589,6 +651,7 @@ export default function DrukproefEditor({
         techniek,
         drukkleuren: Number(drukkleuren) || 0,
         omschrijving,
+        productie_instructie: productieInstructie,
         terug: terug ?? null,
       });
       if (r && !r.ok) {
@@ -600,11 +663,11 @@ export default function DrukproefEditor({
 
   /* ---------------- Weergave ---------------- */
 
-  const lagen = ontwerp[zijde];
+  const lagen = lagenVan(ontwerp, zijde);
   const actief = lagen.find((p) => p.id === geselecteerd) ?? null;
-  const huidigeFoto = zijde === 'voor' ? voorUrl : achterUrl;
-  const toonCanvas = zijde === 'voor' ? Boolean(voorUrl) : achterKeuze !== 'geen' && Boolean(achterUrl);
-  const voorinstellingen = VOORINSTELLINGEN.filter((v) => v.zijde === zijde);
+  const huidigeFoto = zijde === 'voor' ? voorUrl : zijde === 'achter' ? achterUrl : actiefExtra?.afbeelding_url ?? null;
+  const toonCanvas = zijde === 'voor' ? Boolean(voorUrl) : zijde === 'achter' ? achterKeuze !== 'geen' && Boolean(achterUrl) : Boolean(actiefExtra?.afbeelding_url);
+  const voorinstellingen = actiefExtra ? VOORINSTELLINGEN_ZIJ : VOORINSTELLINGEN.filter((v) => v.zijde === zijde);
   const beslist = bestaand && (bestaand.status === 'goedgekeurd' || bestaand.status === 'afgekeurd');
 
   return (
@@ -777,8 +840,8 @@ export default function DrukproefEditor({
           </div>
         }
       >
-        <div className="flex flex-wrap gap-1 border-b border-line">
-          {(['voor', 'achter'] as Zijde[]).map((z) => (
+        <div className="flex flex-wrap items-end gap-1 border-b border-line">
+          {['voor', 'achter', ...extraAanzichten.map((e) => e.id)].map((z) => (
             <button
               key={z}
               type="button"
@@ -790,10 +853,20 @@ export default function DrukproefEditor({
                 zijde === z ? 'border-amber-600 text-ink-900' : 'border-transparent text-warm hover:text-ink-800'
               }`}
             >
-              {ZIJDE_NAAM[z]}
-              <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${zijde === z ? 'bg-amber-100 text-amber-800' : 'bg-mist text-warm'}`}>{ontwerp[z].length}</span>
+              {naamVan(z)}
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${zijde === z ? 'bg-amber-100 text-amber-800' : 'bg-mist text-warm'}`}>{lagenVan(ontwerp, z).length}</span>
             </button>
           ))}
+          {extraAanzichten.length < MAX_EXTRA_AANZICHTEN && (
+            <button
+              type="button"
+              onClick={voegAanzichtToe}
+              className="-mb-px border-b-2 border-transparent px-4 py-2.5 text-sm font-semibold text-amber-700 hover:text-amber-800"
+              title="Bijvoorbeeld een zijaanzicht voor een logo op de mouw"
+            >
+              + Zijaanzicht
+            </button>
+          )}
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-5">
@@ -824,6 +897,36 @@ export default function DrukproefEditor({
               </div>
             )}
 
+            {actiefExtra && (
+              <div className="mb-4 flex flex-wrap items-end gap-2">
+                <div>
+                  <label className={label} htmlFor="dp-aanzicht-naam">Naam van dit aanzicht</label>
+                  <input
+                    id="dp-aanzicht-naam"
+                    value={actiefExtra.naam}
+                    maxLength={40}
+                    onChange={(e) => wijzigAanzicht(actiefExtra.id, { naam: e.target.value })}
+                    placeholder="Bijv. Linker mouw"
+                    className={`${veld} w-48`}
+                  />
+                </div>
+                <UploadKnop
+                  klein
+                  tekst={actiefExtra.afbeelding_url ? 'Andere foto uploaden' : 'Foto uploaden'}
+                  bezig={uploadBezig === 'extra'}
+                  onBestand={(f) => void uploadFotoAanzicht(f, actiefExtra.id)}
+                />
+                {voorUrl && actiefExtra.afbeelding_url !== voorUrl && (
+                  <button type="button" onClick={() => wijzigAanzicht(actiefExtra.id, { afbeelding_url: voorUrl })} className="chip">
+                    Voorkantfoto gebruiken
+                  </button>
+                )}
+                <button type="button" onClick={() => verwijderAanzicht(actiefExtra.id)} className="knop-tekst text-red-700">
+                  Aanzicht weghalen
+                </button>
+              </div>
+            )}
+
             {toonCanvas ? (
               <div
                 ref={werkvlakRef}
@@ -833,9 +936,9 @@ export default function DrukproefEditor({
                   if (e.target === e.currentTarget) setGeselecteerd(null);
                 }}
                 className="rounded-xl border border-line bg-mist p-4 outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
-                aria-label={`Werkvlak ${ZIJDE_NAAM[zijde].toLowerCase()}`}
+                aria-label={`Werkvlak ${naamVan(zijde).toLowerCase()}`}
               >
-                <ZijdeBeeld afbeeldingUrl={huidigeFoto} plaatsingen={lagen} formaat="groot" alt={ZIJDE_NAAM[zijde]} toonLogos={false} kaderRef={kaderRef}>
+                <ZijdeBeeld afbeeldingUrl={huidigeFoto} plaatsingen={lagen} formaat="groot" alt={naamVan(zijde)} toonLogos={false} kaderRef={kaderRef}>
                   {/* Klik op de foto zelf = selectie opheffen */}
                   <div
                     className="absolute inset-0"
@@ -897,6 +1000,11 @@ export default function DrukproefEditor({
               <div className="flex min-h-[320px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-mist p-6 text-center">
                 {zijde === 'voor' ? (
                   <p className="text-sm text-warm">Kies eerst in stap 1 een kledingstuk of upload een foto.</p>
+                ) : actiefExtra ? (
+                  <>
+                    <p className="text-sm font-semibold text-ink-900">Nog geen foto voor dit aanzicht</p>
+                    <p className="max-w-sm text-sm text-warm">Upload een foto van de zijkant of mouw, dan zet je het logo er daarna op.</p>
+                  </>
                 ) : (
                   <>
                     <p className="text-sm font-semibold text-ink-900">Nog geen achterkant</p>
@@ -912,7 +1020,7 @@ export default function DrukproefEditor({
           {/* Bediening */}
           <div className="flex flex-col gap-5 lg:col-span-2">
             <div>
-              <p className="text-sm font-semibold text-ink-900">Logo toevoegen aan de {ZIJDE_NAAM[zijde].toLowerCase()}</p>
+              <p className="text-sm font-semibold text-ink-900">Logo toevoegen aan de {naamVan(zijde).toLowerCase()}</p>
               {logos.length === 0 ? (
                 <p className="mt-1 text-sm text-warm">Nog geen logo&apos;s bij {klantNaam}. Upload hieronder een PNG.</p>
               ) : (
@@ -923,7 +1031,7 @@ export default function DrukproefEditor({
                       type="button"
                       disabled={!toonCanvas}
                       onClick={() => voegLogoToe(l.url)}
-                      title={toonCanvas ? `${l.naam} op de ${ZIJDE_NAAM[zijde].toLowerCase()} zetten` : 'Kies eerst een foto'}
+                      title={toonCanvas ? `${l.naam} op de ${naamVan(zijde).toLowerCase()} zetten` : 'Kies eerst een foto'}
                       className="flex flex-col items-center gap-1 rounded-lg border border-line bg-white p-1.5 text-center transition hover:border-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <span className="flex h-14 w-full items-center justify-center rounded" style={ruit}>
@@ -951,7 +1059,7 @@ export default function DrukproefEditor({
 
             {lagen.length > 0 && (
               <div>
-                <p className="text-sm font-semibold text-ink-900">Logo&apos;s op de {ZIJDE_NAAM[zijde].toLowerCase()}</p>
+                <p className="text-sm font-semibold text-ink-900">Logo&apos;s op de {naamVan(zijde).toLowerCase()}</p>
                 <ul className="mt-2 flex flex-col gap-1.5">
                   {lagen.map((p, i) => (
                     <li key={p.id}>
@@ -1088,9 +1196,11 @@ export default function DrukproefEditor({
                   <button type="button" className="knop-stil" onClick={() => dupliceer(actief)}>
                     Dupliceren
                   </button>
-                  <button type="button" className="knop-stil" onClick={() => naarAndereKant(actief)}>
-                    Ook op de {zijde === 'voor' ? 'achterkant' : 'voorkant'}
-                  </button>
+                  {!actiefExtra && (
+                    <button type="button" className="knop-stil" onClick={() => naarAndereKant(actief)}>
+                      Ook op de {zijde === 'voor' ? 'achterkant' : 'voorkant'}
+                    </button>
+                  )}
                   <button type="button" className="knop rounded-md border border-red-200 bg-white text-red-700 hover:bg-red-50" onClick={() => verwijder(actief.id)}>
                     Verwijderen
                   </button>
@@ -1111,7 +1221,7 @@ export default function DrukproefEditor({
               <p className="mb-3 font-display text-base font-bold text-ink-900">{naam || 'Drukproef'}</p>
               {voorUrl || achterUrl ? (
                 <DrukproefCompositie
-                  ontwerp={{ voor: voorUrl ? ontwerp.voor : [], achter: achterUrl ? ontwerp.achter : [] }}
+                  ontwerp={zichtbaarOntwerp}
                   voorUrl={voorUrl}
                   achterUrl={achterUrl}
                   titel={artikel?.naam}
@@ -1120,6 +1230,11 @@ export default function DrukproefEditor({
                 <p className="text-sm text-warm">Het voorbeeld verschijnt zodra je een kledingstuk hebt gekozen.</p>
               )}
               {omschrijving.trim() && <p className="mt-4 whitespace-pre-line border-t border-line pt-3 text-sm text-ink-800">{omschrijving}</p>}
+              {productieInstructie.trim() && (
+                <p className="mt-3 whitespace-pre-line rounded-lg border border-dashed border-ink-300 bg-mist px-3 py-2 text-xs text-ink-800">
+                  <span className="font-semibold">Alleen intern, niet voor de klant:</span> {productieInstructie}
+                </p>
+              )}
             </div>
           </div>
 
@@ -1143,8 +1258,8 @@ export default function DrukproefEditor({
               <div>
                 <label className={label} htmlFor="dp-techniek">Techniek</label>
                 <select id="dp-techniek" value={techniek} onChange={(e) => setTechniek(e.target.value)} className={veld}>
-                  <option value="borduren">Borduren</option>
                   <option value="bedrukken">Bedrukken</option>
+                  <option value="borduren">Borduren</option>
                 </select>
               </div>
               <div>
@@ -1162,20 +1277,38 @@ export default function DrukproefEditor({
                 />
               </div>
             </div>
+            {/* Jessi (21 okt): opmerking voor de klant en productie-instructie apart. */}
             <div>
-              <label className={label} htmlFor="dp-omschrijving">Instructies voor productie en klant</label>
+              <label className={label} htmlFor="dp-omschrijving">Opmerking voor de klant</label>
               <textarea
                 id="dp-omschrijving"
-                rows={5}
+                rows={3}
                 value={omschrijving}
                 maxLength={2000}
                 onChange={(e) => {
                   setOmschrijving(e.target.value);
                   gewijzigd.current = true;
                 }}
-                placeholder={'Bijv. Bij werkjasjes de FHB-batch op de mouw eraf tornen.'}
+                placeholder="Bijv. Logo op de linker borst, 12 cm breed."
                 className={veld}
               />
+              <p className="veld-hint">Staat op de proef die de klant goedkeurt.</p>
+            </div>
+            <div>
+              <label className={label} htmlFor="dp-productie">Productie-instructie (alleen intern)</label>
+              <textarea
+                id="dp-productie"
+                rows={3}
+                value={productieInstructie}
+                maxLength={2000}
+                onChange={(e) => {
+                  setProductieInstructie(e.target.value);
+                  gewijzigd.current = true;
+                }}
+                placeholder="Bijv. 148 graden, coolblock en tussenvel gebruiken."
+                className={veld}
+              />
+              <p className="veld-hint">De klant ziet dit niet. Komt automatisch op de werkbon bij elke order met dit artikel.</p>
             </div>
 
             {melding && (

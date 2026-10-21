@@ -5,6 +5,7 @@ import { kmsAdmin, dashAuthed, eisEigenaar } from '@/lib/kms/adminClient';
 import { getFactuur, getFactuurMailLog, factuurEmailSuggestie, factuurTotalen, regelBedrag, vervaldatumVoor, klantKortingPct, FACTUUR_STATUSSEN } from '@/lib/kms/facturen';
 import { werkRegel, verwijderRegel, wijzigStatus, zetFactuurEmailActie, mailFactuurKlantActie } from './actions';
 import PrintKnop from './PrintKnop';
+import { alsKaart, listMerkKortingen } from '@/lib/kms/merkKortingen';
 import FactuurRegelToevoegen from './FactuurRegelToevoegen';
 import TotaalKaart from '@/components/dashboard/TotaalKaart';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
@@ -88,7 +89,7 @@ export default async function FactuurDetailPage({ params, searchParams }: { para
   const org = factuur.organisatie;
   // Waar komt het factuuradres vandaan? Het voorstel volgt factuurEmailVoor:
   // facturatiecontact, dan factuur-e-mail, dan algemeen e-mailadres, dan hoofdcontact.
-  const [suggestie, klantKorting] = await Promise.all([factuurEmailSuggestie(factuur.organisatie_id), klantKortingPct(factuur.organisatie_id)]);
+  const [suggestie, klantKorting, merkKortingLijst] = await Promise.all([factuurEmailSuggestie(factuur.organisatie_id), klantKortingPct(factuur.organisatie_id), factuur.organisatie_id ? listMerkKortingen(factuur.organisatie_id) : Promise.resolve([])]);
   const huidigAdres = factuur.factuur_email?.trim() || '';
   const adresInVeld = huidigAdres || suggestie?.email || '';
   const zelfdeAlsVoorstel = !!suggestie && huidigAdres.toLowerCase() === suggestie.email.toLowerCase();
@@ -273,7 +274,7 @@ export default async function FactuurDetailPage({ params, searchParams }: { para
         {/* key: na het toevoegen van een regel begint de kiezer weer leeg.
             Een verzonden, betaalde of doorgezette factuur is een boekstuk: geen regels meer toevoegen. */}
         {factuur.status === 'concept' && !factuur.moneybird_factuur_id ? (
-          <FactuurRegelToevoegen key={factuur.regels.length} factuurId={factuur.id} organisatieId={factuur.organisatie_id} klantKorting={klantKorting} />
+          <FactuurRegelToevoegen key={factuur.regels.length} factuurId={factuur.id} organisatieId={factuur.organisatie_id} klantKorting={klantKorting} merkKortingen={alsKaart(merkKortingLijst)} />
         ) : (
           <p className="mt-4 rounded-lg border border-line bg-mist px-4 py-3 text-[13px] text-warm">
             {factuur.moneybird_factuur_id

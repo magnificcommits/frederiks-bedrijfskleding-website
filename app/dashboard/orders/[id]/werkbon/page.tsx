@@ -13,7 +13,7 @@ import {
   werkbonVoorOrder,
   type Decoratie,
 } from '@/lib/kms/logos';
-import { listDrukproevenVoorOrder } from '@/lib/kms/drukproeven';
+import { drukproefVoorRegel, listDrukproevenVoorOrder, type OrderDrukproef } from '@/lib/kms/drukproeven';
 import { site } from '@/content/site';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import DrukproefPreview from '@/app/dashboard/drukproeven/DrukproefPreview';
@@ -38,6 +38,48 @@ function productieBestand(d: Decoratie): { label: string; naam: string; url: str
   if (!b) return null;
   const label = b.productie === 'borduur' ? 'Borduurprogramma' : b.productie === 'vector' ? 'Vector' : 'Plaatje';
   return { label, naam: b.weergaveNaam, url: b.url };
+}
+
+/**
+ * Wat er volgens de goedgekeurde drukproef op dit artikel komt (Jessi, 21 okt):
+ * beeld, techniek, plekken en de interne productie-instructie. Zo hoeft ze dat
+ * niet bij elke order opnieuw in te vullen.
+ */
+function ProefBijArtikel({ p, afdruk = false }: { p: OrderDrukproef; afdruk?: boolean }) {
+  return (
+    <div className={`mt-3 grid grid-cols-1 gap-4 rounded-lg border border-line ${afdruk ? 'p-3' : 'bg-white p-3'} sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]`}>
+      <div className="rounded border border-line p-1.5">
+        <DrukproefPreview
+          afbeeldingUrl={p.afbeelding_url}
+          achterAfbeeldingUrl={p.achter_afbeelding_url ?? null}
+          ontwerp={p.ontwerp}
+          formaat="mini"
+          type={p.type}
+          kleur={p.kleur}
+          logoUrl={p.logo_url}
+          positie={p.positie}
+          techniek={p.techniek}
+        />
+      </div>
+      <div className="min-w-0 text-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-warm">
+          Uit drukproef {p.status === 'goedgekeurd' ? '(goedgekeurd)' : `(${p.status === 'verstuurd' ? 'ter goedkeuring' : p.status})`}
+        </p>
+        <p className="mt-1 font-semibold text-ink-900">
+          {afdruk ? p.naam : <Link href={`/dashboard/drukproeven/${p.id}`} className="hover:text-amber-800">{p.naam}</Link>}
+        </p>
+        <p className="mt-0.5 capitalize text-ink-800">{[p.techniek, p.positie && p.positie !== 'Zie drukproef' ? p.positie : null].filter(Boolean).join(' · ')}</p>
+        {p.productie_instructie ? (
+          <p className="mt-2 whitespace-pre-line rounded border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-ink-900">
+            <span className="block text-[11px] font-semibold uppercase tracking-wide text-amber-800">Productie</span>
+            {p.productie_instructie}
+          </p>
+        ) : (
+          !afdruk && <p className="mt-2 text-xs text-warm">Nog geen productie-instructie bij deze drukproef. Vul die in bij de drukproef, dan staat hij voortaan op elke werkbon.</p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function Kleuren({ d }: { d: Decoratie }) {
@@ -87,7 +129,8 @@ export default async function WerkbonPage({
   ]);
   const goedeProeven = proeven.filter((p) => p.status === 'goedgekeurd');
   const getoondeProeven = goedeProeven.length ? goedeProeven : proeven.slice(0, 2);
-  const regelsMetDeco = werkbon.regels.filter((r) => r.decoraties.length > 0);
+  const proefPerRegel = new Map(werkbon.regels.map((r) => [r.id, drukproefVoorRegel({ product_id: r.product_id ?? null, kleur: r.kleur }, proeven)] as const));
+  const regelsMetDeco = werkbon.regels.filter((r) => r.decoraties.length > 0 || proefPerRegel.get(r.id));
   const totaalStuks = (regelsMetDeco.length ? regelsMetDeco : werkbon.regels).reduce((n, r) => n + (Number(r.aantal) || 0), 0);
   const status = kaart?.status ?? 'wacht_op_drukproef';
 
@@ -145,8 +188,10 @@ export default async function WerkbonPage({
                     <p className="text-sm text-warm">{[r.maat ? `maat ${r.maat}` : null, r.kleur, `${r.aantal}x`].filter(Boolean).join(' · ')}</p>
                   </div>
 
+                  {proefPerRegel.get(r.id) && <ProefBijArtikel p={proefPerRegel.get(r.id) as OrderDrukproef} />}
+
                   {r.decoraties.length === 0 ? (
-                    <p className="mt-3 rounded-lg border border-dashed border-line bg-mist px-4 py-2.5 text-sm text-warm">Nog niets op dit artikel.</p>
+                    !proefPerRegel.get(r.id) && <p className="mt-3 rounded-lg border border-dashed border-line bg-mist px-4 py-2.5 text-sm text-warm">Nog niets op dit artikel.</p>
                   ) : (
                     <ul className="mt-3 divide-y divide-line border-t border-line text-sm">
                       {r.decoraties.map((d) => {
@@ -183,8 +228,10 @@ export default async function WerkbonPage({
                     </ul>
                   )}
 
-                  <details className="mt-3 border-t border-line pt-3" open={r.decoraties.length === 0}>
-                    <summary className="cursor-pointer text-sm font-semibold text-amber-700 hover:text-amber-800">Logo op dit artikel zetten</summary>
+                  <details className="mt-3 border-t border-line pt-3" open={r.decoraties.length === 0 && !proefPerRegel.get(r.id)}>
+                    <summary className="cursor-pointer text-sm font-semibold text-amber-700 hover:text-amber-800">
+                      {proefPerRegel.get(r.id) ? 'Extra logo-bestand koppelen' : 'Logo op dit artikel zetten'}
+                    </summary>
                     <form action={voegDecoratieToe} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <input type="hidden" name="orderId" value={id} />
                       <input type="hidden" name="orderregelId" value={r.id} />
@@ -197,9 +244,9 @@ export default async function WerkbonPage({
                       </div>
                       <div>
                         <label className="veld-label" htmlFor={`tech-${r.id}`}>Techniek</label>
-                        <select id={`tech-${r.id}`} name="techniek" defaultValue="borduren" className="veld !py-2 !text-sm">
-                          <option value="borduren">Borduren</option>
+                        <select id={`tech-${r.id}`} name="techniek" defaultValue={proefPerRegel.get(r.id)?.techniek === 'borduren' ? 'borduren' : 'bedrukken'} className="veld !py-2 !text-sm">
                           <option value="bedrukken">Bedrukken</option>
+                          <option value="borduren">Borduren</option>
                         </select>
                       </div>
                       <div>
@@ -261,7 +308,10 @@ export default async function WerkbonPage({
               <ul className="mt-2 flex flex-col gap-1.5 text-sm">
                 {proeven.map((p) => (
                   <li key={p.id} className="flex items-center justify-between gap-2">
-                    <Link href={`/dashboard/drukproeven/${p.id}`} className="truncate text-ink-900 hover:text-amber-800">{p.naam}</Link>
+                    <span className="min-w-0">
+                      <Link href={`/dashboard/drukproeven/${p.id}`} className="block truncate text-ink-900 hover:text-amber-800">{p.naam}</Link>
+                      {p.automatisch && <span className="block text-[11px] text-warm">eerder goedgekeurd, automatisch gekoppeld</span>}
+                    </span>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${p.status === 'goedgekeurd' ? 'bg-green-100 text-green-800' : p.status === 'afgekeurd' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}>
                       {p.status === 'verstuurd' ? 'ter goedkeuring' : p.status}
                     </span>
@@ -305,8 +355,10 @@ export default async function WerkbonPage({
                 <p className="text-sm text-ink-800">{[r.maat ? `maat ${r.maat}` : null, r.kleur, `aantal ${r.aantal}`].filter(Boolean).join(' · ')}</p>
               </div>
 
+              {proefPerRegel.get(r.id) && <ProefBijArtikel p={proefPerRegel.get(r.id) as OrderDrukproef} afdruk />}
+
               {r.decoraties.length === 0 ? (
-                <p className="mt-2 text-sm text-warm">Geen decoratie.</p>
+                !proefPerRegel.get(r.id) && <p className="mt-2 text-sm text-warm">Geen decoratie.</p>
               ) : (
                 <table className="mt-3 w-full text-left text-sm">
                   <thead className="border-b border-line text-[11px] uppercase tracking-wide text-warm">
@@ -366,7 +418,7 @@ export default async function WerkbonPage({
           ))}
         </div>
 
-        {getoondeProeven.length > 0 && (
+        {getoondeProeven.length > 0 && ![...proefPerRegel.values()].some(Boolean) && (
           <div className="afdruk-blok mt-6 border-t border-line pt-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-warm">
               {goedeProeven.length ? 'Goedgekeurde drukproef' : 'Drukproef (nog niet goedgekeurd)'}

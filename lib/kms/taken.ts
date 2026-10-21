@@ -689,10 +689,18 @@ export async function werkTaakBij(id: string, velden: TaakVelden): Promise<Resul
   }
 
   let wordtKlaar = false;
+  let nieuweOrderstatus: string | null = null;
+  const ordertaak = oud.bron === 'order' && typeof oud.order_id === 'string' && UUID.test(oud.order_id);
   if (velden.werkstatus !== undefined) {
     const w = String(velden.werkstatus).trim();
     const s = statussen.find((x) => x.naam === w);
     if (!s) return { ok: false, fout: 'Die status ken ik niet. Ververs de pagina.' };
+    if (ordertaak && w !== oud.werkstatus) {
+      // Ordertaak: alleen orderstatussen, en de order loopt mee.
+      if (!s.sleutel || !ORDER_TAAK_SLEUTELS.has(s.sleutel))
+        return { ok: false, fout: 'Een ordertaak heeft dezelfde status als de order. Kies een orderstatus.' };
+      nieuweOrderstatus = orderstatusVoorTaakSleutel(s.sleutel);
+    }
     nieuw.werkstatus = s.naam;
     nieuw.status = s.is_afgerond ? 'klaar' : 'open';
     if (s.is_afgerond && oud.status !== 'klaar') {
@@ -725,6 +733,14 @@ export async function werkTaakBij(id: string, velden: TaakVelden): Promise<Resul
     }
   }
   if (Object.keys(opslaan).length === 0) return { ok: true, voor, na };
+
+  // Eerst de order: lukt die wissel niet (bijv. annuleren van een gefactureerde
+  // order), dan blijft ook de taak staan. De trigger op orders zet daarna de taak.
+  if (nieuweOrderstatus && 'werkstatus' in opslaan) {
+    const { zetOrderStatusMetGevolgen } = await import('@/lib/kms/orders');
+    const r = await zetOrderStatusMetGevolgen(String(oud.order_id), nieuweOrderstatus).catch(() => ({ ok: false as const, fout: undefined }));
+    if (!r.ok) return { ok: false, fout: ('fout' in r && r.fout) || 'De order kon niet op deze status. Kijk bij de order.' };
+  }
   // afgerond_op hoort alleen bij een echte wissel tussen open en klaar.
   if ('status' in opslaan && 'afgerond_op' in nieuw) opslaan.afgerond_op = nieuw.afgerond_op;
   // Nieuw moment voor de herinnering: opnieuw versturen.
@@ -743,6 +759,15 @@ export async function werkTaakBij(id: string, velden: TaakVelden): Promise<Resul
 /** Afvinken (eerste status in de groep Klaar) of weer openzetten (beginstatus). */
 export async function vinkTaak(id: string, klaar: boolean): Promise<Resultaat> {
   const statussen = await listTaakStatussen();
+  if (!klaar && UUID.test(id)) {
+    // Ordertaak heropenen: terug naar Factureren (de stap voor Afgerond), niet naar concept.
+    const sb = kmsAdmin();
+    const { data } = sb ? await sb.from('taken').select('bron').eq('id', id).maybeSingle() : { data: null };
+    if ((data as { bron?: string } | null)?.bron === 'order') {
+      const naam = werkstatusVoorOrderstatus(statussen, 'factureren');
+      return werkTaakBij(id, { werkstatus: naam });
+    }
+  }
   return werkTaakBij(id, { werkstatus: klaar ? afgerondStatus(statussen) : beginStatus(statussen) });
 }
 
@@ -878,25 +903,45 @@ export async function archiveerAfgerondeTaken(dagen = 14): Promise<number> {
 const ORDER_GESLOTEN = ['afgerond', 'geannuleerd'];
 
 /** Welke stap in Jessi's werkstroom past bij een orderstatus (oorspronkelijke namen; zie huidigeNaam). */
-const WERKSTATUS_BIJ_ORDERSTATUS: Record<string, TaakWerkstatus> = {
-  concept: 'Niet gestart',
-  offerte_verstuurd: 'Offerte gestuurd',
-  offerte_goedgekeurd: 'Nog bestellen',
-  nog_bestellen: 'Nog bestellen',
-  besteld: 'Al besteld nog niet geleverd',
-  deellevering: 'Al besteld nog niet geleverd',
-  compleet_geleverd: 'In uitvoering',
-  bedrukken: 'Nog bedrukken',
-  borduren: 'Bij borduurder',
-  verpakken: 'In uitvoering',
-  bezorgen: 'Afleveren',
-  verzonden: 'Afleveren',
-  factureren: 'Factuur sturen',
-  afgerond: 'Afgerond',
+/**
+ * Jessi (21 okt 2026): de taak van een order heeft dezelfde status als de order,
+ * twee kanten op. Per orderstatus de sleutel van de bijbehorende taakstatus;
+ * gelijk aan private.order_taak_sleutel() in de migratie 20261021. Die trigger
+ * zet de taak bij elke orderwissel; werkTaakBij zet de order bij een taakwissel.
+ */
+export const TAAK_SLEUTEL_BIJ_ORDERSTATUS: Record<string, string> = {
+  concept: 'niet_gestart',
+  offerte_verstuurd: 'order_offerte_verstuurd',
+  offerte_goedgekeurd: 'order_offerte_goedgekeurd',
+  nog_bestellen: 'nog_bestellen',
+  besteld: 'order_besteld',
+  deellevering: 'order_deellevering',
+  compleet_geleverd: 'order_compleet_geleverd',
+  bedrukken: 'order_bedrukken',
+  borduren: 'order_borduren',
+  verpakken: 'order_verpakken',
+  bezorgen: 'order_bezorgen',
+  verzonden: 'order_verzonden',
+  factureren: 'order_factureren',
+  afgerond: 'afgerond',
+  geannuleerd: 'afgerond',
 };
 
-export function werkstatusVoorOrderstatus(status: string | null | undefined): TaakWerkstatus {
-  return WERKSTATUS_BIJ_ORDERSTATUS[String(status ?? '')] ?? 'Niet gestart';
+/** Omgekeerd: welke orderstatus hoort bij een taakstatus. Afgerond → afgerond, niet geannuleerd. */
+export function orderstatusVoorTaakSleutel(sleutel: string | null | undefined): string | null {
+  if (!sleutel) return null;
+  if (sleutel === 'afgerond') return 'afgerond';
+  for (const [order, taak] of Object.entries(TAAK_SLEUTEL_BIJ_ORDERSTATUS)) if (taak === sleutel) return order;
+  return null;
+}
+
+/** Sleutels van taakstatussen die bij een order horen (voor de keuzelijst van een ordertaak). */
+export const ORDER_TAAK_SLEUTELS = new Set(Object.values(TAAK_SLEUTEL_BIJ_ORDERSTATUS));
+
+/** Naam van de taakstatus bij een orderstatus, zoals Jessi hem nu noemt. */
+export function werkstatusVoorOrderstatus(statussen: TaakStatus[], status: string | null | undefined): string {
+  const sleutel = TAAK_SLEUTEL_BIJ_ORDERSTATUS[String(status ?? '')] ?? 'niet_gestart';
+  return statussen.find((s) => s.sleutel === sleutel)?.naam ?? huidigeNaam(statussen, 'Niet gestart');
 }
 
 /** Portaalbestellingen: 'aangevraagd' en 'bevestigd' zijn nog te doen, de rest is klaar. */
@@ -1068,7 +1113,7 @@ async function synchroniseerOrders(sinds: string, statussen: TaakStatus[], v2: b
       const rij: Record<string, unknown> = {
         titel: (o.organisatie_id && namen.get(o.organisatie_id)) || `Order #${o.ordernummer ?? ''}`.trim(),
         omschrijving: samenvatting,
-        werkstatus: huidigeNaam(statussen, werkstatusVoorOrderstatus(o.status)),
+        werkstatus: werkstatusVoorOrderstatus(statussen, o.status),
         status: 'open',
         prioriteit: 'normaal',
         soort: 'taak',

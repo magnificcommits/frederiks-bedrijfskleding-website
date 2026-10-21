@@ -58,6 +58,21 @@ export function statusOpties(statussen: TaakStatus[], huidig: string | null): { 
   return lijst;
 }
 
+/** Taakstatussen die bij een order horen (gelijk aan TAAK_SLEUTEL_BIJ_ORDERSTATUS in lib/kms/taken). */
+const ORDER_SLEUTELS = new Set(['niet_gestart', 'nog_bestellen', 'afgerond']);
+export function isOrderSleutel(sleutel: string | null): boolean {
+  return !!sleutel && (sleutel.startsWith('order_') || ORDER_SLEUTELS.has(sleutel));
+}
+
+/**
+ * Keuze per soort taak: een ordertaak kiest uit de orderstatussen (de order loopt
+ * mee), andere taken zien de orderstatussen niet.
+ */
+export function statussenVoorTaak(statussen: TaakStatus[], bron: string | null | undefined): TaakStatus[] {
+  if (bron === 'order') return statussen.filter((s) => isOrderSleutel(s.sleutel));
+  return statussen.filter((s) => !s.sleutel?.startsWith('order_'));
+}
+
 /** Status als gekleurde pill met keuzelijst. */
 export function StatusPill({
   waarde,

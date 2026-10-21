@@ -536,6 +536,8 @@ export type OrganisatieKeuze = { id: string; naam: string };
 
 export type WerkbonRegel = {
   id: string;
+  /** Voor het koppelen van de goedgekeurde drukproef per artikel. */
+  product_id?: string | null;
   item_naam: string;
   maat: string | null;
   kleur: string | null;
@@ -780,7 +782,7 @@ export async function getOrderVoorWerkbon(orderId: string): Promise<Werkbon | nu
 
   const { data: regelData } = await sb
     .from('orderregels')
-    .select('id, item_naam, maat, kleur, aantal')
+    .select('id, product_id, item_naam, maat, kleur, aantal')
     .eq('order_id', orderId)
     .order('item_naam');
   const baseRegels = (regelData as Omit<WerkbonRegel, 'decoraties'>[]) ?? [];
@@ -920,13 +922,13 @@ async function bouwWerkbonnen(alleenOrder?: string): Promise<{ kaarten: WerkbonK
 
   type OrderRij = { id: string; ordernummer: number | null; status: string; organisatie_id: string; besteldatum: string | null; created_at: string; organisaties: { naam: string | null } | null };
   const orders: OrderRij[] = [];
-  const regels: { id: string; order_id: string; item_naam: string; aantal: number }[] = [];
+  const regels: { id: string; order_id: string; item_naam: string; aantal: number; product_id: string | null; kleur: string | null }[] = [];
   const werkbonRijen = new Map<string, WerkbonRij>();
   let tabelBestaat = true;
   for (const stuk of inStukken(ids)) {
     const [o, r, w] = await Promise.all([
       sb.from('orders').select('id, ordernummer, status, organisatie_id, besteldatum, created_at, organisaties(naam)').in('id', stuk),
-      sb.from('orderregels').select('id, order_id, item_naam, aantal').in('order_id', stuk),
+      sb.from('orderregels').select('id, order_id, item_naam, aantal, product_id, kleur').in('order_id', stuk),
       tabelBestaat ? sb.from('werkbonnen').select('*').in('order_id', stuk) : Promise.resolve({ data: [], error: null }),
     ]);
     orders.push(...((o.data as unknown as OrderRij[]) ?? []));
@@ -945,6 +947,29 @@ async function bouwWerkbonnen(alleenOrder?: string): Promise<{ kaarten: WerkbonK
     for (const l of (data as Logo[]) ?? []) logoMap.set(l.id, l);
   }
 
+  // Eerder goedgekeurde drukproeven per klant en artikel (Jessi, 21 okt): een order
+  // met alleen zulke artikelen wacht niet op een nieuwe proef.
+  const orgIds = [...new Set(orders.map((o) => o.organisatie_id).filter(Boolean))];
+  const goedPerOrg = new Map<string, { product_id: string; product_kleur: string | null }[]>();
+  for (const stuk of inStukken(orgIds)) {
+    const { data } = await sb
+      .from('drukproeven')
+      .select('organisatie_id, product_id, product_kleur')
+      .in('organisatie_id', stuk)
+      .eq('status', 'goedgekeurd')
+      .not('product_id', 'is', null)
+      .limit(3000);
+    for (const r of (data as { organisatie_id: string; product_id: string; product_kleur: string | null }[]) ?? []) {
+      const lijst = goedPerOrg.get(r.organisatie_id) ?? [];
+      lijst.push(r);
+      goedPerOrg.set(r.organisatie_id, lijst);
+    }
+  }
+  const kleurGelijk = (a: string | null, b: string | null) => {
+    const n = (x: string | null) => (x ?? '').trim().toLowerCase();
+    return !n(a) || !n(b) || n(a) === n(b);
+  };
+
   const nu = Date.now();
   const kaarten: WerkbonKaart[] = [];
   for (const o of orders) {
@@ -957,6 +982,14 @@ async function bouwWerkbonnen(alleenOrder?: string): Promise<{ kaarten: WerkbonK
       afgekeurd: oProeven.filter((p) => p.status === 'afgekeurd').length,
       open: oProeven.filter((p) => p.status === 'concept' || p.status === 'verstuurd').length,
     };
+    if (proefTelling.totaal === 0) {
+      const goed = goedPerOrg.get(o.organisatie_id) ?? [];
+      const automatisch = oRegels.filter((r) => r.product_id && goed.some((g) => g.product_id === r.product_id && kleurGelijk(g.product_kleur, r.kleur))).length;
+      if (automatisch > 0) {
+        proefTelling.totaal = automatisch;
+        proefTelling.goedgekeurd = automatisch;
+      }
+    }
 
     const rij = werkbonRijen.get(o.id);
     const opgeslagen = alsWerkbonStatus(rij?.status);

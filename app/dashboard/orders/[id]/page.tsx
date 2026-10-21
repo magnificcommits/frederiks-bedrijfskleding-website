@@ -419,14 +419,15 @@ export default async function OrderDetailPage({
         </div>
         <p className="mt-1 text-sm text-warm">Zijn alle drukproeven van deze order goedgekeurd, dan gaat de werkbon op goedgekeurd. Ligt alle kleding er al, dan gaat de order meteen door naar borduren of bedrukken.</p>
         {drukproeven.length === 0 ? (
-          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen drukproeven aan deze order gekoppeld.</p>
+          <p className="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">Nog geen drukproeven aan deze order gekoppeld, en geen eerder goedgekeurde proef voor de artikelen op deze order.</p>
         ) : (
           <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {drukproeven.map((d) => (
               <li key={d.id} className="flex items-center justify-between gap-3 panel p-4">
                 <div>
-                  <p className="font-semibold text-ink-900">{d.naam}</p>
+                  <Link href={`/dashboard/drukproeven/${d.id}`} className="font-semibold text-ink-900 hover:text-amber-800">{d.naam}</Link>
                   <p className="text-xs text-warm">{[d.techniek, d.positie].filter(Boolean).join(' · ')}</p>
+                  {d.automatisch && <p className="mt-1 text-xs font-semibold text-green-800">Automatisch gekoppeld: eerder goedgekeurd voor dit artikel</p>}
                   {d.opmerking && (d.status === 'goedgekeurd' || d.status === 'afgekeurd') && (
                     <p className="mt-1 text-xs text-warm">Reactie klant: {d.opmerking}</p>
                   )}

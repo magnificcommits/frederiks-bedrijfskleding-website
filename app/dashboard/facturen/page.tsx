@@ -101,6 +101,7 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
     getHuidigeAdmin(),
   ]);
   const voorgeselecteerd = order && factureerbaar.some((o) => o.id === order) ? order : '';
+  const teFactureren = factureerbaar.filter((o) => o.status === 'factureren');
   const aantalPaginas = Math.max(1, Math.ceil(totaal / PER_PAGINA));
   const alleFacturen = Object.values(perStatus).reduce((n, a) => n + a, 0);
 
@@ -193,6 +194,31 @@ export default async function FacturenPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
       <p className="mt-2 text-sm text-warm">Alle facturen met hun status. Klik op een factuurnummer om de regels te beheren en de factuur af te drukken.</p>
+
+      {/* Jessi (21 okt): een order op "Factureren" heeft nog geen factuur en stond daarom nergens in dit overzicht. */}
+      {teFactureren.length > 0 && (
+        <section className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3" aria-labelledby="te-factureren">
+          <h2 id="te-factureren" className="text-sm font-bold text-amber-900">
+            Klaar om te factureren <span className="tabular-nums">({teFactureren.length})</span>
+          </h2>
+          <p className="mt-0.5 text-xs text-amber-800">Orders met status Factureren die nog geen factuur hebben.</p>
+          <ul className="mt-2 divide-y divide-amber-200">
+            {teFactureren.map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span className="min-w-0 text-sm text-ink-900">
+                  <Link href={`/dashboard/orders/${o.id}`} className="font-semibold hover:underline">#{o.ordernummer}</Link>
+                  {o.organisatie_naam ? <span className="text-warm"> · {o.organisatie_naam}</span> : null}
+                  {o.bedrag != null ? <span className="tabular-nums text-warm"> · {euro(Number(o.bedrag))}</span> : null}
+                </span>
+                <form action={factuurVanOrder}>
+                  <input type="hidden" name="order_id" value={o.id} />
+                  <button type="submit" className="knop-donker !py-1.5 text-xs">Factuur maken</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {gemaild && (
         <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">{gemaild} {Number(gemaild) === 1 ? 'factuur' : 'facturen'} gemaild naar de boekhouder.</p>

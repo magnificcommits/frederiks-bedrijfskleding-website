@@ -1,4 +1,6 @@
 import { getServerSupabase } from './supabaseServer';
+import { isNvtMaat } from '@/lib/maatNvt';
+import { merkSleutel, type MerkKortingen } from '@/lib/kortingPerMerk';
 import { metIdTerugval } from '@/lib/kms/kolomTerugval';
 import { getVertaler } from '@/lib/i18n/portaal/server';
 import { maakVertaler, type Vertaler } from '@/lib/i18n/portaal/kern';
@@ -60,6 +62,8 @@ export type WebshopOrg = {
   verzendkosten: number | null;
   /** Kortingspercentage van de organisatie op de lijstprijs (bijv. 10 = 10% korting). Leeg of 0 is geen korting. */
   korting_pct: number | null;
+  /** Korting per merk (kleine letters → pct); gaat voor korting_pct. Leeg als er geen zijn. */
+  merk_kortingen: MerkKortingen;
 };
 
 /** Lijstprijs (catalogusprijs) van een variant: verkoopprijs plus meerprijs. */
@@ -148,7 +152,12 @@ export async function getMijnWebshopOrganisatie(): Promise<WebshopOrg | null> {
     )
     .limit(1)
     .maybeSingle();
-  return (data as WebshopOrg) ?? null;
+  if (!data) return null;
+  // Merkkortingen van de eigen organisatie (RLS). Ontbreekt de tabel nog: gewoon zonder.
+  const { data: mk } = await sb.from('klant_merk_kortingen').select('merk, korting_pct');
+  const merk_kortingen: MerkKortingen = {};
+  for (const r of (mk as { merk: string; korting_pct: number }[] | null) ?? []) merk_kortingen[merkSleutel(r.merk)] = Number(r.korting_pct);
+  return { ...(data as Omit<WebshopOrg, 'merk_kortingen'>), merk_kortingen };
 }
 
 /** Eén assortimentregel zoals het portaal hem leest (RLS: alleen de eigen organisatie). */
@@ -235,6 +244,18 @@ export async function getAssortiment(
     }
     const toegestaan = kleurenPerProduct;
     lijst = lijst.filter((p) => toegestaan.has(p.id));
+    if (lijst.length === 0) return [];
+  }
+
+  // Maat "NVT" bij deze werknemer (Jessi, 21 okt): dat artikel draagt hij niet, dus niet tonen.
+  if (eigen?.id) {
+    const { data: nvt } = await sb.from('medewerker_maten').select('product_id, voorkeursmaat').eq('medewerker_id', eigen.id);
+    const weg = new Set(
+      ((nvt as { product_id: string; voorkeursmaat: string | null }[]) ?? [])
+        .filter((r) => isNvtMaat(r.voorkeursmaat))
+        .map((r) => r.product_id),
+    );
+    if (weg.size) lijst = lijst.filter((p) => !weg.has(p.id));
     if (lijst.length === 0) return [];
   }
 

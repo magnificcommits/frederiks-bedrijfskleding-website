@@ -7,7 +7,7 @@ import { haalArtikelenActie, haalKleurenActie, voegAssortimentToeActie } from '.
 import { PERIODE_OPTIES, VERSTREKKING_OPTIES, euro } from './verstrekkingOpties';
 
 /** Meer dan dit tegelijk tonen leest niemand, en het maakt het typen traag. */
-const MAX_RESULTATEN = 60;
+const MAX_RESULTATEN = 400;
 
 type Zoekregel = { artikel: ArtikelKeuze; tekst: string };
 

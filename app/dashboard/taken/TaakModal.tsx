@@ -6,7 +6,7 @@ import type { Taak, TaakVelden, KlantKeuze } from '@/lib/kms/taken';
 import type { TaakStatus } from '@/lib/kms/taakStatussen';
 import type { TaakPersoon } from '@/lib/kms/taakPersonen';
 import KlantZoeker, { type KlantWaarde } from './KlantZoeker';
-import { BronBadge, IcoonAfspraak, IcoonTaak, BevestigKnop, statusOpties } from './onderdelen';
+import { BronBadge, IcoonAfspraak, IcoonTaak, BevestigKnop, statusOpties, statussenVoorTaak } from './onderdelen';
 import { kleurKlassen } from './statusKleur';
 import {
   plusDagen,
@@ -317,7 +317,7 @@ export default function TaakModal({
   );
 
   const statusKleur = kleurKlassen(statussen.find((s) => s.naam === c.werkstatus)?.kleur ?? 'grijs');
-  const opties = statusOpties(statussen, c.werkstatus);
+  const opties = statusOpties(statussenVoorTaak(statussen, taak?.bron), c.werkstatus);
 
   if (!gemount) return null;
 

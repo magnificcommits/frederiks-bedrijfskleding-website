@@ -20,7 +20,7 @@ import {
 import { sendEmail } from '@/lib/email';
 import { drukproefVerstuurHtml } from '@/lib/mailSjablonen';
 import { env, isEmailConfigured } from '@/lib/env';
-import { normaliseerOntwerp, veiligeAfbeeldingUrl, plaatsingTekst, type Ontwerp } from './ontwerp';
+import { allePlaatsingen, normaliseerOntwerp, veiligeAfbeeldingUrl, plaatsingTekst, type Ontwerp } from './ontwerp';
 import { veiligTerugPad } from './terug';
 
 /**
@@ -88,6 +88,8 @@ export type DrukproefInvoer = {
   /** Aantal drukkleuren (kolom drukproeven.kleur). */
   drukkleuren: number;
   omschrijving: string;
+  /** Alleen voor ons: komt op de werkbon, niet bij de klant (Jessi, 21 okt). */
+  productie_instructie?: string;
   /** Terug naar waar Jessi vandaan kwam (bijv. de klantkaart). */
   terug?: string | null;
 };
@@ -97,7 +99,8 @@ export type BewaarUitkomst = { ok: false; melding: string };
 function samenvatting(o: Ontwerp): string {
   const v = o.voor.length;
   const a = o.achter.length;
-  return `${v} logo${v === 1 ? '' : "'s"} voorkant, ${a} logo${a === 1 ? '' : "'s"} achterkant`;
+  const extra = (o.extra ?? []).map((e) => `${e.plaatsingen.length} ${e.naam.toLowerCase()}`);
+  return [`${v} logo${v === 1 ? '' : "'s"} voorkant`, `${a} logo${a === 1 ? '' : "'s"} achterkant`, ...extra].join(', ');
 }
 
 export async function bewaarDrukproefActie(invoer: DrukproefInvoer): Promise<BewaarUitkomst> {
@@ -112,21 +115,22 @@ export async function bewaarDrukproefActie(invoer: DrukproefInvoer): Promise<Bew
   const voorUrl = veiligeAfbeeldingUrl(invoer.voor_url);
   const achterUrl = veiligeAfbeeldingUrl(invoer.achter_url);
   if (!voorUrl && !achterUrl) return { ok: false, melding: 'Kies eerst een kledingstuk of upload een foto.' };
-  if (ontwerp.voor.length + ontwerp.achter.length === 0) return { ok: false, melding: 'Zet minstens één logo op het kledingstuk.' };
+  if (allePlaatsingen(ontwerp).length === 0) return { ok: false, melding: 'Zet minstens één logo op het kledingstuk.' };
 
   const productId = invoer.product_id && UUID.test(invoer.product_id) ? invoer.product_id : null;
   const productKleur = String(invoer.product_kleur ?? '').trim().slice(0, 80) || null;
   const orderId = invoer.order_id && UUID.test(invoer.order_id) ? invoer.order_id : null;
-  const techniek = TECHNIEKEN.includes(invoer.techniek) ? invoer.techniek : 'borduren';
+  const techniek = TECHNIEKEN.includes(invoer.techniek) ? invoer.techniek : 'bedrukken';
   const drukkleuren = Math.max(0, Math.min(20, Math.round(Number(invoer.drukkleuren) || 0)));
   const omschrijving = String(invoer.omschrijving ?? '').trim().slice(0, 2000) || null;
+  const productieInstructie = String(invoer.productie_instructie ?? '').trim().slice(0, 2000) || null;
   const terug = veiligTerug(invoer.terug);
 
   // Korte samenvatting van de plekken voor lijsten die het ontwerp (nog) niet tonen,
   // zoals de order. Het eerste logo vullen we in voor oudere weergaven.
-  const plekken = [...new Set([...ontwerp.voor, ...ontwerp.achter].map((p) => p.label).filter(Boolean))].join(', ');
+  const plekken = [...new Set(allePlaatsingen(ontwerp).map((p) => p.label).filter(Boolean))].join(', ');
   const positie = (plekken || 'Zie drukproef').slice(0, 200);
-  const eersteLogo = (ontwerp.voor[0] ?? ontwerp.achter[0])?.logo_url ?? null;
+  const eersteLogo = allePlaatsingen(ontwerp)[0]?.logo_url ?? null;
 
   const velden = {
     naam,
@@ -140,6 +144,7 @@ export async function bewaarDrukproefActie(invoer: DrukproefInvoer): Promise<Bew
     positie,
     logo_url: eersteLogo,
     omschrijving,
+    productie_instructie: productieInstructie,
   };
 
   const id = invoer.id ? String(invoer.id) : '';
@@ -161,6 +166,7 @@ export async function bewaarDrukproefActie(invoer: DrukproefInvoer): Promise<Bew
       ['kleur', huidig.kleur, drukkleuren],
       ['positie', huidig.positie, positie],
       ['omschrijving', huidig.omschrijving, omschrijving],
+      ['productie_instructie', huidig.productie_instructie ?? null, productieInstructie],
     ];
     for (const [veld, oud, nieuw] of vergelijk) {
       if ((oud ?? null) !== (nieuw ?? null)) {
@@ -177,7 +183,9 @@ export async function bewaarDrukproefActie(invoer: DrukproefInvoer): Promise<Bew
     // Is de proef al beoordeeld en verandert er iets, dan moet de klant opnieuw kijken.
     const beslist = huidig.status === 'goedgekeurd' || huidig.status === 'afgekeurd';
     const wijziging = Object.keys(na).length > 0;
-    const status = beslist && wijziging ? 'concept' : undefined;
+    // Alleen de interne productie-instructie gewijzigd: de klant hoeft niet opnieuw te kijken.
+    const klantZietWijziging = Object.keys(na).some((k) => k !== 'productie_instructie');
+    const status = beslist && klantZietWijziging ? 'concept' : undefined;
     if (status) {
       voor.status = huidig.status;
       na.status = status;
@@ -262,7 +270,7 @@ export async function verstuurDrukproefActie(formData: FormData) {
 
   const link = `${env.siteUrl}/drukproef/${dp.token}`;
   const o = normaliseerOntwerp(dp.ontwerp);
-  const plekken = o ? [...o.voor, ...o.achter].map(plaatsingTekst).filter(Boolean) : [];
+  const plekken = o ? allePlaatsingen(o).map(plaatsingTekst).filter(Boolean) : [];
   const uitkomst = await sendEmail({
     to: email,
     subject: 'Je drukproef ter goedkeuring bij Frederiks Bedrijfskleding',

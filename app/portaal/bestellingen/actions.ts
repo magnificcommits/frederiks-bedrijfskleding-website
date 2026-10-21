@@ -1,4 +1,5 @@
 'use server';
+import { kortingVoorMerk } from '@/lib/kortingPerMerk';
 import { redirect } from 'next/navigation';
 import {
   getMijnWebshopOrganisatie,
@@ -86,7 +87,7 @@ export async function herbestelActie(formData: FormData) {
       maat: match.variant.maat,
       kleur: match.variant.kleur,
       aantal,
-      stukprijs: nettoPrijs(lijstprijs(match.variant.verkoopprijs, match.variant.meerprijs), org.korting_pct),
+      stukprijs: nettoPrijs(lijstprijs(match.variant.verkoopprijs, match.variant.meerprijs), kortingVoorMerk(org.merk_kortingen, match.product.merk, org.korting_pct)),
     });
   }
   if (regels.length === 0) {

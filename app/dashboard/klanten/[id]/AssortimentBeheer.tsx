@@ -235,10 +235,28 @@ export default function AssortimentBeheer({
         </p>
       ) : (
         <>
-          <p className="mt-3 text-[12px] text-warm">
-            {gevonden.length === regels.length
-              ? `${regels.length} ${regels.length === 1 ? 'artikel' : 'artikelen'} in het assortiment.`
-              : `${gevonden.length} van ${regels.length} artikelen.`}
+          <p className="mt-3 flex flex-wrap items-center gap-x-2 text-[12px] text-warm">
+            {gevonden.length === regels.length ? (
+              `${regels.length} ${regels.length === 1 ? 'artikel' : 'artikelen'} in het assortiment.`
+            ) : (
+              <>
+                <span>
+                  {gevonden.length} van de {regels.length} artikelen in het assortiment passen bij je zoekopdracht of filter.
+                </span>
+                {/* Jessi (21 okt): "4 van 7" las als "alleen de eerste vier". Eén klik toont alles weer. */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZoek('');
+                    setMerk('');
+                    setGroep('');
+                  }}
+                  className="font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-800"
+                >
+                  Alle {regels.length} tonen
+                </button>
+              </>
+            )}
           </p>
           <div className="panel mt-2 overflow-x-auto">
             <table className="tbl">
@@ -278,7 +296,7 @@ export default function AssortimentBeheer({
             </p>
             {uitCatalogus.length > 6 && (
               <button type="button" onClick={() => openKiezer(null, zoek.trim())} className="knop-stil">
-                Alle {uitCatalogus.length} bekijken
+                Groot bekijken
               </button>
             )}
           </div>
@@ -290,8 +308,9 @@ export default function AssortimentBeheer({
           ) : uitCatalogus.length === 0 ? (
             <p className="px-4 py-3 text-[13px] text-warm">Niets in de catalogus dat hierop past en nog niet bij deze klant staat.</p>
           ) : (
-            <ul className="divide-y divide-line">
-              {uitCatalogus.slice(0, 6).map((a) => (
+            // Alles tonen (Jessi, 21 okt), in een eigen scrollvak zodat de pagina kort blijft.
+            <ul className="max-h-[420px] divide-y divide-line overflow-y-auto">
+              {uitCatalogus.map((a) => (
                 <li key={a.id} className="flex items-center gap-3 px-4 py-2">
                   <div className="h-11 w-11 shrink-0 overflow-hidden rounded border border-line bg-mist">
                     {a.afbeelding && (

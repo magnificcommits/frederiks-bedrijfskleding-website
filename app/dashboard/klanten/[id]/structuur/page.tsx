@@ -18,6 +18,8 @@ import {
   bewaarManagerScope,
 } from './actions';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
+import { listMerkKortingen, merkenInAssortiment } from '@/lib/kms/merkKortingen';
+import { merkSleutel } from '@/lib/kortingPerMerk';
 import PersoonKiezer from '@/components/dashboard/PersoonKiezer';
 
 export const dynamic = 'force-dynamic';
@@ -51,12 +53,19 @@ export default async function InrichtingPage({ params }: { params: Promise<{ id:
     );
   }
 
-  const [inst, vestigingen, afdelingen, managers] = await Promise.all([
+  const [inst, vestigingen, afdelingen, managers, merken, merkKortingen] = await Promise.all([
     getInstellingen(id),
     listVestigingen(id),
     listAfdelingen(id),
     listManagers(id),
+    merkenInAssortiment(id),
+    listMerkKortingen(id),
   ]);
+  // Merken uit het assortiment, plus merken met een korting die er (nog) niet meer in staan.
+  const merkRijen = [
+    ...merken.map((m) => ({ merk: m, pct: merkKortingen.find((k) => merkSleutel(k.merk) === merkSleutel(m))?.korting_pct ?? null })),
+    ...merkKortingen.filter((k) => !merken.some((m) => merkSleutel(m) === merkSleutel(k.merk))).map((k) => ({ merk: k.merk, pct: k.korting_pct })),
+  ];
 
   if (!inst) {
     return (
@@ -111,6 +120,40 @@ export default async function InrichtingPage({ params }: { params: Promise<{ id:
             <label className="veld-label">Klantkorting (%)</label>
             <input name="korting_pct" inputMode="decimal" defaultValue={num(inst.korting_pct)} placeholder="bijv. 10" className={inputCls} />
             <p className="mt-1 text-xs text-warm">Dit percentage gaat in het portaal en op de factuur van de catalogusprijs af. Leeg of 0 is geen korting.</p>
+          </div>
+
+          {/* Jessi (21 okt): korting per merk, voor de merken in het assortiment van deze klant. */}
+          <div className="sm:col-span-2 rounded-lg border border-line bg-mist/40 p-4">
+            <p className="text-sm font-semibold text-ink-900">Korting per merk</p>
+            <p className="mt-0.5 text-xs text-warm">
+              Gaat voor de klantkorting hierboven bij artikelen van dat merk. Leeg = de klantkorting geldt. 0 = geen korting op dat merk.
+            </p>
+            {merkRijen.length === 0 ? (
+              <p className="mt-3 text-sm text-warm">Nog geen artikelen in het assortiment. Zodra er artikelen in staan, verschijnen hier hun merken.</p>
+            ) : (
+              <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+                {merkRijen.map((r, i) => (
+                  <div key={r.merk} className="flex items-center justify-between gap-3">
+                    <input type="hidden" name={`merk_naam__${i}`} value={r.merk} />
+                    <label htmlFor={`merk-korting-${i}`} className="min-w-0 truncate text-sm text-ink-900">
+                      {r.merk}
+                      {!merken.includes(r.merk) && <span className="ml-1 text-xs text-warm">(niet meer in assortiment)</span>}
+                    </label>
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      <input
+                        id={`merk-korting-${i}`}
+                        name={`merk_korting__${i}`}
+                        inputMode="decimal"
+                        defaultValue={r.pct == null ? '' : String(r.pct)}
+                        placeholder={inst.korting_pct ? String(inst.korting_pct) : '0'}
+                        className="veld !w-20 !py-1.5 text-right"
+                      />
+                      <span className="text-sm text-warm">%</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

@@ -2,6 +2,7 @@
 import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { uploadMedia } from '@/lib/kms/storage';
+import { slaMerkKortingenOp } from '@/lib/kms/merkKortingen';
 import { bevestigPersoon, leesPersoonKeuze } from '@/lib/kms/personen';
 import {
   werkInstellingen,
@@ -58,6 +59,14 @@ export async function bewaarInstellingen(formData: FormData) {
       portaal_logo_url,
       sfeerafbeelding_url: String(formData.get('sfeerafbeelding_url') ?? '').trim() || null,
     });
+    // Korting per merk (Jessi, 21 okt): velden merk_naam__N en merk_korting__N.
+    if (formData.has('merk_naam__0')) {
+      const lijst: { merk: string; korting_pct: number | null }[] = [];
+      for (let i = 0; i < 200 && formData.has(`merk_naam__${i}`); i++) {
+        lijst.push({ merk: String(formData.get(`merk_naam__${i}`) ?? ''), korting_pct: percentage(formData, `merk_korting__${i}`) });
+      }
+      await slaMerkKortingenOp(id, lijst);
+    }
   }
   redirect('/dashboard/klanten/' + id + '/structuur');
 }

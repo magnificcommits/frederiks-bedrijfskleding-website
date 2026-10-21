@@ -15,15 +15,14 @@ export const maxDuration = 60;
  * verstuurt ingeplande nieuwsbrieven en hervat onderbroken verzendingen, in
  * batches van 50 tot ongeveer 50 seconden op zijn. Beveiligd met CRON_SECRET,
  * net als /api/cron/campagnes: Vercel stuurt `Authorization: Bearer <secret>`
- * mee; handmatig kan met ?secret=<secret>.
+ * mee; alleen via de header, niet via de URL.
  */
 export async function GET(req: Request) {
   const secret = env.cronSecret;
   if (!secret) return NextResponse.json({ error: 'Cron niet geconfigureerd (zet CRON_SECRET).' }, { status: 503 });
 
   const auth = req.headers.get('authorization');
-  const param = new URL(req.url).searchParams.get('secret');
-  if (!veiligGelijk(auth ?? '', `Bearer ${secret}`) && !veiligGelijk(param ?? '', secret)) {
+  if (!veiligGelijk(auth ?? '', `Bearer ${secret}`)) {
     return NextResponse.json({ error: 'Niet toegestaan' }, { status: 401 });
   }
 

@@ -277,21 +277,27 @@ export async function getAssortiment(
   });
 }
 
-/** Zoekt de medewerker waarvan het e-mailadres gelijk is aan dat van de ingelogde gebruiker. Kan null zijn. */
+const MEDEWERKER_KOLOMMEN =
+  'id, naam, voornaam, achternaam, email, functie, budget, budget_type, startbudget, productbudget, buiten_budget_toegestaan, vestiging_id, afdeling_id, actief';
+
+/**
+ * De medewerker van de ingelogde gebruiker. Eerst via de koppeling in
+ * portaal_gebruikers (medewerker_id); die is leidend, want een werknemer heeft
+ * lang niet altijd een e-mailadres in zijn medewerkerkaart. Anders op e-mailadres.
+ */
 export async function getMijnMedewerker(): Promise<WebshopMedewerker | null> {
   const sb = await getServerSupabase();
   if (!sb) return null;
   const { data: auth } = await sb.auth.getUser();
   const email = auth.user?.email;
   if (!email) return null;
-  const { data } = await sb
-    .from('medewerkers')
-    .select(
-      'id, naam, voornaam, achternaam, email, functie, budget, budget_type, startbudget, productbudget, buiten_budget_toegestaan, vestiging_id, afdeling_id, actief',
-    )
-    .ilike('email', email)
-    .limit(1)
-    .maybeSingle();
+  const { data: pg } = await sb.from('portaal_gebruikers').select('medewerker_id').ilike('email', email).limit(1).maybeSingle();
+  const gekoppeld = (pg as { medewerker_id: string | null } | null)?.medewerker_id;
+  if (gekoppeld) {
+    const { data } = await sb.from('medewerkers').select(MEDEWERKER_KOLOMMEN).eq('id', gekoppeld).maybeSingle();
+    if (data) return data as WebshopMedewerker;
+  }
+  const { data } = await sb.from('medewerkers').select(MEDEWERKER_KOLOMMEN).ilike('email', email).limit(1).maybeSingle();
   return (data as WebshopMedewerker) ?? null;
 }
 

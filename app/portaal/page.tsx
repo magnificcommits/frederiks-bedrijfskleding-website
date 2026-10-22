@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { isPortalConfigured } from '@/lib/env';
 import { getPortaalUser, getMijnOrganisatie, getKledinglijn } from '@/lib/portaal/queries';
+import { getBudgetVerbruik, getMijnMedewerker } from '@/lib/portaal/webshop';
 import { getMijnToegang } from '@/lib/portaal/team';
 import { getWachtendeOrders } from '@/lib/portaal/goedkeuringen';
 import { getSpaarInstellingen, getSpaarsaldo } from '@/lib/kms/sparen';
@@ -57,6 +58,10 @@ export default async function Portaal() {
     listMijnMeldingen(),
   ]);
   const ongelezen = meldingen.filter((m) => !m.gelezen);
+  // Eigen kledingbudget (werkdocument portaal 21 okt, punt 1).
+  const ik = await getMijnMedewerker().catch(() => null);
+  const mijnBudget = ik?.budget != null && (ik.budget_type ?? 'euro') === 'euro' ? Number(ik.budget) : null;
+  const mijnVerbruik = mijnBudget != null && ik ? await getBudgetVerbruik(ik.id) : 0;
   const spaarsaldo = spaarInstellingen.actief ? await getSpaarsaldo(org.id) : null;
   const spaarMijlpaal = spaarsaldo
     ? (() => {
@@ -102,6 +107,28 @@ export default async function Portaal() {
         </section>
       )}
 
+      {(mijnBudget != null || magKeuren) && (
+        <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line bg-white p-5 shadow-soft">
+          {mijnBudget != null ? (
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-700">{t('nav.budget')}</p>
+              <p className="mt-1 font-display text-2xl font-extrabold text-ink-900">
+                {formatEuro(Math.max(0, mijnBudget - mijnVerbruik))} <span className="text-base font-bold text-warm">over van {formatEuro(mijnBudget)}</span>
+              </p>
+              <div className="mt-2 h-2 w-64 max-w-full overflow-hidden rounded-full bg-mist">
+                <div className="h-2 rounded-full bg-amber-500" style={{ width: `${Math.min(100, Math.round((mijnVerbruik / Math.max(1, mijnBudget)) * 100))}%` }} aria-hidden="true" />
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-700">{t('nav.budget')}</p>
+              <p className="mt-1 text-sm text-warm">Budget per medewerker en het maximum per bestelling.</p>
+            </div>
+          )}
+          {magKeuren && <Link href="/portaal/budget" className="btn-secondary shrink-0">Budgetten bekijken</Link>}
+        </section>
+      )}
+
       <section className="mt-8 rounded-2xl border border-line bg-white p-5 shadow-soft sm:p-6">
         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-700">{t('home.zoBestelJe')}</p>
         <ol className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -127,6 +154,10 @@ export default async function Portaal() {
             </div>
           </li>
         </ol>
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-3 text-sm font-semibold">
+          <Link href="/portaal/zo-werkt-het" className="text-amber-700 hover:text-amber-800">{t('nav.zoWerktHet')}</Link>
+          <Link href="/portaal/wasvoorschriften" className="text-amber-700 hover:text-amber-800">{t('nav.wasvoorschriften')}</Link>
+        </div>
       </section>
 
       {spaarsaldo && spaarMijlpaal && (

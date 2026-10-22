@@ -4,6 +4,7 @@ import { dashAuthed } from '@/lib/kms/adminClient';
 import { artikelVoorDrukproef, getDrukproef, listArtikelenVoorDrukproef, listLogosVoorDrukproef } from '@/lib/kms/drukproeven';
 import EmptyState from '@/components/dashboard/EmptyState';
 import DrukproefEditor from '../DrukproefEditor';
+import { leesCentralePrijslijst } from '@/lib/kms/prijslijstBeheer';
 import { normaliseerOntwerp } from '../ontwerp';
 import { veiligTerugPad } from '../terug';
 
@@ -57,6 +58,7 @@ export default async function DrukproefBewerkenPage({ params, searchParams }: { 
       )}
       <div className="mt-6">
         <DrukproefEditor
+          formaten={(await leesCentralePrijslijst()).formaten}
           orgId={dp.organisatie_id}
           klantNaam={klantNaam}
           orderId={dp.order_id}

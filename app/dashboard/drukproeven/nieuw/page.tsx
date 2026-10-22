@@ -6,6 +6,7 @@ import EmptyState from '@/components/dashboard/EmptyState';
 import NavigateSelect from '@/components/dashboard/NavigateSelect';
 import { listOrganisaties } from '@/lib/kms/logos';
 import DrukproefEditor from '../DrukproefEditor';
+import { leesCentralePrijslijst } from '@/lib/kms/prijslijstBeheer';
 import { veiligTerugPad } from '../terug';
 
 export const dynamic = 'force-dynamic';
@@ -67,7 +68,8 @@ export default async function NieuweDrukproefPage({ searchParams }: { searchPara
         <Link href={terug ?? `/dashboard/drukproeven?org=${klant.id}`} className="text-sm font-semibold text-warm hover:text-ink-800">{terug ? 'Terug' : 'Terug naar drukproeven'}</Link>
       </div>
       <div className="mt-6">
-        <DrukproefEditor orgId={klant.id} klantNaam={klant.naam} orderId={orderId} assortiment={assortiment} logos={logos} terug={terug} />
+        <DrukproefEditor
+          formaten={(await leesCentralePrijslijst()).formaten} orgId={klant.id} klantNaam={klant.naam} orderId={orderId} assortiment={assortiment} logos={logos} terug={terug} />
       </div>
     </main>
   );

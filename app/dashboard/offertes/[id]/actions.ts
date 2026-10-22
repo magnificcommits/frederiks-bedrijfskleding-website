@@ -241,3 +241,14 @@ export async function mailOfferteActie(formData: FormData) {
   await logAudit('offerte_gemaild', { entiteit: 'offertes', entiteitId: id, details: { to } });
   redirect('/dashboard/offertes/' + id + '?ok=gemaild');
 }
+
+/** Personalisatiekosten berekenen uit de goedgekeurde drukproeven van de klant (mail Jessi 21 okt). */
+export async function berekenPersonalisatieOfferteActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const offerteId = String(formData.get('offerteId') ?? '').trim();
+  if (!offerteId) redirect('/dashboard/offertes');
+  const { berekenPersonalisatieVoorOfferte } = await import('@/lib/kms/personalisatie');
+  const u = await berekenPersonalisatieVoorOfferte(offerteId);
+  await logAudit('personalisatie_berekend', { entiteit: 'offertes', entiteitId: offerteId, details: { regels: u.regels, totaal: u.totaal } });
+  redirect('/dashboard/offertes/' + offerteId + (u.regels > 0 ? '?ok=pers' : u.geenProef ? '?fout=pers_geen_proef' : '?fout=pers_geen'));
+}

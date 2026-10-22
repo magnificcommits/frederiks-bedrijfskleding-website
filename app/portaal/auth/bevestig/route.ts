@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { getServerSupabase } from '@/lib/portaal/supabaseServer';
+import { bevestigdEmail, heeftPortaalToegang } from '@/lib/ssoToegang';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,13 @@ export async function GET(req: Request) {
   }
   const sb = await getServerSupabase();
   if (!sb) return NextResponse.redirect(`${origin}/portaal/login?fout=config`);
-  const { error } = await sb.auth.verifyOtp({ token_hash: tokenHash, type });
-  if (error) return NextResponse.redirect(`${origin}/portaal/login?fout=link`);
+  const { data, error } = await sb.auth.verifyOtp({ token_hash: tokenHash, type });
+  if (error || !data?.user) return NextResponse.redirect(`${origin}/portaal/login?fout=link`);
+  // Zelfde regel als de gewone callback: alleen portaalgebruikers.
+  const email = bevestigdEmail(data.user);
+  if (!email || !(await heeftPortaalToegang(email, sb))) {
+    await sb.auth.signOut({ scope: 'local' });
+    return NextResponse.redirect(`${origin}/portaal/login?fout=geen-toegang`);
+  }
   return NextResponse.redirect(`${origin}/portaal`);
 }

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { aantalWachtMaatwijzigingen } from '@/lib/kms/maatwijzigingen';
 import type { Metadata } from 'next';
 import { env, isLeadsDbConfigured } from '@/lib/env';
 import { login } from './actions';
@@ -103,13 +104,14 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
     );
   }
 
-  const [stats, signalen, admin, eigenaar, cookieLijst, ongezien] = await Promise.all([
+  const [stats, signalen, admin, eigenaar, cookieLijst, ongezien, matenWacht] = await Promise.all([
     getDashboardStats(),
     getVandaagSignalen(),
     getHuidigeAdmin().catch(() => null),
     magEigenaar().catch(() => false),
     cookies(),
     listOngezieneWebleads(5).catch(() => ({ aantal: 0, leads: [] })),
+    aantalWachtMaatwijzigingen().catch(() => 0),
   ]);
   // Aan de slag: alleen voor de eigenaar, tot alles staat of tot ze het verbergt.
   const aanDeSlag =
@@ -175,6 +177,16 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
       label: leads.wachten === 1 ? 'Nieuwe lead wacht op reactie' : 'Nieuwe leads wachten op reactie',
       detail: leads.eersteWachtend ? `Langst wachtend: ${leads.eersteWachtend}` : null,
       href: '/dashboard/leads',
+    },
+    {
+      key: 'maatwijzigingen', aantal: matenWacht,
+      label: matenWacht === 1 ? 'Maatwijziging wacht op beoordeling' : 'Maatwijzigingen wachten op beoordeling',
+      href: '/dashboard/medewerker-verzoeken#maatwijzigingen',
+    },
+    {
+      key: 'klachten', aantal: signalen?.klachtenOpen ?? 0, urgent: true,
+      label: (signalen?.klachtenOpen ?? 0) === 1 ? 'Nieuwe vraag of klacht uit het portaal' : 'Nieuwe vragen en klachten',
+      detail: 'Nog niet beantwoord', href: '/dashboard/klachten?status=open',
     },
     {
       key: 'retouren', aantal: signalen?.retourenTeBeoordelen ?? 0,

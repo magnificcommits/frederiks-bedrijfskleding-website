@@ -15,6 +15,7 @@ import {
   type OrderProduct,
 } from '@/lib/kms/orders';
 import { genereerInkoopregels, volgOrderNaInkoop } from '@/lib/kms/inkoop';
+import { berekenPersonalisatieVoorOrder, zetPersonalisatiePrijs } from '@/lib/kms/personalisatie';
 import { bevestigPersoon, leesPersoonKeuze } from '@/lib/kms/personen';
 import { lijktOpEmail, normaleNaam } from '@/lib/personen';
 
@@ -93,6 +94,8 @@ export async function voegRegelToe(formData: FormData) {
 
   const gelukt = await voegOrderregelToe(orderId, { item_naam, product_id, variant_id, maat, kleur, lengte, aantal, stukprijs });
   if (!gelukt) terugNaarOrder(orderId, 'mislukt');
+  // Personalisatie loopt mee met de kleding (staffel over de hele order).
+  await berekenPersonalisatieVoorOrder(orderId).catch(() => null);
   await logAudit('orderregel_toegevoegd', {
     entiteit: 'order',
     entiteitId: orderId,
@@ -108,6 +111,7 @@ export async function verwijderRegel(formData: FormData) {
   if (regelId) {
     await eisOpenOrder(orderId);
     await verwijderOrderregel(regelId);
+    await berekenPersonalisatieVoorOrder(orderId).catch(() => null);
     await logAudit('orderregel_verwijderd', { entiteit: 'order', entiteitId: orderId, details: { regelId } });
   }
   terugNaarOrder(orderId, 'regel_weg');
@@ -215,4 +219,29 @@ export async function zetTrackTrace(formData: FormData) {
     await logAudit('order_verzending', { entiteit: 'order', entiteitId: orderId, details: { vervoerder } });
   }
   terugNaarOrder(orderId, 'verzending');
+}
+
+/** Personalisatiekosten (opnieuw) berekenen uit de goedgekeurde drukproeven en de prijslijst. */
+export async function berekenPersonalisatieActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const orderId = String(formData.get('orderId') ?? '').trim();
+  if (!orderId) redirect('/dashboard/orders');
+  await eisOpenOrder(orderId);
+  const u = await berekenPersonalisatieVoorOrder(orderId);
+  if (!u.ok) terugNaarOrder(orderId, 'mislukt');
+  await logAudit('personalisatie_berekend', { entiteit: 'order', entiteitId: orderId, details: { regels: u.regels, totaal: u.totaal } });
+  terugNaarOrder(orderId, u.regels > 0 ? 'pers' : u.geenProef ? 'pers_geen_proef' : 'pers_geen', u.zonderPrijs.length ? { zonder: u.zonderPrijs.length } : undefined);
+}
+
+/** Prijs van een personalisatieregel met de hand: blijft staan bij herberekenen. */
+export async function zetPersonalisatiePrijsActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const orderId = String(formData.get('orderId') ?? '').trim();
+  const regelId = String(formData.get('regelId') ?? '').trim();
+  const prijs = getalOfNull(String(formData.get('stukprijs') ?? ''));
+  if (!orderId || !regelId || prijs == null || prijs < 0) terugNaarOrder(orderId, 'mislukt');
+  await eisOpenOrder(orderId);
+  const ok = await zetPersonalisatiePrijs('orderregels', regelId, Math.round(prijs! * 100) / 100);
+  if (ok) await logAudit('personalisatie_prijs', { entiteit: 'order', entiteitId: orderId, details: { regelId, stukprijs: prijs } });
+  terugNaarOrder(orderId, ok ? 'pers_prijs' : 'mislukt');
 }

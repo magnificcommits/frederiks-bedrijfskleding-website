@@ -174,17 +174,22 @@ export async function bewaarDrukproefActie(invoer: DrukproefInvoer): Promise<Bew
         na[veld] = nieuw ?? null;
       }
     }
-    const ontwerpGewijzigd = JSON.stringify(oudOntwerp) !== JSON.stringify(ontwerp);
+    // De prijscategorie per logo is intern: alleen die wijzigen hoeft de klant niet opnieuw te zien.
+    const zonderPrijs = (o: Ontwerp | null) => JSON.stringify(o, (k, v) => (k === 'formaat' ? undefined : v));
+    const ontwerpGewijzigd = zonderPrijs(oudOntwerp) !== zonderPrijs(ontwerp);
     if (ontwerpGewijzigd) {
       voor.ontwerp = oudOntwerp ? samenvatting(oudOntwerp) : 'geen ontwerp';
       na.ontwerp = samenvatting(ontwerp);
+    } else if (JSON.stringify(oudOntwerp) !== JSON.stringify(ontwerp)) {
+      voor.prijscategorie = 'gewijzigd';
+      na.prijscategorie = 'gewijzigd';
     }
 
     // Is de proef al beoordeeld en verandert er iets, dan moet de klant opnieuw kijken.
     const beslist = huidig.status === 'goedgekeurd' || huidig.status === 'afgekeurd';
     const wijziging = Object.keys(na).length > 0;
     // Alleen de interne productie-instructie gewijzigd: de klant hoeft niet opnieuw te kijken.
-    const klantZietWijziging = Object.keys(na).some((k) => k !== 'productie_instructie');
+    const klantZietWijziging = Object.keys(na).some((k) => k !== 'productie_instructie' && k !== 'prijscategorie');
     const status = beslist && klantZietWijziging ? 'concept' : undefined;
     if (status) {
       voor.status = huidig.status;

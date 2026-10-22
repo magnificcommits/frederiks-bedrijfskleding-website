@@ -53,6 +53,10 @@ export type Offerteregel = {
   lengte: number | null;
   positie: number | null;
   created_at: string;
+  /** 'personalisatie' = automatisch berekende logokosten (migratie 20261022b). */
+  soort?: string | null;
+  handmatig?: boolean | null;
+  decoratie_sleutel?: string | null;
 };
 
 /** Regel zoals de offertepagina en de afdruk hem tonen: met foto in de gekozen kleur. */
@@ -567,6 +571,10 @@ export async function werkRegel(regelId: string, v: RegelVelden): Promise<boolea
   if (v.inkoop !== undefined) patch.inkoop = v.inkoop != null ? Number(v.inkoop) : null;
   // Maat mag later alsnog ingevuld of gewist worden; kleur en artikel blijven staan.
   if (v.maat !== undefined) patch.maat = v.maat && v.maat.trim() ? v.maat.trim() : null;
+  // Een met de hand gewijzigde personalisatieregel blijft staan bij herberekenen.
+  const { data: huidig } = await sb.from('offerteregels').select('soort, stukprijs').eq('id', regelId).maybeSingle();
+  const h = huidig as { soort: string | null; stukprijs: number | null } | null;
+  if (h?.soort === 'personalisatie' && Number(h.stukprijs) !== patch.stukprijs) patch.handmatig = true;
   const { error } = await sb.from('offerteregels').update(patch).eq('id', regelId);
   return !error;
 }
@@ -854,6 +862,12 @@ export async function maakOrderVanOfferteMetUitkomst(offerteId: string): Promise
     if (kleur) regel.kleur = kleur;
     if (maat) regel.maat = maat;
     if (r.lengte != null) regel.lengte = r.lengte;
+    // Personalisatie gaat mee met de prijs van de offerte (afgesproken), dus handmatig.
+    if (r.soort === 'personalisatie') {
+      regel.soort = 'personalisatie';
+      regel.handmatig = true;
+      if (r.decoratie_sleutel) regel.decoratie_sleutel = r.decoratie_sleutel;
+    }
     await voegOrderregelToe(orderId, regel);
   }
   await zetOfferteStatus(offerteId, 'geaccepteerd');

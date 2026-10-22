@@ -69,7 +69,8 @@ export async function genereerInkoopregels(orderId: string): Promise<number> {
   const { data: regelData } = await sb
     .from('orderregels')
     .select('id, order_id, product_id, variant_id, item_naam, maat, kleur, aantal')
-    .eq('order_id', orderId);
+    .eq('order_id', orderId)
+    .eq('soort', 'kleding');
   const regels = (regelData as OrderregelRij[]) ?? [];
   if (regels.length === 0) return 0;
 

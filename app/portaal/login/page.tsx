@@ -4,6 +4,7 @@ import { createPortalBrowserClient } from '@/lib/portaal/supabaseBrowser';
 import { useVertaler } from '@/lib/i18n/portaal/client';
 import SsoKnoppen from '@/components/auth/SsoKnoppen';
 import { isStandalone } from '@/lib/pwa/installatie';
+import { stuurPortaalInlogmail } from './inlogmail';
 
 export default function PortaalLogin() {
   const { t, rijk } = useVertaler();
@@ -33,6 +34,12 @@ export default function PortaalLogin() {
     const sb = createPortalBrowserClient();
     if (!sb) { setError(t('algemeen.nietGeconfigureerd')); return; }
     setBezig(true);
+    // Eerst via onze eigen mail (geen lage limiet van Supabase); alleen als die
+    // niet beschikbaar is de oude manier.
+    const eigen = await stuurPortaalInlogmail(email.trim()).catch(() => ({ ok: false as const, reden: 'terugval' as const }));
+    if (eigen.ok) { setBezig(false); setSent(true); return; }
+    if (eigen.reden === 'te-veel') { setBezig(false); setError(t('login.teVeelLinks')); return; }
+    if (eigen.reden === 'geen-toegang') { setBezig(false); setError(t('login.geenToegang')); return; }
     const { error } = await sb.auth.signInWithOtp({
       email: email.trim(),
       // Alleen wie is uitgenodigd kan een code krijgen; zo maakt niemand zelf een account aan.

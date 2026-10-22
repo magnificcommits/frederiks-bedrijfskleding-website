@@ -173,6 +173,11 @@ export default async function Webshop({
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('algemeen.klantportaal')}</p>
           <h1 className="font-display text-3xl font-extrabold text-ink-900">{t('nav.kledingBestellen')}</h1>
         </div>
+        {eigenMedewerker && (
+          <Link id="maatwijziging" href="/portaal/maatwijziging" className="btn-secondary shrink-0">
+            {t('webshop.maatwijzigingAanvragen')}
+          </Link>
+        )}
       </div>
       <PortaalNav rol={toegang.rol} actief="/portaal/webshop" />
 

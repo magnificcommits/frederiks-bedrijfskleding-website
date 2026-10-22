@@ -26,6 +26,8 @@ export type Plaatsing = {
   breedte_cm?: number | null;
   /** Extra maatvoering, bv. "3 cm onder de naad". */
   toelichting?: string;
+  /** Prijscategorie (formaat uit de prijslijst, bv. S of L). Leeg = automatisch uit plek en breedte. */
+  formaat?: string;
 };
 
 export type Zijde = 'voor' | 'achter';
@@ -115,6 +117,8 @@ function normaliseerPlaatsing(ruw: unknown): Plaatsing | null {
   if (r.breedte_cm != null && r.breedte_cm !== '' && Number.isFinite(cm) && cm > 0) p.breedte_cm = rond(begrens(cm, 0.1, 200));
   const toelichting = tekst(r.toelichting, 160);
   if (toelichting) p.toelichting = toelichting;
+  const formaat = tekst(r.formaat, 20);
+  if (formaat) p.formaat = formaat;
   return p;
 }
 

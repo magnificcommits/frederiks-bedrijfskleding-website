@@ -141,6 +141,10 @@ export type Orderregel = {
    * bijgezocht, zodat de orderpagina in één oogopslag laat zien wat er besteld is.
    */
   afbeelding?: string | null;
+  /** 'personalisatie' = automatisch berekende logokosten (migratie 20261022b). */
+  soort?: string | null;
+  handmatig?: boolean | null;
+  decoratie_sleutel?: string | null;
 };
 
 /**
@@ -201,6 +205,9 @@ export type OrderregelVelden = {
   lengte?: number | null;
   aantal: number;
   stukprijs?: number | null;
+  soort?: 'kleding' | 'personalisatie';
+  handmatig?: boolean;
+  decoratie_sleutel?: string | null;
 };
 
 /** De losse tekstvelden van een order die op de orderpagina te wijzigen zijn. */

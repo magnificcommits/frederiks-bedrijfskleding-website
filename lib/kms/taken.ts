@@ -1096,6 +1096,7 @@ async function synchroniseerOrders(sinds: string, statussen: TaakStatus[], v2: b
         .from('orderregels')
         .select('order_id, item_naam, aantal, maat, kleur')
         .in('order_id', blok)
+    .eq('soort', 'kleding')
         .order('created_at');
       ((data as (Regel & { order_id: string })[]) ?? []).forEach((r) => {
         const lijst = regelsPerOrder.get(r.order_id) ?? [];

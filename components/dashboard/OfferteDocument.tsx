@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { formatEuro } from '@/lib/format';
 import { bedrijf } from '@/content/bedrijf';
 import {
@@ -29,6 +30,7 @@ export type OfferteDocumentRegel = {
   kleur: string | null;
   maat: string | null;
   afbeelding: string | null;
+  soort?: string | null;
 };
 
 /** Postadres van de klant voor het blok "Offerte voor". Optioneel. */
@@ -102,6 +104,7 @@ export function naarDocumentData(o: OfferteDocumentData): OfferteDocumentData {
       kleur: r.kleur,
       maat: r.maat,
       afbeelding: r.afbeelding,
+      soort: r.soort ?? null,
     })),
   };
 }
@@ -202,14 +205,21 @@ export default function OfferteDocument({
               </td>
             </tr>
           ) : (
-            offerte.regels.map((r) => {
+            offerte.regels.map((r, i) => {
+              const persKop = r.soort === 'personalisatie' && (i === 0 || offerte.regels[i - 1].soort !== 'personalisatie');
               const aantal = Number(r.aantal) || 0;
               const stukprijs = Number(r.stukprijs) || 0;
               const kort = Number(r.korting_pct) || 0;
               const netto = aantal * stukprijs * (1 - kort / 100);
               const kenmerken = regelKenmerken(r);
               return (
-                <tr key={r.id} className="break-inside-avoid border-b border-line align-middle">
+                <Fragment key={r.id}>
+                {persKop && (
+                  <tr className="break-inside-avoid">
+                    <td colSpan={kolommen} className="px-2 pb-1 pt-4 text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700">Personalisatie (bedrukken en borduren)</td>
+                  </tr>
+                )}
+                <tr className="break-inside-avoid border-b border-line align-middle">
                   {heeftFoto && (
                     <td className="py-2 pl-1 pr-2">
                       <RegelFoto src={r.afbeelding} />
@@ -234,6 +244,7 @@ export default function OfferteDocument({
                   )}
                   <td className="whitespace-nowrap py-2 pl-2 pr-2 text-right font-semibold tabular-nums text-ink-900">{formatEuro(netto)}</td>
                 </tr>
+                </Fragment>
               );
             })
           )}

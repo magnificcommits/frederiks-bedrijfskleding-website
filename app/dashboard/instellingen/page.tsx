@@ -12,6 +12,7 @@ const inputCls = 'veld';
 
 /** Elk onderdeel met eigen instellingen heeft een eigen pagina; hier staan ze bij elkaar. */
 const INSTELLING_KAARTEN = [
+  { titel: 'Prijslijst personalisatie', tekst: 'Staffels voor bedrukken en borduren, formaten en vaste kosten. Hieruit rekent het systeem de logokosten op offerte, order en factuur.', href: '/dashboard/instellingen/personalisatie', knop: 'Naar de prijslijst' },
   { titel: 'Prijsindicaties website', tekst: 'Vanaf-prijzen per medewerker, logoprijzen en prijsklassen op de site: aan of uit, met je eigen standaardkorting.', href: '/dashboard/instellingen/prijzen', knop: 'Naar prijsindicaties' },
   { titel: 'Boekhouding', tekst: 'Koppeling met Moneybird: facturen doorzetten, betalingen terughalen, standaard grootboek. Plus export naar andere pakketten.', href: '/dashboard/instellingen/boekhouding', knop: 'Naar boekhouding' },
   { titel: 'Maten en kleuren', tekst: 'De vaste lijst met kleuren (met kleurcode en aliassen) en maatreeksen, plus de tool om afwijkende waarden op te schonen.', href: '/dashboard/instellingen/varianten', knop: 'Naar maten en kleuren' },

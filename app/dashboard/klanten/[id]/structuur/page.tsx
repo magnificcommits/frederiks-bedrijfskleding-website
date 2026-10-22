@@ -16,9 +16,12 @@ import {
   voegAfdelingToe,
   verwijderAfdelingActie,
   bewaarManagerScope,
+  zetKlantStaffelActie,
 } from './actions';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
 import { listMerkKortingen, merkenInAssortiment } from '@/lib/kms/merkKortingen';
+import { leesCentralePrijslijst, leesKlantStaffels } from '@/lib/kms/prijslijstBeheer';
+import StaffelForm from '@/components/dashboard/StaffelForm';
 import { merkSleutel } from '@/lib/kortingPerMerk';
 import PersoonKiezer from '@/components/dashboard/PersoonKiezer';
 
@@ -53,13 +56,15 @@ export default async function InrichtingPage({ params }: { params: Promise<{ id:
     );
   }
 
-  const [inst, vestigingen, afdelingen, managers, merken, merkKortingen] = await Promise.all([
+  const [inst, vestigingen, afdelingen, managers, merken, merkKortingen, prijslijst, klantStaffels] = await Promise.all([
     getInstellingen(id),
     listVestigingen(id),
     listAfdelingen(id),
     listManagers(id),
     merkenInAssortiment(id),
     listMerkKortingen(id),
+    leesCentralePrijslijst(),
+    leesKlantStaffels(id),
   ]);
   // Merken uit het assortiment, plus merken met een korting die er (nog) niet meer in staan.
   const merkRijen = [
@@ -108,8 +113,9 @@ export default async function InrichtingPage({ params }: { params: Promise<{ id:
             <input name="min_bestelbedrag" inputMode="decimal" defaultValue={num(inst.min_bestelbedrag)} placeholder="bedrag" className={inputCls} />
           </div>
           <div>
-            <label className="veld-label">Max. bestelbedrag (mag leeg)</label>
+            <label className="veld-label">Max. bedrag per bestelling (mag leeg)</label>
             <input name="max_bestelbedrag" inputMode="decimal" defaultValue={num(inst.max_bestelbedrag)} placeholder="bedrag" className={inputCls} />
+            <p className="mt-1 text-xs text-warm">Grens per bestelling, geen budget. Budget per werknemer stel je in bij Werknemers; de werkgever ziet en wijzigt het in het portaal onder Beheer, Budget.</p>
           </div>
 
           <div>
@@ -219,6 +225,33 @@ export default async function InrichtingPage({ params }: { params: Promise<{ id:
             <button type="submit" className={knopCls}>Instellingen opslaan</button>
           </div>
         </form>
+      </section>
+
+      {/* Mail Jessi 21 okt: afwijkende personalisatieprijzen per klant. */}
+      <section id="personalisatieprijzen" className="mt-12 scroll-mt-20">
+        <h2 className="font-display text-xl font-bold text-ink-900">Afwijkende personalisatieprijzen</h2>
+        <p className="mt-1 max-w-3xl text-sm text-warm">
+          Heeft deze klant een afgesproken prijs voor bedrukken of borduren? Vul hem hier in; die gaat dan voor de centrale prijslijst.
+          Grijze getallen zijn de centrale prijzen. Leeg laten (of leegmaken) betekent: de centrale prijslijst geldt.
+        </p>
+        <div className="panel mt-4 divide-y divide-line">
+          {prijslijst.formaten.map((f) => {
+            const eigen = klantStaffels.filter((t) => t.techniek === f.techniek && t.formaat === f.formaat).sort((a, b) => a.vanaf_aantal - b.vanaf_aantal);
+            const centraal = prijslijst.tarieven.filter((t) => t.techniek === f.techniek && t.formaat === f.formaat).sort((a, b) => a.vanaf_aantal - b.vanaf_aantal);
+            return (
+              <div key={`${f.techniek}-${f.formaat}`} className="flex flex-col gap-2 p-3 lg:flex-row lg:items-center">
+                <p className="w-56 shrink-0 text-sm">
+                  <span className="font-semibold capitalize text-ink-900">{f.techniek} {f.formaat}</span>
+                  {f.omschrijving && <span className="block text-xs text-warm">{f.omschrijving}</span>}
+                  {eigen.length > 0 && <span className="mt-0.5 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">eigen prijs</span>}
+                </p>
+                <StaffelForm action={zetKlantStaffelActie} verborgen={{ orgId: id, techniek: f.techniek, formaat: f.formaat }} staffel={eigen} placeholder={centraal} />
+              </div>
+            );
+          })}
+          {prijslijst.formaten.length === 0 && <p className="p-4 text-sm text-warm">Er staat nog niets in de centrale prijslijst.</p>}
+        </div>
+        <p className="mt-2 text-xs text-warm"><Link href="/dashboard/instellingen/personalisatie" className="font-semibold text-amber-700 hover:text-amber-800">Centrale prijslijst bekijken</Link></p>
       </section>
 
       {/* Vestigingen */}

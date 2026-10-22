@@ -254,6 +254,7 @@ export async function getRetourSessie(token: string): Promise<RetourSessie | nul
     .from('orderregels')
     .select('id, item_naam, maat, kleur, aantal')
     .eq('order_id', tok.order_id)
+    .eq('soort', 'kleding')
     .order('item_naam');
 
   // Wat al eerder is aangemeld telt niet nog een keer mee.

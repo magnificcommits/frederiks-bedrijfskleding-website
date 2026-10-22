@@ -24,6 +24,8 @@ import {
   maakInkoopregels,
   zetTrackTrace,
   zetOrderGegevens,
+  berekenPersonalisatieActie,
+  zetPersonalisatiePrijsActie,
 } from './actions';
 import RegelToevoegen from './RegelToevoegen';
 import ConfirmSubmit from '@/components/ConfirmSubmit';
@@ -57,6 +59,10 @@ const okBoodschap: Record<string, string> = {
   aangemaakt: 'Order aangemaakt. Voeg hieronder de regels toe.',
   regel: 'Regel toegevoegd.',
   regel_weg: 'Regel verwijderd.',
+  pers: 'Personalisatiekosten berekend uit de goedgekeurde drukproeven.',
+  pers_geen_proef: 'Geen goedgekeurde drukproef voor de artikelen op deze order, dus geen personalisatiekosten.',
+  pers_geen: 'Geen personalisatiekosten gevonden. Staan de logo-plekken op de drukproef en staat de techniek in de prijslijst?',
+  pers_prijs: 'Prijs aangepast. Deze regel blijft staan als je opnieuw berekent.',
   geen_item: 'Geef de regel eerst een itemnaam.',
   mislukt: 'Opslaan is niet gelukt. Probeer het opnieuw.',
   status: 'Status bijgewerkt.',
@@ -148,6 +154,9 @@ export default async function OrderDetailPage({
   const goedkeurderBegin = persoonBegin(order.goedgekeurd_door_contact_id, order.goedgekeurd_door_medewerker_id, order.goedgekeurd_door);
 
   const totaal = order.regels.reduce((t, r) => t + (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0), 0);
+  const kledingRegels = order.regels.filter((r) => r.soort !== 'personalisatie');
+  const persRegels = order.regels.filter((r) => r.soort === 'personalisatie');
+  const persTotaal = persRegels.reduce((t, r) => t + (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0), 0);
 
   return (
     <main className="container-app py-6">
@@ -299,7 +308,7 @@ export default async function OrderDetailPage({
 
       <section>
         <h2 className="font-display text-xl font-bold text-ink-900">Orderregels</h2>
-          {order.regels.length === 0 ? (
+          {kledingRegels.length === 0 ? (
             <p className="rounded-xl border border-line bg-mist px-5 py-4 text-sm text-warm">
               Nog geen regels op deze order. Zoek hieronder het eerste artikel op.
             </p>
@@ -317,7 +326,7 @@ export default async function OrderDetailPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {order.regels.map((r) => (
+                  {kledingRegels.map((r) => (
                     <tr key={r.id} className="border-b border-line">
                       <td className="w-12">
                         {r.afbeelding ? (
@@ -353,6 +362,18 @@ export default async function OrderDetailPage({
                   ))}
                 </tbody>
                 <tfoot>
+                  {persRegels.length > 0 && (
+                    <>
+                      <tr>
+                        <td colSpan={5} className="text-right text-sm text-warm">Kleding</td>
+                        <td colSpan={2} className="text-sm text-ink-900">{euro(totaal - persTotaal)}</td>
+                      </tr>
+                      <tr>
+                        <td colSpan={5} className="text-right text-sm text-warm">Personalisatie</td>
+                        <td colSpan={2} className="text-sm text-ink-900">{euro(persTotaal)}</td>
+                      </tr>
+                    </>
+                  )}
                   <tr className="bg-mist">
                     <td colSpan={5} className="text-right text-sm font-semibold text-warm">Totaal</td>
                     <td colSpan={2} className="text-sm font-extrabold text-ink-900">{euro(totaal)}</td>
@@ -361,6 +382,58 @@ export default async function OrderDetailPage({
               </table>
             </div>
           )}
+
+        {/* Mail Jessi 21 okt: personalisatiekosten automatisch uit de drukproeven. */}
+        <div className="panel mt-4 p-4" id="personalisatie">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="font-display text-base font-bold text-ink-900">Personalisatie</h3>
+              <p className="veld-hint">
+                Berekend uit de goedgekeurde drukproeven en de prijslijst (staffel over alle stuks met hetzelfde logo op dezelfde plek).
+                Pas je een prijs aan, dan blijft die staan.
+              </p>
+            </div>
+            {!geslotenReden && (
+              <form action={berekenPersonalisatieActie}>
+                <input type="hidden" name="orderId" value={order.id} />
+                <button type="submit" className="knop-donker">{persRegels.length ? 'Opnieuw berekenen' : 'Personalisatiekosten berekenen'}</button>
+              </form>
+            )}
+          </div>
+          {persRegels.length === 0 ? (
+            <p className="mt-3 text-sm text-warm">Nog geen personalisatiekosten op deze order.</p>
+          ) : (
+            <table className="tbl mt-3">
+              <thead>
+                <tr><th>Omschrijving</th><th>Aantal</th><th>Stukprijs</th><th>Totaal</th></tr>
+              </thead>
+              <tbody>
+                {persRegels.map((r) => (
+                  <tr key={r.id} className="border-b border-line">
+                    <td className="text-ink-900">
+                      {r.item_naam}
+                      {r.handmatig && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">prijs aangepast</span>}
+                    </td>
+                    <td className="text-warm">{r.aantal}x</td>
+                    <td>
+                      {geslotenReden ? (
+                        <span className="text-warm">{euro(Number(r.stukprijs) || 0)}</span>
+                      ) : (
+                        <form action={zetPersonalisatiePrijsActie} className="flex items-center gap-1.5">
+                          <input type="hidden" name="orderId" value={order.id} />
+                          <input type="hidden" name="regelId" value={r.id} />
+                          <input name="stukprijs" defaultValue={String(r.stukprijs ?? '').replace('.', ',')} inputMode="decimal" aria-label="Stukprijs" className="veld !w-24 !py-1 !text-sm" />
+                          <button type="submit" className="rounded-md border border-line px-2 py-1 text-xs font-semibold text-ink-700 hover:bg-mist">Opslaan</button>
+                        </form>
+                      )}
+                    </td>
+                    <td className="font-medium text-ink-900">{euro((Number(r.aantal) || 0) * (Number(r.stukprijs) || 0))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
 
 
         {geslotenReden ? (

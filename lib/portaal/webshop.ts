@@ -326,9 +326,11 @@ export async function getBudgetVerbruik(medewerkerId: string): Promise<number> {
   type Rij = { id: string; status: string | null; goedkeuring_status: string | null; bedrag: number | null; notitie: string | null };
   const tellend = ((orders as Rij[]) ?? []).filter((o) => o.status !== 'geannuleerd' && o.goedkeuring_status !== 'afgewezen');
   if (tellend.length === 0) return 0;
-  const { data: regels } = await sb.from('orderregels').select('order_id, aantal, stukprijs').in('order_id', tellend.map((o) => o.id));
+  // Personalisatiekosten (logo's) tellen niet mee: het budget is een kledingbudget,
+  // gelijk aan wat de werknemer in de winkelwagen ziet.
+  const { data: regels } = await sb.from('orderregels').select('order_id, aantal, stukprijs, soort').in('order_id', tellend.map((o) => o.id));
   const perOrder = new Map<string, number>();
-  for (const r of (regels as { order_id: string; aantal: number | null; stukprijs: number | null }[]) ?? []) {
+  for (const r of ((regels as { order_id: string; aantal: number | null; stukprijs: number | null; soort: string | null }[]) ?? []).filter((x) => (x.soort ?? 'kleding') !== 'personalisatie')) {
     perOrder.set(r.order_id, (perOrder.get(r.order_id) ?? 0) + (Number(r.aantal) || 0) * (Number(r.stukprijs) || 0));
   }
   return tellend.reduce((sum, o) => {
@@ -740,6 +742,15 @@ export async function maakWebshopBestelling(
     return { ok: false, error: e2.message };
   }
   await naPlaatsen(orderId, status);
+  // Personalisatiekosten uit de goedgekeurde drukproeven er meteen bij (servicesleutel,
+  // de klant mag die regels niet zelf schrijven). Best effort: mislukt het, dan rekent
+  // Jessi ze in het KMS uit met de knop op de order.
+  try {
+    const { berekenPersonalisatieVoorOrder } = await import('@/lib/kms/personalisatie');
+    await berekenPersonalisatieVoorOrder(orderId);
+  } catch {
+    /* geen personalisatie */
+  }
   return { ok: true };
 }
 

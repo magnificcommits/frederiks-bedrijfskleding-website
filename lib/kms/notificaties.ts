@@ -171,7 +171,8 @@ export async function stuurLeverancierBestelmail(orderId: string): Promise<void>
   const { data: regelData } = await sb
     .from('orderregels')
     .select('product_id, item_naam, maat, kleur, aantal')
-    .eq('order_id', orderId);
+    .eq('order_id', orderId)
+    .eq('soort', 'kleding');
   const regels = (regelData as RegelRij[] | null) ?? [];
   if (regels.length === 0) return;
 

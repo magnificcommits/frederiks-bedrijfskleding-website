@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import QRCode from 'qrcode';
 import { formatEuro } from '@/lib/format';
 import { bedrijf } from '@/content/bedrijf';
@@ -30,6 +31,7 @@ export type FactuurDocumentRegel = {
   kleur?: string | null;
   maat?: string | null;
   afbeelding?: string | null;
+  soort?: string | null;
 };
 
 export type FactuurDocumentData = {
@@ -188,11 +190,18 @@ export default function FactuurDocument({ factuur }: { factuur: FactuurDocumentD
               </td>
             </tr>
           ) : (
-            factuur.regels.map((r) => {
+            factuur.regels.map((r, i) => {
+              const persKop = r.soort === 'personalisatie' && (i === 0 || factuur.regels[i - 1].soort !== 'personalisatie');
               const kort = Number(r.korting_pct) || 0;
               const kenmerken = regelKenmerken(r);
               return (
-                <tr key={r.id} className="break-inside-avoid border-b border-line align-middle">
+                <Fragment key={r.id}>
+                {persKop && (
+                  <tr className="break-inside-avoid">
+                    <td colSpan={kolommen} className="px-2 pb-1 pt-4 text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700">Personalisatie (bedrukken en borduren)</td>
+                  </tr>
+                )}
+                <tr className="break-inside-avoid border-b border-line align-middle">
                   {heeftFoto && (
                     <td className="py-2 pl-1 pr-2">
                       <RegelFoto src={r.afbeelding} />
@@ -218,6 +227,7 @@ export default function FactuurDocument({ factuur }: { factuur: FactuurDocumentD
                   <td className="py-2 pl-2 text-right tabular-nums text-warm">{getalNL(r.btw_pct ?? 21)}%</td>
                   <td className="whitespace-nowrap py-2 pl-2 pr-2 text-right font-semibold tabular-nums text-ink-900">{formatEuro(regelBedrag(r))}</td>
                 </tr>
+                </Fragment>
               );
             })
           )}

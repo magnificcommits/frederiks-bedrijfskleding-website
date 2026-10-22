@@ -87,6 +87,7 @@ export async function getMagazijnData(orderId: string): Promise<MagazijnData | n
     .from('orderregels')
     .select('id, item_naam, maat, kleur, aantal')
     .eq('order_id', orderId)
+    .eq('soort', 'kleding')
     .order('item_naam');
   const regels = (regelData as MagazijnRegel[]) ?? [];
 

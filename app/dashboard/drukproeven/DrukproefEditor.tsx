@@ -35,6 +35,7 @@ import {
   type Plaatsing,
 } from './ontwerp';
 import { LogoOnbelast } from './LogoOnbelast';
+import { formaatVoorPlek, type Formaat } from '@/lib/personalisatie';
 import { bewaarDrukproefActie, kleurenActie, zoekArtikelenActie } from './actions';
 
 /**
@@ -211,6 +212,7 @@ export default function DrukproefEditor({
   logos: beginLogos,
   bestaand,
   terug,
+  formaten = [],
 }: {
   orgId: string;
   klantNaam: string;
@@ -220,6 +222,8 @@ export default function DrukproefEditor({
   bestaand?: BestaandeDrukproef | null;
   /** Na opslaan hierheen terug (bijv. de klantkaart); anders het overzicht. */
   terug?: string | null;
+  /** Formaten uit de prijslijst, voor de prijscategorie per logo. */
+  formaten?: Formaat[];
 }) {
   // --- Kledingstuk ---
   const [artikel, setArtikel] = useState<DrukproefArtikel | null>(bestaand?.artikel ?? null);
@@ -1171,6 +1175,32 @@ export default function DrukproefEditor({
                       className={veld}
                     />
                   </div>
+                  {formaten.some((f) => f.techniek === techniek) && (
+                    <div className="sm:col-span-2">
+                      <label className={label} htmlFor="dp-formaat">Prijscategorie ({techniek})</label>
+                      <select
+                        id="dp-formaat"
+                        value={actief.formaat ?? ''}
+                        onChange={(e) => wijzigMetStap(actief.id, { formaat: e.target.value || undefined })}
+                        className={veld}
+                      >
+                        <option value="">
+                          Automatisch{(() => {
+                            const auto = formaatVoorPlek({ logo_url: actief.logo_url, label: actief.label, breedte_cm: actief.breedte_cm ?? null }, techniek, formaten);
+                            return auto ? ` (nu ${auto})` : '';
+                          })()}
+                        </option>
+                        {formaten
+                          .filter((f) => f.techniek === techniek)
+                          .map((f) => (
+                            <option key={f.formaat} value={f.formaat}>
+                              {f.formaat}{f.omschrijving ? ` · ${f.omschrijving}` : ''}
+                            </option>
+                          ))}
+                      </select>
+                      <p className="veld-hint">Bepaalt de prijs per stuk op offerte, order en factuur. Automatisch kijkt naar de plek en de breedte.</p>
+                    </div>
+                  )}
                   <div className="sm:col-span-2">
                     <LogoOnbelast ontwerp={ontwerp} />
                   </div>

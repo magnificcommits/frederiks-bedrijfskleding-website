@@ -408,6 +408,11 @@ export default function WebshopClient({
                                   : t('webshop.voorkeur', { maat: voorkeur?.voorkeursmaat ?? '' })}
                               </span>
                             )}
+                            {heeftVoorkeur && (
+                              <a href={`/portaal/maatwijziging?product=${p.id}`} className="ml-2 font-semibold text-ink-700 underline underline-offset-2 hover:text-ink-900">
+                                {t('webshop.andereMaat')}
+                              </a>
+                            )}
                           </p>
 
                           {meerdereKleuren && (

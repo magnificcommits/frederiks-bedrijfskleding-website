@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import { uploadMedia } from '@/lib/kms/storage';
 import { slaMerkKortingenOp } from '@/lib/kms/merkKortingen';
+import { staffelUitFormulier, zetKlantStaffel } from '@/lib/kms/prijslijstBeheer';
+import { logAudit } from '@/lib/kms/audit';
 import { bevestigPersoon, leesPersoonKeuze } from '@/lib/kms/personen';
 import {
   werkInstellingen,
@@ -140,4 +142,17 @@ export async function bewaarManagerScope(formData: FormData) {
   else if (scope.startsWith('a:')) afdelingId = scope.slice(2);
   if (gebruikerId) await zetManagerScope(gebruikerId, vestigingId, afdelingId);
   redirect('/dashboard/klanten/' + id + '/structuur');
+}
+
+/** Afwijkende personalisatieprijzen voor deze klant (mail Jessi 21 okt). Leeg = weer de centrale prijslijst. */
+export async function zetKlantStaffelActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const id = String(formData.get('orgId') ?? '');
+  const techniek = String(formData.get('techniek') ?? '').trim();
+  const formaat = String(formData.get('formaat') ?? '').trim();
+  if (id && techniek && formaat) {
+    const ok = await zetKlantStaffel(id, techniek, formaat, staffelUitFormulier(formData));
+    if (ok) await logAudit('klant_personalisatieprijs', { entiteit: 'organisatie', entiteitId: id, details: { techniek, formaat } });
+  }
+  redirect('/dashboard/klanten/' + id + '/structuur#personalisatieprijzen');
 }

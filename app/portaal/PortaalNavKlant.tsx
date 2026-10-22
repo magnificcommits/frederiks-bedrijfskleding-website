@@ -61,6 +61,7 @@ export default function PortaalNavKlant({ rol, actief, sparen = true }: { rol: P
       toon: mag(['beheerder', 'leidinggevende']),
       items: [
         { href: '/portaal/medewerkers', label: t('nav.medewerkers') },
+        { href: '/portaal/budget', label: t('nav.budget') },
         { href: '/portaal/goedkeuringen', label: t('nav.goedkeuringen') },
         { href: '/portaal/drukproeven', label: t('nav.drukproeven') },
         { href: '/portaal/ontwerpen', label: t('nav.pakketOntwerpen') },
@@ -68,7 +69,17 @@ export default function PortaalNavKlant({ rol, actief, sparen = true }: { rol: P
       ],
     },
     { kind: 'link', href: '/portaal/sparen', label: t('nav.sparen'), toon: sparen },
-    { kind: 'link', href: '/portaal/klachten', label: t('nav.vragenKlachten'), toon: true },
+    {
+      kind: 'group',
+      id: 'hulp',
+      label: t('nav.hulp'),
+      toon: true,
+      items: [
+        { href: '/portaal/zo-werkt-het', label: t('nav.zoWerktHet') },
+        { href: '/portaal/wasvoorschriften', label: t('nav.wasvoorschriften') },
+        { href: '/portaal/klachten', label: t('nav.vragenKlachten') },
+      ],
+    },
   ];
 
   const leafActief = (href: string) =>
@@ -192,6 +203,8 @@ function MobieleTabbalk({ rol, entries, linkActief, leafActief, groupActief, spa
     ...(beheer && beheerGroep ? beheerGroep.items.filter((i) => i.href !== '/portaal/medewerkers') : []),
     ...(sparen ? [{ href: '/portaal/sparen', label: t('nav.sparen') }] : []),
     { href: '/portaal/klachten', label: t('nav.vragenKlachten') },
+    { href: '/portaal/zo-werkt-het', label: t('nav.zoWerktHet') },
+    { href: '/portaal/wasvoorschriften', label: t('nav.wasvoorschriften') },
   ];
   const meerActief = meerItems.some((i) => leafActief(i.href)) || pathname === '/portaal/app';
   const tab = 'flex min-h-[58px] flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-semibold leading-tight';

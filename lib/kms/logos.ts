@@ -784,6 +784,7 @@ export async function getOrderVoorWerkbon(orderId: string): Promise<Werkbon | nu
     .from('orderregels')
     .select('id, product_id, item_naam, maat, kleur, aantal')
     .eq('order_id', orderId)
+    .eq('soort', 'kleding')
     .order('item_naam');
   const baseRegels = (regelData as Omit<WerkbonRegel, 'decoraties'>[]) ?? [];
   const decoratieMap = await listDecoraties(orderId);
@@ -928,7 +929,7 @@ async function bouwWerkbonnen(alleenOrder?: string): Promise<{ kaarten: WerkbonK
   for (const stuk of inStukken(ids)) {
     const [o, r, w] = await Promise.all([
       sb.from('orders').select('id, ordernummer, status, organisatie_id, besteldatum, created_at, organisaties(naam)').in('id', stuk),
-      sb.from('orderregels').select('id, order_id, item_naam, aantal, product_id, kleur').in('order_id', stuk),
+      sb.from('orderregels').select('id, order_id, item_naam, aantal, product_id, kleur').in('order_id', stuk).eq('soort', 'kleding'),
       tabelBestaat ? sb.from('werkbonnen').select('*').in('order_id', stuk) : Promise.resolve({ data: [], error: null }),
     ]);
     orders.push(...((o.data as unknown as OrderRij[]) ?? []));

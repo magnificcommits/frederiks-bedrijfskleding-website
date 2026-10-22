@@ -63,6 +63,8 @@ export type Factuurregel = {
   created_at?: string | null;
   /** Artikelfoto in de gekozen kleur; niet in de tabel, bijgezocht door getFactuur. */
   afbeelding?: string | null;
+  /** 'personalisatie' = logokosten, apart gekopt op de factuur. */
+  soort?: string | null;
 };
 
 export type Organisatie = {
@@ -203,7 +205,7 @@ function kolomOntbreekt(error: { code?: string; message?: string } | null): bool
   return error.code === '42703' || error.code === 'PGRST204' || /column .* (does not exist|not find)/i.test(error.message ?? '');
 }
 
-const EXTRA_KOLOMMEN = ['korting_pct', 'product_id', 'kleur', 'maat', 'positie'] as const;
+const EXTRA_KOLOMMEN = ['korting_pct', 'product_id', 'kleur', 'maat', 'positie', 'soort', 'decoratie_sleutel'] as const;
 
 /**
  * Zonder de nieuwe kolommen: korting gaat in de stukprijs (nettoprijs), zodat het
@@ -418,6 +420,8 @@ type OrderregelRij = {
   lengte: number | null;
   aantal: number | null;
   stukprijs: number | null;
+  soort?: string | null;
+  decoratie_sleutel?: string | null;
 };
 
 /**
@@ -453,16 +457,30 @@ export async function maakFactuurVanOrder(orderId: string): Promise<string | nul
   // Btw-tarief van de offerte waar de order uit komt (bijv. 0% bij een buitenlandse klant).
   const offerteBtw = await btwVanOfferteVoorOrder(sb, orderId);
 
+  // Personalisatiekosten: staan ze nog niet op de order (bijv. een nabestelling),
+  // dan nu uitrekenen uit de goedgekeurde drukproeven. Niet bij een pakketorder:
+  // daar zit alles in de pakketprijs.
+  if (!(order.notitie ?? '').startsWith('Pakket:')) {
+    const { count } = await sb.from('orderregels').select('id', { count: 'exact', head: true }).eq('order_id', orderId).eq('soort', 'personalisatie');
+    if (!count) {
+      const { berekenPersonalisatieVoorOrder } = await import('@/lib/kms/personalisatie');
+      await berekenPersonalisatieVoorOrder(orderId).catch(() => null);
+    }
+  }
+
   const [{ data: regelData }, gevonden] = await Promise.all([
     sb
       .from('orderregels')
-      .select('item_naam, product_id, variant_id, maat, kleur, lengte, aantal, stukprijs')
+      .select('item_naam, product_id, variant_id, maat, kleur, lengte, aantal, stukprijs, soort, decoratie_sleutel')
       .eq('order_id', orderId)
       .order('created_at')
       .limit(1000),
     factuurEmailVoor(order.organisatie_id),
   ]);
-  const orderregels = (regelData as OrderregelRij[]) ?? [];
+  // Kleding eerst, de personalisatie eronder (apart zichtbaar op de factuur).
+  const orderregels = [...((regelData as OrderregelRij[]) ?? [])].sort(
+    (a, b) => Number(a.soort === 'personalisatie') - Number(b.soort === 'personalisatie'),
+  );
   // Zonder regels wordt het een factuur van nul euro die wel een nummer opmaakt.
   if (orderregels.length === 0) return null;
   // Adres van het facturatiecontact van de klant (met terugval, zie factuurEmailVoor).
@@ -524,6 +542,7 @@ export async function maakFactuurVanOrder(orderId: string): Promise<string | nul
     let omschrijving = artikelOmschrijving({ naam, merk: null }, kleurErbij, maatErbij);
     if (r.lengte != null && Number(r.lengte) > 0) omschrijving += `, lengte ${r.lengte} cm`;
     const btwPct = offerteBtw ?? (prod?.btw != null && Number.isFinite(Number(prod.btw)) ? Number(prod.btw) : 21);
+    if (r.soort === 'personalisatie') omschrijving = naam;
     const rij: Record<string, unknown> = {
       factuur_id: factuurId,
       omschrijving,
@@ -537,11 +556,15 @@ export async function maakFactuurVanOrder(orderId: string): Promise<string | nul
     if (r.product_id) rij.product_id = r.product_id;
     if (kleur) rij.kleur = kleur;
     if (maat) rij.maat = maat;
+    if (r.soort === 'personalisatie') {
+      rij.soort = 'personalisatie';
+      if (r.decoratie_sleutel) rij.decoratie_sleutel = r.decoratie_sleutel;
+    }
     return rij;
   });
   // Pakketbestelling: de artikelen staan op nul en de pakketprijs alleen op de
   // order. Zonder deze regel werd het een factuur van nul euro.
-  const regelTotaal = rijen.reduce((t, r) => t + (Number(r.bedrag) || 0), 0);
+  const regelTotaal = rijen.filter((r) => r.soort !== 'personalisatie').reduce((t, r) => t + (Number(r.bedrag) || 0), 0);
   const orderBedrag = r2(Number(order.bedrag) || 0);
   if (regelTotaal === 0 && orderBedrag > 0) {
     rijen.push({

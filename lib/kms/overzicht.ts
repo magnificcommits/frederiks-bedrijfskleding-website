@@ -74,6 +74,8 @@ export type VandaagSignalen = {
   verlopenTaken: number;
   ordersWachtGoedkeuring: number;
   retourenTeBeoordelen: number;
+  /** Vragen en klachten die nog open staan (nog niet beantwoord of in behandeling). */
+  klachtenOpen: number;
   vervallenFacturen: number;
   voorraadOnderMinimum: number;
 };
@@ -93,7 +95,7 @@ export async function getVandaagSignalen(): Promise<VandaagSignalen | null> {
   if (!sb) return null;
   const vandaag = new Date().toISOString().slice(0, 10);
 
-  const [takenR, ordersR, retourenR, facturenR, productenR] = await Promise.all([
+  const [takenR, ordersR, retourenR, facturenR, productenR, klachtenR] = await Promise.all([
     // Taken in de prullenbak of het archief tellen niet mee (vóór de migratie taken v2: alle open taken).
     sb.from('taken').select('status, vervaldatum').eq('status', 'open').is('verwijderd_op', null).is('gearchiveerd_op', null)
       .then(async (r) => (r.error ? await sb.from('taken').select('status, vervaldatum').eq('status', 'open') : r)),
@@ -101,6 +103,7 @@ export async function getVandaagSignalen(): Promise<VandaagSignalen | null> {
     sb.from('retouren').select('status'),
     sb.from('facturen').select('status, vervaldatum'),
     sb.from('producten').select('id, min_voorraad, product_varianten(voorraad)'),
+    sb.from('klachten').select('id', { count: 'exact', head: true }).eq('status', 'open'),
   ]);
 
   const taken = (takenR.data as { status: string; vervaldatum: string | null }[]) ?? [];
@@ -122,7 +125,8 @@ export async function getVandaagSignalen(): Promise<VandaagSignalen | null> {
     return totaal < p.min_voorraad;
   }).length;
 
-  return { openTaken, verlopenTaken, ordersWachtGoedkeuring, retourenTeBeoordelen, vervallenFacturen, voorraadOnderMinimum };
+  const klachtenOpen = klachtenR.count ?? 0;
+  return { openTaken, verlopenTaken, ordersWachtGoedkeuring, retourenTeBeoordelen, klachtenOpen, vervallenFacturen, voorraadOnderMinimum };
 }
 
 

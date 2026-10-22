@@ -13,6 +13,7 @@ import {
   mailOfferteActie,
   maakOrderVanOfferteActie,
   voegPakketActie,
+  berekenPersonalisatieOfferteActie,
 } from './actions';
 import RegelToevoegen from './RegelToevoegen';
 import TotaalKaart from '@/components/dashboard/TotaalKaart';
@@ -49,6 +50,9 @@ const PAGINA_MELDING: Record<string, { tekst: string; fout: boolean }> = {
   'fout:aantal': { tekst: 'Een aantal kan niet negatief zijn. De regel is niet opgeslagen.', fout: true },
   'fout:korting': { tekst: 'Korting moet tussen 0 en 100 procent liggen. De regel is niet opgeslagen.', fout: true },
   'fout:geen_regels': { tekst: 'Deze offerte heeft nog geen regels met een aantal. Voeg eerst een regel toe.', fout: true },
+  'ok:pers': { tekst: 'Personalisatiekosten toegevoegd onderaan de offerte. Pas je een prijs aan, dan blijft die staan bij opnieuw berekenen.', fout: false },
+  'fout:pers_geen_proef': { tekst: 'Geen goedgekeurde drukproef voor de artikelen op deze offerte. Maak en laat eerst een drukproef goedkeuren.', fout: true },
+  'fout:pers_geen': { tekst: 'Geen personalisatiekosten gevonden. Staan de logo-plekken op de drukproef en staat de techniek in de prijslijst?', fout: true },
   'fout:verlopen': { tekst: 'De geldigheidsdatum ligt in het verleden. Zet bij Kopgegevens een nieuwe datum en verstuur hem dan.', fout: true },
 };
 
@@ -149,7 +153,15 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
           </div>
 
           <div>
-            <h2 className="font-display text-base font-bold text-ink-900">Offerteregels</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-display text-base font-bold text-ink-900">Offerteregels</h2>
+              <form action={berekenPersonalisatieOfferteActie}>
+                <input type="hidden" name="offerteId" value={offerte.id} />
+                <button type="submit" className="knop-stil" title="Uit de goedgekeurde drukproeven van deze klant en de prijslijst">
+                  {offerte.regels.some((r) => r.soort === 'personalisatie') ? 'Personalisatie opnieuw berekenen' : 'Personalisatiekosten berekenen'}
+                </button>
+              </form>
+            </div>
             {offerte.regels.length === 0 ? (
               <p className="mt-3 rounded-lg border border-dashed border-line bg-mist px-5 py-6 text-center text-[13px] text-warm">Nog geen regels op deze offerte. Voeg er hieronder een toe.</p>
             ) : (

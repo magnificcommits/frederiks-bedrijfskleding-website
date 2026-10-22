@@ -8,7 +8,7 @@ import { listMijnMaatwijzigingen } from '@/lib/portaal/maatwijziging';
 import { sorteerMaten } from '@/lib/kms/variantenStandaard';
 import { getVertaler } from '@/lib/i18n/portaal/server';
 import PortaalNav from '../PortaalNav';
-import { vraagMaatwijzigingActie } from './actions';
+import MaatwijzigingForm from './MaatwijzigingForm';
 
 export const metadata: Metadata = { title: 'Maatwijziging aanvragen', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -63,24 +63,7 @@ export default async function Maatwijziging({ searchParams }: { searchParams: Pr
       ) : artikelen.length === 0 ? (
         <p className="mt-6 rounded-xl border border-line bg-mist px-4 py-3 text-sm text-warm">Er staan nog geen artikelen met maten in je assortiment.</p>
       ) : (
-        <form action={vraagMaatwijzigingActie} className="mt-6 max-w-xl rounded-2xl border border-line bg-white p-5 shadow-soft">
-          <label className="block text-sm font-semibold text-ink-900" htmlFor="mw-product">Artikel</label>
-          <select id="mw-product" name="product_id" required defaultValue={sp.product ?? ''} className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm">
-            <option value="">Kies een artikel</option>
-            {artikelen.map((a) => (
-              <option key={a.id} value={a.id}>{a.naam}{a.huidig ? ` (nu maat ${a.huidig})` : ''}</option>
-            ))}
-          </select>
-          <label className="mt-4 block text-sm font-semibold text-ink-900" htmlFor="mw-maat">Gewenste maat</label>
-          <select id="mw-maat" name="gewenste_maat" required className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm">
-            <option value="">Kies een maat</option>
-            {sorteerMaten([...new Set(artikelen.flatMap((a) => a.maten))]).map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
-          <p className="mt-1 text-xs text-warm">Kies een maat die bij het artikel bestaat. Twijfel je? Zet het in de toelichting.</p>
-          <label className="mt-4 block text-sm font-semibold text-ink-900" htmlFor="mw-toelichting">Toelichting (optioneel)</label>
-          <textarea id="mw-toelichting" name="toelichting" rows={3} maxLength={500} placeholder="Bijv. de broek zit te strak in de taille" className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm" />
-          <button type="submit" className="btn-primary mt-4">Verzoek versturen</button>
-        </form>
+        <MaatwijzigingForm artikelen={artikelen} start={sp.product} />
       )}
 
       {verzoeken.length > 0 && (

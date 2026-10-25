@@ -12,15 +12,14 @@ export const maxDuration = 60;
  * die in het KMS nog niet betaald zijn, en zet ze op Betaald als Moneybird dat zegt.
  * Staat automatisch doorzetten aan, dan worden mislukte facturen opnieuw geprobeerd.
  * Beveiligd met CRON_SECRET, net als /api/cron/campagnes en /api/cron/nieuwsbrief:
- * Vercel stuurt `Authorization: Bearer <secret>` mee; handmatig kan met ?secret=<secret>.
+ * Vercel stuurt `Authorization: Bearer <secret>` mee; alleen via de header, niet via de URL.
  */
 export async function GET(req: Request) {
   const secret = env.cronSecret;
   if (!secret) return NextResponse.json({ error: 'Cron niet geconfigureerd (zet CRON_SECRET).' }, { status: 503 });
 
   const auth = req.headers.get('authorization');
-  const param = new URL(req.url).searchParams.get('secret');
-  if (!veiligGelijk(auth ?? '', `Bearer ${secret}`) && !veiligGelijk(param ?? '', secret)) {
+  if (!veiligGelijk(auth ?? '', `Bearer ${secret}`)) {
     return NextResponse.json({ error: 'Niet toegestaan' }, { status: 401 });
   }
 

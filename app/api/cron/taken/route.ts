@@ -14,18 +14,20 @@ export const maxDuration = 60;
  * Vercel: op het Hobby-plan zijn er maar twee Vercel-crons per dag. Zie het
  * blok onderaan supabase/migrations/20261003_taken_v2.sql.
  *
- * Beveiligd met header `x-taken-secret` = env TAKEN_CRON_SECRET. Handmatig testen:
- *   /api/cron/taken?secret=<geheim>                 normale ronde
- *   /api/cron/taken?secret=<geheim>&proef=1         niets versturen of wijzigen, alleen rapport
- *   /api/cron/taken?secret=<geheim>&forceer=dag     dagoverzicht nu (ook buiten 07:00, telt niet als "verstuurd")
- *   /api/cron/taken?secret=<geheim>&forceer=week    weekoverzicht nu
+ * Beveiligd met header `x-taken-secret` = env TAKEN_CRON_SECRET (niet via de URL,
+ * zodat het geheim niet in logs of browsergeschiedenis belandt). Handmatig testen
+ * met die header:
+ *   /api/cron/taken                  normale ronde
+ *   /api/cron/taken?proef=1          niets versturen of wijzigen, alleen rapport
+ *   /api/cron/taken?forceer=dag      dagoverzicht nu (ook buiten 07:00, telt niet als "verstuurd")
+ *   /api/cron/taken?forceer=week     weekoverzicht nu
  */
 async function verwerk(req: Request) {
   const geheim = (process.env.TAKEN_CRON_SECRET ?? '').trim();
   if (!geheim) return NextResponse.json({ ok: false, fout: 'Zet TAKEN_CRON_SECRET in de omgeving.' }, { status: 503 });
 
   const url = new URL(req.url);
-  const gegeven = req.headers.get('x-taken-secret') ?? url.searchParams.get('secret') ?? '';
+  const gegeven = req.headers.get('x-taken-secret') ?? '';
   if (!gegeven || !veiligGelijk(gegeven.trim(), geheim)) {
     return NextResponse.json({ ok: false, fout: 'Niet toegestaan' }, { status: 401 });
   }

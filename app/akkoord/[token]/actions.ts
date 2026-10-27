@@ -16,6 +16,7 @@ import { logAudit } from '@/lib/kms/audit';
  * mail en de klant een bevestiging met de voorwaarden als bijlage.
  */
 export async function keurOfferteGoedActie(formData: FormData): Promise<void> {
+  // auth: token (offerteIdUitToken controleert de handtekening; alleen een verstuurde, geldige offerte).
   const token = String(formData.get('token') ?? '').trim().slice(0, 200);
   if (!token) redirect('/');
   const terug = `/akkoord/${encodeURIComponent(token)}`;

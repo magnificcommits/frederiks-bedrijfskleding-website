@@ -24,6 +24,7 @@ const PER_IP = 30;
 const VENSTER = 15 * 60_000;
 
 export async function stuurPortaalInlogmail(emailRuw: string): Promise<InlogmailUitkomst> {
+  // auth: publiek inlogscherm; limiet per adres en IP, mail alleen naar adressen met portaaltoegang.
   const email = String(emailRuw ?? '').toLowerCase().trim().slice(0, 254);
   if (!email.includes('@')) return { ok: false, reden: 'geen-toegang' };
   const sb = kmsAdmin();

@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
  * en stuurt door naar de Google-reviewlink. Onbekend token: naar de homepage.
  */
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
+  // auth: token (registreerKlik zoekt het token van de reviewuitnodiging op; onbekend = homepage).
   const { token } = await params;
   const doel = await registreerKlik(token).catch(() => null);
   return NextResponse.redirect(doel ?? env.siteUrl, 302);

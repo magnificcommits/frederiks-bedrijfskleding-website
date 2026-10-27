@@ -962,12 +962,16 @@ async function bouwWerkbonnen(alleenOrder?: string): Promise<{ kaarten: WerkbonK
     .limit(5000);
   let proefQ = sb.from('drukproeven').select('id, order_id, status, techniek, positie, logo_url, afbeelding_url').not('order_id', 'is', null).order('created_at', { ascending: false }).limit(3000);
   let prodQ = sb.from('orders').select('id').in('status', OP_BORD_ZONDER_LOGO).limit(1000);
+  // Een werkbon die nog open staat hoort op het bord, ook zonder logo of
+  // drukproef (bijv. een order die van Verpakken terug is gezet).
+  let openQ = sb.from('werkbonnen').select('order_id').in('status', ['wacht_op_drukproef', 'goedgekeurd', 'in_productie']).limit(1000);
   if (alleenOrder) {
     decoQ = decoQ.eq('orderregel.order_id', alleenOrder);
     proefQ = proefQ.eq('order_id', alleenOrder);
     prodQ = prodQ.eq('id', alleenOrder);
+    openQ = openQ.eq('order_id', alleenOrder);
   }
-  const [decoRes, proefRes, prodRes] = await Promise.all([decoQ, proefQ, prodQ]);
+  const [decoRes, proefRes, prodRes, openRes] = await Promise.all([decoQ, proefQ, prodQ, openQ]);
   const decos = ((decoRes.data as unknown as DecoRij[]) ?? []).filter((d) => d.orderregel);
   const proeven = (proefRes.data as ProefRij[]) ?? [];
 
@@ -975,6 +979,8 @@ async function bouwWerkbonnen(alleenOrder?: string): Promise<{ kaarten: WerkbonK
   decos.forEach((d) => orderIds.add(d.orderregel!.order_id));
   proeven.forEach((p) => orderIds.add(p.order_id));
   ((prodRes.data as { id: string }[]) ?? []).forEach((o) => orderIds.add(o.id));
+  // Zonder werkbonnentabel geeft deze query een fout en dus geen rijen; dat is goed.
+  ((openRes.data as { order_id: string }[] | null) ?? []).forEach((w) => orderIds.add(w.order_id));
   if (alleenOrder) orderIds.add(alleenOrder);
   const ids = [...orderIds];
   if (ids.length === 0) return { kaarten: [], tabelBestaat: true };

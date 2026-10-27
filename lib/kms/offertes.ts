@@ -1,3 +1,6 @@
+import { kortingVoorMerk, merkSleutel, type MerkKortingen } from '@/lib/kortingPerMerk';
+import { alsKaart, listMerkKortingen } from '@/lib/kms/merkKortingen';
+import { artikelnrPerProduct } from '@/lib/kms/artikelnr';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { zoekWoorden, klantIdsVoorZoekterm } from '@/lib/kms/zoeken';
 import { offerteContactOrFilter } from '@/lib/kms/filterOpties';
@@ -60,7 +63,7 @@ export type Offerteregel = {
 };
 
 /** Regel zoals de offertepagina en de afdruk hem tonen: met foto in de gekozen kleur. */
-export type OfferteregelMetFoto = Offerteregel & { afbeelding: string | null };
+export type OfferteregelMetFoto = Offerteregel & { afbeelding: string | null; /** Artikelnummer van de leverancier. */ artikelnr?: string | null };
 
 export type OfferteMetKlant = Offerte & { organisatie_naam: string | null };
 export type OfferteMetTotaal = OfferteMetKlant & { totaal: number };
@@ -329,7 +332,7 @@ export async function getOfferte(id: string): Promise<OfferteDetail | null> {
       .order('created_at', { ascending: true }),
   );
   const regels = (regelData as Offerteregel[]) ?? [];
-  const fotos = await fotoPerRegel(regels);
+  const [fotos, nrs] = await Promise.all([fotoPerRegel(regels), artikelnrPerProduct(sb, regels.map((r) => r.product_id))]);
 
   // Contactpersoon: eerst via de koppeling (contactpersoon_id), anders bij een oudere
   // offerte op naam binnen de klant. Het mailadres komt van die contactpersoon, anders
@@ -362,7 +365,7 @@ export async function getOfferte(id: string): Promise<OfferteDetail | null> {
     contact_bron: contactBron,
     organisatie_email: contact?.email || klantEmail,
     klant_email: klantEmail,
-    regels: regels.map((r) => ({ ...r, afbeelding: fotos.get(r.id) ?? null })),
+    regels: regels.map((r) => ({ ...r, afbeelding: fotos.get(r.id) ?? null, artikelnr: r.product_id ? nrs.get(r.product_id) ?? null : null })),
   };
 }
 
@@ -600,6 +603,14 @@ export type OfferteArtikel = {
   afbeelding: string | null;
   /** Staat in het assortiment van deze klant: die tonen we bovenaan. */
   inAssortiment: boolean;
+  /** Kleuren van dit artikel die in het assortiment van de klant zitten (Jessi, 27 okt). */
+  assortimentKleuren: string[];
+  /** Artikelnummer van de leverancier. */
+  artikelnr: string | null;
+  /** Korting die voor deze klant geldt: merkkorting, anders de klantkorting. 0 = geen. */
+  korting: number;
+  /** Waar de korting vandaan komt, voor de uitleg onder het veld. */
+  kortingBron: 'merk' | 'klant' | null;
 };
 
 /**
@@ -609,29 +620,84 @@ export type OfferteArtikel = {
  */
 export async function listOfferteArtikelen(orgId: string | null): Promise<OfferteArtikel[]> {
   const sb = kmsAdmin(); if (!sb) return [];
-  const [{ data }, assRes] = await Promise.all([
-    sb.from('producten').select('id, naam, merk, categorie, afbeeldingen').eq('actief', true).order('naam').limit(3000),
+  const [{ data }, assRes, kortingen] = await Promise.all([
+    sb.from('producten').select('id, naam, merk, categorie, afbeeldingen, art_nr_leverancier').eq('actief', true).order('naam').limit(3000),
     orgId
-      ? sb.from('assortiment').select('product_id, toegestaan').eq('organisatie_id', orgId)
-      : Promise.resolve({ data: [] as { product_id: string; toegestaan: boolean }[] }),
+      ? sb.from('assortiment').select('product_id, toegestaan, kleur').eq('organisatie_id', orgId)
+      : Promise.resolve({ data: [] as { product_id: string; toegestaan: boolean; kleur: string | null }[] }),
+    orgId ? klantKortingen(orgId) : Promise.resolve({ algemeen: 0, perMerk: {} as MerkKortingen }),
   ]);
-  const inAss = new Set(
-    ((assRes.data as { product_id: string; toegestaan: boolean | null }[] | null) ?? [])
-      .filter((a) => a.toegestaan !== false)
-      .map((a) => a.product_id),
-  );
-  const lijst = ((data as { id: string; naam: string | null; merk: string | null; categorie: string | null; afbeeldingen: string[] | null }[]) ?? []).map(
-    (p) => ({
-      id: p.id,
-      naam: p.naam ?? 'Naamloos',
-      merk: p.merk,
-      categorie: p.categorie,
-      afbeelding: (p.afbeeldingen ?? [])[0] ?? null,
-      inAssortiment: inAss.has(p.id),
-    }),
+  const assRijen = ((assRes.data as { product_id: string; toegestaan: boolean | null; kleur: string | null }[] | null) ?? []).filter((a) => a.toegestaan !== false);
+  const inAss = new Set(assRijen.map((a) => a.product_id));
+  const kleurenVan = new Map<string, string[]>();
+  for (const a of assRijen) {
+    const k = (a.kleur ?? '').trim();
+    if (!k) continue;
+    const lijst = kleurenVan.get(a.product_id) ?? [];
+    if (!lijst.some((x) => kleurSleutel(x) === kleurSleutel(k))) lijst.push(k);
+    kleurenVan.set(a.product_id, lijst);
+  }
+  const lijst = ((data as { id: string; naam: string | null; merk: string | null; categorie: string | null; afbeeldingen: string[] | null; art_nr_leverancier: string | null }[]) ?? []).map(
+    (p) => {
+      const merkPct = kortingen.perMerk[merkSleutel(p.merk)];
+      const korting = kortingVoorMerk(kortingen.perMerk, p.merk, kortingen.algemeen);
+      return {
+        id: p.id,
+        naam: p.naam ?? 'Naamloos',
+        merk: p.merk,
+        categorie: p.categorie,
+        afbeelding: (p.afbeeldingen ?? [])[0] ?? null,
+        inAssortiment: inAss.has(p.id),
+        assortimentKleuren: kleurenVan.get(p.id) ?? [],
+        artikelnr: p.art_nr_leverancier?.trim() || null,
+        korting,
+        kortingBron: korting > 0 ? (merkPct != null ? ('merk' as const) : ('klant' as const)) : null,
+      };
+    },
   );
   // Stabiel: binnen elke groep blijft de alfabetische volgorde staan.
   return [...lijst.filter((p) => p.inAssortiment), ...lijst.filter((p) => !p.inAssortiment)];
+}
+
+/** Klantkorting (organisaties.korting_pct) en de kortingen per merk van een klant. */
+export async function klantKortingen(orgId: string): Promise<{ algemeen: number; perMerk: MerkKortingen }> {
+  const sb = kmsAdmin();
+  if (!sb || !orgId) return { algemeen: 0, perMerk: {} };
+  const [{ data: org }, merken] = await Promise.all([
+    sb.from('organisaties').select('korting_pct').eq('id', orgId).maybeSingle(),
+    listMerkKortingen(orgId),
+  ]);
+  const pct = Number((org as { korting_pct: number | null } | null)?.korting_pct);
+  return { algemeen: Number.isFinite(pct) && pct > 0 && pct <= 100 ? pct : 0, perMerk: alsKaart(merken) };
+}
+
+/**
+ * Zet de klantkorting op alle kledingregels van een offerte die aan een artikel
+ * hangen: de merkkorting als die er is, anders de algemene klantkorting.
+ * Personalisatieregels en vrije regels blijven zoals ze zijn.
+ */
+export async function pasKlantkortingToe(offerteId: string): Promise<{ regels: number; geenKorting: boolean }> {
+  const sb = kmsAdmin(); if (!sb) return { regels: 0, geenKorting: false };
+  const { data: off } = await sb.from('offertes').select('organisatie_id').eq('id', offerteId).maybeSingle();
+  const orgId = (off as { organisatie_id: string | null } | null)?.organisatie_id;
+  if (!orgId) return { regels: 0, geenKorting: true };
+  const kortingen = await klantKortingen(orgId);
+  if (!kortingen.algemeen && Object.keys(kortingen.perMerk).length === 0) return { regels: 0, geenKorting: true };
+  const { data: rData } = await sb.from('offerteregels').select('id, product_id, soort').eq('offerte_id', offerteId);
+  const regels = ((rData as { id: string; product_id: string | null; soort: string | null }[]) ?? []).filter((r) => r.product_id && r.soort !== 'personalisatie');
+  const ids = [...new Set(regels.map((r) => r.product_id as string))];
+  const merkVan = new Map<string, string | null>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await sb.from('producten').select('id, merk').in('id', ids.slice(i, i + 200));
+    for (const p of (data as { id: string; merk: string | null }[]) ?? []) merkVan.set(p.id, p.merk);
+  }
+  let n = 0;
+  for (const r of regels) {
+    const pct = kortingVoorMerk(kortingen.perMerk, merkVan.get(r.product_id as string) ?? null, kortingen.algemeen);
+    const { error } = await sb.from('offerteregels').update({ korting_pct: pct }).eq('id', r.id);
+    if (!error) n += 1;
+  }
+  return { regels: n, geenKorting: false };
 }
 
 export type OfferteMaat = { variantId: string; maat: string; prijs: number | null; inkoop: number | null };

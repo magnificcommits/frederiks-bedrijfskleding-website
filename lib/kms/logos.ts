@@ -814,7 +814,7 @@ export const WERKBON_LABEL: Record<WerkbonStatus, string> = {
   wacht_op_drukproef: 'Wacht op drukproef',
   goedgekeurd: 'Goedgekeurd',
   in_productie: 'In productie',
-  klaar: 'Klaar',
+  klaar: 'Klaar met bedrukken',
 };
 
 export const WERKBON_UITLEG: Record<WerkbonStatus, string> = {
@@ -823,6 +823,62 @@ export const WERKBON_UITLEG: Record<WerkbonStatus, string> = {
   in_productie: 'Wordt nu bedrukt of geborduurd.',
   klaar: 'Bedrukt of geborduurd, klaar om in te pakken.',
 };
+
+/**
+ * Kolommen van het planbord (Jessi, 27 okt): van drukproef via productie tot
+ * verpakken en bezorgen of verzenden. Factureren is de stap na het bord: dan
+ * neemt Jessi het over en verdwijnt de order van het bord.
+ */
+export const BORD_KOLOMMEN = ['wacht_op_drukproef', 'goedgekeurd', 'in_productie', 'verpakken', 'verzenden'] as const;
+export type BordKolom = (typeof BORD_KOLOMMEN)[number];
+
+export const BORD_LABEL: Record<BordKolom, string> = {
+  wacht_op_drukproef: 'Wacht op drukproef',
+  goedgekeurd: 'Goedgekeurd',
+  in_productie: 'In productie',
+  verpakken: 'Verpakken',
+  verzenden: 'Bezorgen of verzenden',
+};
+
+export const BORD_UITLEG: Record<BordKolom, string> = {
+  wacht_op_drukproef: 'De klant moet de drukproef nog goedkeuren, of er is er nog geen.',
+  goedgekeurd: 'Proef akkoord. Kan op de machine zodra de kleding binnen is.',
+  in_productie: 'Wordt nu bedrukt of geborduurd.',
+  verpakken: 'Klaar met bedrukken of borduren, of kleding zonder logo. Inpakken en klaarzetten.',
+  verzenden: 'Ingepakt en onderweg. Is het bij de klant, zet de order dan op factureren.',
+};
+
+/**
+ * De stappen die je op het planbord kunt kiezen. De eerste drie zijn
+ * werkbonstatussen; de rest zet de orderstatus (verpakken, bezorgen,
+ * verzonden, factureren).
+ */
+export const BORD_STAPPEN = ['wacht_op_drukproef', 'goedgekeurd', 'in_productie', 'verpakken', 'bezorgen', 'verzonden', 'factureren'] as const;
+export type BordStap = (typeof BORD_STAPPEN)[number];
+
+export const BORD_STAP_LABEL: Record<BordStap, string> = {
+  wacht_op_drukproef: 'Wacht op drukproef',
+  goedgekeurd: 'Goedgekeurd',
+  in_productie: 'In productie',
+  verpakken: 'Verpakken',
+  bezorgen: 'Bezorgen',
+  verzonden: 'Verzonden',
+  factureren: 'Bij klant, factureren',
+};
+
+/** Op welke stap staat een kaart nu (voor de keuzelijst op de kaart). */
+export function huidigeBordStap(k: Pick<WerkbonKaart, 'status' | 'order_status'>): BordStap {
+  if (k.order_status === 'bezorgen') return 'bezorgen';
+  if (k.order_status === 'verzonden') return 'verzonden';
+  if (k.order_status === 'factureren') return 'factureren';
+  if (k.status === 'klaar' || k.order_status === 'verpakken') return 'verpakken';
+  return k.status;
+}
+
+/** Orderstatussen die op het bord staan, ook zonder logo of drukproef. */
+const OP_BORD_ZONDER_LOGO = ['bedrukken', 'borduren', 'verpakken', 'bezorgen', 'verzonden'];
+/** Orderstatussen waarmee een order van het bord af is. */
+const VAN_BORD = ['factureren', 'afgerond', 'geannuleerd'];
 
 /** Orderstatussen waarin het bedrukken/borduren al achter de rug is. */
 const NA_PRODUCTIE = ['verpakken', 'bezorgen', 'verzonden', 'factureren', 'afgerond'];
@@ -848,6 +904,8 @@ export type WerkbonKaart = {
   klant_naam: string;
   besteldatum: string | null;
   status: WerkbonStatus;
+  /** Kolom op het planbord. */
+  kolom: BordKolom;
   /** 'opgeslagen' als Jessi de status zelf zette, anders afgeleid uit order en proeven. */
   bron: 'opgeslagen' | 'afgeleid';
   deadline: string | null;
@@ -903,7 +961,7 @@ async function bouwWerkbonnen(alleenOrder?: string): Promise<{ kaarten: WerkbonK
     .select('logo_id, techniek, positie, afmeting, orderregel:orderregels!inner(id, order_id, item_naam, aantal)')
     .limit(5000);
   let proefQ = sb.from('drukproeven').select('id, order_id, status, techniek, positie, logo_url, afbeelding_url').not('order_id', 'is', null).order('created_at', { ascending: false }).limit(3000);
-  let prodQ = sb.from('orders').select('id').in('status', IN_PRODUCTIE).limit(1000);
+  let prodQ = sb.from('orders').select('id').in('status', OP_BORD_ZONDER_LOGO).limit(1000);
   if (alleenOrder) {
     decoQ = decoQ.eq('orderregel.order_id', alleenOrder);
     proefQ = proefQ.eq('order_id', alleenOrder);
@@ -971,7 +1029,6 @@ async function bouwWerkbonnen(alleenOrder?: string): Promise<{ kaarten: WerkbonK
     return !n(a) || !n(b) || n(a) === n(b);
   };
 
-  const nu = Date.now();
   const kaarten: WerkbonKaart[] = [];
   for (const o of orders) {
     const oDecos = decos.filter((d) => d.orderregel!.order_id === o.id);
@@ -992,17 +1049,18 @@ async function bouwWerkbonnen(alleenOrder?: string): Promise<{ kaarten: WerkbonK
       }
     }
 
+    // Gefactureerd, afgerond of geannuleerd: niet meer op het bord.
+    if (!alleenOrder && VAN_BORD.includes(o.status)) continue;
+
     const rij = werkbonRijen.get(o.id);
     const opgeslagen = alsWerkbonStatus(rij?.status);
     let status: WerkbonStatus = opgeslagen ?? afgeleideStatus(o.status, proefTelling);
     // Is de order al verder (ingepakt, verzonden), dan is het werk hoe dan ook klaar.
     if (NA_PRODUCTIE.includes(o.status)) status = 'klaar';
 
-    // Oude afgeronde orders vullen de kolom Klaar niet eindeloos: 45 dagen.
-    if (status === 'klaar' && !alleenOrder) {
-      const moment = Date.parse(rij?.klaar_op ?? o.besteldatum ?? o.created_at);
-      if (Number.isFinite(moment) && nu - moment > 45 * 86400000) continue;
-    }
+    // Kleding zonder logo die al verpakt wordt: meteen in Verpakken.
+    if (o.status === 'verpakken' || o.status === 'bezorgen' || o.status === 'verzonden') status = 'klaar';
+    const kolom: BordKolom = o.status === 'bezorgen' || o.status === 'verzonden' ? 'verzenden' : status === 'klaar' ? 'verpakken' : status;
 
     const decoRegelIds = new Set(oDecos.map((d) => d.orderregel!.id));
     const relevant = decoRegelIds.size ? oRegels.filter((r) => decoRegelIds.has(r.id)) : oRegels;
@@ -1038,7 +1096,10 @@ async function bouwWerkbonnen(alleenOrder?: string): Promise<{ kaarten: WerkbonK
     }
     const goedeProef = oProeven.find((p) => p.status === 'goedgekeurd') ?? oProeven[0];
     thumb ??= goedeProef?.logo_url ?? goedeProef?.afbeelding_url ?? null;
-    if (oDecos.length === 0) waarschuwingen.push('Nog geen logo of positie op de werkbon');
+    // Logo en plek staan op de drukproef of op de regels van de werkbon. Pas als
+    // geen van beide er is, en er wel bedrukt of geborduurd moet worden, melden we het.
+    const proefMetLogo = oProeven.some((p) => p.logo_url || p.afbeelding_url);
+    if (oDecos.length === 0 && oProeven.length > 0 && !proefMetLogo) waarschuwingen.push('Drukproef zonder logo');
     if (proefTelling.afgekeurd > 0 && proefTelling.goedgekeurd === 0) waarschuwingen.push('Drukproef afgekeurd');
 
     kaarten.push({
@@ -1049,6 +1110,7 @@ async function bouwWerkbonnen(alleenOrder?: string): Promise<{ kaarten: WerkbonK
       klant_naam: o.organisaties?.naam ?? 'Onbekende klant',
       besteldatum: o.besteldatum ?? o.created_at,
       status,
+      kolom,
       bron: opgeslagen ? 'opgeslagen' : 'afgeleid',
       deadline: rij?.deadline ?? null,
       notitie: rij?.notitie ?? null,

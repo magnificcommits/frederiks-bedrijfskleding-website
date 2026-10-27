@@ -1,3 +1,4 @@
+import { DASH_ROLLEN, DASH_ROL_LABEL, DASH_ROL_UITLEG } from '@/lib/kms/rollen';
 import type { Metadata } from 'next';
 import { dashAuthed, getHuidigeAdmin, eisEigenaar } from '@/lib/kms/adminClient';
 import { listAdmins, tweeStapStatus } from '@/lib/kms/adminGebruikers';
@@ -11,11 +12,7 @@ export const dynamic = 'force-dynamic';
 
 type SP = { fout?: string; ok?: string };
 
-const rolLabel: Record<string, string> = {
-  eigenaar: 'Eigenaar',
-  medewerker: 'Medewerker',
-  lezer: 'Lezer',
-};
+const rolLabel: Record<string, string> = DASH_ROL_LABEL;
 
 export default async function AdminsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
@@ -78,14 +75,15 @@ export default async function AdminsPage({ searchParams }: { searchParams: Promi
             <div>
               <label className="block text-xs font-semibold text-ink-600">Rol</label>
               <select name="rol" defaultValue="medewerker" className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2 text-sm">
-                <option value="eigenaar">Eigenaar</option>
-                <option value="medewerker">Medewerker</option>
-                <option value="lezer">Lezer</option>
+                {DASH_ROLLEN.map((r) => <option key={r} value={r}>{DASH_ROL_LABEL[r]}</option>)}
               </select>
             </div>
             <button type="submit" className="btn-primary w-full">Toevoegen</button>
           </form>
-          <p className="mt-3 text-xs text-warm">Een beheerder logt in via &apos;Inloggen met e-maillink&apos;. Toegang geldt pas als het e-mailadres hier staat en actief is. Huidige rollen: {Object.values(rolLabel).join(', ')}.</p>
+          <p className="mt-3 text-xs text-warm">Een beheerder logt in via &apos;Inloggen met e-maillink&apos;. Toegang geldt pas als het e-mailadres hier staat en actief is. </p>
+          <ul className="mt-2 flex flex-col gap-1 text-xs text-warm">
+            {DASH_ROLLEN.map((r) => <li key={r}><strong className="text-ink-800">{DASH_ROL_LABEL[r]}:</strong> {DASH_ROL_UITLEG[r]}</li>)}
+          </ul>
         </Drawer>
         <h2 className="font-display text-base font-bold text-ink-900">Beheerders</h2>
         {admins.length === 0 ? (
@@ -115,7 +113,7 @@ export default async function AdminsPage({ searchParams }: { searchParams: Promi
                           defaultValue={a.rol}
                           aria-label="Rol"
                           className="rounded-md border border-line bg-white px-2 py-1 text-sm"
-                          options={['eigenaar', 'medewerker', 'lezer'].map((r) => ({ value: r, label: rolLabel[r] }))}
+                          options={DASH_ROLLEN.map((r) => ({ value: r, label: rolLabel[r] }))}
                         />
                       </form>
                     </td>

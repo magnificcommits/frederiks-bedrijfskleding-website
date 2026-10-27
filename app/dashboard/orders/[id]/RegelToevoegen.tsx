@@ -70,7 +70,7 @@ export default function RegelToevoegen({ orderId }: { orderId: string }) {
     const delen = zoek.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (delen.length === 0) return producten;
     return producten.filter((p) => {
-      const tekst = `${p.naam} ${p.merk ?? ''} ${p.categorie ?? ''}`.toLowerCase();
+      const tekst = `${p.naam} ${p.merk ?? ''} ${p.categorie ?? ''} ${p.artikelnr ?? ''}`.toLowerCase();
       return delen.every((d) => tekst.includes(d));
     });
   }, [zoek, producten]);
@@ -184,7 +184,7 @@ export default function RegelToevoegen({ orderId }: { orderId: string }) {
             id="artikel-zoek"
             value={zoek}
             onChange={(e) => setZoek(e.target.value)}
-            placeholder="Zoek op naam, merk of categorie"
+            placeholder="Zoek op naam, merk, categorie of artikelnummer"
             className="veld disabled:bg-mist disabled:text-warm"
             autoComplete="off"
             disabled={catalogus !== 'klaar'}
@@ -219,7 +219,7 @@ export default function RegelToevoegen({ orderId }: { orderId: string }) {
                     <span className="min-w-0">
                       <span className="block truncate text-[13px] font-semibold text-ink-900">{p.naam}</span>
                       <span className="block truncate text-[11px] text-warm">
-                        {[p.merk, p.categorie].filter(Boolean).join(' · ') || 'Geen merk bekend'}
+                        {[p.merk, p.categorie, p.artikelnr ? `art.nr. ${p.artikelnr}` : null].filter(Boolean).join(' · ') || 'Geen merk bekend'}
                       </span>
                     </span>
                   </button>
@@ -261,7 +261,7 @@ export default function RegelToevoegen({ orderId }: { orderId: string }) {
                 {artikel ? artikel.naam : 'Vrije regel zonder artikel'}
               </p>
               <p className="truncate text-[11px] text-warm">
-                {artikel ? [artikel.merk, artikel.categorie].filter(Boolean).join(' · ') || 'Geen merk bekend' : 'Maat en kleur typ je zelf'}
+                {artikel ? [artikel.merk, artikel.categorie, artikel.artikelnr ? `art.nr. ${artikel.artikelnr}` : null].filter(Boolean).join(' · ') || 'Geen merk bekend' : 'Maat en kleur typ je zelf'}
               </p>
             </div>
           </div>

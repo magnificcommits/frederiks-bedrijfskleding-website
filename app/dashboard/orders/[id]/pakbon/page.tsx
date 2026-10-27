@@ -114,7 +114,9 @@ export default async function PakbonPage({ params }: { params: Promise<{ id: str
                 ) : (
                   data.regels.map((r) => (
                     <tr key={r.id} className="border-b border-line last:border-b-0">
-                      <td className="py-2 pr-3 font-semibold text-ink-900">{r.item_naam}</td>
+                      <td className="py-2 pr-3 font-semibold text-ink-900">{r.item_naam}
+                        {r.artikelnr && <span className="block text-[11px] font-normal text-warm">Art.nr. {r.artikelnr}</span>}
+                      </td>
                       <td className="py-2 pr-3 text-warm">{r.maat || '-'}</td>
                       <td className="py-2 pr-3 text-warm">{r.kleur || '-'}</td>
                       <td className="py-2 pr-3 text-right text-ink-900">{r.aantal}</td>

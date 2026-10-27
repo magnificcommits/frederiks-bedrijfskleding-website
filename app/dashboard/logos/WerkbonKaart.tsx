@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
-import { WERKBON_LABEL, WERKBON_STATUSSEN, type WerkbonKaart as Kaart, type WerkbonStatus } from '@/lib/kms/logos';
-import { zetWerkbonStatusActie } from './actions';
+import { BORD_STAPPEN, BORD_STAP_LABEL, huidigeBordStap, type BordKolom, type BordStap, type WerkbonKaart as Kaart } from '@/lib/kms/logos';
+import { zetBordStapActie } from './actions';
 
 const korteDatum = (s: string) => new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' }).format(new Date(s));
 
@@ -27,14 +27,22 @@ export function DeadlineLabel({ k }: { k: Pick<Kaart, 'deadline' | 'status'> }) 
   );
 }
 
-const VOLGENDE: Partial<Record<WerkbonStatus, { status: WerkbonStatus; label: string }>> = {
-  goedgekeurd: { status: 'in_productie', label: 'Start productie' },
-  in_productie: { status: 'klaar', label: 'Klaar melden' },
+/** De knoppen voor de volgende stap, per kolom van het planbord. */
+const VOLGENDE: Record<BordKolom, { stap: BordStap; label: string }[]> = {
+  wacht_op_drukproef: [],
+  goedgekeurd: [{ stap: 'in_productie', label: 'Start productie' }],
+  in_productie: [{ stap: 'verpakken', label: 'Klaar, naar verpakken' }],
+  verpakken: [
+    { stap: 'bezorgen', label: 'Ingepakt, bezorgen' },
+    { stap: 'verzonden', label: 'Ingepakt, verzonden' },
+  ],
+  verzenden: [{ stap: 'factureren', label: 'Bij klant, factureren' }],
 };
 
-export function ProefRegel({ k }: { k: Kaart }) {
+export function ProefRegel({ k, beperkt = false }: { k: Kaart; beperkt?: boolean }) {
   const p = k.proeven;
   if (p.totaal === 0) {
+    if (beperkt) return <span className="font-semibold text-amber-700">Nog geen drukproef</span>;
     return (
       <Link href={`/dashboard/drukproeven/nieuw?org=${k.organisatie_id}&order=${k.order_id}`} className="font-semibold text-amber-700 hover:text-amber-800">
         Nog geen drukproef, maak er een
@@ -43,15 +51,15 @@ export function ProefRegel({ k }: { k: Kaart }) {
   }
   const delen = [`${p.goedgekeurd} van ${p.totaal} goedgekeurd`, p.open ? `${p.open} open` : null, p.afgekeurd ? `${p.afgekeurd} afgekeurd` : null].filter(Boolean);
   return (
-    <Link href={`/dashboard/orders/${k.order_id}`} className={p.goedgekeurd > 0 ? 'text-green-800 hover:underline' : 'text-ink-700 hover:underline'}>
+    <Link href={beperkt ? `/dashboard/orders/${k.order_id}/werkbon` : `/dashboard/orders/${k.order_id}`} className={p.goedgekeurd > 0 ? 'text-green-800 hover:underline' : 'text-ink-700 hover:underline'}>
       Proef: {delen.join(', ')}
     </Link>
   );
 }
 
 /** Eén werkbon als kaart in de planning. */
-export default function WerkbonKaart({ k, terug }: { k: Kaart; terug: string }) {
-  const volgende = VOLGENDE[k.status];
+export default function WerkbonKaart({ k, terug, beperkt = false }: { k: Kaart; terug: string; beperkt?: boolean }) {
+  const volgende = VOLGENDE[k.kolom];
   const artikelen = k.artikelen.slice(0, 3);
   const meer = k.artikelen.length - artikelen.length;
   const teLaat = (dagenTot(k.deadline) ?? 1) < 0 && k.status !== 'klaar';
@@ -68,8 +76,12 @@ export default function WerkbonKaart({ k, terug }: { k: Kaart; terug: string }) 
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <Link href={`/dashboard/klanten/${k.organisatie_id}?tab=logos`} className="block truncate font-semibold text-ink-900 hover:text-amber-800">{k.klant_naam}</Link>
-          <Link href={`/dashboard/orders/${k.order_id}`} className="text-[12px] text-warm hover:text-ink-800">
+          {beperkt ? (
+            <p className="truncate font-semibold text-ink-900">{k.klant_naam}</p>
+          ) : (
+            <Link href={`/dashboard/klanten/${k.organisatie_id}?tab=logos`} className="block truncate font-semibold text-ink-900 hover:text-amber-800">{k.klant_naam}</Link>
+          )}
+          <Link href={beperkt ? `/dashboard/orders/${k.order_id}/werkbon` : `/dashboard/orders/${k.order_id}`} className="text-[12px] text-warm hover:text-ink-800">
             Order {k.ordernummer != null ? `#${k.ordernummer}` : ''} · {k.order_status.replace(/_/g, ' ')}
           </Link>
         </div>
@@ -96,7 +108,7 @@ export default function WerkbonKaart({ k, terug }: { k: Kaart; terug: string }) 
       </p>
 
       <p className="text-[12px]"><DeadlineLabel k={k} /></p>
-      <p className="text-[12px]"><ProefRegel k={k} /></p>
+      {(k.technieken.length > 0 || k.proeven.totaal > 0) && <p className="text-[12px]"><ProefRegel k={k} beperkt={beperkt} /></p>}
 
       {k.waarschuwingen.length > 0 && (
         <ul className="flex flex-col gap-0.5 text-[12px] font-semibold text-amber-800">
@@ -108,23 +120,23 @@ export default function WerkbonKaart({ k, terug }: { k: Kaart; terug: string }) 
       <div className="mt-1 flex flex-wrap items-center gap-1.5 border-t border-line pt-2">
         <Link href={`/dashboard/orders/${k.order_id}/werkbon`} className="knop-stil !px-2.5 !py-1 !text-xs">Openen</Link>
         <Link href={`/dashboard/orders/${k.order_id}/werkbon?afdrukken=1`} className="knop-stil !px-2.5 !py-1 !text-xs">Afdrukken</Link>
-        {volgende && (
-          <form action={zetWerkbonStatusActie}>
+        {volgende.map((v) => (
+          <form key={v.stap} action={zetBordStapActie}>
             <input type="hidden" name="orderId" value={k.order_id} />
-            <input type="hidden" name="status" value={volgende.status} />
+            <input type="hidden" name="stap" value={v.stap} />
             <input type="hidden" name="terug" value={terug} />
-            <button type="submit" className="knop-donker !px-2.5 !py-1 !text-xs">{volgende.label}</button>
+            <button type="submit" className="knop-donker !px-2.5 !py-1 !text-xs">{v.label}</button>
           </form>
-        )}
-        <form action={zetWerkbonStatusActie} className="ml-auto">
+        ))}
+        <form action={zetBordStapActie} className="ml-auto">
           <input type="hidden" name="orderId" value={k.order_id} />
           <input type="hidden" name="terug" value={terug} />
           <AutoSubmitSelect
-            name="status"
-            defaultValue={k.status}
-            aria-label={`Status werkbon order ${k.ordernummer ?? ''}`}
+            name="stap"
+            defaultValue={huidigeBordStap(k)}
+            aria-label={`Stap order ${k.ordernummer ?? ''}`}
             className="rounded-md border border-line bg-white px-1.5 py-1 text-xs"
-            options={WERKBON_STATUSSEN.map((s) => ({ value: s, label: WERKBON_LABEL[s] }))}
+            options={BORD_STAPPEN.map((s) => ({ value: s, label: BORD_STAP_LABEL[s] }))}
           />
         </form>
       </div>

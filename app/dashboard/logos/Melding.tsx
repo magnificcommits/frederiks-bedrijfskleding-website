@@ -27,7 +27,11 @@ const MELDINGEN: Record<string, { tekst: string; fout?: boolean }> = {
   },
   order_bedrukken: { tekst: 'Status bijgewerkt. De order staat nu op bedrukken.' },
   order_borduren: { tekst: 'Status bijgewerkt. De order staat nu op borduren.' },
-  order_verpakken: { tekst: 'Klaar gemeld. De order staat nu op verpakken.' },
+  order_verpakken: { tekst: 'Klaar gemeld. De order staat nu in Verpakken.' },
+  order_bezorgen: { tekst: 'Ingepakt. De order staat nu op bezorgen.' },
+  order_verzonden: { tekst: 'Ingepakt. De order staat nu op verzonden en de klant krijgt bericht.' },
+  order_factureren: { tekst: 'Afgeleverd. De order staat nu op factureren en is van het planbord af.' },
+  order_terug: { tekst: 'Status teruggezet.' },
 };
 
 export default function Melding({ code }: { code?: string | null }) {

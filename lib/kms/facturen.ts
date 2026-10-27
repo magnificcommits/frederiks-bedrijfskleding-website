@@ -63,6 +63,8 @@ export type Factuurregel = {
   created_at?: string | null;
   /** Artikelfoto in de gekozen kleur; niet in de tabel, bijgezocht door getFactuur. */
   afbeelding?: string | null;
+  /** Artikelnummer van de leverancier (alleen bij het lezen). */
+  artikelnr?: string | null;
   /** 'personalisatie' = logokosten, apart gekopt op de factuur. */
   soort?: string | null;
 };
@@ -221,12 +223,25 @@ function zonderExtraKolommen(rij: Record<string, unknown>): Record<string, unkno
   return uit;
 }
 
-async function voegRegelsIn(sb: SupabaseClient, rijen: Record<string, unknown>[]): Promise<boolean> {
-  if (rijen.length === 0) return true;
+async function voegRegelsIn(sb: SupabaseClient, rijenIn: Record<string, unknown>[]): Promise<boolean> {
+  if (rijenIn.length === 0) return true;
+  // Bij meerdere regels tegelijk vult de database een kolom die maar in een deel
+  // van de regels staat bij de rest met NULL, niet met de standaardwaarde. Een
+  // factuur met kleding en personalisatie liep daardoor vast op soort (verplicht).
+  // Daarom krijgt elke regel soort en decoratie_sleutel expliciet mee.
+  const rijen = rijenIn.map((r) => ({
+    ...r,
+    soort: r.soort === 'personalisatie' ? 'personalisatie' : 'kleding',
+    decoratie_sleutel: r.decoratie_sleutel ?? null,
+  }));
   const { error } = await sb.from('factuurregels').insert(rijen);
   if (!error) return true;
-  if (!kolomOntbreekt(error)) return false;
+  if (!kolomOntbreekt(error)) {
+    console.error('[factuur] regels toevoegen mislukt:', error.message);
+    return false;
+  }
   const { error: fout2 } = await sb.from('factuurregels').insert(rijen.map(zonderExtraKolommen));
+  if (fout2) console.error('[factuur] regels toevoegen mislukt:', fout2.message);
   return !fout2;
 }
 
@@ -344,13 +359,15 @@ async function voegFotosToe(sb: SupabaseClient, regels: Factuurregel[]): Promise
   const ids = [...new Set(regels.map((r) => r.product_id).filter((x): x is string => !!x))];
   if (ids.length === 0) return regels;
   const [{ data: prodData }, { data: fotoData }] = await Promise.all([
-    sb.from('producten').select('id, afbeeldingen').in('id', ids),
+    sb.from('producten').select('id, afbeeldingen, art_nr_leverancier').in('id', ids),
     sb.from('product_kleur_afbeeldingen').select('product_id, kleur, afbeelding_url').in('product_id', ids).limit(1000),
   ]);
   const hoofd = new Map<string, string>();
-  for (const p of (prodData as { id: string; afbeeldingen: string[] | null }[]) ?? []) {
+  const nrs = new Map<string, string>();
+  for (const p of (prodData as { id: string; afbeeldingen: string[] | null; art_nr_leverancier: string | null }[]) ?? []) {
     const f = (p.afbeeldingen ?? [])[0];
     if (f) hoofd.set(p.id, f);
+    if (p.art_nr_leverancier?.trim()) nrs.set(p.id, p.art_nr_leverancier.trim());
   }
   const kleurFoto = new Map<string, string>();
   for (const k of (fotoData as { product_id: string; kleur: string | null; afbeelding_url: string | null }[]) ?? []) {
@@ -358,7 +375,11 @@ async function voegFotosToe(sb: SupabaseClient, regels: Factuurregel[]): Promise
   }
   return regels.map((r) =>
     r.product_id
-      ? { ...r, afbeelding: kleurFoto.get(`${r.product_id}|${(r.kleur ?? '').trim().toLowerCase()}`) ?? hoofd.get(r.product_id) ?? null }
+      ? {
+          ...r,
+          afbeelding: kleurFoto.get(`${r.product_id}|${(r.kleur ?? '').trim().toLowerCase()}`) ?? hoofd.get(r.product_id) ?? null,
+          artikelnr: nrs.get(r.product_id) ?? null,
+        }
       : r,
   );
 }

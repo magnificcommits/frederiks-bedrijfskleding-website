@@ -204,7 +204,7 @@ export default async function ProductenPage({ searchParams }: { searchParams: Pr
       </p>
 
       <div className="mt-5 flex flex-wrap items-end gap-3">
-        <LiveZoekveld param="zoek" label="Zoeken" placeholder="Naam, SKU, merk, categorie, kleur" breedte="w-72" />
+        <LiveZoekveld param="zoek" label="Zoeken" placeholder="Naam, artikelnummer, merk, kleur" breedte="w-72" />
         <FilterKeuze param="merk" label="Merk" waarde={filters.merk ?? ''} leeg="Alle merken" opties={merken.map((m) => ({ value: m, label: m }))} />
         <FilterKeuze param="categorie" label="Categorie" waarde={filters.categorie ?? ''} leeg="Alle categorieën" opties={categorieen.map((c) => ({ value: c, label: c }))} />
         <FilterKeuze
@@ -322,6 +322,7 @@ export default async function ProductenPage({ searchParams }: { searchParams: Pr
                     </td>
                     <td>
                       <Link href={`/dashboard/producten/${p.id}`} className="rij-link">{p.naam}</Link>
+                      {p.art_nr_leverancier && <span className="block text-[12px] text-warm">Art.nr. {p.art_nr_leverancier}</span>}
                       {problemen.length > 0 && (
                         <Link href={`/dashboard/producten/${p.id}?tab=kleuren`} className="ml-2 inline-flex gap-1 align-middle" title="Uit de fotocontrole">
                           {problemen.slice(0, 2).map((x) => (

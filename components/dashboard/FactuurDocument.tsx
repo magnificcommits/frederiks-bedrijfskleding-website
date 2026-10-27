@@ -32,6 +32,7 @@ export type FactuurDocumentRegel = {
   maat?: string | null;
   afbeelding?: string | null;
   soort?: string | null;
+  artikelnr?: string | null;
 };
 
 export type FactuurDocumentData = {

@@ -64,7 +64,7 @@ export default function RegelToevoegen({ offerteId, organisatieId }: { offerteId
     const delen = zoek.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (delen.length === 0) return artikelen;
     return artikelen.filter((p) => {
-      const tekst = `${p.naam} ${p.merk ?? ''} ${p.categorie ?? ''}`.toLowerCase();
+      const tekst = `${p.naam} ${p.merk ?? ''} ${p.categorie ?? ''} ${p.artikelnr ?? ''}`.toLowerCase();
       return delen.every((d) => tekst.includes(d));
     });
   }, [zoek, artikelen]);
@@ -101,6 +101,8 @@ export default function RegelToevoegen({ offerteId, organisatieId }: { offerteId
 
   function kiesArtikel(a: OfferteArtikel) {
     setArtikel(a);
+    // Klantkorting of merkkorting van deze klant alvast invullen (Jessi, 27 okt).
+    setKorting(a.korting ? String(a.korting).replace('.', ',') : '0');
     setVrijeRegel(false);
     setOmschrijvingZelf(false);
     setOmschrijving(omschrijvingVoor(a, '', ''));
@@ -113,11 +115,15 @@ export default function RegelToevoegen({ offerteId, organisatieId }: { offerteId
     laatsteAanvraag.current = a.id;
     start(async () => {
       try {
-        const lijst = await haalKleurenActie(a.id);
+        const ruw = await haalKleurenActie(a.id);
         if (laatsteAanvraag.current !== a.id) return;
+        // Kleuren uit het assortiment van de klant eerst.
+        const inAss = (k: OfferteKleur) => a.assortimentKleuren.some((x) => x.trim().toLowerCase() === k.kleur.trim().toLowerCase());
+        const lijst = [...ruw.filter(inAss), ...ruw.filter((k) => !inAss(k))];
         setKleuren(lijst);
         setKleurStand('klaar');
         if (lijst.length === 1) kiesKleur(0, lijst, a);
+        else if (a.assortimentKleuren.length === 1 && lijst.length > 0 && inAss(lijst[0])) kiesKleur(0, lijst, a);
       } catch {
         if (laatsteAanvraag.current !== a.id) return;
         setKleuren([]);
@@ -170,7 +176,7 @@ export default function RegelToevoegen({ offerteId, organisatieId }: { offerteId
               id="offerte-artikel-zoek"
               value={zoek}
               onChange={(e) => setZoek(e.target.value)}
-              placeholder="Zoek op naam, merk of categorie, bijvoorbeeld: polo tricorp"
+              placeholder="Zoek op naam, merk, categorie of artikelnummer, bijvoorbeeld: polo tricorp"
               className={`${groot} disabled:bg-mist disabled:text-warm`}
               autoComplete="off"
               disabled={catalogus !== 'klaar'}
@@ -200,11 +206,11 @@ export default function RegelToevoegen({ offerteId, organisatieId }: { offerteId
                       <span className="min-w-0">
                         <span className="block truncate text-[14px] font-semibold text-ink-900">{p.naam}</span>
                         <span className="block truncate text-[12px] text-warm">
-                          {[p.merk, p.categorie].filter(Boolean).join(' · ') || 'Geen merk bekend'}
+                          {[p.merk, p.categorie, p.artikelnr ? `art.nr. ${p.artikelnr}` : null].filter(Boolean).join(' · ') || 'Geen merk bekend'}
                         </span>
                         {p.inAssortiment && (
-                          <span className="mt-0.5 inline-block rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
-                            in assortiment klant
+                          <span className="mt-0.5 inline-block max-w-full truncate rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800">
+                            in assortiment klant{p.assortimentKleuren.length > 0 ? `: ${p.assortimentKleuren.join(', ')}` : ''}
                           </span>
                         )}
                       </span>
@@ -243,7 +249,7 @@ export default function RegelToevoegen({ offerteId, organisatieId }: { offerteId
                 <p className="truncate text-[15px] font-semibold text-ink-900">{artikel ? artikel.naam : 'Vrije regel zonder artikel'}</p>
                 <p className="truncate text-[12px] text-warm">
                   {artikel
-                    ? [artikel.merk, kleur?.kleur, maat ? `maat ${maat}` : ''].filter(Boolean).join(' · ') || 'Geen merk bekend'
+                    ? [artikel.merk, artikel.artikelnr ? `art.nr. ${artikel.artikelnr}` : '', kleur?.kleur, maat ? `maat ${maat}` : ''].filter(Boolean).join(' · ') || 'Geen merk bekend'
                     : 'Omschrijving en prijs typ je zelf'}
                 </p>
               </div>
@@ -262,6 +268,7 @@ export default function RegelToevoegen({ offerteId, organisatieId }: { offerteId
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
               {kleuren.map((k, i) => {
                 const gekozen = i === kleurIdx;
+                const bijKlant = artikel.assortimentKleuren.some((x) => x.trim().toLowerCase() === k.kleur.trim().toLowerCase());
                 return (
                   <button
                     key={`${k.kleur}-${i}`}
@@ -279,6 +286,7 @@ export default function RegelToevoegen({ offerteId, organisatieId }: { offerteId
                       <span className="flex h-16 w-16 items-center justify-center rounded bg-mist text-[10px] text-warm">geen foto</span>
                     )}
                     <span className="text-[13px] font-semibold leading-tight text-ink-900">{k.kleur || 'Standaard'}</span>
+                    {bijKlant && <span className="rounded-full bg-green-100 px-1.5 py-px text-[10px] font-semibold text-green-800">in assortiment</span>}
                   </button>
                 );
               })}
@@ -340,6 +348,9 @@ export default function RegelToevoegen({ offerteId, organisatieId }: { offerteId
               <div>
                 <label className="veld-label" htmlFor="offerte-korting">Korting %</label>
                 <input id="offerte-korting" name="korting_pct" inputMode="decimal" value={korting} onChange={(e) => setKorting(e.target.value)} className={`${groot} text-right tabular-nums`} />
+                {artikel?.kortingBron && (
+                  <p className="veld-hint">{artikel.kortingBron === 'merk' ? `Afgesproken korting op ${artikel.merk}` : 'Standaardkorting van de klant'}</p>
+                )}
               </div>
             </div>
           </div>

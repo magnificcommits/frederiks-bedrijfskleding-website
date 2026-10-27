@@ -36,9 +36,11 @@ export function datumLang(d: string | null | undefined): string {
  * Kleur en maat als losse kenmerken, alleen als ze nog niet in de omschrijving staan.
  * Veel omschrijvingen bevatten ze al ("T-shirt Duo, maat XS, Antraciet/Zwart 1220").
  */
-export function regelKenmerken(r: { omschrijving: string | null; kleur?: string | null; maat?: string | null }): { label: string; waarde: string }[] {
+export function regelKenmerken(r: { omschrijving: string | null; kleur?: string | null; maat?: string | null; artikelnr?: string | null }): { label: string; waarde: string }[] {
   const oms = (r.omschrijving || '').toLowerCase();
   const uit: { label: string; waarde: string }[] = [];
+  const nr = r.artikelnr?.trim();
+  if (nr) uit.push({ label: 'Art.nr.', waarde: nr });
   const kleur = r.kleur?.trim();
   const maat = r.maat?.trim();
   if (kleur && !oms.includes(kleur.toLowerCase())) uit.push({ label: 'Kleur', waarde: kleur });

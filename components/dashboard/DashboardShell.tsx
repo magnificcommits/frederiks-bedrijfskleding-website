@@ -1,4 +1,5 @@
 'use client';
+import { magazijnMagPad } from '@/lib/kms/rollen';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -144,6 +145,8 @@ export function DashboardShell({
   const beperkt = adminRol === 'medewerker' || adminRol === 'lezer';
 
   function magZien(href: string) {
+    // Magazijnmedewerker: alleen het planbord, de drukproeven en de eigen beveiliging.
+    if (adminRol === 'magazijn') return href !== '/dashboard' && magazijnMagPad(href);
     if (href === BEHEER_HREF) return toonBeheerders;
     return !(beperkt && EIGENAAR_ONLY.has(href));
   }
@@ -156,7 +159,7 @@ export function DashboardShell({
   for (const g of zichtbareGroepen) for (const it of g.items) zichtbareItems.set(it.href, it);
 
   // Alleen wat deze gebruiker mag zien komt in favorieten; onbekende hrefs vallen weg.
-  const favorietenLijst = favorieten ?? STANDAARD_FAVORIETEN;
+  const favorietenLijst = favorieten ?? (adminRol === 'magazijn' ? ['/dashboard/logos', '/dashboard/drukproeven'] : STANDAARD_FAVORIETEN);
   const zichtbareFavorieten = favorietenLijst
     .map((h) => zichtbareItems.get(h))
     .filter((it): it is Item => Boolean(it));

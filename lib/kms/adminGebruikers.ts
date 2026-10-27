@@ -1,4 +1,5 @@
 import { kmsAdmin } from '@/lib/kms/adminClient';
+import { isDashRol } from '@/lib/kms/rollen';
 
 export type AdminGebruiker = {
   id: string;
@@ -27,7 +28,7 @@ export async function maakAdmin(input: { email: string; naam?: string | null; ro
   const email = String(input.email ?? '').toLowerCase().trim();
   if (!email) return { ok: false, fout: 'E-mailadres is verplicht.' };
   const naam = input.naam ? String(input.naam).trim() : null;
-  const rol = ['eigenaar', 'medewerker', 'lezer'].includes(String(input.rol)) ? String(input.rol) : 'medewerker';
+  const rol = isDashRol(input.rol) ? String(input.rol) : 'medewerker';
   const { error } = await admin.from('admin_gebruikers').insert({ email, naam, rol });
   if (error) return { ok: false, fout: error.message };
   return { ok: true };
@@ -46,7 +47,7 @@ export async function wijzigAdminRol(id: string, rol: string): Promise<{ ok: boo
   const admin = kmsAdmin();
   if (!admin) return { ok: false, fout: 'Database niet gekoppeld.' };
   if (!id) return { ok: false, fout: 'Onbekende beheerder.' };
-  if (!['eigenaar', 'medewerker', 'lezer'].includes(rol)) return { ok: false, fout: 'Onbekende rol.' };
+  if (!isDashRol(rol)) return { ok: false, fout: 'Onbekende rol.' };
   const { error } = await admin.from('admin_gebruikers').update({ rol }).eq('id', id);
   if (error) return { ok: false, fout: error.message };
   return { ok: true };

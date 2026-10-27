@@ -83,6 +83,7 @@ export const en: Woordenboek = {
     budget: 'Budget',
     zoWerktHet: 'How it works',
     wasvoorschriften: 'Washing instructions',
+    voorwaarden: 'Terms and conditions',
     herbestellen: 'Reorder',
     medewerkerInstellingen: 'Employee settings',
   },

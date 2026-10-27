@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import { formatEuro } from '@/lib/format';
 import { bedrijf } from '@/content/bedrijf';
+import { VOORWAARDEN_OFFERTE_TEKST } from '@/content/algemeneVoorwaarden';
 import {
   DocKop,
   DocVoet,
@@ -31,6 +32,8 @@ export type OfferteDocumentRegel = {
   maat: string | null;
   afbeelding: string | null;
   soort?: string | null;
+  /** Artikelnummer van de leverancier (Jessi, 27 okt). */
+  artikelnr?: string | null;
 };
 
 /** Postadres van de klant voor het blok "Offerte voor". Optioneel. */
@@ -105,16 +108,18 @@ export function naarDocumentData(o: OfferteDocumentData): OfferteDocumentData {
       maat: r.maat,
       afbeelding: r.afbeelding,
       soort: r.soort ?? null,
+      artikelnr: r.artikelnr ?? null,
     })),
   };
 }
 
 /** De stappen na akkoord. Kort gehouden; de uitgebreide versie staat in content/werkwijze.ts. */
+/** Tekst van Jessi (27 okt): eerst schriftelijk of digitaal akkoord, dan pas aan de slag. */
 const VERVOLG = [
-  { titel: 'Akkoord', tekst: 'Teken hiernaast, of laat het ons even weten.' },
-  { titel: 'Passen op locatie', tekst: 'We passen bij jullie op de zaak, zodat elke maat klopt.' },
-  { titel: 'Logo aanbrengen', tekst: 'Bedrukt in eigen huis of geborduurd door onze vaste partner.' },
-  { titel: 'Levering', tekst: 'Alles compleet geleverd. Nabestellen kan daarna in een paar dagen.' },
+  { titel: 'Passen', tekst: 'We plannen een passessie bij jou op locatie of in onze showroom.' },
+  { titel: 'Bestelling bevestigen', tekst: 'We leggen de definitieve maten en aantallen vast.' },
+  { titel: 'Aan de slag', tekst: 'We bestellen en personaliseren de kleding.' },
+  { titel: 'Levering & nazorg', tekst: 'We leveren de kleding en blijven beschikbaar voor vragen en nabestellingen.' },
 ];
 
 export default function OfferteDocument({
@@ -292,7 +297,7 @@ export default function OfferteDocument({
         <section className={`mt-7 grid items-stretch gap-8 break-inside-avoid ${toonVervolg && toonAkkoord ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {toonVervolg && (
             <div>
-              <Label>Zo werkt het verder</Label>
+              <Label>Zo gaat het verder na jouw akkoord</Label>
               <ol className="mt-2.5 space-y-2 border-l-2 border-dashed border-amber-300 pl-3.5">
                 {VERVOLG.map((s, i) => (
                   <li key={s.titel} className="text-[11.5px] leading-snug text-warm">
@@ -307,7 +312,7 @@ export default function OfferteDocument({
             <div className="flex flex-col rounded-md border border-line px-4 py-3.5">
               <p className="font-display text-[14px] font-bold text-ink-900">Voor akkoord</p>
               <p className="mt-0.5 text-[11px] leading-snug text-warm">
-                Teken en stuur hem terug, of bel {bedrijf.telefoon}.
+                Keur de offerte online goed via de knop in de mail, of teken en stuur hem terug.
               </p>
               <div className="mt-auto grid grid-cols-[1.3fr_1fr] gap-x-5 gap-y-1 pt-3 text-[9.5px] uppercase tracking-[0.12em] text-warm">
                 {['Naam', 'Datum'].map((veld) => (
@@ -325,6 +330,8 @@ export default function OfferteDocument({
           )}
         </section>
       )}
+
+      <p className="mt-6 break-inside-avoid border-t border-line pt-3 text-[10.5px] leading-snug text-warm">{VOORWAARDEN_OFFERTE_TEKST}</p>
 
       <DocVoet />
     </div>

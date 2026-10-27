@@ -1,10 +1,12 @@
 'use server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { dashAuthed } from '@/lib/kms/adminClient';
+import { dashAuthed, kmsAdmin } from '@/lib/kms/adminClient';
 import { uploadMediaMetNaam } from '@/lib/kms/storage';
 import { logAudit } from '@/lib/kms/audit';
+import { zetOrderStatusMetGevolgen } from '@/lib/kms/orders';
 import {
+  BORD_STAPPEN,
   LOGO_TECHNIEKEN,
   WERKBON_STATUSSEN,
   bestandExtensie,
@@ -22,6 +24,7 @@ import {
   type ExtraBestand,
   type LogoKleur,
   type LogoPositie,
+  type BordStap,
   type ProductieSoort,
   type WerkbonStatus,
 } from '@/lib/kms/logos';
@@ -343,4 +346,60 @@ export async function zetWerkbonStatusActie(formData: FormData) {
   if (!opslag.ok) redirect(metParam(terug, 'melding', 'mislukt'));
   if (order) redirect(metParam(terug, 'melding', `order_${order.naar}`));
   redirect(metParam(terug, 'ok', 'status'));
+}
+
+/** Orderstatussen na de productie die het planbord zelf zet. */
+const NA_BORD = ['verpakken', 'bezorgen', 'verzonden'];
+
+/**
+ * Eén stap op het planbord (Jessi, 27 okt): van drukproef via productie naar
+ * verpakken, bezorgen of verzenden, en tot slot factureren. De eerste drie
+ * zijn werkbonstatussen; vanaf verpakken zetten we de orderstatus, met de
+ * gevolgen die daarbij horen (voorraad afboeken, statusmail aan de klant).
+ */
+export async function zetBordStapActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const orderId = tekst(formData, 'orderId', 60);
+  const stap = tekst(formData, 'stap', 40) as BordStap;
+  const terug = terugUit(formData) ?? '/dashboard/logos';
+  if (!UUID.test(orderId) || !(BORD_STAPPEN as readonly string[]).includes(stap)) redirect(metParam(terug, 'melding', 'mislukt'));
+
+  const { kaart } = await werkbonVoorOrder(orderId);
+  if (!kaart) redirect(metParam(terug, 'melding', 'mislukt'));
+
+  let melding = 'mislukt';
+  if ((WERKBON_STATUSSEN as readonly string[]).includes(stap)) {
+    // Terug naar een stap vóór het inpakken: de orderstatus gaat mee terug.
+    const status = stap as WerkbonStatus;
+    const opslag = await zetWerkbon(orderId, { status }, kaart.status);
+    let order = await volgOrderstatus(orderId, status, kaart.technieken[0] ?? null);
+    if (!order && NA_BORD.includes(kaart.order_status)) {
+      const naar = status === 'in_productie' ? (kaart.technieken[0] === 'borduren' ? 'borduren' : 'bedrukken') : 'compleet_geleverd';
+      const sb = kmsAdmin();
+      const { error } = sb ? await sb.from('orders').update({ status: naar }).eq('id', orderId) : { error: true };
+      if (!error) order = { van: kaart.order_status, naar };
+    }
+    if (opslag.ok || order) {
+      await logAudit('werkbon_status', {
+        entiteit: 'order',
+        entiteitId: orderId,
+        details: { voor: { werkbon: kaart.status }, na: { werkbon: status }, ...(order ? { orderstatus: order } : {}) },
+      });
+    }
+    if (!opslag.ok && opslag.tabelOntbreekt) melding = order ? 'werkbon_tabel_order' : 'werkbon_tabel';
+    else if (opslag.ok) melding = order ? (NA_BORD.includes(order.van) ? 'order_terug' : `order_${order.naar}`) : '';
+  } else {
+    // Verpakken, bezorgen, verzonden of factureren: werk is klaar, de order loopt door.
+    if (kaart.status !== 'klaar') await zetWerkbon(orderId, { status: 'klaar' }, kaart.status);
+    const uitkomst = await zetOrderStatusMetGevolgen(orderId, stap);
+    if (uitkomst.ok) {
+      await logAudit('order_status', { entiteit: 'order', entiteitId: orderId, details: { van: kaart.order_status, status: stap, via: 'planbord' } });
+      melding = uitkomst.ongewijzigd ? '' : `order_${stap}`;
+    }
+  }
+  revalidatePath('/dashboard/logos');
+  revalidatePath(`/dashboard/orders/${orderId}`);
+  revalidatePath(`/dashboard/orders/${orderId}/werkbon`);
+  if (!melding) redirect(metParam(terug, 'ok', 'status'));
+  redirect(metParam(terug, 'melding', melding));
 }

@@ -342,7 +342,10 @@ export default async function OrderDetailPage({
                           </span>
                         )}
                       </td>
-                      <td className="font-semibold text-ink-900">{r.item_naam}</td>
+                      <td className="font-semibold text-ink-900">
+                        {r.item_naam}
+                        {r.artikelnr && <span className="block text-[12px] font-normal text-warm">Art.nr. {r.artikelnr}</span>}
+                      </td>
                       <td className="text-warm">
                         {[r.maat, r.kleur, r.lengte != null ? `lengte ${r.lengte}` : null].filter(Boolean).join(' · ') || '-'}
                       </td>
@@ -471,7 +474,7 @@ export default async function OrderDetailPage({
                 {inkoopregels.map((r) => (
                   <tr key={r.id} className="border-b border-line">
                     <td className="font-semibold text-ink-900">{r.item_naam || '-'}</td>
-                    <td className="text-warm">{[r.merk, r.leverancier_naam].filter(Boolean).join(' · ') || '-'}</td>
+                    <td className="text-warm">{[r.merk, r.leverancier_naam, r.artikelnr ? `art.nr. ${r.artikelnr}` : null].filter(Boolean).join(' · ') || '-'}</td>
                     <td className="text-warm">{[r.maat, r.kleur].filter(Boolean).join(' · ') || '-'}</td>
                     <td className="text-warm">{r.aantal}x{r.geleverd_aantal ? ` (${r.geleverd_aantal} geleverd)` : ''}</td>
                     <td>

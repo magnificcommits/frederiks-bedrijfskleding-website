@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { dashAuthed } from '@/lib/kms/adminClient';
+import { dashAuthed, isMagazijn } from '@/lib/kms/adminClient';
 import {
   STANDAARD_POSITIES,
   WERKBON_LABEL,
@@ -108,6 +108,7 @@ export default async function WerkbonPage({
   if (!(await dashAuthed())) redirect('/dashboard');
   const { id } = await params;
   const zp = await searchParams;
+  const beperkt = await isMagazijn();
 
   const werkbon = await getOrderVoorWerkbon(id);
   if (!werkbon) {
@@ -153,7 +154,7 @@ export default async function WerkbonPage({
         <div className="flex flex-wrap items-center gap-3">
           <PrintKnop />
           <Link href="/dashboard/logos" className="knop-stil">Naar de planning</Link>
-          <Link href={`/dashboard/orders/${id}`} className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar order</Link>
+          {!beperkt && <Link href={`/dashboard/orders/${id}`} className="text-sm font-semibold text-warm hover:text-ink-800">Terug naar order</Link>}
         </div>
       </div>
 

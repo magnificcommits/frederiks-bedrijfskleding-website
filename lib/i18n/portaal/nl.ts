@@ -92,6 +92,7 @@ export const nl = {
     budget: 'Budget',
     zoWerktHet: 'Zo werkt het',
     wasvoorschriften: 'Wasvoorschriften',
+    voorwaarden: 'Algemene voorwaarden',
     herbestellen: 'Herbestellen',
     medewerkerInstellingen: 'Instellingen medewerker',
   },

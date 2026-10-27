@@ -38,6 +38,11 @@ const nextConfig = {
   // Vercel staat per verzoek max 4,5 MB toe, dus 4 MB.
   experimental: { serverActions: { bodySizeLimit: '4mb' } },
   outputFileTracingRoot: __dirname,
+  // De PDF met algemene voorwaarden gaat als bijlage mee met elke offertemail
+  // (Jessi, 27 okt). Die wordt op de server gelezen, dus mee in de functie.
+  outputFileTracingIncludes: {
+    '/dashboard/offertes/[id]': ['./public/downloads/*.pdf'],
+  },
   images: {
     // Productfoto's staan bij de leveranciers op hun eigen CDN. next/image
     // weigert externe bronnen die hier niet staan, dus elke nieuwe leverancier

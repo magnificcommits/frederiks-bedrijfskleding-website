@@ -1,3 +1,4 @@
+import { artikelnrPerProduct } from '@/lib/kms/artikelnr';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 
 /**
@@ -14,6 +15,9 @@ export type MagazijnRegel = {
   maat: string | null;
   kleur: string | null;
   aantal: number;
+  product_id?: string | null;
+  /** Artikelnummer van de leverancier. */
+  artikelnr?: string | null;
 };
 
 export type Adres = {
@@ -85,11 +89,13 @@ export async function getMagazijnData(orderId: string): Promise<MagazijnData | n
 
   const { data: regelData } = await sb
     .from('orderregels')
-    .select('id, item_naam, maat, kleur, aantal')
+    .select('id, item_naam, maat, kleur, aantal, product_id')
     .eq('order_id', orderId)
     .eq('soort', 'kleding')
     .order('item_naam');
-  const regels = (regelData as MagazijnRegel[]) ?? [];
+  const ruw = (regelData as MagazijnRegel[]) ?? [];
+  const nrs = await artikelnrPerProduct(sb, ruw.map((r) => r.product_id));
+  const regels = ruw.map((r) => ({ ...r, artikelnr: r.product_id ? nrs.get(r.product_id) ?? null : null }));
 
   const vestigingAdres: Adres = {
     straat: o.vestiging?.leveradres ?? null,

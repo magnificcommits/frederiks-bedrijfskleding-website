@@ -78,6 +78,7 @@ export default function PortaalNavKlant({ rol, actief, sparen = true }: { rol: P
         { href: '/portaal/zo-werkt-het', label: t('nav.zoWerktHet') },
         { href: '/portaal/wasvoorschriften', label: t('nav.wasvoorschriften') },
         { href: '/portaal/klachten', label: t('nav.vragenKlachten') },
+        { href: '/portaal/voorwaarden', label: t('nav.voorwaarden') },
       ],
     },
   ];
@@ -205,6 +206,7 @@ function MobieleTabbalk({ rol, entries, linkActief, leafActief, groupActief, spa
     { href: '/portaal/klachten', label: t('nav.vragenKlachten') },
     { href: '/portaal/zo-werkt-het', label: t('nav.zoWerktHet') },
     { href: '/portaal/wasvoorschriften', label: t('nav.wasvoorschriften') },
+    { href: '/portaal/voorwaarden', label: t('nav.voorwaarden') },
   ];
   const meerActief = meerItems.some((i) => leafActief(i.href)) || pathname === '/portaal/app';
   const tab = 'flex min-h-[58px] flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-semibold leading-tight';

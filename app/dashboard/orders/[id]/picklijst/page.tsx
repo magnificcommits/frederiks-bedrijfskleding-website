@@ -87,7 +87,9 @@ export default async function PicklijstPage({ params }: { params: Promise<{ id: 
                       <td className="py-3 pr-3 text-center">
                         <span className="inline-block h-5 w-5 rounded border border-ink-900 align-middle" aria-hidden="true" />
                       </td>
-                      <td className="py-3 pr-3 font-semibold text-ink-900">{r.item_naam}</td>
+                      <td className="py-3 pr-3 font-semibold text-ink-900">{r.item_naam}
+                        {r.artikelnr && <span className="block text-[11px] font-normal text-warm">Art.nr. {r.artikelnr}</span>}
+                      </td>
                       <td className="py-3 pr-3 text-warm">{r.maat || '-'}</td>
                       <td className="py-3 pr-3 text-warm">{r.kleur || '-'}</td>
                       <td className="py-3 pr-3 text-right text-lg font-bold text-ink-900">{r.aantal}</td>

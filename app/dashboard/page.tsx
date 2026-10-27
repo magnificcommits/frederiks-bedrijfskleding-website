@@ -5,6 +5,7 @@ import { env, isLeadsDbConfigured } from '@/lib/env';
 import { login } from './actions';
 import { dashAuthed, adminSessieStatus, getHuidigeAdmin, magEigenaar } from '@/lib/kms/adminClient';
 import { redirect } from 'next/navigation';
+import { MAGAZIJN_START } from '@/lib/kms/rollen';
 import { cookies } from 'next/headers';
 import { getAanDeSlag, AAN_DE_SLAG_COOKIE } from '@/lib/kms/aanDeSlag';
 import AanDeSlag from '@/components/dashboard/overzicht/AanDeSlag';
@@ -92,6 +93,9 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
       </main>
     );
   }
+
+  // Magazijnmedewerker: geen omzet en klanten, meteen naar het planbord.
+  if ((await getHuidigeAdmin())?.rol === 'magazijn') redirect(MAGAZIJN_START);
 
   if (!isLeadsDbConfigured) {
     return (

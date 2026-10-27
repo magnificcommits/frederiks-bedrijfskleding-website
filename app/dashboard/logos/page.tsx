@@ -4,11 +4,11 @@ import Drawer from '@/components/dashboard/Drawer';
 import EmptyState from '@/components/dashboard/EmptyState';
 import LiveZoekveld from '@/components/dashboard/LiveZoekveld';
 import AutoSubmitSelect from '@/components/dashboard/AutoSubmitSelect';
-import { dashAuthed } from '@/lib/kms/adminClient';
+import { dashAuthed, isMagazijn } from '@/lib/kms/adminClient';
 import {
-  WERKBON_LABEL,
-  WERKBON_STATUSSEN,
-  WERKBON_UITLEG,
+  BORD_KOLOMMEN,
+  BORD_LABEL,
+  BORD_UITLEG,
   gebruikTelling,
   listAlleLogos,
   listOrganisaties,
@@ -118,7 +118,7 @@ export default async function ProductiePage({ searchParams }: { searchParams: Pr
 /* ------------------------------------------------------------------------- */
 
 async function WerkbonnenTab({ zp }: { zp: Zoek }) {
-  const { kaarten: alle, tabelBestaat } = await listWerkbonnen();
+  const [{ kaarten: alle, tabelBestaat }, beperkt] = await Promise.all([listWerkbonnen(), isMagazijn()]);
   const techniek = zp.techniek === 'borduren' || zp.techniek === 'bedrukken' ? zp.techniek : '';
   const weergave = zp.weergave === 'lijst' ? 'lijst' : 'bord';
   const laat = zp.laat === '1';
@@ -178,23 +178,23 @@ async function WerkbonnenTab({ zp }: { zp: Zoek }) {
         </div>
       ) : weergave === 'bord' ? (
         // Telefoon: kolommen naast elkaar, horizontaal swipen met snap; vanaf md een raster.
-        <div className="mt-5 grid gap-4 max-md:snap-x max-md:snap-mandatory max-md:auto-cols-[85%] max-md:grid-flow-col max-md:overflow-x-auto max-md:pb-3 md:grid-cols-2 xl:grid-cols-4">
-          {WERKBON_STATUSSEN.map((s) => {
-            const kolom = kaarten.filter((k) => k.status === s);
+        <div className="mt-5 grid gap-4 max-md:snap-x max-md:snap-mandatory max-md:auto-cols-[85%] max-md:grid-flow-col max-md:overflow-x-auto max-md:pb-3 md:grid-cols-3 2xl:grid-cols-5">
+          {BORD_KOLOMMEN.map((s) => {
+            const kolom = kaarten.filter((k) => k.kolom === s);
             return (
               <section key={s} aria-labelledby={`kolom-${s}`} className="flex min-w-0 snap-start flex-col rounded-xl border border-line bg-mist/60 p-2.5">
                 <header className="px-1 pb-2">
                   <h2 id={`kolom-${s}`} className="flex items-center justify-between font-display text-sm font-bold text-ink-900">
-                    {WERKBON_LABEL[s]}
+                    {BORD_LABEL[s]}
                     <span className="chip-tel">{kolom.length}</span>
                   </h2>
-                  <p className="mt-0.5 text-[11px] leading-snug text-warm">{WERKBON_UITLEG[s]}</p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-warm">{BORD_UITLEG[s]}</p>
                 </header>
                 {kolom.length === 0 ? (
                   <p className="rounded-lg border border-dashed border-line px-3 py-6 text-center text-xs text-ink-400">Leeg</p>
                 ) : (
                   <ul className="flex flex-col gap-2.5">
-                    {kolom.map((k) => <WerkbonKaart key={k.order_id} k={k} terug={terug} />)}
+                    {kolom.map((k) => <WerkbonKaart key={k.order_id} k={k} terug={terug} beperkt={beperkt} />)}
                   </ul>
                 )}
               </section>
@@ -202,13 +202,13 @@ async function WerkbonnenTab({ zp }: { zp: Zoek }) {
           })}
         </div>
       ) : (
-        <WerkbonLijst kaarten={kaarten} />
+        <WerkbonLijst kaarten={kaarten} beperkt={beperkt} />
       )}
     </section>
   );
 }
 
-function WerkbonLijst({ kaarten }: { kaarten: Kaart[] }) {
+function WerkbonLijst({ kaarten, beperkt }: { kaarten: Kaart[]; beperkt: boolean }) {
   return (
     <div className="mt-5 overflow-x-auto panel">
       <table className="tbl">
@@ -228,10 +228,14 @@ function WerkbonLijst({ kaarten }: { kaarten: Kaart[] }) {
         <tbody>
           {kaarten.map((k) => (
             <tr key={k.order_id} className="border-b border-line align-top">
-              <td className="whitespace-nowrap text-[13px] font-semibold text-ink-800">{WERKBON_LABEL[k.status]}</td>
+              <td className="whitespace-nowrap text-[13px] font-semibold text-ink-800">{BORD_LABEL[k.kolom]}</td>
               <td>
-                <Link href={`/dashboard/klanten/${k.organisatie_id}`} className="font-semibold text-ink-900 hover:text-amber-800">{k.klant_naam}</Link>
-                <Link href={`/dashboard/orders/${k.order_id}`} className="block text-[12px] text-warm hover:text-ink-800">Order {k.ordernummer != null ? `#${k.ordernummer}` : ''}</Link>
+                {beperkt ? (
+                  <span className="font-semibold text-ink-900">{k.klant_naam}</span>
+                ) : (
+                  <Link href={`/dashboard/klanten/${k.organisatie_id}`} className="font-semibold text-ink-900 hover:text-amber-800">{k.klant_naam}</Link>
+                )}
+                <Link href={beperkt ? `/dashboard/orders/${k.order_id}/werkbon` : `/dashboard/orders/${k.order_id}`} className="block text-[12px] text-warm hover:text-ink-800">Order {k.ordernummer != null ? `#${k.ordernummer}` : ''}</Link>
               </td>
               <td>
                 <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded border border-line bg-mist">
@@ -248,7 +252,7 @@ function WerkbonLijst({ kaarten }: { kaarten: Kaart[] }) {
               </td>
               <td className="text-right tabular-nums">{k.aantal}</td>
               <td className="whitespace-nowrap text-[12px]"><DeadlineLabel k={k} /></td>
-              <td className="text-[12px]"><ProefRegel k={k} /></td>
+              <td className="text-[12px]"><ProefRegel k={k} beperkt={beperkt} /></td>
               <td className="whitespace-nowrap">
                 <Link href={`/dashboard/orders/${k.order_id}/werkbon`} className="knop-stil !px-2.5 !py-1 !text-xs">Openen</Link>{' '}
                 <Link href={`/dashboard/orders/${k.order_id}/werkbon?afdrukken=1`} className="knop-stil !px-2.5 !py-1 !text-xs">Afdrukken</Link>

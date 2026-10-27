@@ -4,7 +4,13 @@ import { NextResponse, type NextRequest } from 'next/server';
 type CookieRow = { name: string; value: string; options: CookieOptions };
 
 export async function middleware(req: NextRequest) {
-  let res = NextResponse.next({ request: req });
+  // Het opgevraagde pad voor de rolcontrole in dashAuthed (magazijnmedewerker).
+  // Altijd overschrijven, zodat een meegestuurde waarde van buiten niet telt.
+  const kop = new Headers(req.headers);
+  kop.set('x-fb-pad', req.nextUrl.pathname);
+  if (req.nextUrl.pathname.startsWith('/api/')) return NextResponse.next({ request: { headers: kop } });
+
+  let res = NextResponse.next({ request: { headers: kop } });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return res;
@@ -18,8 +24,12 @@ export async function middleware(req: NextRequest) {
         return req.cookies.getAll();
       },
       setAll(list: CookieRow[]) {
-        list.forEach(({ name, value }) => req.cookies.set(name, value));
-        res = NextResponse.next({ request: req });
+        list.forEach(({ name, value }) => {
+          req.cookies.set(name, value);
+        });
+        // Bijgewerkte cookies ook in de doorgegeven kopregels, naast x-fb-pad.
+        kop.set('cookie', req.cookies.toString());
+        res = NextResponse.next({ request: { headers: kop } });
         list.forEach(({ name, value, options }) => res.cookies.set(name, value, options));
       },
     },
@@ -28,4 +38,4 @@ export async function middleware(req: NextRequest) {
   return res;
 }
 
-export const config = { matcher: ['/portaal/:path*', '/dashboard/:path*'] };
+export const config = { matcher: ['/portaal/:path*', '/dashboard/:path*', '/api/dashboard/:path*'] };

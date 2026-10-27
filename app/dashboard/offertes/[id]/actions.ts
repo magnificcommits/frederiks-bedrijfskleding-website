@@ -1,5 +1,6 @@
 'use server';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { dashAuthed } from '@/lib/kms/adminClient';
 import {
   werkOfferte,
@@ -22,6 +23,9 @@ import {
 import { logAudit } from '@/lib/kms/audit';
 import { sendEmail } from '@/lib/email';
 import { offerteMailHtml } from '@/lib/documentMail';
+import { headers } from 'next/headers';
+import { voorwaardenPdfBase64, VOORWAARDEN_BESTANDSNAAM } from '@/lib/voorwaardenBijlage';
+import { offerteAkkoordToken } from '@/lib/kms/offerteAkkoord';
 import { site } from '@/content/site';
 
 /**
@@ -229,12 +233,22 @@ export async function mailOfferteActie(formData: FormData) {
     redirect('/dashboard/offertes/' + id + '?fout=verlopen');
   }
   const nummer = off.offertenummer != null ? `#${off.offertenummer}` : '';
+  // Algemene voorwaarden gaan altijd als PDF mee (Jessi, 27 okt). Lukt dat niet,
+  // dan niet versturen: de offerte verwijst naar de bijlage.
+  const pdf = await voorwaardenPdfBase64();
+  if (!pdf) redirect('/dashboard/offertes/' + id + '?fout=bijlage');
+  // Knop om online goed te keuren: ondertekende link naar /akkoord/<token>.
+  const h = await headers();
+  const host = (h.get('x-forwarded-host') ?? h.get('host') ?? '').split(',')[0].trim();
+  const token = offerteAkkoordToken(id);
+  const akkoordUrl = host && token ? `https://${host}/akkoord/${encodeURIComponent(token)}` : null;
   const verzending = await sendEmail({
     to,
     replyTo: site.email,
     subject: `Offerte ${nummer} van Frederiks Bedrijfskleding`.replace(/\s+/g, ' ').trim(),
     // Offerte in de huisstijl van het document: logo, regels met foto, totaal en akkoordknop.
-    html: offerteMailHtml(off),
+    html: offerteMailHtml(off, { akkoordUrl }),
+    attachments: [{ filename: VOORWAARDEN_BESTANDSNAAM, content: pdf }],
   }).catch(() => ({ sent: false }));
   if (!verzending.sent) redirect('/dashboard/offertes/' + id + '?fout=verzenden');
   if (off.status === 'concept') await zetOfferteStatus(id, 'verstuurd');
@@ -251,4 +265,17 @@ export async function berekenPersonalisatieOfferteActie(formData: FormData) {
   const u = await berekenPersonalisatieVoorOfferte(offerteId);
   await logAudit('personalisatie_berekend', { entiteit: 'offertes', entiteitId: offerteId, details: { regels: u.regels, totaal: u.totaal } });
   redirect('/dashboard/offertes/' + offerteId + (u.regels > 0 ? '?ok=pers' : u.geenProef ? '?fout=pers_geen_proef' : '?fout=pers_geen'));
+}
+
+/** Klantkorting op alle artikelregels: merkkorting, anders de standaardkorting (Jessi, 27 okt). */
+export async function pasKlantkortingToeActie(formData: FormData) {
+  if (!(await dashAuthed())) redirect('/dashboard');
+  const offerteId = String(formData.get('offerteId') ?? '').trim();
+  if (!offerteId) redirect('/dashboard/offertes');
+  const { pasKlantkortingToe } = await import('@/lib/kms/offertes');
+  const u = await pasKlantkortingToe(offerteId);
+  if (u.geenKorting) redirect('/dashboard/offertes/' + offerteId + '?fout=geen_korting');
+  await logAudit('offerte_klantkorting', { entiteit: 'offertes', entiteitId: offerteId, details: { regels: u.regels } });
+  revalidatePath('/dashboard/offertes/' + offerteId);
+  redirect('/dashboard/offertes/' + offerteId + '?ok=korting');
 }

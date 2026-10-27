@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { magazijnMagPad } from '@/lib/kms/rollen';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -71,6 +72,23 @@ function handtekeningKlopt(doel: string, inhoud: string, handtekening: string): 
   const b = Buffer.from(handtekening);
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
+}
+
+/**
+ * Ondertekende link-token voor een publieke pagina zonder inloggen (bijv. de
+ * offerte online goedkeuren). Inhoud is bijv. het offerte-id; zonder geheim null.
+ */
+export function maakLinkToken(doel: string, inhoud: string): string | null {
+  const sig = onderteken(`link:${doel}`, inhoud);
+  return sig ? `${inhoud}.${sig}` : null;
+}
+
+/** Inhoud van een geldige link-token, of null. */
+export function leesLinkToken(doel: string, token: string): string | null {
+  const punt = token.lastIndexOf('.');
+  if (punt <= 0) return null;
+  const inhoud = token.slice(0, punt);
+  return handtekeningKlopt(`link:${doel}`, inhoud, token.slice(punt + 1)) ? inhoud : null;
 }
 
 function nuSec(): number {
@@ -249,8 +267,26 @@ export async function dashAuthed(): Promise<boolean> {
   // Rol 'lezer' mag kijken, niet wijzigen. Elke wijziging in het KMS loopt via een
   // Server Action (herkenbaar aan de header Next-Action); die weigeren we hier
   // centraal, zodat niet elke actie apart een rolcheck nodig heeft.
-  if ((await getHuidigeAdmin())?.rol === 'lezer' && (await isServerAction())) return false;
+  const rol = (await getHuidigeAdmin())?.rol;
+  if (rol === 'lezer' && (await isServerAction())) return false;
+  // Magazijnmedewerker: alleen het planbord en wat daarbij hoort. Het pad komt
+  // uit de middleware (x-fb-pad); een actie loopt via de pagina waar hij op staat.
+  if (rol === 'magazijn') return magazijnMagPad(await huidigPad(), await isServerAction());
   return true;
+}
+
+/** Het opgevraagde pad, gezet door de middleware. Leeg als het ontbreekt. */
+async function huidigPad(): Promise<string> {
+  try {
+    return (await headers()).get('x-fb-pad') ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** Is de ingelogde beheerder een magazijnmedewerker? */
+export async function isMagazijn(): Promise<boolean> {
+  return (await getHuidigeAdmin())?.rol === 'magazijn';
 }
 
 /** Is het huidige verzoek een Server Action-aanroep? */

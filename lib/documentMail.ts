@@ -1,3 +1,4 @@
+import { VOORWAARDEN_OFFERTE_TEKST } from '@/content/algemeneVoorwaarden';
 import { emailKnop, escapeHtml } from '@/lib/email';
 import { env } from '@/lib/env';
 import { bedrijf } from '@/content/bedrijf';
@@ -95,6 +96,7 @@ type MailRegel = {
   kleur?: string | null;
   maat?: string | null;
   afbeelding?: string | null;
+  artikelnr?: string | null;
   /** Bedrag excl. btw na korting. */
   bedrag: number;
   /** Alleen op de factuur. */
@@ -159,11 +161,11 @@ export type OfferteMailData = {
   geldig_tot: string | null;
   notitie: string | null;
   btw_pct: number | null;
-  regels: { omschrijving: string | null; aantal: number | null; stukprijs: number | null; korting_pct: number | null; kleur: string | null; maat: string | null; afbeelding?: string | null }[];
+  regels: { omschrijving: string | null; aantal: number | null; stukprijs: number | null; korting_pct: number | null; kleur: string | null; maat: string | null; afbeelding?: string | null; artikelnr?: string | null }[];
 };
 
 /** De mail bij een offerte: complete offerte in de mail en een akkoordknop. */
-export function offerteMailHtml(off: OfferteMailData): string {
+export function offerteMailHtml(off: OfferteMailData, opties: { akkoordUrl?: string | null } = {}): string {
   const { subtotaal, korting, btw, totaal } = offerteTotalen(off.regels, off.btw_pct);
   const nummer = off.offertenummer != null ? String(off.offertenummer) : 'concept';
   const naam = off.contactpersoon?.trim() || off.organisatie_naam?.trim() || '';
@@ -173,7 +175,8 @@ export function offerteMailHtml(off: OfferteMailData): string {
     const kort = Number(r.korting_pct) || 0;
     return { ...r, bedrag: Math.round(aantal * stuk * (1 - kort / 100) * 100) / 100 };
   });
-  const akkoordHref =
+  // Met akkoordlink: de klant keurt online goed (Jessi, 27 okt). Zonder: de oude mailto.
+  const akkoordHref = opties.akkoordUrl ||
     `mailto:${bedrijf.email}?subject=${encodeURIComponent(`Akkoord offerte ${nummer}`)}` +
     `&body=${encodeURIComponent(`Wij gaan akkoord met offerte ${nummer}${off.organisatie_naam ? ` voor ${off.organisatie_naam}` : ''}.\n\nNaam:\n`)}`;
 
@@ -192,8 +195,9 @@ export function offerteMailHtml(off: OfferteMailData): string {
       totaal,
     )}
     ${off.geldig_tot ? `<p style="margin:20px 0 0;">Deze offerte is geldig tot en met <strong style="color:${INK};">${escapeHtml(datumLang(off.geldig_tot))}</strong>.</p>` : ''}
-    ${knop('Akkoord geven', akkoordHref)}
-    <p style="margin:14px 0 0;font-size:14px;">Of antwoord gewoon op deze mail. Liever eerst even overleggen? Bel <strong style="color:${INK};">${escapeHtml(bedrijf.telefoon)}</strong>.</p>
+    ${knop(opties.akkoordUrl ? 'Offerte online goedkeuren' : 'Akkoord geven', akkoordHref)}
+    <p style="margin:14px 0 0;font-size:14px;">${opties.akkoordUrl ? 'Met de knop bekijk je de offerte en keur je hem in een minuut goed. ' : 'Of antwoord gewoon op deze mail. '}Liever eerst even overleggen? Bel <strong style="color:${INK};">${escapeHtml(bedrijf.telefoon)}</strong>.</p>
+    <p style="margin:14px 0 0;font-size:12px;color:${WARM};">${escapeHtml(VOORWAARDEN_OFFERTE_TEKST)}</p>
     <p style="margin:22px 0 0;">Met vriendelijke groet,<br><strong style="color:${INK};">${escapeHtml(bedrijf.naam)}</strong></p>
   `;
   return documentMailLayout({ soort: 'Offerte', nummer, preheader: `Offerte ${nummer} van ${bedrijf.naam}: ${formatEuro(totaal)} incl. btw`, bodyHtml });

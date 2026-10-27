@@ -1,3 +1,4 @@
+import { artikelnrPerProduct } from '@/lib/kms/artikelnr';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { zoekWoorden, klantIdsVoorZoekterm } from '@/lib/kms/zoeken';
 import { stuurStatusMail } from '@/lib/kms/notificaties';
@@ -141,6 +142,8 @@ export type Orderregel = {
    * bijgezocht, zodat de orderpagina in één oogopslag laat zien wat er besteld is.
    */
   afbeelding?: string | null;
+  /** Artikelnummer van de leverancier (alleen bij het lezen). */
+  artikelnr?: string | null;
   /** 'personalisatie' = automatisch berekende logokosten (migratie 20261022b). */
   soort?: string | null;
   handmatig?: boolean | null;
@@ -159,6 +162,8 @@ export type OrderProduct = {
   afbeelding: string | null;
   /** Kan dit artikel op lengte gemaakt worden? Zo ja, vraagt de kiezer erom. */
   maatwerk_lengte: boolean;
+  /** Artikelnummer van de leverancier, ook doorzoekbaar. */
+  artikelnr?: string | null;
 };
 
 /** Eén maat-kleurcombinatie van een artikel, met de prijs die de klant betaalt. */
@@ -386,13 +391,13 @@ export async function getOrder(id: string): Promise<OrderDetail | null> {
   // Zonder regels zou een pakbon of factuur leeg worden; een fout moet dus zichtbaar zijn.
   const regelData = eisData('orders.regels', await sb.from('orderregels').select('*').eq('order_id', id).order('created_at'));
   const regels = (regelData as Orderregel[]) ?? [];
-  const fotos = await afbeeldingPerRegel(regels);
+  const [fotos, nrs] = await Promise.all([afbeeldingPerRegel(regels), artikelnrPerProduct(sb, regels.map((r) => r.product_id))]);
   const { organisaties, medewerkers, ...rest } = row;
   return {
     ...rest,
     organisatie_naam: organisaties?.naam ?? null,
     medewerker_naam: medewerkers?.naam ?? null,
-    regels: regels.map((r) => ({ ...r, afbeelding: fotos.get(r.id) ?? null })),
+    regels: regels.map((r) => ({ ...r, afbeelding: fotos.get(r.id) ?? null, artikelnr: r.product_id ? nrs.get(r.product_id) ?? null : null })),
   };
 }
 
@@ -515,7 +520,7 @@ export async function listProductenVoorRegels(): Promise<OrderProduct[]> {
   const sb = kmsAdmin(); if (!sb) return [];
   const { data } = await sb
     .from('producten')
-    .select('id, naam, merk, categorie, afbeeldingen, maatwerk_lengte')
+    .select('id, naam, merk, categorie, afbeeldingen, maatwerk_lengte, art_nr_leverancier')
     .eq('actief', true)
     .order('naam')
     .limit(2000);
@@ -526,6 +531,7 @@ export async function listProductenVoorRegels(): Promise<OrderProduct[]> {
     categorie: (p.categorie as string | null) ?? null,
     afbeelding: ((p.afbeeldingen as string[] | null) ?? [])[0] ?? null,
     maatwerk_lengte: Boolean(p.maatwerk_lengte),
+    artikelnr: ((p.art_nr_leverancier as string | null) ?? '').trim() || null,
   }));
 }
 

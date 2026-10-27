@@ -1,3 +1,4 @@
+import { artikelnrPerProduct } from '@/lib/kms/artikelnr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { kmsAdmin } from '@/lib/kms/adminClient';
 import { sendEmail, emailLayout, escapeHtml } from '@/lib/email';
@@ -43,7 +44,7 @@ export type Inkoopregel = {
   bron?: string | null;
 };
 
-export type InkoopregelMetLeverancier = Inkoopregel & { leverancier_naam: string | null };
+export type InkoopregelMetLeverancier = Inkoopregel & { leverancier_naam: string | null; artikelnr?: string | null };
 
 type OrderregelRij = {
   id: string;
@@ -333,9 +334,10 @@ export async function listInkoopregels(status?: string): Promise<InkoopregelMetL
   if (status && status.trim()) q = q.eq('status', status.trim());
   const { data } = await q;
   const rows = (data as unknown as (Inkoopregel & { leveranciers: { naam: string } | null })[]) ?? [];
+  const nrs = await artikelnrPerProduct(sb, rows.map((r) => r.product_id));
   return rows.map((r) => {
     const { leveranciers, ...rest } = r;
-    return { ...rest, leverancier_naam: leveranciers?.naam ?? null } as InkoopregelMetLeverancier;
+    return { ...rest, leverancier_naam: leveranciers?.naam ?? null, artikelnr: r.product_id ? nrs.get(r.product_id) ?? null : null } as InkoopregelMetLeverancier;
   });
 }
 

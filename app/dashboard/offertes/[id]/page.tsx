@@ -1,3 +1,5 @@
+import { headers } from 'next/headers';
+import { getOfferteAkkoord, offerteAkkoordToken } from '@/lib/kms/offerteAkkoord';
 import Kruimelpad from '@/components/dashboard/ui/Kruimelpad';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -14,6 +16,7 @@ import {
   maakOrderVanOfferteActie,
   voegPakketActie,
   berekenPersonalisatieOfferteActie,
+  pasKlantkortingToeActie,
 } from './actions';
 import RegelToevoegen from './RegelToevoegen';
 import TotaalKaart from '@/components/dashboard/TotaalKaart';
@@ -53,6 +56,9 @@ const PAGINA_MELDING: Record<string, { tekst: string; fout: boolean }> = {
   'ok:pers': { tekst: 'Personalisatiekosten toegevoegd onderaan de offerte. Pas je een prijs aan, dan blijft die staan bij opnieuw berekenen.', fout: false },
   'fout:pers_geen_proef': { tekst: 'Geen goedgekeurde drukproef voor de artikelen op deze offerte. Maak en laat eerst een drukproef goedkeuren.', fout: true },
   'fout:pers_geen': { tekst: 'Geen personalisatiekosten gevonden. Staan de logo-plekken op de drukproef en staat de techniek in de prijslijst?', fout: true },
+  'fout:bijlage': { tekst: 'De PDF met algemene voorwaarden kon niet worden toegevoegd. De offerte is niet verstuurd. Probeer het opnieuw of meld het aan Tim.', fout: true },
+  'ok:korting': { tekst: 'Klantkorting toegepast: per regel de afgesproken merkkorting, anders de standaardkorting van de klant.', fout: false },
+  'fout:geen_korting': { tekst: 'Voor deze klant staat geen standaardkorting of merkkorting. Die stel je in op de klantkaart.', fout: true },
   'fout:verlopen': { tekst: 'De geldigheidsdatum ligt in het verleden. Zet bij Kopgegevens een nieuwe datum en verstuur hem dan.', fout: true },
 };
 
@@ -96,11 +102,17 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
   }
 
   const { subtotaal, korting, btw, totaal, marge } = offerteTotalen(offerte.regels, offerte.btw_pct);
-  const [pakketten, klantAdres, order] = await Promise.all([
+  const [pakketten, klantAdres, order, akkoord] = await Promise.all([
     offerte.organisatie_id ? listPakketten(offerte.organisatie_id) : Promise.resolve([]),
     klantAdresVoorDocument(offerte.organisatie_id),
     orderVanOfferte(offerte.id),
+    getOfferteAkkoord(offerte.id),
   ]);
+  // Link om online goed te keuren, ook om zelf door te sturen (bijv. via WhatsApp).
+  const kop = await headers();
+  const host = (kop.get('x-forwarded-host') ?? kop.get('host') ?? '').split(',')[0].trim();
+  const akkoordToken = offerte.status === 'verstuurd' ? offerteAkkoordToken(offerte.id) : null;
+  const akkoordLink = host && akkoordToken ? `https://${host}/akkoord/${encodeURIComponent(akkoordToken)}` : null;
   const heeftRegels = offerte.regels.some((r) => (Number(r.aantal) || 0) > 0);
   const verlopen = !!offerte.geldig_tot && offerte.status !== 'geaccepteerd' && offerte.status !== 'afgewezen' && new Date(offerte.geldig_tot) < new Date(new Date().toDateString());
 
@@ -122,6 +134,22 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
         <p className={`mt-3 rounded-lg border px-4 py-2.5 text-[13px] font-semibold ${melding.fout ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-800'}`}>
           {melding.tekst}
         </p>
+      )}
+      {akkoord && (
+        <p className="mt-3 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-[13px] text-green-800">
+          <strong>Online goedgekeurd</strong> door {akkoord.naam}
+          {akkoord.functie ? ` (${akkoord.functie})` : ''} op{' '}
+          {new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }).format(new Date(akkoord.akkoord_op))}
+          {akkoord.totaal_incl != null ? `, totaal ${formatEuro(Number(akkoord.totaal_incl))} incl. btw` : ''}, met de algemene voorwaarden van {akkoord.voorwaarden_versie}.
+        </p>
+      )}
+      {akkoordLink && !akkoord && (
+        <div className="mt-3 rounded-lg border border-line bg-white px-4 py-2.5 text-[13px] text-ink-800">
+          <p>
+            <strong>Link om online goed te keuren.</strong> Staat al in de offertemail. Wil je hem zelf sturen, kopieer hem dan:
+          </p>
+          <input readOnly value={akkoordLink} aria-label="Link om de offerte online goed te keuren" className="veld mt-1.5 w-full font-mono text-[12px]" />
+        </div>
       )}
       {order && (
         <p className="mt-3 rounded-lg border border-line bg-mist px-4 py-2.5 text-[13px] text-ink-800">
@@ -155,12 +183,20 @@ export default async function OfferteDetailPage({ params, searchParams }: { para
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-display text-base font-bold text-ink-900">Offerteregels</h2>
+              <div className="flex flex-wrap gap-2">
+              {offerte.organisatie_id && offerte.regels.some((r) => r.product_id && r.soort !== 'personalisatie') && (
+                <form action={pasKlantkortingToeActie}>
+                  <input type="hidden" name="offerteId" value={offerte.id} />
+                  <button type="submit" className="knop-stil" title="Merkkorting per artikel, anders de standaardkorting van de klant">Klantkorting toepassen</button>
+                </form>
+              )}
               <form action={berekenPersonalisatieOfferteActie}>
                 <input type="hidden" name="offerteId" value={offerte.id} />
                 <button type="submit" className="knop-stil" title="Uit de goedgekeurde drukproeven van deze klant en de prijslijst">
                   {offerte.regels.some((r) => r.soort === 'personalisatie') ? 'Personalisatie opnieuw berekenen' : 'Personalisatiekosten berekenen'}
                 </button>
               </form>
+              </div>
             </div>
             {offerte.regels.length === 0 ? (
               <p className="mt-3 rounded-lg border border-dashed border-line bg-mist px-5 py-6 text-center text-[13px] text-warm">Nog geen regels op deze offerte. Voeg er hieronder een toe.</p>

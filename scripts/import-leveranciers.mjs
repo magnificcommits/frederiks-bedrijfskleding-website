@@ -7,6 +7,7 @@
  *   node scripts/import-leveranciers.mjs --dry        # alleen tellen en controleren
  *   node scripts/import-leveranciers.mjs              # alle merken wegschrijven
  *   node scripts/import-leveranciers.mjs --merk=brook # één merk
+ *   node scripts/import-leveranciers.mjs --merk=mascot,santino # meerdere merken
  *
  * Zoekt de bestanden in data/leveranciers/, en anders in public/Data per merk/.
  * Zet ze bij voorkeur in data/leveranciers: alles onder public/ wordt door Vercel
@@ -40,7 +41,8 @@ const DATA_DIRS = [join(ROOT, 'data', 'leveranciers'), join(ROOT, 'public', 'Dat
 const DATA_DIR = DATA_DIRS[0];
 
 const args = process.argv.slice(2);
-const DRY = args.includes('--dry');
+// --json schrijft naar een bestand en heeft dus net als --dry geen database nodig.
+const DRY = args.includes('--dry') || args.some((x) => x.startsWith('--json='));
 const ONLY = (args.find((a) => a.startsWith('--merk=')) || '').split('=')[1]?.toLowerCase() || null;
 
 if (!DATA_DIRS.length) {
@@ -154,6 +156,8 @@ const meld = (merk, sku, wat) => fouten.push({ merk, sku, wat });
 const producten = [];
 const varianten = [];
 const kleurfotos = [];
+// Maattoeslag per artikel (merk, product_sku, maat, toeslag_pct); nu alleen Mascot.
+const toeslagen = [];
 
 function product(p) {
   if (!p.verkoopprijs_basis) meld(p.merk, p.sku, 'geen verkoopprijs');
@@ -876,9 +880,300 @@ function tricorp() {
   }
 }
 
-const MERKEN = { snickers, wk, brook, upower, hydrowear, mipiace, tq, pfanner, xirtrum, fhb, fristads, blaklader, emma, grisport, kariban, tricorp };
+// ---------------------------------------------------------------- november 2026
+// Negen merken die Jessi op 10 en 11 november 2026 per mail aanleverde. Het zijn
+// kleine, met de hand samengestelde lijsten: één regel per maat, soms zonder naam.
+// Waar het bestand geen productnaam geeft, staat die hieronder uitgeschreven.
+
+const hoofdletter = (v) => { const s = schoon(v); return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : null; };
+const lokaleFoto = (map, deel) => {
+  const hit = plaatjesIn(map).find((n) => n.toLowerCase().startsWith(String(deel).toLowerCase()));
+  return hit ? `/merken/${map}/${hit}` : null;
+};
+/** Leest een bestand met getrimde kolomkoppen; dubbele spaties in koppen tellen als één. */
+const leesGetrimd = (pad) =>
+  lees(pad).map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k.replace(/\s+/g, ' ').trim(), v])));
+
+/**
+ * Mascot. Het artikelnummer is model-stof-kleur (18003-316-010): de eerste twee delen
+ * zijn het artikel, het derde de kleur. Mascot rekent voor grote maten en lange
+ * lengtes een hogere adviesprijs, en die verschilt per artikel (3XL is +14% bij de
+ * polo en +30% bij de fleecetrui). Daarom komt de toeslag uit het bestand zelf en
+ * niet uit een vaste regel: de meest voorkomende prijs is de basisprijs, elke maat
+ * die afwijkt krijgt een maattoeslag op dit artikel. Bij een prijsverhoging hoeft dan
+ * alleen de basisprijs omhoog; de grote maten schuiven vanzelf mee.
+ */
+const MASCOT_SOORT = {
+  '50611-971': ['MASCOT Nantes polosweater', 'Polosweater'],
+  '16079-230': ['MASCOT Lemberg werkbroek met dijbeenzakken', 'Werkbroek'],
+  '03044-990': ['MASCOT Gibraltar riem', 'Riem'],
+  '22069-311': [null, 'Amerikaanse overall'],
+};
+function mascot() {
+  const f = bestand('mascot');
+  if (!f) return console.warn('Mascot: bestand niet gevonden, overgeslagen');
+  const perArt = new Map();
+  for (const r of leesGetrimd(f)) {
+    const nr = schoon(r.ARTIKELNUMMER);
+    if (!nr) continue;
+    const delen = nr.split('-');
+    const art = delen.slice(0, 2).join('-');
+    if (!perArt.has(art)) perArt.set(art, []);
+    perArt.get(art).push({ ...r, kleurcode: delen[2] ?? '' });
+  }
+  for (const [art, g] of perArt) {
+    const r = g[0];
+    const sku = `MAS-${art}`;
+    // Kleur per kleurcode: de meest genoemde naam wint, zodat één tikfout in een
+    // regel (22069-311-09 stond één keer als Grijs) geen extra kleur oplevert.
+    const kleurVan = new Map();
+    for (const x of g) {
+      const k = hoofdletter(x.Kleur);
+      if (!k) continue;
+      const t = kleurVan.get(x.kleurcode) ?? new Map();
+      t.set(k, (t.get(k) ?? 0) + 1);
+      kleurVan.set(x.kleurcode, t);
+    }
+    const kleur = (c) => [...(kleurVan.get(c) ?? new Map())].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const maat = (v) => {
+      const m = (schoon(v) ?? '').replace(/\s*ONE$/i, '').trim();
+      return m === '' ? 'One size' : m;
+    };
+    const telling = new Map();
+    for (const x of g) { const p = getal(x.verkoopprijs); if (p) telling.set(p, (telling.get(p) ?? 0) + 1); }
+    const basis = [...telling].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0] ?? null;
+    const [eigenNaam, soort] = MASCOT_SOORT[art] ?? [];
+    const ruweNaam = (schoon(r.PRODUCTNAAM) ?? art).replace(/[®™]/g, '');
+    product({
+      sku, art_nr_leverancier: art,
+      naam: eigenNaam ?? `MASCOT ${ruweNaam.charAt(0).toLowerCase()}${ruweNaam.slice(1)}`.replace(/^MASCOT mASCOT/i, 'MASCOT'),
+      merk: 'Mascot',
+      categorie: soort ?? ruweNaam.split(/[ ,]/)[0],
+      geslacht: hoofdletter(r.Geslacht),
+      verkoopprijs_basis: basis,
+      afbeeldingen: [],
+      maatwerk_lengte: false,
+    });
+    const toeslagGezien = new Set();
+    for (const x of g) {
+      const m = maat(x.MAAT);
+      varianten.push({ sku, maat: m, kleur: kleur(x.kleurcode), ean: code(x['EAN-CODE']) });
+      const p = getal(x.verkoopprijs);
+      if (basis && p && p !== basis && !toeslagGezien.has(m)) {
+        toeslagGezien.add(m);
+        toeslagen.push({ merk: 'Mascot', product_sku: sku, maat: m, toeslag_pct: Math.round((p / basis - 1) * 1e6) / 1e4 });
+      }
+    }
+  }
+}
+
+/**
+ * Safety Jogger: schoenen met 50% korting, handschoenen en PBM met 35%. De korting van
+ * de leverancier staat op 50; de handschoenen krijgen hun eigen korting op het artikel.
+ * In het bestand van november 2026 zijn de handschoenregels een kolom verschoven en
+ * ontbreekt de adviesprijs. Ze komen wel in het KMS, maar inactief tot de prijs er is.
+ */
+function safetyjogger() {
+  const f = bestand('safety', 'jogger');
+  if (!f) return console.warn('Safety Jogger: bestand niet gevonden, overgeslagen');
+  const KLEUR = { BLACK: 'Zwart', BLU: 'Blauw', BLUE: 'Blauw' };
+  const perArt = new Map();
+  for (const ruw of leesGetrimd(f)) {
+    const art = schoon(ruw.Article);
+    if (!art) continue;
+    const r = { ...ruw };
+    // Verschoven regel: de EAN staat in de prijskolom en de maat in de EAN-kolom.
+    if (/^\d{13}$/.test(String(schoon(r['RRP / item (EUR)']) ?? ''))) {
+      r.Size = r.EAN; r.EAN = r['RRP / item (EUR)']; r['RRP / item (EUR)'] = null;
+    }
+    if (!perArt.has(art)) perArt.set(art, []);
+    perArt.get(art).push(r);
+  }
+  for (const [art, g] of perArt) {
+    const r = g[0];
+    const sku = `SJ-${art}`;
+    const schoen = (schoon(r.Type) ?? '').toLowerCase() === 'shoes';
+    const model = schoon(r['Commercial name']) ?? art;
+    const kleur = KLEUR[(schoon(r['Color description']) ?? '').toUpperCase()] ?? hoofdletter(r['Color description']);
+    const prijs = getal(r['RRP / item (EUR)']);
+    const url = lokaleFoto('safety-jogger', art);
+    const norm = model.match(/\bS[1-7][A-Z]{0,2}\b/)?.[0] ?? null;
+    product({
+      sku, art_nr_leverancier: art,
+      naam: schoen ? `Safety Jogger ${model} veiligheidsschoen` : `Safety Jogger ${model} werkhandschoen`,
+      merk: 'Safety Jogger',
+      categorie: schoen ? 'Werkschoenen' : 'Werkhandschoenen',
+      normeringen: schoen && norm ? `EN ISO 20345 ${norm}` : null,
+      verkoopprijs_basis: prijs,
+      korting_pct: schoen ? null : 35,
+      actief: Boolean(prijs),
+      afbeeldingen: [url].filter(Boolean),
+      maatwerk_lengte: false,
+    });
+    for (const x of g) varianten.push({ sku, maat: code(x.Size), kleur, ean: code(x.EAN) });
+    if (kleur && url) kleurfotos.push({ sku, kleur, url });
+  }
+}
+
+/** Santino: één artikel per model (Rens, Robin), foto per kleur staat als link in het bestand. */
+function santino() {
+  const f = bestand('santino');
+  if (!f) return console.warn('Santino: bestand niet gevonden, overgeslagen');
+  const perModel = new Map();
+  for (const r of leesGetrimd(f)) {
+    const model = schoon(r['Model [*]']);
+    if (!model) continue;
+    if (!perModel.has(model)) perModel.set(model, []);
+    perModel.get(model).push(r);
+  }
+  for (const [model, g] of perModel) {
+    const r = g[0];
+    const sku = `SAN-${model.toUpperCase()}`;
+    const naam = schoon(r['Omschrijving (NLD)']) ?? `Santino ${model}`;
+    product({
+      sku, art_nr_leverancier: model,
+      naam,
+      merk: 'Santino',
+      categorie: naam.replace(/^Santino\s+/i, '').replace(new RegExp(`\\s*${model}$`, 'i'), ''),
+      verkoopprijs_basis: getal(r['Prijs 2026 [€]']),
+      afbeeldingen: [https(schoon(r['ImageURL Santino']))].filter(Boolean),
+      maatwerk_lengte: false,
+    });
+    const gezien = new Set();
+    for (const x of g) {
+      const kl = schoon(x['Kleur (NLD)']);
+      varianten.push({ sku, maat: schoon(x['Maat (NLD)']), kleur: kl, ean: code(x['EAN code basiseenheid']) });
+      const url = https(schoon(x['ImageURL Santino']));
+      if (kl && url && !gezien.has(kl)) { gezien.add(kl); kleurfotos.push({ sku, kleur: kl, url }); }
+    }
+  }
+}
+
+/** Portwest geeft alleen de stijlcode. Namen uit de Portwest-catalogus. */
+const PORTWEST_NAAM = {
+  R460: ['Portwest R460 RWS verkeersjas', 'Jassen', 'EN ISO 20471, EN 343, RWS'],
+  PS69: ['Portwest PS69 stootpet (bump cap)', 'Stootpet', null],
+};
+function portwest() {
+  const f = bestand('portwest');
+  if (!f) return console.warn('Portwest: bestand niet gevonden, overgeslagen');
+  const perStijl = new Map();
+  for (const r of leesGetrimd(f)) {
+    const st = schoon(r.Style);
+    if (!st) continue;
+    if (!perStijl.has(st)) perStijl.set(st, []);
+    perStijl.get(st).push(r);
+  }
+  for (const [st, g] of perStijl) {
+    const r = g[0];
+    const sku = `PW-${st}`;
+    const [naam, cat, norm] = PORTWEST_NAAM[st] ?? [`Portwest ${st}`, null, null];
+    const fotoVan = (kleur) => lokaleFoto('portwest', `${st}-${(kleur ?? '').toLowerCase()}`);
+    product({
+      sku, art_nr_leverancier: st,
+      naam, merk: 'Portwest', categorie: cat, normeringen: norm,
+      verkoopprijs_basis: getal(r.Verkoopadviesprijs),
+      afbeeldingen: [fotoVan(schoon(r.Colour)) ?? lokaleFoto('portwest', st)].filter(Boolean),
+      maatwerk_lengte: false,
+    });
+    const gezien = new Set();
+    for (const x of g) {
+      const kl = hoofdletter(x.Colour);
+      varianten.push({ sku, maat: schoon(x.Size), kleur: kl, ean: code(x.EAN13) });
+      const url = fotoVan(kl);
+      if (kl && url && !gezien.has(kl)) { gezien.add(kl); kleurfotos.push({ sku, kleur: kl, url }); }
+    }
+  }
+}
+
+/** 3M: gehoorkappen, één regel per artikel, geen maten. */
+function drieM() {
+  const f = bestand('3m');
+  if (!f) return console.warn('3M: bestand niet gevonden, overgeslagen');
+  for (const r of leesGetrimd(f)) {
+    const art = schoon(r['Artikelcode 3M']);
+    if (!art) continue;
+    const sku = `3M-${art}`;
+    const naam = (schoon(r.Artikelnaam) ?? art).replace(/[®™]/g, '').replace(/Earmuffs/i, 'gehoorkap').replace(/Gehoorkappen/i, 'gehoorkap');
+    const kleur = hoofdletter(naam.split(',')[1]);
+    const url = lokaleFoto('3m', art);
+    product({
+      sku, art_nr_leverancier: art, ean: code(r['GTIN/EAN']),
+      naam, merk: '3M',
+      categorie: schoon(r['[Product Category Level 2]']) ?? 'Gehoorbescherming',
+      verkoopprijs_basis: getal(r['Bruto verkoopprijs']),
+      afbeeldingen: [url].filter(Boolean),
+      maatwerk_lengte: false,
+    });
+    varianten.push({ sku, maat: 'One size', kleur, ean: code(r['GTIN/EAN']) });
+    if (kleur && url) kleurfotos.push({ sku, kleur, url });
+  }
+}
+
+/**
+ * Sika, Oxxa, Gevavi en Lavoro: dezelfde korte lijst (Merk, Artikelcode, kleur, maat,
+ * prijs). Naam en soort staan niet in het bestand en komen uit deze tabel.
+ */
+const KLEIN = {
+  sika: { merk: 'Sika', prefix: 'SIK', map: 'sika', zoek: ['sika'],
+    artikelen: { 883: ['Sika 883 Flex veiligheidsklomp S3, dichte hiel', 'Werkschoenen', 'EN ISO 20345 S3'] } },
+  oxxa: { merk: 'Oxxa', prefix: 'OXX', map: 'oxxa', zoek: ['oxxa'],
+    artikelen: { 5199: ['Oxxa Matt 5199 werkjas, vlamvertragend en antistatisch', 'Jassen', null] } },
+  gevavi: { merk: 'Gevavi', prefix: 'GEV', map: 'gevavi', zoek: ['avi', 'assortiment'],
+    artikelen: { 'Nordic D.H. Hout': ['Gevavi Nordic veiligheidsklomp, dichte hiel, houten zool', 'Werkschoenen', null] },
+    artnr: () => 'NORDIC-DH-HOUT' },
+  // Lavoro 1053.60 is volgens de Lavoro-catalogus de zaagschoen Chain-Saw/Sherwood, terwijl
+  // het bestand "Klompen" zegt met dezelfde prijs als de Gevavi-klomp. Inactief tot Jessi
+  // model en prijs bevestigt.
+  lavoro: { merk: 'Lavoro', prefix: 'LAV', map: 'lavoro', zoek: ['lavoro'], actief: false,
+    artikelen: { '1053.60': ['Lavoro 1053.60 veiligheidsschoen', 'Werkschoenen', null] } },
+};
+function kleinMerk(sleutel) {
+  const c = KLEIN[sleutel];
+  const f = bestand(...c.zoek);
+  if (!f) return console.warn(`${c.merk}: bestand niet gevonden, overgeslagen`);
+  const perArt = new Map();
+  for (const r of leesGetrimd(f)) {
+    const art = code(r.Artikelcode);
+    if (!art) continue;
+    if (!perArt.has(art)) perArt.set(art, []);
+    perArt.get(art).push(r);
+  }
+  for (const [art, g] of perArt) {
+    const r = g[0];
+    const nr = c.artnr ? c.artnr(art) : art;
+    const sku = `${c.prefix}-${nr}`;
+    const [naam, cat, norm] = c.artikelen[art] ?? [`${c.merk} ${art}`, schoon(r.Omschrijving), null];
+    const fotoVan = (kleur) => lokaleFoto(c.map, `${nr}-${(kleur ?? '').toLowerCase()}`) ?? lokaleFoto(c.map, nr.split('-')[0]);
+    const url = fotoVan(schoon(r.kleur));
+    product({
+      sku, art_nr_leverancier: art,
+      naam, merk: c.merk, categorie: cat, normeringen: norm,
+      verkoopprijs_basis: getal(r.prijs),
+      ...(c.actief === false ? { actief: false } : {}),
+      afbeeldingen: [url].filter(Boolean),
+      maatwerk_lengte: false,
+    });
+    const gezien = new Set();
+    for (const x of g) {
+      const kl = hoofdletter(x.kleur);
+      varianten.push({ sku, maat: code(x.maat), kleur: kl, ean: null });
+      const u = fotoVan(kl);
+      if (kl && u && !gezien.has(kl)) { gezien.add(kl); kleurfotos.push({ sku, kleur: kl, url: u }); }
+    }
+  }
+}
+const sika = () => kleinMerk('sika');
+const oxxa = () => kleinMerk('oxxa');
+const gevavi = () => kleinMerk('gevavi');
+const lavoro = () => kleinMerk('lavoro');
+
+const MERKEN = {
+  snickers, wk, brook, upower, hydrowear, mipiace, tq, pfanner, xirtrum, fhb, fristads, blaklader, emma, grisport, kariban, tricorp,
+  mascot, safetyjogger, santino, portwest, '3m': drieM, sika, oxxa, gevavi, lavoro,
+};
 for (const [naam, fn] of Object.entries(MERKEN)) {
-  if (ONLY && ONLY !== naam) continue;
+  if (ONLY && !ONLY.split(',').includes(naam)) continue;
   fn();
 }
 
@@ -912,6 +1207,7 @@ for (const [m, t] of Object.entries(perMerk)) {
 }
 console.log(`  ${'TOTAAL'.padEnd(24)} ${String(producten.length).padStart(4)} artikelen  ${String(varianten.length).padStart(6)} varianten`);
 console.log(`  kleurfoto's: ${kleurfotos.length}`);
+if (toeslagen.length) console.log(`  maattoeslagen per artikel: ${toeslagen.length}`);
 
 if (fouten.length) {
   console.log(`\nLet op (${fouten.length}):`);
@@ -930,7 +1226,7 @@ if (fouten.length) {
 const JSON_UIT = (args.find((a) => a.startsWith('--json=')) || '').split('=')[1] || null;
 if (JSON_UIT) {
   const { writeFileSync } = await import('node:fs');
-  writeFileSync(JSON_UIT, JSON.stringify({ producten, varianten, kleurfotos }, null, 1));
+  writeFileSync(JSON_UIT, JSON.stringify({ producten, varianten, kleurfotos, toeslagen }, null, 1));
   console.log(`\n--json: ${producten.length} producten weggeschreven naar ${JSON_UIT}`);
   process.exit(0);
 }
@@ -999,6 +1295,18 @@ for (const deel of brokken(fotoRijen, 500)) {
   if (error) { console.error('kleurfotos:', error.message); process.exit(1); }
 }
 console.log(`  ${fotoRijen.length} kleurfoto's`);
+
+// Maattoeslagen per artikel: eerst de oude van deze artikelen weg, dan de nieuwe erin,
+// zodat een vervallen maat geen toeslag achterlaat.
+if (toeslagen.length) {
+  const skus = [...new Set(toeslagen.map((t) => t.product_sku))];
+  for (const deel of brokken(skus, 200)) await db.from('maattoeslagen').delete().in('product_sku', deel);
+  for (const deel of brokken(toeslagen, 500)) {
+    const { error } = await db.from('maattoeslagen').insert(deel);
+    if (error) { console.error('maattoeslagen:', error.message); process.exit(1); }
+  }
+  console.log(`  ${toeslagen.length} maattoeslagen per artikel`);
+}
 
 const { data: n, error: eBer } = await db.rpc('herbereken_variantprijzen', { p_merk: null });
 if (eBer) console.error('prijsberekening:', eBer.message);
